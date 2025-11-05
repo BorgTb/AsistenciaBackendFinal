@@ -1,0 +1,4 @@
+paho-mqtt
+face-recognition
+opencv-python
+numpy
