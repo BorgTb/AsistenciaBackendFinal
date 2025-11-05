@@ -336,6 +336,66 @@ void enviarImagenFragmentada() {
   esp_camera_fb_return(fb);
 }
 
+// ===== Envío para registro de rostro =====
+void enviarParaRegistro(String personName) {
+  if (!client.connected()) {
+    Serial.println("❌ No conectado a MQTT");
+    return;
+  }
+  if (!camera_ok) startCamera();
+
+  camera_fb_t * fb = esp_camera_fb_get();
+  if (!fb) {
+    Serial.println("❌ Error capturando imagen");
+    return;
+  }
+
+  // Construir tópicos de registro
+  String topic_start = "test/registro/" + personName + "/start";
+  String topic_part  = "test/registro/" + personName + "/part";
+  String topic_end   = "test/registro/" + personName + "/end";
+
+  Serial.printf("📤 Registrando a: %s | Tamaño: %u bytes\n", personName.c_str(), fb->len);
+
+  // Codificar
+  String imageBase64 = base64::encode(fb->buf, fb->len);
+  int total = imageBase64.length();
+  
+  if (total == 0) {
+    Serial.println("❌ Base64 vacío");
+    esp_camera_fb_return(fb);
+    return;
+  }
+
+  int chunkSize = 1024;
+
+  // Enviar inicio
+  if (!client.publish(topic_start.c_str(), "start")) {
+    Serial.println("❌ Error publicando /start");
+    esp_camera_fb_return(fb);
+    return;
+  }
+  Serial.printf("✅ Inicio de registro enviado\n");
+  delay(50);
+
+  // Enviar fragmentos
+  for (int i = 0; i < total; i += chunkSize) {
+    int endPos = min(i + chunkSize, total);
+    String part = imageBase64.substring(i, endPos);
+    
+    if (part.length() > 0) {
+      client.publish(topic_part.c_str(), part.c_str());
+    }
+    delay(10);
+  }
+
+  // Enviar fin
+  client.publish(topic_end.c_str(), "end");
+  esp_camera_fb_return(fb);
+  
+  Serial.printf("✅ Persona registrada: %s\n", personName.c_str());
+}
+
 // ===== STREAM MJPEG =====
 void handleStream() {
   if (!camera_ok) startCamera();
@@ -400,6 +460,7 @@ void handleRoot() {
       button:active { transform:scale(0.95); }
       .container { max-width:600px; margin:0 auto; }
       h2 { color:#0099ff; }
+      .section { margin:20px 0; }
     </style>
   </head>
   <body>
@@ -414,20 +475,23 @@ void handleRoot() {
         <div class="status-item"><span>IP:</span><strong>)rawliteral" + WiFi.localIP().toString() + R"rawliteral(</strong></div>
       </div>
 
-      <h3>Controles</h3>
-      <button onclick="window.location.href='/capture'">📸 Foto</button>
-      <button onclick="window.location.href='/video'">🎥 Video</button>
-      <button onclick="enviarImagen()">📡 Enviar (MQTT)</button>
-      <button onclick="window.location.href='/wifi'">⚙️ WiFi</button>
-    </div>
+      <div class="section">
+        <h3>🎯 Reconocimiento</h3>
+        <button onclick="window.location.href='/recognize'">🎥 Reconocer Rostro</button>
+        <button onclick="window.location.href='/capture'">📸 Foto</button>
+      </div>
 
-    <script>
-      setInterval(() => { location.reload(); }, 30000);
-      function enviarImagen() {
-        alert('Enviando...');
-        fetch('/send_mqtt').then(r => r.text()).then(html => { document.body.innerHTML = html; });
-      }
-    </script>
+      <div class="section">
+        <h3>� Registro de Rostros</h3>
+        <button onclick="window.location.href='/register'">✏️ Registrar Persona</button>
+      </div>
+
+      <div class="section">
+        <h3>⚙️ Configuración</h3>
+        <button onclick="window.location.href='/video'">🎥 Ver Video</button>
+        <button onclick="window.location.href='/wifi'">🌐 WiFi</button>
+      </div>
+    </div>
   </body>
   </html>
   )rawliteral";
@@ -436,6 +500,86 @@ void handleRoot() {
 
 void handleVideoPage() {
   server.send(200, "text/html", "<img src='/stream' style='width:100%;'>");
+}
+
+// ===== Página de reconocimiento (VIDEO + BOTÓN ENVIAR) =====
+void handleRecognize() {
+  String html = R"rawliteral(
+  <html>
+  <head>
+    <title>Reconocer Rostro</title>
+    <style>
+      body { background:#101010; color:#0ff; font-family:Arial; text-align:center; padding:20px; }
+      img { width:100%; max-width:640px; border:2px solid #0099ff; border-radius:8px; }
+      button { background:#00cc00; border:none; color:white; padding:15px 30px; border-radius:6px; margin:15px; font-size:18px; cursor:pointer; }
+      button:hover { background:#009900; }
+      .container { max-width:700px; margin:0 auto; }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h2>🎯 Reconocer Rostro</h2>
+      <img src='/stream'>
+      <br>
+      <button onclick="reconocer()">✅ Reconocer</button>
+      <button onclick="window.location.href='/'">⬅ Volver</button>
+    </div>
+    <script>
+      function reconocer() {
+        alert('Capturando y enviando...');
+        fetch('/do_recognize').then(r => r.text()).then(msg => {
+          alert(msg);
+        });
+      }
+    </script>
+  </body>
+  </html>
+  )rawliteral";
+  server.send(200, "text/html", html);
+}
+
+// ===== Página de registro (VIDEO + INPUT NOMBRE + BOTÓN REGISTRAR) =====
+void handleRegister() {
+  String html = R"rawliteral(
+  <html>
+  <head>
+    <title>Registrar Persona</title>
+    <style>
+      body { background:#101010; color:#0ff; font-family:Arial; text-align:center; padding:20px; }
+      img { width:100%; max-width:640px; border:2px solid #ff9900; border-radius:8px; }
+      input { padding:10px; font-size:16px; width:80%; margin:10px 0; }
+      button { background:#ff9900; border:none; color:white; padding:15px 30px; border-radius:6px; margin:15px; font-size:18px; cursor:pointer; }
+      button:hover { background:#cc7700; }
+      .container { max-width:700px; margin:0 auto; }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h2>👤 Registrar Persona</h2>
+      <img src='/stream'>
+      <br>
+      <input type="text" id="personName" placeholder="Nombre de la persona" autofocus>
+      <br>
+      <button onclick="registrar()">✅ Registrar</button>
+      <button onclick="window.location.href='/'">⬅ Volver</button>
+    </div>
+    <script>
+      function registrar() {
+        const nombre = document.getElementById('personName').value;
+        if (!nombre || nombre.trim() === '') {
+          alert('Por favor ingresa un nombre');
+          return;
+        }
+        alert('Capturando y registrando a: ' + nombre);
+        fetch('/do_register?name=' + encodeURIComponent(nombre))
+          .then(r => r.text())
+          .then(msg => { alert(msg); });
+      }
+    </script>
+  </body>
+  </html>
+  )rawliteral";
+  server.send(200, "text/html", html);
 }
 
 void handleWifiPage() {
@@ -483,6 +627,55 @@ void handleSendMQTT() {
   server.send(200, "text/html", "<h3>✅ Imagen enviada.</h3><a href='/'>Volver</a>");
 }
 
+// ===== Handler para reconocer =====
+void handleDoRecognize() {
+  if (WiFi.status() != WL_CONNECTED) {
+    server.send(500, "text/plain", "❌ WiFi no conectado");
+    return;
+  }
+  
+  if (!client.connected()) {
+    reconnectMQTT();
+  }
+  
+  if (!client.connected()) {
+    server.send(500, "text/plain", "❌ MQTT no conectado");
+    return;
+  }
+
+  enviarImagenFragmentada();
+  server.send(200, "text/plain", "✅ Rostro enviado para reconocimiento");
+}
+
+// ===== Handler para registrar =====
+void handleDoRegister() {
+  if (WiFi.status() != WL_CONNECTED) {
+    server.send(500, "text/plain", "❌ WiFi no conectado");
+    return;
+  }
+  
+  if (!client.connected()) {
+    reconnectMQTT();
+  }
+  
+  if (!client.connected()) {
+    server.send(500, "text/plain", "❌ MQTT no conectado");
+    return;
+  }
+
+  // Obtener nombre de la persona
+  if (!server.hasArg("name")) {
+    server.send(400, "text/plain", "❌ Nombre no proporcionado");
+    return;
+  }
+
+  String personName = server.arg("name");
+  Serial.printf("📝 Registrando: %s\n", personName.c_str());
+  
+  enviarParaRegistro(personName);
+  server.send(200, "text/plain", "✅ Persona '" + personName + "' registrada");
+}
+
 // ===== Setup =====
 void setup() {
   Serial.begin(115200);
@@ -495,8 +688,12 @@ void setup() {
 
   server.on("/", handleRoot);
   server.on("/video", handleVideoPage);
+  server.on("/recognize", handleRecognize);
+  server.on("/register", handleRegister);
   server.on("/stream", handleStream);
   server.on("/capture", handleCapture);
+  server.on("/do_recognize", handleDoRecognize);
+  server.on("/do_register", handleDoRegister);
   server.on("/wifi", handleWifiPage);
   server.on("/save", HTTP_POST, handleSave);
   server.on("/send_mqtt", handleSendMQTT);
