@@ -34,7 +34,7 @@ String wifiPASS = "";
 const char* mqtt_server = "192.168.1.2";
 const int mqtt_port = 1883;
 const char* topic_base = "test/imagenes";
-const char* topic_recognition = "test/reconocimiento";  // ✅ NUEVO: Resultado de reconocimiento
+const char* topic_recognition = "test/reconocimiento";
 
 WiFiClient espClient;
 PubSubClient client(espClient);
@@ -53,60 +53,53 @@ const size_t MAX_FRAME_SIZE = 100000;  // Máximo tamaño de frame esperado
 
 bool hasSignificantChange(camera_fb_t *fb) {
   if (!fb || !fb->buf || fb->len == 0) {
-    Serial.println("❌ Frame inválido");
+    Serial.println("ERROR: Frame invalido");
     return false;
   }
 
   unsigned long now = millis();
   
-  // No enviar muy frecuentemente
   if (now - last_send_time < send_interval) {
     return false;
   }
 
-  // ===== Primera imagen =====
   if (!last_frame) {
-    // Validar tamaño
     if (fb->len > MAX_FRAME_SIZE) {
-      Serial.printf("❌ Frame demasiado grande: %u bytes\n", fb->len);
+      Serial.printf("ERROR: Frame demasiado grande: %u bytes\n", fb->len);
       return false;
     }
 
     last_frame = (uint8_t*)malloc(fb->len);
     if (!last_frame) {
-      Serial.println("❌ Error: no hay memoria para guardar frame");
+      Serial.println("ERROR: no hay memoria para guardar frame");
       return false;
     }
 
     memcpy(last_frame, fb->buf, fb->len);
     last_frame_size = fb->len;
     last_send_time = now;
-    Serial.printf("✅ Primera imagen guardada: %u bytes\n", fb->len);
+    Serial.printf("Primera imagen guardada: %u bytes\n", fb->len);
     return true;
   }
 
-  // ===== Comparar tamaño =====
   int diff = abs((int)fb->len - (int)last_frame_size);
-  int threshold = last_frame_size * 15 / 100;  // 15% de diferencia
+  int threshold = last_frame_size * 15 / 100;
 
   if (diff > threshold) {
-    Serial.printf("✅ Cambio detectado (diff: %d bytes, threshold: %d)\n", diff, threshold);
+    Serial.printf("Cambio detectado (diff: %d bytes, threshold: %d)\n", diff, threshold);
     
-    // Liberar memoria anterior
     free(last_frame);
     
-    // Validar nuevo tamaño
     if (fb->len > MAX_FRAME_SIZE) {
-      Serial.printf("❌ Frame demasiado grande: %u bytes\n", fb->len);
+      Serial.printf("ERROR: Frame demasiado grande: %u bytes\n", fb->len);
       last_frame = nullptr;
       last_frame_size = 0;
       return false;
     }
     
-    // Guardar nuevo frame
     last_frame = (uint8_t*)malloc(fb->len);
     if (!last_frame) {
-      Serial.println("❌ Error: no hay memoria para nuevo frame");
+      Serial.println("ERROR: no hay memoria para nuevo frame");
       last_frame_size = 0;
       return false;
     }
@@ -156,7 +149,7 @@ void startCamera() {
 
   esp_err_t err = esp_camera_init(&config);
   if (err != ESP_OK) {
-    Serial.printf("❌ Error al iniciar cámara: 0x%x\n", err);
+    Serial.printf("ERROR al iniciar camara: 0x%x\n", err);
     return;
   }
 
@@ -176,7 +169,7 @@ void startCamera() {
   s->set_colorbar(s, 0);
 
   camera_ok = true;
-  Serial.println("✅ Cámara inicializada");
+  Serial.println("Camara inicializada");
 }
 
 // ===== Conexión WiFi =====
@@ -187,7 +180,7 @@ void tryConnectWiFi() {
   prefs.end();
 
   if (wifiSSID == "") {
-    Serial.println("⚠️ No hay credenciales guardadas");
+    Serial.println("No hay credenciales guardadas");
     return;
   }
 
@@ -200,15 +193,15 @@ void tryConnectWiFi() {
   }
   Serial.println();
   if (WiFi.status() == WL_CONNECTED)
-    Serial.println("✅ WiFi conectado: " + WiFi.localIP().toString());
+    Serial.println("WiFi conectado: " + WiFi.localIP().toString());
   else
-    Serial.println("❌ Falló conexión WiFi");
+    Serial.println("Fallo conexion WiFi");
 }
 
 void startAP() {
   WiFi.softAP(apSSID, apPASS);
   IPAddress IP = WiFi.softAPIP();
-  Serial.printf("📡 AP activo: %s  IP: %s\n", apSSID, IP.toString().c_str());
+  Serial.printf("AP activo: %s  IP: %s\n", apSSID, IP.toString().c_str());
 }
 
 // ===== MQTT =====
@@ -219,51 +212,47 @@ void reconnectMQTT() {
   const int maxIntentos = 5;
   
   while (!client.connected() && intentos < maxIntentos) {
-    Serial.printf("🔄 Conectando a MQTT (%d/%d)...", intentos + 1, maxIntentos);
+    Serial.printf("Conectando a MQTT (%d/%d)...", intentos + 1, maxIntentos);
     
     if (client.connect("ESP32CAM_Client")) {
-      Serial.println("✅ Conectado a MQTT");
+      Serial.println(" Conectado a MQTT");
       return;
     } else {
-      Serial.printf(" ❌ Error: %d\n", client.state());
+      Serial.printf(" ERROR: %d\n", client.state());
       intentos++;
       delay(2000);
     }
   }
   
   if (!client.connected()) {
-    Serial.println("❌ No se pudo conectar a MQTT");
+    Serial.println("No se pudo conectar a MQTT");
   }
 }
 
-// ===== Callback MQTT para recibir resultados de reconocimiento =====
 void onMessageReceived(char* topic, byte* payload, unsigned int length) {
   String msg = "";
   for (int i = 0; i < length; i++) {
     msg += (char)payload[i];
   }
   
-  Serial.printf("📨 Resultado recibido: %s\n", msg.c_str());
-  // Aquí podrías hacer algo con el resultado (parpadear LED, etc)
+  Serial.printf("Resultado recibido: %s\n", msg.c_str());
 }
 
-// ===== Envío por fragmentos MEJORADO =====
 void enviarImagenFragmentada() {
   if (!client.connected()) {
-    Serial.println("❌ No conectado a MQTT");
+    Serial.println("No conectado a MQTT");
     return;
   }
   if (!camera_ok) startCamera();
 
   camera_fb_t * fb = esp_camera_fb_get();
   if (!fb) {
-    Serial.println("❌ Error capturando imagen");
+    Serial.println("Error capturando imagen");
     return;
   }
 
-  // ===== DETECTAR CAMBIO ANTES DE ENVIAR =====
   if (!hasSignificantChange(fb)) {
-    Serial.println("⏭️ Sin cambios significativos");
+    Serial.println("Sin cambios significativos");
     esp_camera_fb_return(fb);
     return;
   }
@@ -274,51 +263,48 @@ void enviarImagenFragmentada() {
   String topic_part  = String(topic_base) + "/" + sessionId + "/part";
   String topic_end   = String(topic_base) + "/" + sessionId + "/end";
 
-  Serial.printf("📤 Sesión: %s | Tamaño: %u bytes\n", sessionId.c_str(), fb->len);
+  Serial.printf("Sesion: %s | Tamano: %u bytes\n", sessionId.c_str(), fb->len);
 
-  // Codificar con validación
   String imageBase64;
   try {
     imageBase64 = base64::encode(fb->buf, fb->len);
   } catch (...) {
-    Serial.println("❌ Error codificando base64");
+    Serial.println("Error codificando base64");
     esp_camera_fb_return(fb);
     return;
   }
 
   int total = imageBase64.length();
   if (total == 0) {
-    Serial.println("❌ Base64 vacío");
+    Serial.println("Base64 vacio");
     esp_camera_fb_return(fb);
     return;
   }
 
   int chunkSize = 1024;
 
-  // ===== Enviar inicio =====
   if (!client.publish(topic_start.c_str(), "start")) {
-    Serial.println("❌ Error publicando /start");
+    Serial.println("Error publicando /start");
     esp_camera_fb_return(fb);
     return;
   }
-  Serial.printf("✅ Inicio enviado\n");
+  Serial.printf("Inicio enviado\n");
   delay(50);
 
-  // ===== Enviar fragmentos =====
   int fragmento = 0;
   for (int i = 0; i < total; i += chunkSize) {
     int endPos = min(i + chunkSize, total);
     String part = imageBase64.substring(i, endPos);
     
     if (part.length() == 0) {
-      Serial.printf("❌ Fragmento %d vacío\n", fragmento);
+      Serial.printf("Fragmento %d vacio\n", fragmento);
       continue;
     }
 
     if (!client.publish(topic_part.c_str(), part.c_str())) {
-      Serial.printf("❌ Fragmento %d fallido\n", fragmento);
+      Serial.printf("Fragmento %d fallido\n", fragmento);
     } else {
-      Serial.printf("✅ Fragmento %d/%d (%d bytes)\n", 
+      Serial.printf("Fragmento %d/%d (%d bytes)\n", 
         fragmento + 1, (total + chunkSize - 1) / chunkSize, part.length());
     }
     
@@ -326,59 +312,53 @@ void enviarImagenFragmentada() {
     delay(10);
   }
 
-  // ===== Enviar fin =====
   if (!client.publish(topic_end.c_str(), "end")) {
-    Serial.println("❌ Error publicando /end");
+    Serial.println("Error publicando /end");
   } else {
-    Serial.printf("✅ Transmisión completada\n");
+    Serial.printf("Transmision completada\n");
   }
 
   esp_camera_fb_return(fb);
 }
 
-// ===== Envío para registro de rostro =====
 void enviarParaRegistro(String personName) {
   if (!client.connected()) {
-    Serial.println("❌ No conectado a MQTT");
+    Serial.println("No conectado a MQTT");
     return;
   }
   if (!camera_ok) startCamera();
 
   camera_fb_t * fb = esp_camera_fb_get();
   if (!fb) {
-    Serial.println("❌ Error capturando imagen");
+    Serial.println("Error capturando imagen");
     return;
   }
 
-  // Construir tópicos de registro
   String topic_start = "test/registro/" + personName + "/start";
   String topic_part  = "test/registro/" + personName + "/part";
   String topic_end   = "test/registro/" + personName + "/end";
 
-  Serial.printf("📤 Registrando a: %s | Tamaño: %u bytes\n", personName.c_str(), fb->len);
+  Serial.printf("Registrando a: %s | Tamano: %u bytes\n", personName.c_str(), fb->len);
 
-  // Codificar
   String imageBase64 = base64::encode(fb->buf, fb->len);
   int total = imageBase64.length();
   
   if (total == 0) {
-    Serial.println("❌ Base64 vacío");
+    Serial.println("Base64 vacio");
     esp_camera_fb_return(fb);
     return;
   }
 
   int chunkSize = 1024;
 
-  // Enviar inicio
   if (!client.publish(topic_start.c_str(), "start")) {
-    Serial.println("❌ Error publicando /start");
+    Serial.println("Error publicando /start");
     esp_camera_fb_return(fb);
     return;
   }
-  Serial.printf("✅ Inicio de registro enviado\n");
+  Serial.printf("Inicio de registro enviado\n");
   delay(50);
 
-  // Enviar fragmentos
   for (int i = 0; i < total; i += chunkSize) {
     int endPos = min(i + chunkSize, total);
     String part = imageBase64.substring(i, endPos);
@@ -389,11 +369,10 @@ void enviarParaRegistro(String personName) {
     delay(10);
   }
 
-  // Enviar fin
   client.publish(topic_end.c_str(), "end");
   esp_camera_fb_return(fb);
   
-  Serial.printf("✅ Persona registrada: %s\n", personName.c_str());
+  Serial.printf("Persona registrada: %s\n", personName.c_str());
 }
 
 // ===== STREAM MJPEG =====
@@ -418,7 +397,7 @@ void handleStream() {
   }
 
   clientHTTP.stop();
-  Serial.println("🔴 Stream desconectado");
+  Serial.println("Stream desconectado");
 }
 
 // ===== Captura única =====
@@ -439,11 +418,10 @@ void handleCapture() {
   esp_camera_fb_return(fb);
 }
 
-// ===== Página principal =====
 void handleRoot() {
-  String wifiStatus = (WiFi.status() == WL_CONNECTED) ? "✅ Conectado" : "❌ Desconectado";
-  String mqttStatus = client.connected() ? "✅ Conectado" : "❌ Desconectado";
-  String cameraStatus = camera_ok ? "✅ Iniciada" : "❌ Error";
+  String wifiStatus = (WiFi.status() == WL_CONNECTED) ? "Conectado" : "Desconectado";
+  String mqttStatus = client.connected() ? "Conectado" : "Desconectado";
+  String cameraStatus = camera_ok ? "Iniciada" : "Error";
   
   String html = R"rawliteral(
   <!DOCTYPE html>
@@ -603,14 +581,14 @@ void handleSave() {
   prefs.putString("ssid", ssid);
   prefs.putString("pass", pass);
   prefs.end();
-  server.send(200, "text/html", "<h3>✅ Guardado. Reiniciando...</h3>");
+  server.send(200, "text/html", "<h3>Guardado. Reiniciando...</h3>");
   delay(1000);
   ESP.restart();
 }
 
 void handleSendMQTT() {
   if (WiFi.status() != WL_CONNECTED) {
-    server.send(500, "text/html", "<h3>❌ WiFi no conectado</h3><a href='/'>Volver</a>");
+    server.send(500, "text/html", "<h3>WiFi no conectado</h3><a href='/'>Volver</a>");
     return;
   }
   
@@ -619,18 +597,17 @@ void handleSendMQTT() {
   }
   
   if (!client.connected()) {
-    server.send(500, "text/html", "<h3>❌ MQTT no conectado</h3><a href='/'>Volver</a>");
+    server.send(500, "text/html", "<h3>MQTT no conectado</h3><a href='/'>Volver</a>");
     return;
   }
 
   enviarImagenFragmentada();
-  server.send(200, "text/html", "<h3>✅ Imagen enviada.</h3><a href='/'>Volver</a>");
+  server.send(200, "text/html", "<h3>Imagen enviada.</h3><a href='/'>Volver</a>");
 }
 
-// ===== Handler para reconocer =====
 void handleDoRecognize() {
   if (WiFi.status() != WL_CONNECTED) {
-    server.send(500, "text/plain", "❌ WiFi no conectado");
+    server.send(500, "text/plain", "WiFi no conectado");
     return;
   }
   
@@ -639,18 +616,17 @@ void handleDoRecognize() {
   }
   
   if (!client.connected()) {
-    server.send(500, "text/plain", "❌ MQTT no conectado");
+    server.send(500, "text/plain", "MQTT no conectado");
     return;
   }
 
   enviarImagenFragmentada();
-  server.send(200, "text/plain", "✅ Rostro enviado para reconocimiento");
+  server.send(200, "text/plain", "Rostro enviado para reconocimiento");
 }
 
-// ===== Handler para registrar =====
 void handleDoRegister() {
   if (WiFi.status() != WL_CONNECTED) {
-    server.send(500, "text/plain", "❌ WiFi no conectado");
+    server.send(500, "text/plain", "WiFi no conectado");
     return;
   }
   
@@ -659,28 +635,26 @@ void handleDoRegister() {
   }
   
   if (!client.connected()) {
-    server.send(500, "text/plain", "❌ MQTT no conectado");
+    server.send(500, "text/plain", "MQTT no conectado");
     return;
   }
 
-  // Obtener nombre de la persona
   if (!server.hasArg("name")) {
-    server.send(400, "text/plain", "❌ Nombre no proporcionado");
+    server.send(400, "text/plain", "Nombre no proporcionado");
     return;
   }
 
   String personName = server.arg("name");
-  Serial.printf("📝 Registrando: %s\n", personName.c_str());
+  Serial.printf("Registrando: %s\n", personName.c_str());
   
   enviarParaRegistro(personName);
-  server.send(200, "text/plain", "✅ Persona '" + personName + "' registrada");
+  server.send(200, "text/plain", "Persona '" + personName + "' registrada");
 }
 
-// ===== Setup =====
 void setup() {
   Serial.begin(115200);
   delay(1000);
-  Serial.println("\n\n🚀 Iniciando ESP32-CAM...");
+  Serial.println("\n\nIniciando ESP32-CAM...");
   
   startCamera();
   tryConnectWiFi();
@@ -702,7 +676,7 @@ void setup() {
   client.setServer(mqtt_server, mqtt_port);
   client.setCallback(onMessageReceived);
   
-  Serial.println("🌐 Servidor HTTP iniciado");
+  Serial.println("Servidor HTTP iniciado");
 }
 
 // ===== Loop =====
@@ -718,7 +692,6 @@ void loop() {
       }
     } else {
       client.loop();
-      // ✅ Envío automático cada 2 segundos si detecta cambio
       enviarImagenFragmentada();
     }
   }
