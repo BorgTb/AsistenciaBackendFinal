@@ -35,8 +35,8 @@ const char* apSSID = "ESP32-CAM-SETUP";
 const char* apPASS = "12345678";
 
 // ======= CONFIGURACIÓN WIFI Y MQTT =======
-String wifiSSID = "Casa_Meza";
-String wifiPASS = "18351835";
+String wifiSSID = "";
+String wifiPASS = "";
 const char* mqtt_server = "192.168.1.2";
 const int mqtt_port = 1883;
 const char* api_server = "http://192.168.1.2:5000/api";
@@ -560,6 +560,7 @@ h3{color:#667eea;margin-bottom:8px;font-size:16px}
 <h3>⚙️ Sistema</h3>
 <button class="btn-warning" onclick="syncNow()">🔄 Sincronizar</button>
 <button class="btn-primary" onclick="checkStatus()">📊 Info Sistema</button>
+<button class="btn-info" onclick="window.location.href='/asistencias'">📋 Ver Asistencias</button>
 <button class="btn-danger" onclick="window.location.href='/wifi'">🌐 Config WiFi</button>
 </div>
 
@@ -716,6 +717,124 @@ a:hover{text-decoration:underline}
 </html>
 )rawliteral";
 
+// ===== PÁGINA DE ASISTENCIAS =====
+const char* asistenciasPage = R"rawliteral(
+<html>
+<head>
+<meta charset="utf-8">
+<title>Ver Asistencias</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:Arial,sans-serif;background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);min-height:100vh;padding:10px}
+.container{background:white;border-radius:15px;box-shadow:0 10px 30px rgba(0,0,0,0.3);padding:20px;max-width:900px;margin:0 auto}
+h1{color:#333;text-align:center;margin-bottom:20px;font-size:22px}
+h2{color:#667eea;font-size:18px;margin:15px 0 10px 0;border-bottom:2px solid #667eea;padding-bottom:5px}
+.section{background:#f9f9f9;padding:15px;border-radius:8px;margin-bottom:15px}
+.list{max-height:250px;overflow-y:auto;background:white;border:1px solid #ddd;border-radius:6px;padding:10px}
+.item{padding:10px;margin:5px 0;background:#f5f5f5;border-left:4px solid #667eea;border-radius:4px;font-size:13px}
+.item-local{border-left-color:#ff9800}
+.item-server{border-left-color:#4CAF50}
+.empty{text-align:center;color:#999;padding:20px;font-style:italic}
+button{width:100%;padding:12px;border:none;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;margin-top:10px;color:white;background:#667eea}
+button:hover{background:#5568c0}
+.badge{display:inline-block;padding:3px 8px;border-radius:10px;font-size:11px;font-weight:bold;margin-left:5px}
+.badge-success{background:#4CAF50;color:white}
+.badge-warning{background:#ff9800;color:white}
+.badge-info{background:#00bcd4;color:white}
+.loading{text-align:center;padding:20px;color:#667eea;font-weight:bold}
+.error{background:#ffebee;color:#c62828;padding:10px;border-radius:6px;margin:10px 0;text-align:center}
+</style>
+</head>
+<body>
+<div class="container">
+<h1>📋 Asistencias - ESP32-CAM</h1>
+
+<div class="section">
+<h2>💾 Asistencias Locales (SPIFFS) <span class="badge badge-warning" id="countLocal">0</span></h2>
+<div class="list" id="listLocal">
+<div class="loading">Cargando...</div>
+</div>
+</div>
+
+<div class="section">
+<h2>☁️ Asistencias del Servidor <span class="badge badge-success" id="countServer">0</span></h2>
+<div class="list" id="listServer">
+<div class="loading">Cargando...</div>
+</div>
+</div>
+
+<button onclick="window.location.href='/'">⬅ Volver al Inicio</button>
+</div>
+
+<script>
+async function cargarAsistenciasLocales(){
+try{
+const r=await fetch('/api/local-asistencias');
+const data=await r.json();
+const container=document.getElementById('listLocal');
+document.getElementById('countLocal').textContent=data.total;
+if(data.total===0){
+container.innerHTML='<div class="empty">No hay asistencias guardadas localmente</div>';
+return;
+}
+let html='';
+data.asistencias.forEach(a=>{
+html+=`<div class="item item-local">
+<strong>${a.nombre}</strong> - 
+<span class="badge badge-info">${a.tipo}</span><br>
+<small>📅 ${a.fecha_hora}</small>
+</div>`;
+});
+container.innerHTML=html;
+}catch(e){
+document.getElementById('listLocal').innerHTML='<div class="error">❌ Error cargando datos locales</div>';
+}
+}
+
+async function cargarAsistenciasServidor(){
+try{
+const r=await fetch('/api/server-asistencias');
+const data=await r.json();
+const container=document.getElementById('listServer');
+if(data.error){
+container.innerHTML=`<div class="error">❌ ${data.error}</div>`;
+return;
+}
+document.getElementById('countServer').textContent=data.total;
+if(data.total===0){
+container.innerHTML='<div class="empty">No hay asistencias en el servidor</div>';
+return;
+}
+let html='';
+data.asistencias.forEach(a=>{
+html+=`<div class="item item-server">
+<strong>${a.persona_nombre}</strong> - 
+<span class="badge badge-${a.tipo==='entrada'?'success':'warning'}">${a.tipo.toUpperCase()}</span><br>
+<small>📅 ${a.fecha_hora}</small>
+${a.turno_nombre?'<br><small>🏢 '+a.turno_nombre+'</small>':''}
+</div>`;
+});
+container.innerHTML=html;
+}catch(e){
+document.getElementById('listServer').innerHTML='<div class="error">❌ Error cargando datos del servidor (sin conexión)</div>';
+}
+}
+
+// Cargar al iniciar
+cargarAsistenciasLocales();
+cargarAsistenciasServidor();
+
+// Actualizar cada 10 segundos
+setInterval(()=>{
+cargarAsistenciasLocales();
+cargarAsistenciasServidor();
+},10000);
+</script>
+</body>
+</html>
+)rawliteral";
+
 // ======= HANDLERS WEB =======
 void handleRoot() {
   server.send(200, "text/html", htmlPage);
@@ -731,6 +850,55 @@ void handleRegister() {
 
 void handleWifiPage() {
   server.send(200, "text/html", wifiPage);
+}
+
+void handleAsistenciasPage() {
+  server.send(200, "text/html", asistenciasPage);
+}
+
+void handleLocalAsistencias() {
+  File file = SPIFFS.open("/asistencias.json", "r");
+  if (!file) {
+    server.send(500, "application/json", "{\"error\":\"No se pudo leer archivo local\",\"total\":0,\"asistencias\":[]}");
+    return;
+  }
+  
+  String content = file.readString();
+  file.close();
+  
+  DynamicJsonDocument doc(8192);
+  deserializeJson(doc, content);
+  JsonArray array = doc.as<JsonArray>();
+  
+  DynamicJsonDocument response(8192);
+  response["total"] = array.size();
+  response["asistencias"] = array;
+  
+  String json;
+  serializeJson(response, json);
+  server.send(200, "application/json", json);
+}
+
+void handleServerAsistencias() {
+  if (!isOnline) {
+    server.send(500, "application/json", "{\"error\":\"Sin conexión al servidor\",\"total\":0,\"asistencias\":[]}");
+    return;
+  }
+  
+  HTTPClient http;
+  http.begin(String(api_server) + "/asistencias/hoy");
+  http.setTimeout(5000);
+  
+  int httpCode = http.GET();
+  
+  if (httpCode == 200) {
+    String payload = http.getString();
+    http.end();
+    server.send(200, "application/json", payload);
+  } else {
+    http.end();
+    server.send(500, "application/json", "{\"error\":\"Error consultando servidor\",\"total\":0,\"asistencias\":[]}");
+  }
 }
 
 void handleSave() {
@@ -947,6 +1115,7 @@ void setup() {
   server.on("/", handleRoot);
   server.on("/recognize", handleRecognize);
   server.on("/register", handleRegister);
+  server.on("/asistencias", handleAsistenciasPage);
   server.on("/stream", handleStream);
   server.on("/capture", handleCapture);
   server.on("/do_recognize", handleDoRecognize);
@@ -957,6 +1126,8 @@ void setup() {
   server.on("/auto-detect", handleAutoDetect);
   server.on("/sync", handleSync);
   server.on("/info", handleInfo);
+  server.on("/api/local-asistencias", handleLocalAsistencias);
+  server.on("/api/server-asistencias", handleServerAsistencias);
   server.begin();
   
   Serial.println("🌐 Servidor web iniciado");
