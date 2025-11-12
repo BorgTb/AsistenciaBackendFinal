@@ -35,8 +35,8 @@ const char* apSSID = "ESP32-CAM-SETUP";
 const char* apPASS = "12345678";
 
 // ======= CONFIGURACIÓN WIFI Y MQTT =======
-String wifiSSID = "Casa_Meza";
-String wifiPASS = "18351835";
+String wifiSSID = "";
+String wifiPASS = "";
 const char* mqtt_server = "192.168.1.2";
 const int mqtt_port = 1883;
 const char* api_server = "http://192.168.1.2:5000/api";
@@ -879,7 +879,7 @@ void mqttCallback(char* topic, byte* payload, unsigned int length) {
 
 // ======= SETUP WIFI =======
 void setupWifi() {
-  WiFi.begin(wifiSSID, wifiPASS);
+  WiFi.begin(ssid, password);
   Serial.print("Conectando a WiFi");
   
   int attempts = 0;

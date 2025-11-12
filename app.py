@@ -1049,6 +1049,181 @@ def api_registrar_asistencia_manual():
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
 
+@app.route('/api/asistencias/sync', methods=['POST'])
+def api_sync_asistencias_offline():
+    """Sincroniza asistencias guardadas offline en el ESP32"""
+    try:
+        data = request.json
+        asistencias_offline = data.get('asistencias', [])
+        dispositivo_ip = data.get('dispositivo_ip', 'unknown')
+        
+        if not asistencias_offline:
+            return jsonify({'success': False, 'error': 'No hay asistencias para sincronizar'}), 400
+        
+        resultados = {
+            'exitosas': 0,
+            'fallidas': 0,
+            'duplicadas': 0,
+            'detalles': []
+        }
+        
+        for asist_offline in asistencias_offline:
+            try:
+                persona_nombre = asist_offline.get('nombre')
+                fecha_hora_str = asist_offline.get('fecha_hora')
+                tipo = asist_offline.get('tipo', 'entrada')
+                
+                if not persona_nombre or not fecha_hora_str:
+                    resultados['fallidas'] += 1
+                    resultados['detalles'].append({
+                        'nombre': persona_nombre,
+                        'status': 'error',
+                        'mensaje': 'Datos incompletos'
+                    })
+                    continue
+                
+                # Buscar persona
+                persona = get_persona_by_nombre(persona_nombre)
+                if not persona:
+                    resultados['fallidas'] += 1
+                    resultados['detalles'].append({
+                        'nombre': persona_nombre,
+                        'status': 'error',
+                        'mensaje': 'Persona no encontrada'
+                    })
+                    continue
+                
+                # Verificar si ya existe (evitar duplicados)
+                asistencias_existentes = get_todas_asistencias()
+                duplicado = False
+                for exist in asistencias_existentes:
+                    # Si existe con el mismo timestamp y persona, es duplicado
+                    if (exist['persona_id'] == persona['id'] and 
+                        exist['fecha_hora'] == fecha_hora_str):
+                        duplicado = True
+                        break
+                
+                if duplicado:
+                    resultados['duplicadas'] += 1
+                    resultados['detalles'].append({
+                        'nombre': persona_nombre,
+                        'status': 'duplicado',
+                        'mensaje': 'Ya existe este registro'
+                    })
+                    continue
+                
+                # Parsear fecha/hora para verificar turno en ese momento
+                try:
+                    fecha_hora_obj = datetime.strptime(fecha_hora_str, '%Y-%m-%d %H:%M:%S')
+                except:
+                    # Si falla, usar hora actual
+                    fecha_hora_obj = datetime.now()
+                
+                # Verificar turno activo en ese momento (no ahora, sino cuando se registró)
+                turno_activo = verificar_turno_activo_en_fecha(persona['id'], fecha_hora_obj)
+                
+                if not turno_activo:
+                    resultados['fallidas'] += 1
+                    resultados['detalles'].append({
+                        'nombre': persona_nombre,
+                        'status': 'sin_turno',
+                        'mensaje': 'Sin turno activo en ese horario'
+                    })
+                    continue
+                
+                # Registrar directamente en CSV (sin validación de última asistencia porque viene con tipo)
+                asistencias = []
+                try:
+                    with open(ASISTENCIAS_CSV, 'r', encoding='utf-8') as f:
+                        reader = csv.DictReader(f)
+                        asistencias = list(reader)
+                except:
+                    pass
+                
+                nuevo_id = str(len(asistencias) + 1)
+                
+                nueva_asistencia = {
+                    'id': nuevo_id,
+                    'persona_id': persona['id'],
+                    'persona_nombre': persona_nombre,
+                    'turno_id': turno_activo['id'],
+                    'turno_nombre': turno_activo['nombre_turno'],
+                    'tipo': tipo,
+                    'fecha_hora': fecha_hora_str,
+                    'dispositivo_ip': dispositivo_ip
+                }
+                
+                with open(ASISTENCIAS_CSV, 'a', newline='', encoding='utf-8') as f:
+                    writer = csv.DictWriter(f, fieldnames=['id', 'persona_id', 'persona_nombre', 'turno_id', 'turno_nombre', 'tipo', 'fecha_hora', 'dispositivo_ip'])
+                    writer.writerow(nueva_asistencia)
+                
+                resultados['exitosas'] += 1
+                resultados['detalles'].append({
+                    'nombre': persona_nombre,
+                    'status': 'ok',
+                    'mensaje': f'{tipo.upper()} sincronizada'
+                })
+                
+            except Exception as e:
+                resultados['fallidas'] += 1
+                resultados['detalles'].append({
+                    'nombre': persona_nombre if 'persona_nombre' in locals() else 'desconocido',
+                    'status': 'error',
+                    'mensaje': str(e)
+                })
+        
+        print(f"✅ Sincronización completada: {resultados['exitosas']} exitosas, {resultados['fallidas']} fallidas, {resultados['duplicadas']} duplicadas", flush=True)
+        
+        return jsonify({
+            'success': True,
+            'resultados': resultados,
+            'mensaje': f"Sincronizadas {resultados['exitosas']} de {len(asistencias_offline)} asistencias"
+        }), 200
+        
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+def verificar_turno_activo_en_fecha(persona_id, fecha_hora_obj):
+    """Verifica si la persona tenía un turno activo en una fecha/hora específica"""
+    from datetime import time
+    
+    # Obtener día de la semana de la fecha proporcionada
+    dia_actual = fecha_hora_obj.weekday()  # 0=Lunes
+    hora_actual = fecha_hora_obj.time()
+    
+    # Mapeo de días
+    dias_map = {'L': 0, 'M': 1, 'X': 2, 'J': 3, 'V': 4, 'S': 5, 'D': 6}
+    
+    # Obtener turnos asignados a la persona
+    turnos_persona = get_turnos_persona(persona_id)
+    
+    for turno in turnos_persona:
+        # Parsear días de la semana
+        dias_turno = turno.get('dias_semana', '').split(',')
+        dias_numeros = [dias_map.get(d.strip(), -1) for d in dias_turno]
+        
+        # Verificar si ese día era un día del turno
+        if dia_actual not in dias_numeros:
+            continue
+        
+        # Parsear horas
+        try:
+            hora_inicio = datetime.strptime(turno['hora_inicio'], '%H:%M').time()
+            hora_fin = datetime.strptime(turno['hora_fin'], '%H:%M').time()
+            
+            # Turnos que cruzan medianoche
+            if hora_fin < hora_inicio:
+                if hora_actual >= hora_inicio or hora_actual <= hora_fin:
+                    return turno
+            else:
+                if hora_inicio <= hora_actual <= hora_fin:
+                    return turno
+        except Exception as e:
+            print(f"Error parseando horario del turno {turno['id']}: {e}", flush=True)
+            continue
+    
+    return None
+
 # ===== Cliente MQTT =====
 client = mqtt.Client()
 client.on_connect = on_connect
