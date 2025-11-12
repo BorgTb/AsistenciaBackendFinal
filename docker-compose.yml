@@ -18,6 +18,8 @@ services:
     depends_on:
       - mosquitto
     restart: always
+    ports:
+      - "5000:5000"
     environment:
       - BROKER_HOST=mosquitto
       - BROKER_PORT=1883
@@ -25,3 +27,4 @@ services:
     volumes:
       - ./imagenes:/app/imagenes
       - ./rostros:/app/rostros
+      - ./data:/app/data

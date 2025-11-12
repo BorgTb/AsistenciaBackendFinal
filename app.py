@@ -9,6 +9,10 @@ import numpy as np
 from PIL import Image
 import io
 import glob
+import csv
+from flask import Flask, jsonify, request
+from flask_cors import CORS
+import threading
 
 # Forzar flush inmediato de prints en Docker
 sys.stdout = os.fdopen(sys.stdout.fileno(), 'w', buffering=1)
@@ -18,6 +22,10 @@ BROKER = os.getenv("BROKER_HOST", "mosquitto")
 PORT = int(os.getenv("BROKER_PORT", "1883"))
 TOPIC = os.getenv("MQTT_TOPIC", "test/#")
 OUTPUT_DIR = "imagenes"
+DATA_DIR = "data"
+PERSONAS_CSV = os.path.join(DATA_DIR, "personas.csv")
+TURNOS_CSV = os.path.join(DATA_DIR, "turnos.csv")
+ASIGNACIONES_CSV = os.path.join(DATA_DIR, "asignaciones.csv")
 
 # ===== Variables para reconstruir imágenes =====
 buffers = defaultdict(str)  # Almacena las partes de cada sesión
@@ -25,8 +33,151 @@ img_counter = 0
 known_faces = {}  # Cache de rostros conocidos: {nombre: [encoding1, encoding2, ...]}
 mqtt_client = None  # Cliente MQTT global para enviar respuestas
 
-# ===== Crear carpeta =====
+# ===== Flask App =====
+app = Flask(__name__)
+CORS(app)
+
+# ===== Crear carpetas =====
 os.makedirs(OUTPUT_DIR, exist_ok=True)
+os.makedirs(DATA_DIR, exist_ok=True)
+
+# ===== Inicializar CSVs =====
+def init_csv_files():
+    """Inicializa los archivos CSV con sus encabezados si no existen"""
+    
+    # personas.csv: id, nombre, fecha_registro, total_imagenes
+    if not os.path.exists(PERSONAS_CSV):
+        with open(PERSONAS_CSV, 'w', newline='', encoding='utf-8') as f:
+            writer = csv.writer(f)
+            writer.writerow(['id', 'nombre', 'fecha_registro', 'total_imagenes'])
+        print("✅ Archivo personas.csv creado", flush=True)
+    
+    # turnos.csv: id, nombre_turno, hora_inicio, hora_fin, dias_semana
+    if not os.path.exists(TURNOS_CSV):
+        with open(TURNOS_CSV, 'w', newline='', encoding='utf-8') as f:
+            writer = csv.writer(f)
+            writer.writerow(['id', 'nombre_turno', 'hora_inicio', 'hora_fin', 'dias_semana'])
+            # Turnos por defecto
+            writer.writerow(['1', 'Mañana', '08:00', '16:00', 'L,M,X,J,V'])
+            writer.writerow(['2', 'Tarde', '16:00', '00:00', 'L,M,X,J,V'])
+            writer.writerow(['3', 'Noche', '00:00', '08:00', 'L,M,X,J,V'])
+        print("✅ Archivo turnos.csv creado con turnos por defecto", flush=True)
+    
+    # asignaciones.csv: persona_id, turno_id, fecha_asignacion
+    if not os.path.exists(ASIGNACIONES_CSV):
+        with open(ASIGNACIONES_CSV, 'w', newline='', encoding='utf-8') as f:
+            writer = csv.writer(f)
+            writer.writerow(['persona_id', 'turno_id', 'fecha_asignacion'])
+        print("✅ Archivo asignaciones.csv creado", flush=True)
+
+init_csv_files()
+
+# ===== Funciones CSV =====
+def get_all_personas():
+    """Obtiene todas las personas registradas"""
+    personas = []
+    try:
+        with open(PERSONAS_CSV, 'r', encoding='utf-8') as f:
+            reader = csv.DictReader(f)
+            for row in reader:
+                personas.append(row)
+    except Exception as e:
+        print(f"Error leyendo personas: {e}", flush=True)
+    return personas
+
+def get_persona_by_nombre(nombre):
+    """Obtiene una persona por su nombre"""
+    personas = get_all_personas()
+    for persona in personas:
+        if persona['nombre'].lower() == nombre.lower():
+            return persona
+    return None
+
+def add_persona(nombre):
+    """Agrega una nueva persona al CSV"""
+    personas = get_all_personas()
+    nuevo_id = str(len(personas) + 1)
+    fecha_registro = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    
+    with open(PERSONAS_CSV, 'a', newline='', encoding='utf-8') as f:
+        writer = csv.writer(f)
+        writer.writerow([nuevo_id, nombre, fecha_registro, '1'])
+    
+    print(f"✅ Persona agregada al CSV: {nombre} (ID: {nuevo_id})", flush=True)
+    return nuevo_id
+
+def update_persona_imagenes(nombre):
+    """Actualiza el contador de imágenes de una persona"""
+    personas = get_all_personas()
+    updated = []
+    
+    for persona in personas:
+        if persona['nombre'].lower() == nombre.lower():
+            persona['total_imagenes'] = str(int(persona['total_imagenes']) + 1)
+        updated.append(persona)
+    
+    # Reescribir CSV
+    with open(PERSONAS_CSV, 'w', newline='', encoding='utf-8') as f:
+        writer = csv.DictWriter(f, fieldnames=['id', 'nombre', 'fecha_registro', 'total_imagenes'])
+        writer.writeheader()
+        writer.writerows(updated)
+
+def get_all_turnos():
+    """Obtiene todos los turnos disponibles"""
+    turnos = []
+    try:
+        with open(TURNOS_CSV, 'r', encoding='utf-8') as f:
+            reader = csv.DictReader(f)
+            for row in reader:
+                turnos.append(row)
+    except Exception as e:
+        print(f"Error leyendo turnos: {e}", flush=True)
+    return turnos
+
+def get_asignaciones():
+    """Obtiene todas las asignaciones de turnos"""
+    asignaciones = []
+    try:
+        with open(ASIGNACIONES_CSV, 'r', encoding='utf-8') as f:
+            reader = csv.DictReader(f)
+            for row in reader:
+                asignaciones.append(row)
+    except Exception as e:
+        print(f"Error leyendo asignaciones: {e}", flush=True)
+    return asignaciones
+
+def asignar_turno(persona_id, turno_id):
+    """Asigna un turno a una persona"""
+    fecha_asignacion = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    
+    # Verificar si ya existe la asignación
+    asignaciones = get_asignaciones()
+    for asig in asignaciones:
+        if asig['persona_id'] == persona_id and asig['turno_id'] == turno_id:
+            return False  # Ya existe
+    
+    with open(ASIGNACIONES_CSV, 'a', newline='', encoding='utf-8') as f:
+        writer = csv.writer(f)
+        writer.writerow([persona_id, turno_id, fecha_asignacion])
+    
+    print(f"✅ Turno {turno_id} asignado a persona {persona_id}", flush=True)
+    return True
+
+def get_turnos_persona(persona_id):
+    """Obtiene los turnos asignados a una persona"""
+    asignaciones = get_asignaciones()
+    turnos = get_all_turnos()
+    
+    turnos_persona = []
+    for asig in asignaciones:
+        if asig['persona_id'] == persona_id:
+            for turno in turnos:
+                if turno['id'] == asig['turno_id']:
+                    turno_info = turno.copy()
+                    turno_info['fecha_asignacion'] = asig['fecha_asignacion']
+                    turnos_persona.append(turno_info)
+    
+    return turnos_persona
 
 # ===== Funciones auxiliares =====
 def load_known_faces():
@@ -225,6 +376,13 @@ def on_message(client, userdata, msg):
                         known_faces[person_name] = []
                     known_faces[person_name].append(face_encoding)
                     
+                    # Agregar o actualizar en CSV
+                    persona = get_persona_by_nombre(person_name)
+                    if persona:
+                        update_persona_imagenes(person_name)
+                    else:
+                        add_persona(person_name)
+                    
                     img_counter += 1
                     print(f"💾 ¡NUEVO ROSTRO REGISTRADO!", flush=True)
                     print(f"📁 Guardado: {filepath} ({len(img_data)} bytes)", flush=True)
@@ -241,22 +399,223 @@ def on_message(client, userdata, msg):
         else:
             print(f"⚠️ No se encontró sesión: {session_id}", flush=True)
 
+# ===== RUTAS API FLASK =====
+@app.route('/api/personas', methods=['GET'])
+def api_get_personas():
+    """Obtiene la lista de todas las personas registradas"""
+    try:
+        personas = get_all_personas()
+        return jsonify({
+            'success': True,
+            'total': len(personas),
+            'personas': personas
+        }), 200
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/personas/<persona_id>', methods=['GET'])
+def api_get_persona(persona_id):
+    """Obtiene información detallada de una persona incluyendo sus turnos"""
+    try:
+        personas = get_all_personas()
+        persona = None
+        for p in personas:
+            if p['id'] == persona_id:
+                persona = p
+                break
+        
+        if not persona:
+            return jsonify({'success': False, 'error': 'Persona no encontrada'}), 404
+        
+        # Obtener turnos asignados
+        turnos = get_turnos_persona(persona_id)
+        persona['turnos'] = turnos
+        
+        return jsonify({
+            'success': True,
+            'persona': persona
+        }), 200
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/turnos', methods=['GET'])
+def api_get_turnos():
+    """Obtiene todos los turnos disponibles"""
+    try:
+        turnos = get_all_turnos()
+        return jsonify({
+            'success': True,
+            'total': len(turnos),
+            'turnos': turnos
+        }), 200
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/turnos', methods=['POST'])
+def api_create_turno():
+    """Crea un nuevo turno"""
+    try:
+        data = request.json
+        nombre_turno = data.get('nombre_turno')
+        hora_inicio = data.get('hora_inicio')
+        hora_fin = data.get('hora_fin')
+        dias_semana = data.get('dias_semana', 'L,M,X,J,V')
+        
+        if not all([nombre_turno, hora_inicio, hora_fin]):
+            return jsonify({'success': False, 'error': 'Faltan campos requeridos'}), 400
+        
+        turnos = get_all_turnos()
+        nuevo_id = str(len(turnos) + 1)
+        
+        with open(TURNOS_CSV, 'a', newline='', encoding='utf-8') as f:
+            writer = csv.writer(f)
+            writer.writerow([nuevo_id, nombre_turno, hora_inicio, hora_fin, dias_semana])
+        
+        return jsonify({
+            'success': True,
+            'message': 'Turno creado exitosamente',
+            'turno_id': nuevo_id
+        }), 201
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/asignaciones', methods=['POST'])
+def api_asignar_turno():
+    """Asigna un turno a una persona"""
+    try:
+        data = request.json
+        persona_id = data.get('persona_id')
+        turno_id = data.get('turno_id')
+        
+        if not all([persona_id, turno_id]):
+            return jsonify({'success': False, 'error': 'Faltan campos requeridos'}), 400
+        
+        # Verificar que existan persona y turno
+        personas = get_all_personas()
+        turnos = get_all_turnos()
+        
+        persona_existe = any(p['id'] == persona_id for p in personas)
+        turno_existe = any(t['id'] == turno_id for t in turnos)
+        
+        if not persona_existe:
+            return jsonify({'success': False, 'error': 'Persona no encontrada'}), 404
+        if not turno_existe:
+            return jsonify({'success': False, 'error': 'Turno no encontrado'}), 404
+        
+        # Asignar turno
+        resultado = asignar_turno(persona_id, turno_id)
+        
+        if resultado:
+            return jsonify({
+                'success': True,
+                'message': 'Turno asignado exitosamente'
+            }), 201
+        else:
+            return jsonify({
+                'success': False,
+                'error': 'La asignación ya existe'
+            }), 400
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/asignaciones', methods=['GET'])
+def api_get_asignaciones():
+    """Obtiene todas las asignaciones con información completa"""
+    try:
+        asignaciones = get_asignaciones()
+        personas = get_all_personas()
+        turnos = get_all_turnos()
+        
+        # Enriquecer asignaciones con información completa
+        asignaciones_completas = []
+        for asig in asignaciones:
+            persona = next((p for p in personas if p['id'] == asig['persona_id']), None)
+            turno = next((t for t in turnos if t['id'] == asig['turno_id']), None)
+            
+            if persona and turno:
+                asignaciones_completas.append({
+                    'persona': persona,
+                    'turno': turno,
+                    'fecha_asignacion': asig['fecha_asignacion']
+                })
+        
+        return jsonify({
+            'success': True,
+            'total': len(asignaciones_completas),
+            'asignaciones': asignaciones_completas
+        }), 200
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/asignaciones/<persona_id>/<turno_id>', methods=['DELETE'])
+def api_eliminar_asignacion(persona_id, turno_id):
+    """Elimina una asignación de turno"""
+    try:
+        asignaciones = get_asignaciones()
+        asignaciones_filtradas = [
+            asig for asig in asignaciones 
+            if not (asig['persona_id'] == persona_id and asig['turno_id'] == turno_id)
+        ]
+        
+        if len(asignaciones) == len(asignaciones_filtradas):
+            return jsonify({'success': False, 'error': 'Asignación no encontrada'}), 404
+        
+        # Reescribir CSV sin la asignación eliminada
+        with open(ASIGNACIONES_CSV, 'w', newline='', encoding='utf-8') as f:
+            writer = csv.DictWriter(f, fieldnames=['persona_id', 'turno_id', 'fecha_asignacion'])
+            writer.writeheader()
+            writer.writerows(asignaciones_filtradas)
+        
+        return jsonify({
+            'success': True,
+            'message': 'Asignación eliminada exitosamente'
+        }), 200
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/health', methods=['GET'])
+def api_health():
+    """Endpoint de health check"""
+    return jsonify({
+        'success': True,
+        'status': 'running',
+        'mqtt_connected': mqtt_client is not None and mqtt_client.is_connected(),
+        'total_personas': len(get_all_personas()),
+        'total_turnos': len(get_all_turnos())
+    }), 200
+
 # ===== Cliente MQTT =====
 client = mqtt.Client()
 client.on_connect = on_connect
 client.on_disconnect = on_disconnect
 client.on_message = on_message
 
-print("🚀 Iniciando receptor de mensajes MQTT...", flush=True)
-print(f"🔗 Conectando a {BROKER}:{PORT}", flush=True)
-print(f"📡 Escuchando tópico: {TOPIC}", flush=True)
-print("\n⏳ Esperando mensajes...\n", flush=True)
+def start_mqtt():
+    """Inicia el cliente MQTT en un thread separado"""
+    print("🚀 Iniciando receptor de mensajes MQTT...", flush=True)
+    print(f"🔗 Conectando a {BROKER}:{PORT}", flush=True)
+    print(f"📡 Escuchando tópico: {TOPIC}", flush=True)
+    print("\n⏳ Esperando mensajes MQTT...\n", flush=True)
+    
+    try:
+        client.connect(BROKER, PORT)
+        client.loop_forever()
+    except KeyboardInterrupt:
+        print("\n\n👋 Desconectando MQTT...")
+        client.disconnect()
+    except Exception as e:
+        print(f"❌ Error MQTT: {e}")
 
-try:
-    client.connect(BROKER, PORT)
-    client.loop_forever()
-except KeyboardInterrupt:
-    print("\n\n👋 Desconectando...")
-    client.disconnect()
-except Exception as e:
-    print(f"❌ Error: {e}")
+# ===== INICIAR SERVICIOS =====
+if __name__ == "__main__":
+    # Iniciar MQTT en un thread separado
+    mqtt_thread = threading.Thread(target=start_mqtt, daemon=True)
+    mqtt_thread.start()
+    
+    print("\n" + "="*60, flush=True)
+    print("🌐 Iniciando API Flask...", flush=True)
+    print("📡 API disponible en: http://0.0.0.0:5000", flush=True)
+    print("="*60 + "\n", flush=True)
+    
+    # Iniciar Flask en el thread principal
+    app.run(host='0.0.0.0', port=5000, debug=False, use_reloader=False)
