@@ -26,6 +26,7 @@ DATA_DIR = "data"
 PERSONAS_CSV = os.path.join(DATA_DIR, "personas.csv")
 TURNOS_CSV = os.path.join(DATA_DIR, "turnos.csv")
 ASIGNACIONES_CSV = os.path.join(DATA_DIR, "asignaciones.csv")
+DISPOSITIVOS_CSV = os.path.join(DATA_DIR, "dispositivos.csv")
 
 # ===== Variables para reconstruir imágenes =====
 buffers = defaultdict(str)  # Almacena las partes de cada sesión
@@ -69,6 +70,13 @@ def init_csv_files():
             writer = csv.writer(f)
             writer.writerow(['persona_id', 'turno_id', 'fecha_asignacion'])
         print("✅ Archivo asignaciones.csv creado", flush=True)
+    
+    # dispositivos.csv: id, nombre, ip, estado, ultima_conexion
+    if not os.path.exists(DISPOSITIVOS_CSV):
+        with open(DISPOSITIVOS_CSV, 'w', newline='', encoding='utf-8') as f:
+            writer = csv.writer(f)
+            writer.writerow(['id', 'nombre', 'ip', 'estado', 'deteccion_auto', 'ultima_conexion'])
+        print("✅ Archivo dispositivos.csv creado", flush=True)
 
 init_csv_files()
 
@@ -178,6 +186,69 @@ def get_turnos_persona(persona_id):
                     turnos_persona.append(turno_info)
     
     return turnos_persona
+
+def get_all_dispositivos():
+    """Obtiene todos los dispositivos registrados"""
+    dispositivos = []
+    try:
+        with open(DISPOSITIVOS_CSV, 'r', encoding='utf-8') as f:
+            reader = csv.DictReader(f)
+            for row in reader:
+                dispositivos.append(row)
+    except Exception as e:
+        print(f"Error leyendo dispositivos: {e}", flush=True)
+    return dispositivos
+
+def registrar_dispositivo(ip, nombre="ESP32-CAM"):
+    """Registra o actualiza un dispositivo"""
+    dispositivos = get_all_dispositivos()
+    fecha_actual = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    
+    # Buscar si ya existe
+    existe = False
+    for disp in dispositivos:
+        if disp['ip'] == ip:
+            disp['ultima_conexion'] = fecha_actual
+            disp['estado'] = 'online'
+            existe = True
+            break
+    
+    if not existe:
+        nuevo_id = str(len(dispositivos) + 1)
+        dispositivos.append({
+            'id': nuevo_id,
+            'nombre': nombre,
+            'ip': ip,
+            'estado': 'online',
+            'deteccion_auto': 'false',
+            'ultima_conexion': fecha_actual
+        })
+    
+    # Reescribir CSV
+    with open(DISPOSITIVOS_CSV, 'w', newline='', encoding='utf-8') as f:
+        writer = csv.DictWriter(f, fieldnames=['id', 'nombre', 'ip', 'estado', 'deteccion_auto', 'ultima_conexion'])
+        writer.writeheader()
+        writer.writerows(dispositivos)
+    
+    print(f"✅ Dispositivo registrado: {ip} ({nombre})", flush=True)
+    return True
+
+def actualizar_estado_dispositivo(ip, deteccion_auto=None):
+    """Actualiza el estado de detección automática de un dispositivo"""
+    dispositivos = get_all_dispositivos()
+    
+    for disp in dispositivos:
+        if disp['ip'] == ip:
+            if deteccion_auto is not None:
+                disp['deteccion_auto'] = 'true' if deteccion_auto else 'false'
+            disp['ultima_conexion'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+            break
+    
+    # Reescribir CSV
+    with open(DISPOSITIVOS_CSV, 'w', newline='', encoding='utf-8') as f:
+        writer = csv.DictWriter(f, fieldnames=['id', 'nombre', 'ip', 'estado', 'deteccion_auto', 'ultima_conexion'])
+        writer.writeheader()
+        writer.writerows(dispositivos)
 
 # ===== Funciones auxiliares =====
 def load_known_faces():
@@ -583,6 +654,99 @@ def api_health():
         'total_personas': len(get_all_personas()),
         'total_turnos': len(get_all_turnos())
     }), 200
+
+@app.route('/api/dispositivos', methods=['GET'])
+def api_get_dispositivos():
+    """Obtiene todos los dispositivos registrados"""
+    try:
+        dispositivos = get_all_dispositivos()
+        return jsonify({
+            'success': True,
+            'total': len(dispositivos),
+            'dispositivos': dispositivos
+        }), 200
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/dispositivos/<dispositivo_id>', methods=['GET'])
+def api_get_dispositivo(dispositivo_id):
+    """Obtiene información de un dispositivo específico"""
+    try:
+        dispositivos = get_all_dispositivos()
+        dispositivo = next((d for d in dispositivos if d['id'] == dispositivo_id), None)
+        
+        if not dispositivo:
+            return jsonify({'success': False, 'error': 'Dispositivo no encontrado'}), 404
+        
+        return jsonify({
+            'success': True,
+            'dispositivo': dispositivo
+        }), 200
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/dispositivos/control', methods=['POST'])
+def api_control_dispositivo():
+    """Controla un dispositivo ESP32 remotamente via HTTP"""
+    try:
+        import requests
+        
+        data = request.json
+        ip = data.get('ip')
+        accion = data.get('accion')  # 'registro', 'auto-detect', 'status'
+        parametros = data.get('parametros', {})
+        
+        if not ip or not accion:
+            return jsonify({'success': False, 'error': 'Faltan campos requeridos'}), 400
+        
+        # Construir URL del ESP32
+        esp_url = f"http://{ip}"
+        
+        if accion == 'auto-detect':
+            response = requests.get(f"{esp_url}/auto-detect", timeout=5)
+        elif accion == 'registro' and parametros.get('nombre'):
+            nombre = parametros['nombre']
+            response = requests.get(f"{esp_url}/register?nombre={nombre}", timeout=5)
+        elif accion == 'status':
+            response = requests.get(f"{esp_url}/status", timeout=5)
+        else:
+            return jsonify({'success': False, 'error': 'Acción no válida'}), 400
+        
+        # Registrar actividad del dispositivo
+        registrar_dispositivo(ip)
+        
+        return jsonify({
+            'success': True,
+            'mensaje': f'Comando {accion} enviado al dispositivo {ip}',
+            'respuesta': response.text
+        }), 200
+        
+    except requests.Timeout:
+        return jsonify({'success': False, 'error': 'Timeout - dispositivo no responde'}), 504
+    except requests.ConnectionError:
+        return jsonify({'success': False, 'error': 'No se puede conectar al dispositivo'}), 503
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/dispositivos/register', methods=['POST'])
+def api_register_dispositivo():
+    """Registra un nuevo dispositivo ESP32"""
+    try:
+        data = request.json
+        ip = data.get('ip')
+        nombre = data.get('nombre', 'ESP32-CAM')
+        
+        if not ip:
+            return jsonify({'success': False, 'error': 'IP es requerida'}), 400
+        
+        registrar_dispositivo(ip, nombre)
+        
+        return jsonify({
+            'success': True,
+            'message': f'Dispositivo {nombre} registrado en {ip}'
+        }), 201
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
 
 # ===== Cliente MQTT =====
 client = mqtt.Client()

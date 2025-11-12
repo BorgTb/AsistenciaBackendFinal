@@ -3,6 +3,8 @@
 #include <WebServer.h>
 #include <PubSubClient.h>
 #include <base64.h>
+#include <HTTPClient.h>
+#include <ArduinoJson.h>
 #include "img_converters.h"
 #include "fb_gfx.h"
 #include "esp_timer.h"
@@ -30,6 +32,7 @@ const char* ssid = "Casa_Meza";
 const char* password = "18351835";
 const char* mqtt_server = "192.168.1.2"; // IP de tu broker MQTT
 const int mqtt_port = 1883;
+const char* api_server = "http://192.168.1.2:5000/api"; // URL de la API backend
 
 // ======= OBJETOS GLOBALES =======
 WiFiClient espClient;
@@ -44,224 +47,209 @@ bool autoDetectionEnabled = false; // Control de detección automática
 String lastResponse = "Sistema listo para registrar rostros"; // Última respuesta del servidor
 
 // ======= HTML CON REGISTRO =======
+// ======= HTML PRINCIPAL CON MENÚ =======
 const char* htmlPage = R"rawliteral(
 <!DOCTYPE html>
 <html>
 <head>
 <meta charset="utf-8">
-<title>ESP32-CAM Sistema de Registro</title>
+<title>ESP32-CAM Control Panel</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <style>
-* { margin: 0; padding: 0; box-sizing: border-box; }
-body { 
-  font-family: 'Segoe UI', Arial, sans-serif; 
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  min-height: 100vh;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  padding: 20px;
-}
-.container {
-  background: white;
-  border-radius: 20px;
-  box-shadow: 0 20px 60px rgba(0,0,0,0.3);
-  padding: 40px;
-  max-width: 500px;
-  width: 100%;
-}
-h1 { 
-  color: #333; 
-  margin-bottom: 10px;
-  font-size: 28px;
-  text-align: center;
-}
-.subtitle {
-  color: #666;
-  text-align: center;
-  margin-bottom: 30px;
-  font-size: 14px;
-}
-.input-group {
-  margin-bottom: 25px;
-}
-label {
-  display: block;
-  color: #333;
-  font-weight: 600;
-  margin-bottom: 8px;
-  font-size: 14px;
-}
-input[type="text"] {
-  width: 100%;
-  padding: 12px 15px;
-  border: 2px solid #e0e0e0;
-  border-radius: 10px;
-  font-size: 16px;
-  transition: border 0.3s;
-}
-input[type="text"]:focus {
-  outline: none;
-  border-color: #667eea;
-}
-button {
-  width: 100%;
-  padding: 15px;
-  border: none;
-  border-radius: 10px;
-  font-size: 16px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.3s;
-  margin-bottom: 10px;
-}
-.btn-register {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: white;
-}
-.btn-register:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 5px 20px rgba(102, 126, 234, 0.4);
-}
-.btn-detect {
-  background: #4CAF50;
-  color: white;
-}
-.btn-detect:hover {
-  background: #45a049;
-  transform: translateY(-2px);
-}
-.status {
-  background: #f5f5f5;
-  padding: 15px;
-  border-radius: 10px;
-  margin-top: 20px;
-  text-align: center;
-  min-height: 60px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-.status-text {
-  color: #333;
-  font-size: 14px;
-}
-.icon { margin-right: 8px; }
-.warning { color: #ff9800; }
-.success { color: #4CAF50; }
-.error { color: #f44336; }
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Segoe UI',Arial,sans-serif;background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);min-height:100vh;padding:10px}
+.container{background:white;border-radius:15px;box-shadow:0 10px 30px rgba(0,0,0,0.3);padding:20px;max-width:600px;margin:0 auto}
+h1{color:#333;margin-bottom:5px;font-size:22px;text-align:center}
+.subtitle{color:#666;text-align:center;margin-bottom:15px;font-size:12px}
+.tabs{display:flex;gap:5px;margin-bottom:15px;border-bottom:2px solid #e0e0e0}
+.tab{padding:10px 15px;background:none;border:none;border-bottom:3px solid transparent;cursor:pointer;font-size:13px;font-weight:600;color:#666;flex:1}
+.tab:hover{color:#667eea}
+.tab.active{color:#667eea;border-bottom-color:#667eea}
+.tab-content{display:none;animation:fadeIn 0.3s}
+.tab-content.active{display:block}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+.input-group{margin-bottom:15px}
+label{display:block;color:#333;font-weight:600;margin-bottom:5px;font-size:13px}
+input,select{width:100%;padding:10px;border:2px solid #e0e0e0;border-radius:8px;font-size:14px}
+input:focus,select:focus{outline:none;border-color:#667eea}
+button{width:100%;padding:12px;border:none;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;margin-bottom:8px}
+.btn-primary{background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);color:white}
+.btn-success{background:#4CAF50;color:white}
+.btn-warning{background:#ff9800;color:white}
+.btn-danger{background:#f44336;color:white}
+.status{background:#f5f5f5;padding:12px;border-radius:8px;margin-top:10px;text-align:center;min-height:50px;display:flex;align-items:center;justify-content:center;font-size:13px}
+.list{max-height:300px;overflow-y:auto;margin-top:10px}
+.list-item{background:#f8f9fa;padding:12px;margin-bottom:8px;border-radius:8px;border-left:4px solid #667eea}
+.list-item strong{display:block;color:#333;margin-bottom:5px}
+.list-item small{color:#666;font-size:12px}
+.badge{display:inline-block;padding:3px 8px;border-radius:12px;font-size:11px;background:#e0e0e0;margin-left:5px}
+.loading{text-align:center;padding:20px;color:#666}
 </style>
 </head>
 <body>
 <div class="container">
-  <h1>📷 Sistema de Registro</h1>
-  <p class="subtitle">ESP32-CAM Face Recognition</p>
-  
-  <div class="input-group">
-    <label for="nombre">Nombre de la persona:</label>
-    <input type="text" id="nombre" placeholder="Ej: Juan Perez" autocomplete="off">
-  </div>
-  
-  <button class="btn-register" onclick="registrarRostro()">
-    <span class="icon">�</span> Registrar Nuevo Rostro
-  </button>
-  
-  <button class="btn-detect" onclick="activarDeteccion()">
-    <span class="icon">🔍</span> Activar Detección Automática
-  </button>
-  
-  <div class="status">
-    <p class="status-text" id="status">Sistema listo para registrar rostros</p>
-  </div>
+<h1>📷 ESP32-CAM Control Panel</h1>
+<p class="subtitle">Sistema de Gestión Integrado</p>
+
+<div class="tabs">
+<button class="tab active" onclick="switchTab('registro')">📝 Registro</button>
+<button class="tab" onclick="switchTab('personas')">👥 Personas</button>
+<button class="tab" onclick="switchTab('turnos')">🕐 Turnos</button>
+<button class="tab" onclick="switchTab('asignar')">➕ Asignar</button>
+</div>
+
+<!-- TAB REGISTRO -->
+<div id="tab-registro" class="tab-content active">
+<div class="input-group">
+<label for="nombre">Nombre:</label>
+<input type="text" id="nombre" placeholder="Ej: Juan Perez">
+</div>
+<button class="btn-primary" onclick="registrarRostro()">📷 Registrar Rostro</button>
+<button class="btn-success" onclick="toggleDeteccion()">🔍 Detección Auto</button>
+<div class="status" id="status">Sistema listo</div>
+</div>
+
+<!-- TAB PERSONAS -->
+<div id="tab-personas" class="tab-content">
+<button class="btn-primary" onclick="cargarPersonas()">🔄 Actualizar</button>
+<div id="listaPersonas" class="list loading">Cargando...</div>
+</div>
+
+<!-- TAB TURNOS -->
+<div id="tab-turnos" class="tab-content">
+<button class="btn-primary" onclick="cargarTurnos()">🔄 Actualizar</button>
+<div id="listaTurnos" class="list loading">Cargando...</div>
+</div>
+
+<!-- TAB ASIGNAR -->
+<div id="tab-asignar" class="tab-content">
+<div class="input-group">
+<label>Persona:</label>
+<select id="selPersona"><option>Cargando...</option></select>
+</div>
+<div class="input-group">
+<label>Turno:</label>
+<select id="selTurno"><option>Cargando...</option></select>
+</div>
+<button class="btn-success" onclick="asignarTurno()">✅ Asignar Turno</button>
+<div class="status" id="statusAsignar"></div>
+</div>
 </div>
 
 <script>
-// Actualizar estado desde el servidor cada 2 segundos
-setInterval(async () => {
-  try {
-    const response = await fetch('/status');
-    const text = await response.text();
-    if (text && !document.getElementById('status').innerHTML.includes('Capturando')) {
-      document.getElementById('status').innerHTML = text;
-    }
-  } catch (error) {
-    // Silenciar errores de polling
-  }
-}, 2000);
+const API='http://192.168.1.2:5000/api';
+let autoDetectActive=false;
 
-async function registrarRostro() {
-  const nombre = document.getElementById('nombre').value.trim();
-  const statusEl = document.getElementById('status');
-  
-  if (!nombre) {
-    statusEl.innerHTML = '<span class="error">⚠️ Por favor ingresa un nombre</span>';
-    return;
-  }
-  
-  statusEl.innerHTML = '<span class="warning">📸 Capturando imagen...</span>';
-  
-  try {
-    const response = await fetch('/register?nombre=' + encodeURIComponent(nombre));
-    const text = await response.text();
-    
-    if (response.ok) {
-      statusEl.innerHTML = '<span class="success">' + text + '</span>';
-      document.getElementById('nombre').value = '';
-      
-      // Esperar respuesta del servidor (máximo 5 segundos)
-      let attempts = 0;
-      const checkStatus = setInterval(async () => {
-        try {
-          const statusResponse = await fetch('/status');
-          const statusText = await statusResponse.text();
-          if (statusText && statusText !== '' && !statusText.includes('listo')) {
-            statusEl.innerHTML = statusText;
-            clearInterval(checkStatus);
-          }
-          attempts++;
-          if (attempts >= 10) { // 10 intentos = 5 segundos
-            clearInterval(checkStatus);
-          }
-        } catch (e) {
-          // Silenciar errores
-        }
-      }, 500);
-    } else {
-      statusEl.innerHTML = '<span class="error">' + text + '</span>';
-    }
-  } catch (error) {
-    statusEl.innerHTML = '<span class="error">❌ Error de conexión</span>';
-  }
+setInterval(async()=>{
+try{
+const r=await fetch('/status');
+const t=await r.text();
+if(t && !document.getElementById('status').innerHTML.includes('Capturando')){
+document.getElementById('status').innerHTML=t;
+}
+}catch(e){}
+},2000);
+
+function switchTab(tab){
+document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+document.querySelectorAll('.tab-content').forEach(c=>c.classList.remove('active'));
+event.target.classList.add('active');
+document.getElementById('tab-'+tab).classList.add('active');
+if(tab==='personas')cargarPersonas();
+if(tab==='turnos')cargarTurnos();
+if(tab==='asignar')cargarOpciones();
 }
 
-async function activarDeteccion() {
-  const statusEl = document.getElementById('status');
-  const btn = event.target;
-  
-  statusEl.innerHTML = '<span class="warning">⏳ Procesando...</span>';
-  
-  try {
-    const response = await fetch('/auto-detect');
-    const text = await response.text();
-    
-    if (text.includes('activada')) {
-      statusEl.innerHTML = '<span class="success">✅ Detección automática ACTIVADA</span>';
-      btn.innerHTML = '<span class="icon">⏸️</span> Desactivar Detección';
-      btn.style.background = '#ff9800';
-    } else {
-      statusEl.innerHTML = '<span class="warning">⏸️ Detección automática DESACTIVADA</span>';
-      btn.innerHTML = '<span class="icon">🔍</span> Activar Detección Automática';
-      btn.style.background = '#4CAF50';
-    }
-  } catch (error) {
-    statusEl.innerHTML = '<span class="error">❌ Error al cambiar detección</span>';
-  }
+async function registrarRostro(){
+const nombre=document.getElementById('nombre').value.trim();
+const status=document.getElementById('status');
+if(!nombre){status.innerHTML='⚠️ Ingresa un nombre';return;}
+status.innerHTML='📸 Capturando...';
+try{
+const r=await fetch('/register?nombre='+encodeURIComponent(nombre));
+const t=await r.text();
+status.innerHTML=r.ok?'✅ '+t:'❌ '+t;
+document.getElementById('nombre').value='';
+}catch(e){status.innerHTML='❌ Error';}
 }
 
-// Enter para registrar
-document.getElementById('nombre').addEventListener('keypress', function(e) {
-  if (e.key === 'Enter') registrarRostro();
+async function toggleDeteccion(){
+try{
+const r=await fetch('/auto-detect');
+const t=await r.text();
+autoDetectActive=t.includes('activada');
+document.getElementById('status').innerHTML=t;
+}catch(e){}
+}
+
+async function cargarPersonas(){
+const div=document.getElementById('listaPersonas');
+div.innerHTML='<div class="loading">Cargando...</div>';
+try{
+const r=await fetch(API+'/personas');
+const data=await r.json();
+if(data.success && data.personas.length>0){
+let html='';
+data.personas.forEach(p=>{
+html+=`<div class="list-item"><strong>${p.nombre}</strong><small>Registrado: ${p.fecha_registro}<span class="badge">${p.total_imagenes} fotos</span></small></div>`;
 });
+div.innerHTML=html;
+}else{
+div.innerHTML='<div class="loading">No hay personas</div>';
+}
+}catch(e){div.innerHTML='<div class="loading">Error: '+e.message+'</div>';}
+}
+
+async function cargarTurnos(){
+const div=document.getElementById('listaTurnos');
+div.innerHTML='<div class="loading">Cargando...</div>';
+try{
+const r=await fetch(API+'/turnos');
+const data=await r.json();
+if(data.success && data.turnos.length>0){
+let html='';
+data.turnos.forEach(t=>{
+html+=`<div class="list-item"><strong>${t.nombre_turno}</strong><small>${t.hora_inicio} - ${t.hora_fin}<span class="badge">${t.dias_semana}</span></small></div>`;
+});
+div.innerHTML=html;
+}else{
+div.innerHTML='<div class="loading">No hay turnos</div>';
+}
+}catch(e){div.innerHTML='<div class="loading">Error: '+e.message+'</div>';}
+}
+
+async function cargarOpciones(){
+try{
+const [personas,turnos]=await Promise.all([
+fetch(API+'/personas').then(r=>r.json()),
+fetch(API+'/turnos').then(r=>r.json())
+]);
+const selP=document.getElementById('selPersona');
+const selT=document.getElementById('selTurno');
+selP.innerHTML='<option value="">-- Seleccionar --</option>';
+selT.innerHTML='<option value="">-- Seleccionar --</option>';
+if(personas.success)personas.personas.forEach(p=>selP.innerHTML+=`<option value="${p.id}">${p.nombre}</option>`);
+if(turnos.success)turnos.turnos.forEach(t=>selT.innerHTML+=`<option value="${t.id}">${t.nombre_turno} (${t.hora_inicio}-${t.hora_fin})</option>`);
+}catch(e){console.error(e);}
+}
+
+async function asignarTurno(){
+const personaId=document.getElementById('selPersona').value;
+const turnoId=document.getElementById('selTurno').value;
+const status=document.getElementById('statusAsignar');
+if(!personaId || !turnoId){status.innerHTML='⚠️ Selecciona persona y turno';return;}
+try{
+const r=await fetch(API+'/asignaciones',{
+method:'POST',
+headers:{'Content-Type':'application/json'},
+body:JSON.stringify({persona_id:personaId,turno_id:turnoId})
+});
+const data=await r.json();
+status.innerHTML=data.success?'✅ '+data.message:'❌ '+data.error;
+}catch(e){status.innerHTML='❌ Error: '+e.message;}
+}
+
+document.getElementById('nombre').addEventListener('keypress',e=>{if(e.key==='Enter')registrarRostro();});
 </script>
 </body>
 </html>

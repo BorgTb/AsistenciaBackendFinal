@@ -295,6 +295,7 @@
             <button class="tab" onclick="switchTab('turnos')">🕐 Turnos</button>
             <button class="tab" onclick="switchTab('asignaciones')">📋 Asignaciones</button>
             <button class="tab" onclick="switchTab('nueva-asignacion')">➕ Nueva Asignación</button>
+            <button class="tab" onclick="switchTab('dispositivos')">📱 Dispositivos</button>
         </div>
         
         <!-- Tab Personas -->
@@ -346,6 +347,29 @@
                 </form>
             </div>
         </div>
+        
+        <!-- Tab Dispositivos -->
+        <div id="tab-dispositivos" class="tab-content">
+            <div class="card">
+                <h3>📱 Dispositivos ESP32-CAM</h3>
+                <button class="btn btn-primary" onclick="loadDispositivos()">🔄 Actualizar</button>
+                <button class="btn btn-success" onclick="mostrarFormRegistroDispositivo()">➕ Registrar Nuevo</button>
+                <div id="dispositivosContent" class="loading">Cargando...</div>
+            </div>
+            
+            <div class="card" id="controlDispositivoCard" style="display:none;">
+                <h3>🎮 Control Remoto de Dispositivo</h3>
+                <div class="form-group">
+                    <label for="dispositivoControl">Seleccionar Dispositivo:</label>
+                    <select id="dispositivoControl">
+                        <option value="">-- Seleccionar --</option>
+                    </select>
+                </div>
+                <button class="btn btn-primary" onclick="controlarDispositivo('auto-detect')">🔍 Toggle Detección Auto</button>
+                <button class="btn btn-warning" onclick="consultarEstadoDispositivo()">📊 Ver Estado</button>
+                <div class="status-message" id="statusDispositivo"></div>
+            </div>
+        </div>
     </div>
 
     <script>
@@ -369,6 +393,7 @@
             if (tabName === 'personas') loadPersonas();
             if (tabName === 'turnos') loadTurnos();
             if (tabName === 'asignaciones') loadAsignaciones();
+            if (tabName === 'dispositivos') loadDispositivos();
         }
         
         async function loadStats() {
@@ -589,6 +614,161 @@
                     }
                     
                     alert(mensaje);
+                }
+            } catch (error) {
+                alert('❌ Error: ' + error.message);
+            }
+        }
+        
+        // ===== FUNCIONES DE DISPOSITIVOS =====
+        async function loadDispositivos() {
+            const content = document.getElementById('dispositivosContent');
+            content.innerHTML = '<div class="loading">Cargando...</div>';
+            
+            try {
+                const response = await fetch(`${API_URL}/dispositivos`);
+                const data = await response.json();
+                
+                if (data.success && data.dispositivos.length > 0) {
+                    let html = '<table><thead><tr><th>ID</th><th>Nombre</th><th>IP</th><th>Estado</th><th>Detección Auto</th><th>Última Conexión</th><th>Acciones</th></tr></thead><tbody>';
+                    
+                    data.dispositivos.forEach(d => {
+                        const estadoBadge = d.estado === 'online' ? 'badge-success' : 'badge-info';
+                        const autoDetect = d.deteccion_auto === 'true' ? '✅ Activa' : '⏸️ Inactiva';
+                        html += `
+                            <tr>
+                                <td>${d.id}</td>
+                                <td><strong>${d.nombre}</strong></td>
+                                <td>${d.ip}</td>
+                                <td><span class="badge ${estadoBadge}">${d.estado}</span></td>
+                                <td>${autoDetect}</td>
+                                <td>${d.ultima_conexion}</td>
+                                <td><button class="btn btn-primary" onclick="seleccionarDispositivo('${d.ip}', '${d.nombre}')">🎮 Controlar</button></td>
+                            </tr>
+                        `;
+                    });
+                    
+                    html += '</tbody></table>';
+                    content.innerHTML = html;
+                    
+                    // Cargar dispositivos en select de control
+                    const select = document.getElementById('dispositivoControl');
+                    select.innerHTML = '<option value="">-- Seleccionar --</option>';
+                    data.dispositivos.forEach(d => {
+                        select.innerHTML += `<option value="${d.ip}">${d.nombre} (${d.ip})</option>`;
+                    });
+                } else {
+                    content.innerHTML = '<div class="empty-state"><div class="empty-state-icon">📱</div><p>No hay dispositivos registrados</p></div>';
+                }
+            } catch (error) {
+                content.innerHTML = '<div class="status-error">❌ Error cargando dispositivos: ' + error.message + '</div>';
+            }
+        }
+        
+        function seleccionarDispositivo(ip, nombre) {
+            document.getElementById('dispositivoControl').value = ip;
+            document.getElementById('controlDispositivoCard').style.display = 'block';
+            document.getElementById('statusDispositivo').innerHTML = `<div class="status-success">📱 Dispositivo seleccionado: ${nombre} (${ip})</div>`;
+            
+            // Scroll al card de control
+            document.getElementById('controlDispositivoCard').scrollIntoView({ behavior: 'smooth' });
+        }
+        
+        async function controlarDispositivo(accion) {
+            const ip = document.getElementById('dispositivoControl').value;
+            const statusDiv = document.getElementById('statusDispositivo');
+            
+            if (!ip) {
+                statusDiv.innerHTML = '<div class="status-error">⚠️ Selecciona un dispositivo</div>';
+                return;
+            }
+            
+            statusDiv.innerHTML = '<div class="loading">Enviando comando...</div>';
+            
+            try {
+                const response = await fetch(`${API_URL}/dispositivos/control`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        ip: ip,
+                        accion: accion
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    statusDiv.innerHTML = `<div class="status-success">✅ ${data.mensaje}<br><small>${data.respuesta}</small></div>`;
+                    loadDispositivos(); // Actualizar lista
+                } else {
+                    statusDiv.innerHTML = `<div class="status-error">❌ ${data.error}</div>`;
+                }
+            } catch (error) {
+                statusDiv.innerHTML = `<div class="status-error">❌ Error: ${error.message}</div>`;
+            }
+        }
+        
+        async function consultarEstadoDispositivo() {
+            const ip = document.getElementById('dispositivoControl').value;
+            const statusDiv = document.getElementById('statusDispositivo');
+            
+            if (!ip) {
+                statusDiv.innerHTML = '<div class="status-error">⚠️ Selecciona un dispositivo</div>';
+                return;
+            }
+            
+            statusDiv.innerHTML = '<div class="loading">Consultando estado...</div>';
+            
+            try {
+                const response = await fetch(`${API_URL}/dispositivos/control`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        ip: ip,
+                        accion: 'status'
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    statusDiv.innerHTML = `<div class="status-success">📊 Estado: ${data.respuesta}</div>`;
+                } else {
+                    statusDiv.innerHTML = `<div class="status-error">❌ ${data.error}</div>`;
+                }
+            } catch (error) {
+                statusDiv.innerHTML = `<div class="status-error">❌ Error: ${error.message}</div>`;
+            }
+        }
+        
+        function mostrarFormRegistroDispositivo() {
+            const ip = prompt('Ingresa la IP del dispositivo ESP32-CAM:\n(Ejemplo: 192.168.1.100)');
+            if (!ip) return;
+            
+            const nombre = prompt('Ingresa un nombre para el dispositivo:\n(Ejemplo: ESP32-CAM Entrada)', 'ESP32-CAM');
+            if (!nombre) return;
+            
+            registrarDispositivo(ip, nombre);
+        }
+        
+        async function registrarDispositivo(ip, nombre) {
+            try {
+                const response = await fetch(`${API_URL}/dispositivos/register`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        ip: ip,
+                        nombre: nombre
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    alert('✅ ' + data.message);
+                    loadDispositivos();
+                } else {
+                    alert('❌ ' + data.error);
                 }
             } catch (error) {
                 alert('❌ Error: ' + error.message);
