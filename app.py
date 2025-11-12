@@ -1,307 +1,245 @@
 import paho.mqtt.client as mqtt
-import base64
 import os
-import face_recognition
-import numpy as np
 from datetime import datetime
 import sys
-import logging
-import threading
-from queue import Queue
+import base64
 from collections import defaultdict
+import face_recognition
+import numpy as np
+from PIL import Image
+import io
+import glob
 
-# ===== Configuración de logging =====
-logging.basicConfig(
-    level=logging.DEBUG,
-    format='%(asctime)s - %(levelname)s - %(message)s',
-    handlers=[
-        logging.StreamHandler(sys.stdout),
-        logging.FileHandler('debug.log')
-    ]
-)
-logger = logging.getLogger(__name__)
+# Forzar flush inmediato de prints en Docker
+sys.stdout = os.fdopen(sys.stdout.fileno(), 'w', buffering=1)
 
 # ===== Configuración =====
 BROKER = os.getenv("BROKER_HOST", "mosquitto")
 PORT = int(os.getenv("BROKER_PORT", "1883"))
-TOPIC = os.getenv("MQTT_TOPIC", "test/imagenes/#")
+TOPIC = os.getenv("MQTT_TOPIC", "test/#")
 OUTPUT_DIR = "imagenes"
-KNOWN_DIR = "rostros"
 
-# ===== Variables =====
-buffer = ""
+# ===== Variables para reconstruir imágenes =====
+buffers = defaultdict(str)  # Almacena las partes de cada sesión
 img_counter = 0
-known_encodings = []
-known_names = []
-image_queue = Queue()  # Cola para procesar imágenes en paralelo
-buffers = defaultdict(str)  # Buffer por sesión de imagen
-lock = threading.Lock()  # Para evitar race conditions
+known_faces = {}  # Cache de rostros conocidos: {nombre: [encoding1, encoding2, ...]}
+mqtt_client = None  # Cliente MQTT global para enviar respuestas
 
-# ===== Crear carpetas =====
+# ===== Crear carpeta =====
 os.makedirs(OUTPUT_DIR, exist_ok=True)
-os.makedirs(KNOWN_DIR, exist_ok=True)
 
-# ===== Cargar rostros conocidos =====
-logger.info("🧠 Cargando rostros conocidos...")
-for file in os.listdir(KNOWN_DIR):
-    if file.lower().endswith((".jpg", ".png")):
-        path = os.path.join(KNOWN_DIR, file)
-        name = os.path.splitext(file)[0]
-        image = face_recognition.load_image_file(path)
-        encodings = face_recognition.face_encodings(image)
-        if encodings:
-            known_encodings.append(encodings[0])
-            known_names.append(name)
-            logger.info(f"✅ Cargado rostro: {name}")
-        else:
-            logger.warning(f"⚠️ No se detectó rostro en {file}")
+# ===== Funciones auxiliares =====
+def load_known_faces():
+    """Carga todos los rostros conocidos de la carpeta imagenes"""
+    global known_faces
+    known_faces = {}
+    
+    print("🧠 Cargando rostros conocidos...", flush=True)
+    image_files = glob.glob(os.path.join(OUTPUT_DIR, "*.jpg"))
+    
+    for image_path in image_files:
+        try:
+            # Extraer nombre del archivo (formato: nombre_timestamp.jpg)
+            filename = os.path.basename(image_path)
+            person_name = filename.rsplit('_', 1)[0]  # Quitar timestamp
+            
+            # Cargar y codificar rostro
+            image = face_recognition.load_image_file(image_path)
+            encodings = face_recognition.face_encodings(image)
+            
+            if encodings:
+                if person_name not in known_faces:
+                    known_faces[person_name] = []
+                known_faces[person_name].append(encodings[0])
+                print(f"  ✅ Cargado: {person_name}", flush=True)
+        except Exception as e:
+            print(f"  ⚠️ Error cargando {filename}: {e}", flush=True)
+    
+    print(f"📚 Total personas registradas: {len(known_faces)}", flush=True)
+    return known_faces
 
-logger.info(f"📚 Total rostros cargados: {len(known_names)}")
+def is_face_registered(face_encoding, person_name):
+    """Verifica si un rostro ya está registrado"""
+    if person_name not in known_faces:
+        return False
+    
+    # Comparar con todos los encodings de esa persona
+    for known_encoding in known_faces[person_name]:
+        matches = face_recognition.compare_faces([known_encoding], face_encoding, tolerance=0.6)
+        if matches[0]:
+            return True
+    
+    return False
+
+def recognize_face(face_encoding):
+    """Identifica a qué persona pertenece un rostro"""
+    if not known_faces:
+        return None, 0
+    
+    best_match_name = None
+    best_confidence = 0
+    
+    for person_name, encodings_list in known_faces.items():
+        for known_encoding in encodings_list:
+            # Calcular distancia
+            face_distance = face_recognition.face_distance([known_encoding], face_encoding)[0]
+            confidence = 1 - face_distance  # Convertir distancia a confianza (0-1)
+            
+            if confidence > best_confidence and confidence > 0.4:  # Umbral mínimo de confianza
+                best_confidence = confidence
+                best_match_name = person_name
+    
+    return best_match_name, best_confidence * 100  # Retornar porcentaje
+
+def send_response(person_name, status, message):
+    """Envía respuesta al ESP32 via MQTT"""
+    if mqtt_client:
+        topic = f"test/respuesta/{person_name}"
+        payload = f"{status}|{message}"
+        mqtt_client.publish(topic, payload)
+        print(f"📤 Respuesta enviada a ESP32: {topic} -> {message}", flush=True)
+
+# Cargar rostros al iniciar
+load_known_faces()
 
 # ===== Callbacks MQTT =====
 def on_connect(client, userdata, flags, rc):
+    global mqtt_client
+    mqtt_client = client  # Guardar referencia global
     if rc == 0:
-        logger.info(f"✅ Conectado al broker MQTT ({BROKER}:{PORT})")
+        print(f"✅ Conectado al broker MQTT ({BROKER}:{PORT})")
         client.subscribe(TOPIC)
-        logger.info(f"📡 Suscrito al tópico: {TOPIC}")
+        print(f"📡 Suscrito al tópico: {TOPIC}")
     else:
-        logger.error(f"❌ Error de conexión MQTT, código: {rc}")
+        print(f"❌ Error de conexión MQTT, código: {rc}")
 
 def on_disconnect(client, userdata, rc):
     if rc != 0:
-        logger.warning(f"⚠️ Desconexión inesperada. Código: {rc}")
+        print(f"⚠️ Desconexión inesperada. Código: {rc}")
 
 def on_message(client, userdata, msg):
+    """Procesa los mensajes recibidos y reconstruye imágenes"""
     global img_counter
+    
+    timestamp = datetime.now().strftime('%H:%M:%S.%f')[:-3]
+    topic = msg.topic
+    
+    print(f"🔔 ¡MENSAJE RECIBIDO!", flush=True)
+    
+    # Intentar decodificar el payload
     try:
-        topic = msg.topic
-        logger.debug(f"📨 Mensaje recibido en tópico: {topic}, tamaño: {len(msg.payload)} bytes")
-        
-        # ===== TÓPICO DE REGISTRO: test/registro/nombre/start|part|end =====
-        if topic.startswith("test/registro/"):
-            parts = topic.split('/')
-            if len(parts) < 4:
-                logger.warning(f"⚠️ Tópico inválido: {topic}")
-                return
-            
-            person_name = parts[2]  # Nombre de la persona
-            action = parts[3]       # start, part, end
-            session_id = f"reg_{person_name}_{datetime.now().strftime('%H%M%S')}"
-            
-            if action == "start":
-                with lock:
-                    buffers[session_id] = ""
-                logger.info(f"📥 Registro iniciado para: {person_name}")
-            
-            elif action == "part":
-                try:
-                    parte = msg.payload.decode('utf-8', errors='replace')
-                    with lock:
-                        buffers[session_id] += parte
-                    logger.debug(f"Parte recibida (registro: {person_name})")
-                except Exception as e:
-                    logger.error(f"❌ Error decodificando parte: {e}")
-            
-            elif action == "end":
-                logger.info(f"💾 Registro completado para: {person_name}")
-                try:
-                    with lock:
-                        buffer_data = buffers.pop(session_id, "")
-                    
-                    if not buffer_data:
-                        logger.warning(f"⚠️ Buffer vacío para: {person_name}")
-                        return
-                    
-                    with lock:
-                        img_counter_local = img_counter
-                        img_counter += 1
-                    
-                    image_queue.put({
-                        'buffer': buffer_data,
-                        'counter': img_counter_local,
-                        'session_id': session_id,
-                        'type': 'register',
-                        'person_name': person_name
-                    })
-                    logger.debug(f"✅ Imagen de registro añadida a cola")
-                    
-                except Exception as e:
-                    logger.error(f"❌ Error en registro: {type(e).__name__}: {e}")
-        
-        # ===== TÓPICO DE RECONOCIMIENTO: test/imagenes/sesion/start|part|end =====
-        elif topic.startswith("test/imagenes/"):
-            parts = topic.split('/')
-            if len(parts) < 3:
-                logger.warning(f"⚠️ Tópico inválido: {topic}")
-                return
-            
-            session_id = parts[2]
-            
-            if topic.endswith("/start"):
-                with lock:
-                    buffers[session_id] = ""
-                logger.info(f"📥 Reconocimiento iniciado (sesión: {session_id})")
-
-            elif topic.endswith("/part"):
-                try:
-                    parte = msg.payload.decode('utf-8', errors='replace')
-                    with lock:
-                        buffers[session_id] += parte
-                    logger.debug(f"Parte recibida (sesión: {session_id})")
-                except Exception as e:
-                    logger.error(f"❌ Error decodificando parte: {e}")
-
-            elif topic.endswith("/end"):
-                logger.info(f"💾 Reconocimiento completo (sesión: {session_id})")
-                try:
-                    with lock:
-                        buffer_data = buffers.pop(session_id, "")
-                    
-                    if not buffer_data:
-                        logger.warning(f"⚠️ Buffer vacío para sesión: {session_id}")
-                        return
-                    
-                    with lock:
-                        img_counter_local = img_counter
-                        img_counter += 1
-                    
-                    image_queue.put({
-                        'buffer': buffer_data,
-                        'counter': img_counter_local,
-                        'session_id': session_id,
-                        'type': 'recognition'
-                    })
-                    logger.debug(f"✅ Imagen de reconocimiento añadida a cola")
-                    
-                except Exception as e:
-                    logger.error(f"❌ Error: {type(e).__name__}: {e}")
-            
-    except Exception as e:
-        logger.error(f"❌ Error en on_message: {type(e).__name__}: {e}", exc_info=True)
-
-# ===== Reconocimiento facial =====
-def recognize_face(image_path):
-    try:
-        if not os.path.exists(image_path):
-            logger.error(f"❌ Archivo no existe: {image_path}")
-            return None, 0
-        
-        unknown_image = face_recognition.load_image_file(image_path)
-        unknown_encodings = face_recognition.face_encodings(unknown_image)
-
-        if not unknown_encodings:
-            logger.warning(f"⚠️ No se detectaron rostros en: {os.path.basename(image_path)}")
-            return None, 0
-
-        unknown_encoding = unknown_encodings[0]
-        results = face_recognition.compare_faces(known_encodings, unknown_encoding, tolerance=0.5)
-        distances = face_recognition.face_distance(known_encodings, unknown_encoding)
-
-        if len(distances) == 0:
-            logger.warning("⚠️ No hay rostros conocidos para comparar")
-            return None, 0
-
-        if True in results:
-            best_match = np.argmin(distances)
-            confidence = 1 - distances[best_match]  # Confianza de 0 a 1
-            name = known_names[best_match]
-            confidence_pct = confidence * 100
-            logger.info(f"✅ Rostro reconocido: {name} ({confidence_pct:.1f}% confianza) - {datetime.now().strftime('%H:%M:%S')}")
-            
-            # Registra en CSV
-            with open("asistencia.csv", "a") as log:
-                log.write(f"{datetime.now()}, {name}, {confidence_pct:.1f}%\n")
-            
-            return name, confidence_pct
-        else:
-            closest_distance = np.min(distances)
-            logger.info(f"❌ Rostro desconocido (distancia mínima: {closest_distance:.3f})")
-            return None, 0
-            
-    except Exception as e:
-        logger.error(f"⚠️ Error en reconocimiento: {type(e).__name__}: {e}", exc_info=True)
-        return None, 0
-
-# ===== Registrar nuevo rostro =====
-def register_face(image_path, person_name):
-    """Registra un nuevo rostro en la carpeta known_dir"""
-    try:
-        if not os.path.exists(image_path):
-            logger.error(f"❌ Archivo no existe: {image_path}")
-            return False, "Archivo no existe"
-        
-        # Cargar imagen y detectar rostro
-        image = face_recognition.load_image_file(image_path)
-        encodings = face_recognition.face_encodings(image)
-        
-        if not encodings:
-            logger.warning(f"⚠️ No se detectó rostro en la imagen para: {person_name}")
-            return False, "No se detectó ningún rostro en la imagen"
-        
-        if len(encodings) > 1:
-            logger.warning(f"⚠️ Se detectaron múltiples rostros. Usando el primero para: {person_name}")
-        
-        # Guardar la imagen en carpeta rostros
-        filename = f"{person_name}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.jpg"
-        filepath = os.path.join(KNOWN_DIR, filename)
-        
-        # Copiar imagen
-        import shutil
-        shutil.copy(image_path, filepath)
-        
-        # Agregar a la lista de rostros conocidos
-        encoding = encodings[0]
-        with lock:
-            known_encodings.append(encoding)
-            known_names.append(person_name)
-        
-        logger.info(f"✅ Rostro registrado: {person_name} ({filename})")
-        return True, f"✅ {person_name} registrado exitosamente"
-        
-    except Exception as e:
-        logger.error(f"❌ Error registrando rostro: {type(e).__name__}: {e}")
-        return False, f"Error: {str(e)}"
-
-# ===== Procesador de imágenes en cola =====
-def image_processor():
-    """Procesa imágenes de forma asincrónica desde la cola"""
-    logger.info("🔄 Procesador de imágenes iniciado...")
-    while True:
+        payload = msg.payload.decode('utf-8')
+        payload_preview = payload[:100] + "..." if len(payload) > 100 else payload
+    except:
+        payload_preview = f"[Datos binarios: {len(msg.payload)} bytes]"
+    
+    # Mostrar mensaje
+    print(f"\n{'='*60}", flush=True)
+    print(f"⏰ Tiempo: {timestamp}", flush=True)
+    print(f"📍 Tópico: {topic}", flush=True)
+    print(f"📦 Tamaño: {len(msg.payload)} bytes", flush=True)
+    print(f"📄 Contenido: {payload_preview}", flush=True)
+    print(f"{'='*60}\n", flush=True)
+    
+    # ===== PROCESAR IMÁGENES =====
+    # Formato: test/registro/nombre/start|part|end
+    if "/start" in topic:
+        # Extraer identificador de sesión (ej: "registro_agustin")
+        parts = topic.split('/')
+        session_id = "_".join(parts[1:3])  # ej: "registro_agustin"
+        buffers[session_id] = ""
+        print(f"📥 Iniciando captura de imagen: {session_id}", flush=True)
+    
+    elif "/part" in topic:
+        # Acumular partes
+        parts = topic.split('/')
+        session_id = "_".join(parts[1:3])
         try:
-            # Espera a que haya una imagen en la cola
-            item = image_queue.get(timeout=1)
-            buffer_data = item['buffer']
-            counter = item['counter']
-            session_id = item['session_id']
-            img_type = item.get('type', 'recognition')  # 'recognition' o 'register'
-            person_name = item.get('person_name', None)  # Para registro
-            
-            logger.debug(f"⏳ Procesando imagen {counter} de cola (sesión: {session_id}, tipo: {img_type})")
-            
-            try:
-                img_data = base64.b64decode(buffer_data)
-                filename = os.path.join(OUTPUT_DIR, f"imagen_{counter}.jpg")
-                
-                with open(filename, "wb") as f:
-                    f.write(img_data)
-                
-                logger.info(f"✅ Imagen guardada: {filename}")
-                
-                # ===== Procesar según tipo =====
-                if img_type == 'recognition':
-                    recognize_face(filename)
-                elif img_type == 'register' and person_name:
-                    success, msg = register_face(filename, person_name)
-                    logger.info(f"Registro: {msg}")
-                
-            except Exception as e:
-                logger.error(f"❌ Error procesando imagen {counter}: {type(e).__name__}: {e}")
-            
-            image_queue.task_done()
-            
+            parte = msg.payload.decode('utf-8')
+            buffers[session_id] += parte
+            print(f"📦 Parte recibida para: {session_id} (total: {len(buffers[session_id])} chars)", flush=True)
         except Exception as e:
-            # timeout normal, continúa esperando
-            pass
+            print(f"❌ Error decodificando parte: {e}", flush=True)
+    
+    elif "/end" in topic:
+        # Guardar imagen completa
+        parts = topic.split('/')
+        session_id = "_".join(parts[1:3])
+        
+        if session_id in buffers:
+            buffer_data = buffers.pop(session_id)
+            
+            if buffer_data:
+                try:
+                    # Decodificar Base64
+                    img_data = base64.b64decode(buffer_data)
+                    
+                    # 🔍 DETECTAR ROSTRO ANTES DE GUARDAR
+                    print(f"🔍 Analizando imagen con face_recognition...", flush=True)
+                    
+                    # Cargar imagen desde bytes
+                    image = Image.open(io.BytesIO(img_data))
+                    image_np = np.array(image)
+                    
+                    # Detectar rostros y obtener encodings
+                    face_locations = face_recognition.face_locations(image_np)
+                    face_encodings = face_recognition.face_encodings(image_np, face_locations)
+                    
+                    if len(face_locations) == 0:
+                        print(f"⚠️ No se detectó ningún rostro. Imagen NO guardada.", flush=True)
+                        return
+                    
+                    if len(face_encodings) == 0:
+                        print(f"⚠️ No se pudo codificar el rostro. Imagen NO guardada.", flush=True)
+                        return
+                    
+                    print(f"✅ Detectados {len(face_locations)} rostro(s)!", flush=True)
+                    
+                    # Obtener nombre de la persona
+                    person_name = parts[2] if len(parts) > 2 else "desconocido"
+                    
+                    # 🔒 VERIFICAR SI YA ESTÁ REGISTRADO
+                    face_encoding = face_encodings[0]  # Tomar el primer rostro
+                    
+                    if is_face_registered(face_encoding, person_name):
+                        print(f"⚠️ El rostro de '{person_name}' YA está registrado. NO se guardó.", flush=True)
+                        send_response(person_name, "DUPLICADO", f"El rostro de {person_name} ya esta registrado")
+                        return
+                    
+                    # 🔍 INTENTAR RECONOCER SI ES OTRA PERSONA CONOCIDA
+                    recognized_name, confidence = recognize_face(face_encoding)
+                    if recognized_name and recognized_name != person_name:
+                        print(f"⚠️ Este rostro pertenece a '{recognized_name}' ({confidence:.1f}% confianza)", flush=True)
+                        send_response(person_name, "ERROR", f"Este rostro pertenece a {recognized_name} ({confidence:.0f}%)")
+                        return
+                    
+                    # Guardar imagen
+                    filename = f"{person_name}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.jpg"
+                    filepath = os.path.join(OUTPUT_DIR, filename)
+                    
+                    with open(filepath, "wb") as f:
+                        f.write(img_data)
+                    
+                    # Agregar al cache de rostros conocidos
+                    if person_name not in known_faces:
+                        known_faces[person_name] = []
+                    known_faces[person_name].append(face_encoding)
+                    
+                    img_counter += 1
+                    print(f"💾 ¡NUEVO ROSTRO REGISTRADO!", flush=True)
+                    print(f"📁 Guardado: {filepath} ({len(img_data)} bytes)", flush=True)
+                    print(f"👤 Persona: {person_name}", flush=True)
+                    print(f"📍 Posición rostro: {face_locations[0]}", flush=True)
+                    
+                    # 📤 ENVIAR RESPUESTA DE ÉXITO
+                    send_response(person_name, "REGISTRADO", f"{person_name} registrado exitosamente!")
+                    
+                except Exception as e:
+                    print(f"❌ Error procesando imagen: {e}", flush=True)
+            else:
+                print(f"⚠️ Buffer vacío para: {session_id}", flush=True)
+        else:
+            print(f"⚠️ No se encontró sesión: {session_id}", flush=True)
 
 # ===== Cliente MQTT =====
 client = mqtt.Client()
@@ -309,15 +247,16 @@ client.on_connect = on_connect
 client.on_disconnect = on_disconnect
 client.on_message = on_message
 
-# Inicia el thread de procesamiento de imágenes
-processor_thread = threading.Thread(target=image_processor, daemon=True)
-processor_thread.start()
-logger.info("✅ Thread de procesamiento iniciado")
+print("🚀 Iniciando receptor de mensajes MQTT...", flush=True)
+print(f"🔗 Conectando a {BROKER}:{PORT}", flush=True)
+print(f"📡 Escuchando tópico: {TOPIC}", flush=True)
+print("\n⏳ Esperando mensajes...\n", flush=True)
 
-logger.info("🚀 Iniciando receptor MQTT con reconocimiento facial...")
 try:
     client.connect(BROKER, PORT)
-    logger.info(f"📡 Conectando a {BROKER}:{PORT}...")
     client.loop_forever()
+except KeyboardInterrupt:
+    print("\n\n👋 Desconectando...")
+    client.disconnect()
 except Exception as e:
-    logger.error(f"❌ Error fatal: {type(e).__name__}: {e}", exc_info=True)
+    print(f"❌ Error: {e}")

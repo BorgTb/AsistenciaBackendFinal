@@ -25,4 +25,4 @@ COPY app.py .
 # Crear carpetas para imágenes y rostros
 RUN mkdir /app/imagenes /app/rostros
 
-CMD ["python", "app.py"]
+CMD ["python", "-u", "app.py"]

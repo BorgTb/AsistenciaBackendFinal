@@ -21,7 +21,7 @@ services:
     environment:
       - BROKER_HOST=mosquitto
       - BROKER_PORT=1883
-      - MQTT_TOPIC=test/imagenes/#
+      - MQTT_TOPIC=test/#
     volumes:
       - ./imagenes:/app/imagenes
       - ./rostros:/app/rostros
