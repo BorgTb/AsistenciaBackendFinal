@@ -287,29 +287,29 @@ bool detectPresence(camera_fb_t *fb) {
 }
 
 // ======= CAPTURA Y ENVÍO MQTT CON NOMBRE =======
-void sendImageMQTT(String personName = "agustin") {
+void sendImageMQTT(String personName = "", bool modoAsistencia = false) {
   camera_fb_t *fb = esp_camera_fb_get();
   if (!fb) {
     Serial.println("❌ Error al capturar imagen");
     return;
   }
 
-  // 🔍 DETECTAR PRESENCIA ANTES DE ENVIAR
-  Serial.println("🔍 Verificando presencia...");
-  bool hasPresence = detectPresence(fb);
+  String topicStart, topicPart, topicEnd;
   
-  if (!hasPresence) {
-    Serial.println("⚠️ No se detectó presencia. Imagen NO enviada.");
-    esp_camera_fb_return(fb);
-    return;
+  if (modoAsistencia) {
+    // MODO ASISTENCIA: para reconocimiento automático
+    topicStart = "test/asistencia/start";
+    topicPart = "test/asistencia/part";
+    topicEnd = "test/asistencia/end";
+    Serial.println("� Modo: ASISTENCIA (reconocimiento automático)");
+  } else {
+    // MODO REGISTRO: con nombre específico
+    if (personName.length() == 0) personName = "agustin";
+    topicStart = "test/registro/" + personName + "/start";
+    topicPart = "test/registro/" + personName + "/part";
+    topicEnd = "test/registro/" + personName + "/end";
+    Serial.printf("📸 Modo: REGISTRO (persona: %s)\n", personName.c_str());
   }
-
-  Serial.println("👤 ¡Presencia detectada! Enviando imagen...");
-
-  // Construir tópicos con el nombre de la persona
-  String topicStart = "test/registro/" + personName + "/start";
-  String topicPart = "test/registro/" + personName + "/part";
-  String topicEnd = "test/registro/" + personName + "/end";
 
   // Publicar inicio
   client.publish(topicStart.c_str(), "START");
@@ -327,7 +327,11 @@ void sendImageMQTT(String personName = "agustin") {
   bool ok = client.publish(topicEnd.c_str(), "END");
   if (ok) {
     Serial.println("✅ Fin publicado: END");
-    Serial.printf("📤 Imagen enviada para: %s\n", personName.c_str());
+    if (!modoAsistencia) {
+      Serial.printf("📤 Imagen enviada para: %s\n", personName.c_str());
+    } else {
+      Serial.println("📤 Imagen enviada para reconocimiento");
+    }
   } else {
     Serial.println("❌ Falló publicación de END");
     Serial.print("Estado cliente MQTT: ");
@@ -426,7 +430,8 @@ void handleStatus() {
 }
 
 void handleCapture() {
-  sendImageMQTT();
+  // Usar modo asistencia si está activada la detección
+  sendImageMQTT("", autoDetectionEnabled);
   server.send(200, "text/plain", "✅ Imagen capturada y enviada por MQTT");
 }
 
@@ -479,6 +484,10 @@ void mqttCallback(char* topic, byte* payload, unsigned int length) {
       lastResponse = "<span style='color: #FF9800;'>⚠️ " + msg + "</span>";
     } else if (status == "ERROR") {
       lastResponse = "<span style='color: #f44336;'>❌ " + msg + "</span>";
+    } else if (status == "ASISTENCIA") {
+      lastResponse = "<span style='color: #2196F3;'>✅ " + msg + "</span>";
+    } else if (status == "SIN_TURNO") {
+      lastResponse = "<span style='color: #FF9800;'>⚠️ " + msg + "</span>";
     } else {
       lastResponse = msg;
     }
@@ -565,7 +574,7 @@ void loop() {
         if (hasPresence) {
           Serial.println("👤 ¡PRESENCIA DETECTADA! Enviando imagen...");
           esp_camera_fb_return(fb); // Liberar el frame de detección
-          sendImageMQTT(); // Capturar y enviar nueva imagen
+          sendImageMQTT("", true); // Enviar en modo asistencia (reconocimiento)
         } else {
           Serial.println("⚪ Sin presencia detectada");
           esp_camera_fb_return(fb);

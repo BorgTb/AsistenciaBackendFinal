@@ -27,6 +27,7 @@ PERSONAS_CSV = os.path.join(DATA_DIR, "personas.csv")
 TURNOS_CSV = os.path.join(DATA_DIR, "turnos.csv")
 ASIGNACIONES_CSV = os.path.join(DATA_DIR, "asignaciones.csv")
 DISPOSITIVOS_CSV = os.path.join(DATA_DIR, "dispositivos.csv")
+ASISTENCIAS_CSV = os.path.join(DATA_DIR, "asistencias.csv")
 
 # ===== Variables para reconstruir imágenes =====
 buffers = defaultdict(str)  # Almacena las partes de cada sesión
@@ -77,6 +78,13 @@ def init_csv_files():
             writer = csv.writer(f)
             writer.writerow(['id', 'nombre', 'ip', 'estado', 'deteccion_auto', 'ultima_conexion'])
         print("✅ Archivo dispositivos.csv creado", flush=True)
+    
+    # asistencias.csv: id, persona_id, persona_nombre, turno_id, turno_nombre, tipo, fecha_hora, dispositivo_ip
+    if not os.path.exists(ASISTENCIAS_CSV):
+        with open(ASISTENCIAS_CSV, 'w', newline='', encoding='utf-8') as f:
+            writer = csv.writer(f)
+            writer.writerow(['id', 'persona_id', 'persona_nombre', 'turno_id', 'turno_nombre', 'tipo', 'fecha_hora', 'dispositivo_ip'])
+        print("✅ Archivo asistencias.csv creado", flush=True)
 
 init_csv_files()
 
@@ -250,6 +258,160 @@ def actualizar_estado_dispositivo(ip, deteccion_auto=None):
         writer.writeheader()
         writer.writerows(dispositivos)
 
+# ===== Funciones de Asistencia =====
+def verificar_turno_activo(persona_id):
+    """Verifica si la persona tiene un turno activo en este momento"""
+    from datetime import datetime, time
+    
+    # Obtener día actual (0=Lunes, 6=Domingo)
+    ahora = datetime.now()
+    dia_actual = ahora.weekday()  # 0=Lunes
+    hora_actual = ahora.time()
+    
+    # Mapeo de días
+    dias_map = {'L': 0, 'M': 1, 'X': 2, 'J': 3, 'V': 4, 'S': 5, 'D': 6}
+    
+    # Obtener turnos asignados a la persona
+    turnos_persona = get_turnos_persona(persona_id)
+    
+    for turno in turnos_persona:
+        # Parsear días de la semana (ej: "L,M,X,J,V")
+        dias_turno = turno.get('dias_semana', '').split(',')
+        dias_numeros = [dias_map.get(d.strip(), -1) for d in dias_turno]
+        
+        # Verificar si hoy es un día del turno
+        if dia_actual not in dias_numeros:
+            continue
+        
+        # Parsear horas (formato HH:MM)
+        try:
+            hora_inicio = datetime.strptime(turno['hora_inicio'], '%H:%M').time()
+            hora_fin = datetime.strptime(turno['hora_fin'], '%H:%M').time()
+            
+            # Caso especial: turnos que cruzan medianoche (ej: 16:00 - 00:00)
+            if hora_fin < hora_inicio:
+                # Si la hora actual es después del inicio O antes del fin
+                if hora_actual >= hora_inicio or hora_actual <= hora_fin:
+                    return turno
+            else:
+                # Turno normal dentro del mismo día
+                if hora_inicio <= hora_actual <= hora_fin:
+                    return turno
+        except Exception as e:
+            print(f"Error parseando horario del turno {turno['id']}: {e}", flush=True)
+            continue
+    
+    return None
+
+def registrar_asistencia(persona_id, persona_nombre, tipo='entrada', dispositivo_ip='unknown'):
+    """Registra una asistencia (entrada o salida)"""
+    
+    # Verificar turno activo
+    turno_activo = verificar_turno_activo(persona_id)
+    
+    if not turno_activo:
+        print(f"⚠️ {persona_nombre} no tiene turno activo en este momento", flush=True)
+        return {
+            'success': False,
+            'message': f"{persona_nombre} no tiene turno asignado en este horario"
+        }
+    
+    # Leer asistencias existentes
+    asistencias = []
+    try:
+        with open(ASISTENCIAS_CSV, 'r', encoding='utf-8') as f:
+            reader = csv.DictReader(f)
+            asistencias = list(reader)
+    except Exception as e:
+        print(f"Error leyendo asistencias: {e}", flush=True)
+    
+    # Generar nuevo ID
+    nuevo_id = str(len(asistencias) + 1)
+    fecha_hora = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    
+    # Determinar tipo de registro (entrada/salida)
+    # Si es la primera del día o la última fue salida -> entrada
+    # Si la última fue entrada -> salida
+    ultima_asistencia = None
+    for asist in reversed(asistencias):
+        if asist['persona_id'] == persona_id:
+            # Verificar si es del mismo día
+            try:
+                fecha_asist = datetime.strptime(asist['fecha_hora'], '%Y-%m-%d %H:%M:%S')
+                if fecha_asist.date() == datetime.now().date():
+                    ultima_asistencia = asist
+                    break
+            except:
+                pass
+    
+    if ultima_asistencia:
+        tipo = 'salida' if ultima_asistencia['tipo'] == 'entrada' else 'entrada'
+    else:
+        tipo = 'entrada'
+    
+    # Registrar asistencia
+    nueva_asistencia = {
+        'id': nuevo_id,
+        'persona_id': persona_id,
+        'persona_nombre': persona_nombre,
+        'turno_id': turno_activo['id'],
+        'turno_nombre': turno_activo['nombre_turno'],
+        'tipo': tipo,
+        'fecha_hora': fecha_hora,
+        'dispositivo_ip': dispositivo_ip
+    }
+    
+    with open(ASISTENCIAS_CSV, 'a', newline='', encoding='utf-8') as f:
+        writer = csv.DictWriter(f, fieldnames=['id', 'persona_id', 'persona_nombre', 'turno_id', 'turno_nombre', 'tipo', 'fecha_hora', 'dispositivo_ip'])
+        if len(asistencias) == 0:
+            writer.writeheader()
+        writer.writerow(nueva_asistencia)
+    
+    print(f"✅ Asistencia registrada: {persona_nombre} - {tipo.upper()} - Turno: {turno_activo['nombre_turno']}", flush=True)
+    
+    return {
+        'success': True,
+        'tipo': tipo,
+        'turno': turno_activo['nombre_turno'],
+        'hora': fecha_hora,
+        'message': f"{tipo.upper()} registrada - Turno {turno_activo['nombre_turno']}"
+    }
+
+def get_asistencias_persona(persona_id, fecha=None):
+    """Obtiene las asistencias de una persona (opcional: filtrar por fecha)"""
+    asistencias = []
+    try:
+        with open(ASISTENCIAS_CSV, 'r', encoding='utf-8') as f:
+            reader = csv.DictReader(f)
+            for row in reader:
+                if row['persona_id'] == persona_id:
+                    if fecha:
+                        if row['fecha_hora'].startswith(fecha):
+                            asistencias.append(row)
+                    else:
+                        asistencias.append(row)
+    except Exception as e:
+        print(f"Error leyendo asistencias: {e}", flush=True)
+    
+    return asistencias
+
+def get_todas_asistencias(fecha=None):
+    """Obtiene todas las asistencias (opcional: filtrar por fecha)"""
+    asistencias = []
+    try:
+        with open(ASISTENCIAS_CSV, 'r', encoding='utf-8') as f:
+            reader = csv.DictReader(f)
+            for row in reader:
+                if fecha:
+                    if row['fecha_hora'].startswith(fecha):
+                        asistencias.append(row)
+                else:
+                    asistencias.append(row)
+    except Exception as e:
+        print(f"Error leyendo asistencias: {e}", flush=True)
+    
+    return asistencias
+
 # ===== Funciones auxiliares =====
 def load_known_faces():
     """Carga todos los rostros conocidos de la carpeta imagenes"""
@@ -364,18 +526,22 @@ def on_message(client, userdata, msg):
     print(f"{'='*60}\n", flush=True)
     
     # ===== PROCESAR IMÁGENES =====
-    # Formato: test/registro/nombre/start|part|end
+    # Formato: test/registro/nombre/start|part|end (para registro)
+    # Formato: test/asistencia/start|part|end (para reconocimiento y asistencia)
     if "/start" in topic:
-        # Extraer identificador de sesión (ej: "registro_agustin")
+        # Extraer identificador de sesión
         parts = topic.split('/')
-        session_id = "_".join(parts[1:3])  # ej: "registro_agustin"
+        # Remover el último elemento (start/part/end) para construir el session_id
+        session_parts = parts[1:-1]  # ej: ['registro', 'agustin'] o ['asistencia']
+        session_id = "_".join(session_parts)  # ej: "registro_agustin" o "asistencia"
         buffers[session_id] = ""
         print(f"📥 Iniciando captura de imagen: {session_id}", flush=True)
     
     elif "/part" in topic:
         # Acumular partes
         parts = topic.split('/')
-        session_id = "_".join(parts[1:3])
+        session_parts = parts[1:-1]
+        session_id = "_".join(session_parts)
         try:
             parte = msg.payload.decode('utf-8')
             buffers[session_id] += parte
@@ -386,7 +552,11 @@ def on_message(client, userdata, msg):
     elif "/end" in topic:
         # Guardar imagen completa
         parts = topic.split('/')
-        session_id = "_".join(parts[1:3])
+        session_parts = parts[1:-1]
+        session_id = "_".join(session_parts)
+        
+        modo = parts[1] if len(parts) > 1 else "desconocido"  # "registro" o "asistencia"
+        modo = parts[1] if len(parts) > 1 else "desconocido"  # "registro" o "asistencia"
         
         if session_id in buffers:
             buffer_data = buffers.pop(session_id)
@@ -409,62 +579,105 @@ def on_message(client, userdata, msg):
                     
                     if len(face_locations) == 0:
                         print(f"⚠️ No se detectó ningún rostro. Imagen NO guardada.", flush=True)
+                        if modo == "asistencia":
+                            send_response("sistema", "ERROR", "No se detectó ningún rostro")
                         return
                     
                     if len(face_encodings) == 0:
                         print(f"⚠️ No se pudo codificar el rostro. Imagen NO guardada.", flush=True)
+                        if modo == "asistencia":
+                            send_response("sistema", "ERROR", "No se pudo procesar el rostro")
                         return
                     
                     print(f"✅ Detectados {len(face_locations)} rostro(s)!", flush=True)
                     
-                    # Obtener nombre de la persona
-                    person_name = parts[2] if len(parts) > 2 else "desconocido"
-                    
-                    # 🔒 VERIFICAR SI YA ESTÁ REGISTRADO
                     face_encoding = face_encodings[0]  # Tomar el primer rostro
                     
-                    if is_face_registered(face_encoding, person_name):
-                        print(f"⚠️ El rostro de '{person_name}' YA está registrado. NO se guardó.", flush=True)
-                        send_response(person_name, "DUPLICADO", f"El rostro de {person_name} ya esta registrado")
-                        return
+                    # ===== MODO REGISTRO =====
+                    if modo == "registro":
+                        # Obtener nombre de la persona
+                        person_name = parts[2] if len(parts) > 2 else "desconocido"
+                        
+                        # 🔒 VERIFICAR SI YA ESTÁ REGISTRADO
+                        if is_face_registered(face_encoding, person_name):
+                            print(f"⚠️ El rostro de '{person_name}' YA está registrado. NO se guardó.", flush=True)
+                            send_response(person_name, "DUPLICADO", f"El rostro de {person_name} ya esta registrado")
+                            return
+                        
+                        # 🔍 INTENTAR RECONOCER SI ES OTRA PERSONA CONOCIDA
+                        recognized_name, confidence = recognize_face(face_encoding)
+                        if recognized_name and recognized_name != person_name:
+                            print(f"⚠️ Este rostro pertenece a '{recognized_name}' ({confidence:.1f}% confianza)", flush=True)
+                            send_response(person_name, "ERROR", f"Este rostro pertenece a {recognized_name} ({confidence:.0f}%)")
+                            return
+                        
+                        # Guardar imagen
+                        filename = f"{person_name}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.jpg"
+                        filepath = os.path.join(OUTPUT_DIR, filename)
+                        
+                        with open(filepath, "wb") as f:
+                            f.write(img_data)
+                        
+                        # Agregar al cache de rostros conocidos
+                        if person_name not in known_faces:
+                            known_faces[person_name] = []
+                        known_faces[person_name].append(face_encoding)
+                        
+                        # Agregar o actualizar en CSV
+                        persona = get_persona_by_nombre(person_name)
+                        if persona:
+                            update_persona_imagenes(person_name)
+                        else:
+                            add_persona(person_name)
+                        
+                        img_counter += 1
+                        print(f"💾 ¡NUEVO ROSTRO REGISTRADO!", flush=True)
+                        print(f"📁 Guardado: {filepath} ({len(img_data)} bytes)", flush=True)
+                        print(f"👤 Persona: {person_name}", flush=True)
+                        print(f"📍 Posición rostro: {face_locations[0]}", flush=True)
+                        
+                        # 📤 ENVIAR RESPUESTA DE ÉXITO
+                        send_response(person_name, "REGISTRADO", f"{person_name} registrado exitosamente!")
                     
-                    # 🔍 INTENTAR RECONOCER SI ES OTRA PERSONA CONOCIDA
-                    recognized_name, confidence = recognize_face(face_encoding)
-                    if recognized_name and recognized_name != person_name:
-                        print(f"⚠️ Este rostro pertenece a '{recognized_name}' ({confidence:.1f}% confianza)", flush=True)
-                        send_response(person_name, "ERROR", f"Este rostro pertenece a {recognized_name} ({confidence:.0f}%)")
-                        return
-                    
-                    # Guardar imagen
-                    filename = f"{person_name}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.jpg"
-                    filepath = os.path.join(OUTPUT_DIR, filename)
-                    
-                    with open(filepath, "wb") as f:
-                        f.write(img_data)
-                    
-                    # Agregar al cache de rostros conocidos
-                    if person_name not in known_faces:
-                        known_faces[person_name] = []
-                    known_faces[person_name].append(face_encoding)
-                    
-                    # Agregar o actualizar en CSV
-                    persona = get_persona_by_nombre(person_name)
-                    if persona:
-                        update_persona_imagenes(person_name)
-                    else:
-                        add_persona(person_name)
-                    
-                    img_counter += 1
-                    print(f"💾 ¡NUEVO ROSTRO REGISTRADO!", flush=True)
-                    print(f"📁 Guardado: {filepath} ({len(img_data)} bytes)", flush=True)
-                    print(f"👤 Persona: {person_name}", flush=True)
-                    print(f"📍 Posición rostro: {face_locations[0]}", flush=True)
-                    
-                    # 📤 ENVIAR RESPUESTA DE ÉXITO
-                    send_response(person_name, "REGISTRADO", f"{person_name} registrado exitosamente!")
+                    # ===== MODO ASISTENCIA =====
+                    elif modo == "asistencia":
+                        # 🔍 RECONOCER ROSTRO
+                        recognized_name, confidence = recognize_face(face_encoding)
+                        
+                        if not recognized_name:
+                            print(f"⚠️ Rostro NO reconocido", flush=True)
+                            send_response("sistema", "ERROR", "Rostro no reconocido")
+                            return
+                        
+                        print(f"✅ Rostro reconocido: {recognized_name} ({confidence:.1f}% confianza)", flush=True)
+                        
+                        # Obtener datos de la persona
+                        persona = get_persona_by_nombre(recognized_name)
+                        if not persona:
+                            print(f"⚠️ Persona {recognized_name} no encontrada en la base de datos", flush=True)
+                            send_response(recognized_name, "ERROR", "Persona no encontrada")
+                            return
+                        
+                        # 📝 REGISTRAR ASISTENCIA
+                        resultado = registrar_asistencia(
+                            persona_id=persona['id'],
+                            persona_nombre=recognized_name,
+                            dispositivo_ip='mqtt_device'
+                        )
+                        
+                        if resultado['success']:
+                            # Asistencia registrada exitosamente
+                            mensaje = f"{recognized_name}: {resultado['message']}"
+                            print(f"✅ {mensaje}", flush=True)
+                            send_response(recognized_name, "ASISTENCIA", mensaje)
+                        else:
+                            # Sin turno activo
+                            print(f"⚠️ {resultado['message']}", flush=True)
+                            send_response(recognized_name, "SIN_TURNO", resultado['message'])
                     
                 except Exception as e:
                     print(f"❌ Error procesando imagen: {e}", flush=True)
+                    send_response("sistema", "ERROR", f"Error: {str(e)}")
             else:
                 print(f"⚠️ Buffer vacío para: {session_id}", flush=True)
         else:
@@ -745,6 +958,94 @@ def api_register_dispositivo():
             'success': True,
             'message': f'Dispositivo {nombre} registrado en {ip}'
         }), 201
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+# ===== ENDPOINTS DE ASISTENCIAS =====
+@app.route('/api/asistencias', methods=['GET'])
+def api_get_asistencias():
+    """Obtiene todas las asistencias, opcionalmente filtradas por fecha"""
+    try:
+        fecha = request.args.get('fecha')  # Formato: YYYY-MM-DD
+        asistencias = get_todas_asistencias(fecha)
+        
+        return jsonify({
+            'success': True,
+            'total': len(asistencias),
+            'asistencias': asistencias
+        }), 200
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/asistencias/persona/<persona_id>', methods=['GET'])
+def api_get_asistencias_persona(persona_id):
+    """Obtiene las asistencias de una persona específica"""
+    try:
+        fecha = request.args.get('fecha')  # Opcional: filtrar por fecha
+        asistencias = get_asistencias_persona(persona_id, fecha)
+        
+        # Obtener información de la persona
+        personas = get_all_personas()
+        persona = next((p for p in personas if p['id'] == persona_id), None)
+        
+        if not persona:
+            return jsonify({'success': False, 'error': 'Persona no encontrada'}), 404
+        
+        return jsonify({
+            'success': True,
+            'persona': persona,
+            'total': len(asistencias),
+            'asistencias': asistencias
+        }), 200
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/asistencias/hoy', methods=['GET'])
+def api_get_asistencias_hoy():
+    """Obtiene todas las asistencias del día actual"""
+    try:
+        fecha_hoy = datetime.now().strftime('%Y-%m-%d')
+        asistencias = get_todas_asistencias(fecha_hoy)
+        
+        return jsonify({
+            'success': True,
+            'fecha': fecha_hoy,
+            'total': len(asistencias),
+            'asistencias': asistencias
+        }), 200
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/asistencias/registrar', methods=['POST'])
+def api_registrar_asistencia_manual():
+    """Registra una asistencia manualmente (para testing o correcciones)"""
+    try:
+        data = request.json
+        persona_id = data.get('persona_id')
+        dispositivo_ip = data.get('dispositivo_ip', 'manual')
+        
+        if not persona_id:
+            return jsonify({'success': False, 'error': 'persona_id es requerido'}), 400
+        
+        # Obtener nombre de la persona
+        personas = get_all_personas()
+        persona = next((p for p in personas if p['id'] == persona_id), None)
+        
+        if not persona:
+            return jsonify({'success': False, 'error': 'Persona no encontrada'}), 404
+        
+        # Registrar asistencia
+        resultado = registrar_asistencia(
+            persona_id=persona_id,
+            persona_nombre=persona['nombre'],
+            dispositivo_ip=dispositivo_ip
+        )
+        
+        if resultado['success']:
+            return jsonify(resultado), 201
+        else:
+            return jsonify(resultado), 400
+        
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
 

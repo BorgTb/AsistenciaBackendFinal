@@ -295,6 +295,7 @@
             <button class="tab" onclick="switchTab('turnos')">🕐 Turnos</button>
             <button class="tab" onclick="switchTab('asignaciones')">📋 Asignaciones</button>
             <button class="tab" onclick="switchTab('nueva-asignacion')">➕ Nueva Asignación</button>
+            <button class="tab" onclick="switchTab('asistencias')">📊 Asistencias</button>
             <button class="tab" onclick="switchTab('dispositivos')">📱 Dispositivos</button>
         </div>
         
@@ -348,6 +349,32 @@
             </div>
         </div>
         
+        <!-- Tab Asistencias -->
+        <div id="tab-asistencias" class="tab-content">
+            <div class="card">
+                <h3>📊 Registro de Asistencias</h3>
+                <div style="display: flex; gap: 10px; margin-bottom: 15px;">
+                    <button class="btn btn-primary" onclick="loadAsistenciasHoy()">📅 Hoy</button>
+                    <button class="btn btn-warning" onclick="loadTodasAsistencias()">📋 Todas</button>
+                    <input type="date" id="fechaFiltro" class="form-control" style="flex: 1;">
+                    <button class="btn btn-success" onclick="loadAsistenciasPorFecha()">🔍 Buscar</button>
+                </div>
+                <div id="asistenciasContent" class="loading">Cargando...</div>
+            </div>
+            
+            <div class="card">
+                <h3>👤 Asistencias por Persona</h3>
+                <div class="form-group">
+                    <label for="personaAsistencia">Seleccionar Persona:</label>
+                    <select id="personaAsistencia" class="form-control">
+                        <option value="">-- Seleccionar --</option>
+                    </select>
+                </div>
+                <button class="btn btn-primary" onclick="loadAsistenciasPersona()">🔍 Ver Asistencias</button>
+                <div id="asistenciasPersonaContent"></div>
+            </div>
+        </div>
+        
         <!-- Tab Dispositivos -->
         <div id="tab-dispositivos" class="tab-content">
             <div class="card">
@@ -393,6 +420,7 @@
             if (tabName === 'personas') loadPersonas();
             if (tabName === 'turnos') loadTurnos();
             if (tabName === 'asignaciones') loadAsignaciones();
+            if (tabName === 'asistencias') loadAsistenciasHoy();
             if (tabName === 'dispositivos') loadDispositivos();
         }
         
@@ -774,6 +802,236 @@
                 alert('❌ Error: ' + error.message);
             }
         }
+        
+        // ===== FUNCIONES DE ASISTENCIAS =====
+        async function loadAsistenciasHoy() {
+            const content = document.getElementById('asistenciasContent');
+            content.innerHTML = '<div class="loading">Cargando...</div>';
+            
+            try {
+                const response = await fetch(`${API_URL}/asistencias/hoy`);
+                const data = await response.json();
+                
+                if (data.success && data.asistencias.length > 0) {
+                    let html = `
+                        <p><strong>📅 Fecha: ${data.fecha}</strong> | <strong>Total: ${data.total} registros</strong></p>
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>👤 Persona</th>
+                                    <th>🕐 Turno</th>
+                                    <th>⏰ Hora</th>
+                                    <th>📍 Tipo</th>
+                                    <th>📱 Dispositivo</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                    `;
+                    
+                    data.asistencias.forEach(asist => {
+                        const tipo = asist.tipo === 'entrada' ? '🟢 ENTRADA' : '🔴 SALIDA';
+                        const hora = asist.fecha_hora.split(' ')[1];
+                        html += `
+                            <tr>
+                                <td>${asist.persona_nombre}</td>
+                                <td>${asist.turno_nombre}</td>
+                                <td>${hora}</td>
+                                <td><strong>${tipo}</strong></td>
+                                <td>${asist.dispositivo_ip}</td>
+                            </tr>
+                        `;
+                    });
+                    
+                    html += '</tbody></table>';
+                    content.innerHTML = html;
+                } else {
+                    content.innerHTML = '<div class="empty-state">📭 No hay asistencias registradas hoy</div>';
+                }
+            } catch (error) {
+                content.innerHTML = '<div class="error-message">❌ Error cargando asistencias</div>';
+            }
+        }
+        
+        async function loadTodasAsistencias() {
+            const content = document.getElementById('asistenciasContent');
+            content.innerHTML = '<div class="loading">Cargando...</div>';
+            
+            try {
+                const response = await fetch(`${API_URL}/asistencias`);
+                const data = await response.json();
+                
+                if (data.success && data.asistencias.length > 0) {
+                    let html = `
+                        <p><strong>Total: ${data.total} registros</strong></p>
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>📅 Fecha</th>
+                                    <th>👤 Persona</th>
+                                    <th>🕐 Turno</th>
+                                    <th>⏰ Hora</th>
+                                    <th>📍 Tipo</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                    `;
+                    
+                    data.asistencias.forEach(asist => {
+                        const tipo = asist.tipo === 'entrada' ? '🟢 ENTRADA' : '🔴 SALIDA';
+                        const [fecha, hora] = asist.fecha_hora.split(' ');
+                        html += `
+                            <tr>
+                                <td>${fecha}</td>
+                                <td>${asist.persona_nombre}</td>
+                                <td>${asist.turno_nombre}</td>
+                                <td>${hora}</td>
+                                <td><strong>${tipo}</strong></td>
+                            </tr>
+                        `;
+                    });
+                    
+                    html += '</tbody></table>';
+                    content.innerHTML = html;
+                } else {
+                    content.innerHTML = '<div class="empty-state">📭 No hay asistencias registradas</div>';
+                }
+            } catch (error) {
+                content.innerHTML = '<div class="error-message">❌ Error cargando asistencias</div>';
+            }
+        }
+        
+        async function loadAsistenciasPorFecha() {
+            const fecha = document.getElementById('fechaFiltro').value;
+            if (!fecha) {
+                alert('⚠️ Por favor selecciona una fecha');
+                return;
+            }
+            
+            const content = document.getElementById('asistenciasContent');
+            content.innerHTML = '<div class="loading">Cargando...</div>';
+            
+            try {
+                const response = await fetch(`${API_URL}/asistencias?fecha=${fecha}`);
+                const data = await response.json();
+                
+                if (data.success && data.asistencias.length > 0) {
+                    let html = `
+                        <p><strong>📅 Fecha: ${fecha}</strong> | <strong>Total: ${data.total} registros</strong></p>
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>👤 Persona</th>
+                                    <th>🕐 Turno</th>
+                                    <th>⏰ Hora</th>
+                                    <th>📍 Tipo</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                    `;
+                    
+                    data.asistencias.forEach(asist => {
+                        const tipo = asist.tipo === 'entrada' ? '🟢 ENTRADA' : '🔴 SALIDA';
+                        const hora = asist.fecha_hora.split(' ')[1];
+                        html += `
+                            <tr>
+                                <td>${asist.persona_nombre}</td>
+                                <td>${asist.turno_nombre}</td>
+                                <td>${hora}</td>
+                                <td><strong>${tipo}</strong></td>
+                            </tr>
+                        `;
+                    });
+                    
+                    html += '</tbody></table>';
+                    content.innerHTML = html;
+                } else {
+                    content.innerHTML = `<div class="empty-state">📭 No hay asistencias para ${fecha}</div>`;
+                }
+            } catch (error) {
+                content.innerHTML = '<div class="error-message">❌ Error cargando asistencias</div>';
+            }
+        }
+        
+        async function loadAsistenciasPersona() {
+            const personaId = document.getElementById('personaAsistencia').value;
+            if (!personaId) {
+                alert('⚠️ Por favor selecciona una persona');
+                return;
+            }
+            
+            const content = document.getElementById('asistenciasPersonaContent');
+            content.innerHTML = '<div class="loading">Cargando...</div>';
+            
+            try {
+                const response = await fetch(`${API_URL}/asistencias/persona/${personaId}`);
+                const data = await response.json();
+                
+                if (data.success) {
+                    let html = `<h4>Asistencias de ${data.persona.nombre}</h4>`;
+                    
+                    if (data.asistencias.length > 0) {
+                        html += `
+                            <p><strong>Total: ${data.total} registros</strong></p>
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>📅 Fecha</th>
+                                        <th>🕐 Turno</th>
+                                        <th>⏰ Hora</th>
+                                        <th>📍 Tipo</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                        `;
+                        
+                        data.asistencias.forEach(asist => {
+                            const tipo = asist.tipo === 'entrada' ? '🟢 ENTRADA' : '🔴 SALIDA';
+                            const [fecha, hora] = asist.fecha_hora.split(' ');
+                            html += `
+                                <tr>
+                                    <td>${fecha}</td>
+                                    <td>${asist.turno_nombre}</td>
+                                    <td>${hora}</td>
+                                    <td><strong>${tipo}</strong></td>
+                                </tr>
+                            `;
+                        });
+                        
+                        html += '</tbody></table>';
+                    } else {
+                        html += '<div class="empty-state">📭 No hay asistencias registradas</div>';
+                    }
+                    
+                    content.innerHTML = html;
+                } else {
+                    content.innerHTML = '<div class="error-message">❌ Persona no encontrada</div>';
+                }
+            } catch (error) {
+                content.innerHTML = '<div class="error-message">❌ Error cargando asistencias</div>';
+            }
+        }
+        
+        // Cargar opciones de personas para el selector de asistencias
+        async function cargarPersonasAsistencias() {
+            try {
+                const response = await fetch(`${API_URL}/personas`);
+                const data = await response.json();
+                
+                const select = document.getElementById('personaAsistencia');
+                select.innerHTML = '<option value="">-- Seleccionar --</option>';
+                
+                if (data.success) {
+                    data.personas.forEach(persona => {
+                        select.innerHTML += `<option value="${persona.id}">${persona.nombre}</option>`;
+                    });
+                }
+            } catch (error) {
+                console.error('Error cargando personas:', error);
+            }
+        }
+        
+        // Cargar personas para selector al inicio
+        cargarPersonasAsistencias();
     </script>
 </body>
 </html>
