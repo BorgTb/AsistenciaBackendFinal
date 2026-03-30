@@ -1,8 +1,7 @@
-paho-mqtt
-face-recognition
-opencv-python
-numpy
 flask
-flask-cors
+psycopg2-binary
+face-recognition
+numpy
 pillow
-requests
+flask-cors
+paho-mqtt

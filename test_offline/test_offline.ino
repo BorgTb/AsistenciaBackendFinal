@@ -4,12 +4,18 @@
 #include <SPIFFS.h>
 #include <ArduinoJson.h>
 #include <Adafruit_Fingerprint.h>
+#include "esp_camera.h"
+#include <HTTPClient.h>
+#include <base64.h>
 
 // Sensor de huellas (RX=GPIO13, TX=GPIO12)
 HardwareSerial FingerSerial(2);  
 Adafruit_Fingerprint finger = Adafruit_Fingerprint(&FingerSerial);
 
 WebServer server(80);
+// ===== Variables cámara y backend =====
+const char* backendURL = "http://192.168.1.X:5000"; // cambia X por IP de tu PC
+bool camaraIniciada = false;
 
 // ===== AP para configuración =====
 const char* apSSID = "ESP32-ASISTENCIA";
@@ -77,6 +83,41 @@ void initSPIFFS() {
   addLog("SPIFFS inicializado");
 }
 
+void initCamera() {
+  camera_config_t config;
+  config.ledc_channel = LEDC_CHANNEL_0;
+  config.ledc_timer   = LEDC_TIMER_0;
+  config.pin_d0       = 5;
+  config.pin_d1       = 18;
+  config.pin_d2       = 19;
+  config.pin_d3       = 21;
+  config.pin_d4       = 36;
+  config.pin_d5       = 39;
+  config.pin_d6       = 34;
+  config.pin_d7       = 35;
+  config.pin_xclk     = 0;
+  config.pin_pclk     = 22;
+  config.pin_vsync    = 25;
+  config.pin_href     = 23;
+  config.pin_sscb_sda = 26;
+  config.pin_sscb_scl = 27;
+  config.pin_pwdn     = 32;
+  config.pin_reset    = -1;
+  config.xclk_freq_hz = 20000000;
+  config.pixel_format = PIXFORMAT_JPEG;
+  config.frame_size   = FRAMESIZE_QVGA; // 320x240
+  config.jpeg_quality = 15;
+  config.fb_count     = 1;
+
+  if (esp_camera_init(&config) == ESP_OK) {
+    camaraIniciada = true;
+    addLog("Camara iniciada correctamente");
+  } else {
+    addLog("Error iniciando camara");
+  }
+}
+
+
 // ======================= CARGAR/GUARDAR WIFI =========================
 void loadWiFiConfig() {
   File file = SPIFFS.open("/wifi.json", "r");
@@ -115,6 +156,46 @@ void addLog(String msg) {
   }
 }
 
+bool registrarRostroEnBackend(String personaId) {
+  if (!camaraIniciada) {
+    addLog("Error: Cámara no iniciada.");
+    return false;
+  }
+  if (WiFi.status() != WL_CONNECTED) {
+    addLog("Sin WiFi. El rostro se debe registrar luego.");
+    return false;
+  }
+
+  addLog("Capturando rostro para registro...");
+  camera_fb_t* fb = esp_camera_fb_get();
+  if (!fb) {
+    addLog("Error capturando imagen para registro");
+    return false;
+  }
+
+  String imgBase64 = base64::encode(fb->buf, fb->len);
+  esp_camera_fb_return(fb);
+
+  String payload = "{\"persona_id\":\"" + personaId + "\",\"imagen\":\"" + imgBase64 + "\"}";
+
+  HTTPClient http;
+  http.begin(String(backendURL) + "/api/facial/registrar");
+  http.addHeader("Content-Type", "application/json");
+  http.setTimeout(10000); // 10 segundos máximo
+
+  int httpCode = http.POST(payload);
+  bool exito = false;
+
+  if (httpCode == 200) {
+    addLog("Rostro registrado exitosamente en el backend");
+    exito = true;
+  } else {
+    addLog("Error backend al registrar rostro: " + String(httpCode));
+  }
+
+  http.end();
+  return exito;
+}
 
 // ======================= FUNCIONES JSON =============================
 JsonArray loadArray(const char* path, DynamicJsonDocument &doc) {
@@ -212,6 +293,49 @@ bool registrarHuella(int slot) {
 
   addLog("Error guardando huella");
   return false;
+}
+
+
+String verificarRostroEnBackend(String personaId) {
+  if (!camaraIniciada) return "camara_error";
+
+  // Capturar imagen
+  camera_fb_t* fb = esp_camera_fb_get();
+  if (!fb) {
+    addLog("Error capturando imagen");
+    return "camara_error";
+  }
+
+  // Codificar en base64
+  String imgBase64 = base64::encode(fb->buf, fb->len);
+  esp_camera_fb_return(fb);
+
+  // Armar JSON
+  String payload = "{\"persona_id\":\"" + personaId + 
+                   "\",\"imagen\":\"" + imgBase64 + "\"}";
+
+  // Enviar al backend
+  HTTPClient http;
+  http.begin(String(backendURL) + "/api/facial/verificar");
+  http.addHeader("Content-Type", "application/json");
+  http.setTimeout(8000); // 8 segundos máximo
+
+  int httpCode = http.POST(payload);
+  String respuesta = "";
+
+  if (httpCode == 200) {
+    respuesta = "rostro_ok";
+    addLog("Rostro verificado correctamente");
+  } else if (httpCode == 404) {
+    respuesta = "rostro_no_reconocido";
+    addLog("Rostro no reconocido por backend");
+  } else {
+    respuesta = "backend_error";
+    addLog("Error backend: " + String(httpCode));
+  }
+
+  http.end();
+  return respuesta;
 }
 
 // ======================= CONFIGURAR WIFI =============================
@@ -343,13 +467,23 @@ String registrarAsistenciaAutomatica(int huellaID) {
     }
   }
 
-  if (personaId == "") {
-    return "Huella no asociada a usuario";
-  }
+  if (personaId == "") return "Huella no asociada a usuario";
+  if (!turnoActivo(personaId)) return "Usuario sin turno asignado: " + nombre;
 
-  if (!turnoActivo(personaId)) {
-    return "Usuario sin turno asignado: " + nombre;
+  // ← NUEVO: verificar rostro antes de registrar
+  addLog("Huella OK. Verificando rostro...");
+  String resultadoFacial = verificarRostroEnBackend(personaId);
+
+  if (resultadoFacial == "camara_error") {
+    addLog("Camara no disponible, registrando solo con huella");
+    // continua sin verificacion facial — degradacion graciosa
+  } else if (resultadoFacial == "rostro_no_reconocido") {
+    return "Verificacion facial fallida: " + nombre;
+  } else if (resultadoFacial == "backend_error") {
+    addLog("Backend no disponible, registrando solo con huella");
+    // continua en modo offline
   }
+  // si rostro_ok, continua normalmente
 
   DynamicJsonDocument docA(2048);
   JsonArray asist = loadArray("/asistencias.json", docA);
@@ -367,8 +501,9 @@ String registrarAsistenciaAutomatica(int huellaID) {
   a["persona_id"] = personaId;
   a["nombre"] = nombre;
   a["tipo"] = tipo;
-  a["timestamp"] = millis() / 1000;
-  a["sincronizado"] = false;  // ← AGREGAR ESTA LÍNEA
+  a["timestamp"] = getTimestamp();
+  a["sincronizado"] = false;
+  a["metodo"] = (resultadoFacial == "rostro_ok") ? "facial+huella" : "huella";
 
   saveArray("/asistencias.json", docA);
 
@@ -496,6 +631,7 @@ void servirArchivo(const char* path, const char* tipo) {
 
 // ======================= SETUP ===========================
 void setup() {
+ 
   Serial.begin(115200);
   delay(1000);
   addLog("\n\nESP32 Sistema de Asistencia Offline");
@@ -516,6 +652,9 @@ void setup() {
   }
   
   initSPIFFS();
+  delay(500);
+  initCamera();
+  delay(500);
   loadWiFiConfig();
   
   WiFi.mode(WIFI_AP);
@@ -600,8 +739,10 @@ void completarRegistroPersona() {
   DynamicJsonDocument doc(2048);
   JsonArray personas = loadArray("/personas.json", doc);
 
+  String nuevoId = String(personas.size()); // ID local
+  
   JsonObject p = personas.createNestedObject();
-  p["id"] = String(personas.size());
+  p["id"] = nuevoId;
   p["nombre"] = nombreRegistrando;
   p["rut"] = rutRegistrando;
   p["email"] = emailRegistrando;
@@ -610,14 +751,30 @@ void completarRegistroPersona() {
   p["sincronizado"] = false;
 
   saveArray("/personas.json", doc);
-  addLog("Persona guardada: " + nombreRegistrando);
+  addLog("Persona guardada localmente: " + nombreRegistrando);
+
+  // NUEVO: Registro Facial
+  addLog("Mire a la cámara fijamente...");
+  delay(2000); // Tiempo para que el usuario pose
+  registrarRostroEnBackend(nuevoId);
 
   slotRegistrando = -1;
   nombreRegistrando = "";
   rutRegistrando = "";
   emailRegistrando = "";
 }
+String verificarRostroEnBackend(String personaId) {
+  if (!camaraIniciada) return "camara_error";
+  
+  // NUEVO: Validar WiFi para modo Offline
+  if (WiFi.status() != WL_CONNECTED) {
+    addLog("Sin WiFi. Validación facial omitida (Modo Offline).");
+    return "offline";
+  }
 
+  // Capturar imagen
+  camera_fb_t* fb = esp_camera_fb_get();
+  // ... resto de tu código se mantiene igual ...
 // ======================= LOOP ============================
 void loop() {
   server.handleClient();
