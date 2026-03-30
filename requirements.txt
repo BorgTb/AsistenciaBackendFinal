@@ -1,7 +1,9 @@
 flask
 psycopg2-binary
-face-recognition
+python-dotenv
+deepface
 numpy
 pillow
 flask-cors
 paho-mqtt
+requests
