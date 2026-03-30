@@ -61,6 +61,7 @@ turnos.forEach(t=>{
 html+=`<div class="item">
 <strong>${t.nombre}</strong>
 <small>${t.inicio} - ${t.fin} | ${t.dias} | ID: ${t.id}</small>
+<button style="background:#f44336; padding:8px; font-size:12px;" onclick="borrarTurno('${t.id}')">Borrar</button>
 </div>`;
 });
 lista.innerHTML=html;
@@ -68,7 +69,15 @@ lista.innerHTML=html;
 document.getElementById('listaTurnos').innerHTML='Error';
 }
 }
-
+async function borrarTurno(id) {
+    if(!confirm('¿Desea borrar este turno?')) return;
+    try {
+        const r = await fetch('/borrar_turno?id=' + encodeURIComponent(id));
+        const msg = await r.text();
+        alert(msg);
+        cargarTurnos();
+    } catch(e) { alert('Error al borrar'); }
+}
 async function crearTurno(){
 const nombre=document.getElementById('turnoNombre').value;
 const inicio=document.getElementById('turnoInicio').value;

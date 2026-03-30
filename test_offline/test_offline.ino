@@ -8,6 +8,7 @@
 #include <HTTPClient.h>
 #include <base64.h>
 
+
 // Sensor de huellas (RX=GPIO13, TX=GPIO12)
 HardwareSerial FingerSerial(2);  
 Adafruit_Fingerprint finger = Adafruit_Fingerprint(&FingerSerial);
@@ -156,46 +157,6 @@ void addLog(String msg) {
   }
 }
 
-bool registrarRostroEnBackend(String personaId) {
-  if (!camaraIniciada) {
-    addLog("Error: Cámara no iniciada.");
-    return false;
-  }
-  if (WiFi.status() != WL_CONNECTED) {
-    addLog("Sin WiFi. El rostro se debe registrar luego.");
-    return false;
-  }
-
-  addLog("Capturando rostro para registro...");
-  camera_fb_t* fb = esp_camera_fb_get();
-  if (!fb) {
-    addLog("Error capturando imagen para registro");
-    return false;
-  }
-
-  String imgBase64 = base64::encode(fb->buf, fb->len);
-  esp_camera_fb_return(fb);
-
-  String payload = "{\"persona_id\":\"" + personaId + "\",\"imagen\":\"" + imgBase64 + "\"}";
-
-  HTTPClient http;
-  http.begin(String(backendURL) + "/api/facial/registrar");
-  http.addHeader("Content-Type", "application/json");
-  http.setTimeout(10000); // 10 segundos máximo
-
-  int httpCode = http.POST(payload);
-  bool exito = false;
-
-  if (httpCode == 200) {
-    addLog("Rostro registrado exitosamente en el backend");
-    exito = true;
-  } else {
-    addLog("Error backend al registrar rostro: " + String(httpCode));
-  }
-
-  http.end();
-  return exito;
-}
 
 // ======================= FUNCIONES JSON =============================
 JsonArray loadArray(const char* path, DynamicJsonDocument &doc) {
@@ -631,7 +592,6 @@ void servirArchivo(const char* path, const char* tipo) {
 
 // ======================= SETUP ===========================
 void setup() {
- 
   Serial.begin(115200);
   delay(1000);
   addLog("\n\nESP32 Sistema de Asistencia Offline");
@@ -739,10 +699,8 @@ void completarRegistroPersona() {
   DynamicJsonDocument doc(2048);
   JsonArray personas = loadArray("/personas.json", doc);
 
-  String nuevoId = String(personas.size()); // ID local
-  
   JsonObject p = personas.createNestedObject();
-  p["id"] = nuevoId;
+  p["id"] = String(personas.size());
   p["nombre"] = nombreRegistrando;
   p["rut"] = rutRegistrando;
   p["email"] = emailRegistrando;
@@ -751,30 +709,14 @@ void completarRegistroPersona() {
   p["sincronizado"] = false;
 
   saveArray("/personas.json", doc);
-  addLog("Persona guardada localmente: " + nombreRegistrando);
-
-  // NUEVO: Registro Facial
-  addLog("Mire a la cámara fijamente...");
-  delay(2000); // Tiempo para que el usuario pose
-  registrarRostroEnBackend(nuevoId);
+  addLog("Persona guardada: " + nombreRegistrando);
 
   slotRegistrando = -1;
   nombreRegistrando = "";
   rutRegistrando = "";
   emailRegistrando = "";
 }
-String verificarRostroEnBackend(String personaId) {
-  if (!camaraIniciada) return "camara_error";
-  
-  // NUEVO: Validar WiFi para modo Offline
-  if (WiFi.status() != WL_CONNECTED) {
-    addLog("Sin WiFi. Validación facial omitida (Modo Offline).");
-    return "offline";
-  }
 
-  // Capturar imagen
-  camera_fb_t* fb = esp_camera_fb_get();
-  // ... resto de tu código se mantiene igual ...
 // ======================= LOOP ============================
 void loop() {
   server.handleClient();

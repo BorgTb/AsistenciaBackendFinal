@@ -38,17 +38,31 @@ lista.innerHTML='<div class="empty">No hay personas registradas</div>';
 return;
 }
 let html='';
+// ... dentro de cargar() en personas.html
 personas.forEach(p=>{
 html+=`<div class="item">
 <div class="item-nombre">${p.nombre}</div>
 <div class="item-info">RUT: ${p.rut || 'N/A'} | Email: ${p.email || 'N/A'}</div>
 <div class="item-info">Huella ID: ${p.huella_id} | ID Sistema: ${p.id}</div>
+<button style="background:#f44336; margin-top:8px;" onclick="borrarPersona('${p.id}')">Eliminar Trabajador</button>
 </div>`;
 });
 lista.innerHTML=html;
 }catch(e){
 document.getElementById('lista').innerHTML='<div class="empty">Error cargando datos</div>';
 }
+}
+// Añade esta función afuera de cargar()
+async function borrarPersona(id) {
+    if(!confirm('¿ESTÁ SEGURO? Se borrará el registro y la huella del reloj local.')) return;
+    try {
+        const r = await fetch('/borrar_persona?id=' + encodeURIComponent(id));
+        const msg = await r.text();
+        alert(msg);
+        cargar(); // Recarga la lista automáticamente
+    } catch(e) {
+        alert('Error al borrar');
+    }
 }
 cargar();
 setInterval(cargar,10000);

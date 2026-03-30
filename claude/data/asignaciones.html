@@ -94,6 +94,7 @@ const nombreTurno=turno?turno.nombre:'ID '+a.turno_id;
 html+=`<div class="item">
 <strong>${nombrePersona} -> ${nombreTurno}</strong>
 <small>Persona ID: ${a.persona_id} | Turno ID: ${a.turno_id}</small>
+<button style="background:#f44336; padding:6px; font-size:12px; margin-top:5px;" onclick="borrarAsignacion('${a.persona_id}', '${a.turno_id}')">Quitar</button>
 </div>`;
 });
 lista.innerHTML=html;
@@ -101,7 +102,16 @@ lista.innerHTML=html;
 document.getElementById('listaAsignaciones').innerHTML='Error';
 }
 }
-
+// Añade esta función:
+async function borrarAsignacion(idPersona, idTurno) {
+    if(!confirm('¿Eliminar esta asignación?')) return;
+    try {
+        const r = await fetch(`/borrar_asignacion?persona=${idPersona}&turno=${idTurno}`);
+        const msg = await r.text();
+        alert(msg);
+        cargarAsignaciones();
+    } catch(e) { alert('Error al borrar'); }
+}
 async function asignarTurno(){
 const persona=document.getElementById('selectPersona').value;
 const turno=document.getElementById('selectTurno').value;

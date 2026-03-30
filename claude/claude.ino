@@ -29,9 +29,10 @@ String savedSSID = "";
 String savedPASS = "";
 bool   isOnline  = false;
 
-// ===== Backend =====
-// Cambia esta IP por la de tu PC cuando estes en modo online
-String backendURL     = "http://192.168.1.7:5000";
+// ===== Backend y MQTT =====
+String backendURL     = "http://172.20.10.3:5000";
+String mqttBroker     = ""; // Nueva variable para guardar la IP del MQTT
+String lastCapturedImageUrl = "";
 bool   camaraIniciada = false;
 
 // ===== Timestamp =====
@@ -46,10 +47,10 @@ const unsigned long FINGER_DEBOUNCE = 3000;
 
 // ===== Maquina de estados =====
 enum EstadoSistema {
-  ESTADO_IDLE,
-  ESTADO_ESPERANDO_HUELLA_REGISTRO,
-  ESTADO_REGISTRO_SEGUNDA_HUELLA,
-  ESTADO_MARCANDO
+  ESTADO_IDLE = 0,
+  ESTADO_ESPERANDO_HUELLA_REGISTRO = 1,
+  ESTADO_REGISTRO_SEGUNDA_HUELLA = 2,
+  ESTADO_REGISTRO_FACIAL = 3  // <--- NUEVO ESTADO
 };
 
 EstadoSistema estadoActual       = ESTADO_IDLE;
@@ -59,6 +60,10 @@ String rutRegistrando            = "";
 String emailRegistrando          = "";
 unsigned long tiempoUltimoEstado = 0;
 const unsigned long TIMEOUT_REGISTRO = 30000;
+
+// Nuevas variables para el Bucle Facial
+int intentosFacial = 0;
+String idParaRostro = "";
 
 // ===== Buffer de logs =====
 String logBuffer = "";
@@ -178,19 +183,34 @@ String capturarImagenBase64() {
 // ============================================================
 
 void tryConnectWiFi() {
-  if (savedSSID.length() == 0) return;
+  if (savedSSID.length() == 0) {
+    isOnline = false;
+    return;
+  }
+  
   addLog("Conectando WiFi: " + savedSSID);
+  
+  // Forzamos modo Estación (Cliente) de forma exclusiva primero
+  WiFi.mode(WIFI_STA); 
+  WiFi.setSleep(false); // Vital para que el iPhone no lo desconecte
   WiFi.begin(savedSSID.c_str(), savedPASS.c_str());
+  
   int intentos = 0;
+  // Le damos 10 segundos máximo para conectar (20 intentos de 500ms)
   while (WiFi.status() != WL_CONNECTED && intentos < 20) {
     delay(500);
+    Serial.print(".");
     intentos++;
   }
+  Serial.println();
+  
   isOnline = (WiFi.status() == WL_CONNECTED);
+  
   if (isOnline) {
-    addLog("WiFi conectado: " + WiFi.localIP().toString());
+    addLog("WiFi conectado exitosamente");
   } else {
-    addLog("WiFi no disponible - modo offline");
+    addLog("WiFi no disponible - abortando conexion");
+    WiFi.disconnect(); // Limpiamos cualquier intento colgado en la memoria
   }
 }
 
@@ -259,7 +279,20 @@ bool registrarRostroEnBackend(String personaId) {
   http.end();
 
   if (httpCode == 200) {
-    addLog("Rostro registrado en backend correctamente");
+    String responseBody = http.getString();
+    DynamicJsonDocument respDoc(512); 
+    DeserializationError err = deserializeJson(respDoc, responseBody);
+    
+    // Si el backend nos responde con JSON y trae 'preview_url'
+    if (!err && respDoc.containsKey("preview_url")) {
+        lastCapturedImageUrl = respDoc["preview_url"].as<String>();
+        Serial.println("URL de vista previa: " + lastCapturedImageUrl);
+    } else {
+        addLog("Backend no retorno URL de verificacion (Verificar codigo Flask)");
+        lastCapturedImageUrl = ""; // Limpiamos si falla
+    }
+    // ------------------------------------
+    http.end();
     return true;
   } else {
     addLog("Error registrando rostro: " + String(httpCode));
@@ -352,8 +385,9 @@ void initSPIFFS() {
   for (auto f : files) {
     if (!SPIFFS.exists(f)) {
       File file = SPIFFS.open(f, "w");
+      // Creamos el wifi.json con los 4 campos por defecto
       file.println(String(f) == "/wifi.json"
-        ? "{\"ssid\":\"\",\"pass\":\"\"}"
+        ? "{\"ssid\":\"\",\"pass\":\"\",\"backend\":\"http://172.20.10.3:5000\",\"mqtt\":\"\"}"
         : "[]");
       file.close();
       Serial.printf("Creado %s\n", f);
@@ -367,19 +401,30 @@ void loadWiFiConfig() {
   if (file) {
     DynamicJsonDocument doc(512);
     deserializeJson(doc, file);
-    savedSSID = doc["ssid"].as<String>();
-    savedPASS = doc["pass"].as<String>();
+    if (doc.containsKey("ssid")) savedSSID = doc["ssid"].as<String>();
+    if (doc.containsKey("pass")) savedPASS = doc["pass"].as<String>();
+    if (doc.containsKey("backend")) backendURL = doc["backend"].as<String>();
+    if (doc.containsKey("mqtt")) mqttBroker = doc["mqtt"].as<String>();
     file.close();
   }
 }
-
-void saveWiFiConfig(String ssid, String pass) {
+// Nueva función unificada para guardar toda la configuración
+void saveConfig(String ssid, String pass, String backend, String mqtt) {
   DynamicJsonDocument doc(512);
   doc["ssid"] = ssid;
   doc["pass"] = pass;
+  doc["backend"] = backend;
+  doc["mqtt"] = mqtt;
+  
   File file = SPIFFS.open("/wifi.json", "w");
   serializeJson(doc, file);
   file.close();
+
+  // Actualizamos las variables globales al instante
+  savedSSID = ssid;
+  savedPASS = pass;
+  backendURL = backend;
+  mqttBroker = mqtt;
 }
 
 // ============================================================
@@ -387,10 +432,19 @@ void saveWiFiConfig(String ssid, String pass) {
 // ============================================================
 
 int encontrarSlotLibre() {
-  for (int id = 1; id < 127; id++) {
-    if (finger.loadModel(id) != FINGERPRINT_OK) return id;
+  DynamicJsonDocument doc(2048);
+  JsonArray personas = loadArray("/personas.json", doc);
+  int maxId = 0;
+  
+  for (JsonObject p : personas) {
+    int hId = p["huella_id"].as<int>();
+    if (hId > maxId) maxId = hId;
   }
-  return -1;
+  
+  // Si maxId es 0 (no hay nadie), retorna 1. Si no, retorna el siguiente libre.
+  int siguienteLibre = maxId + 1;
+  if (siguienteLibre > 127) return -1; // Límite del sensor
+  return siguienteLibre;
 }
 
 bool turnoActivo(const String& personaId) {
@@ -403,16 +457,15 @@ bool turnoActivo(const String& personaId) {
 }
 
 // Guarda la persona en PostgreSQL, en JSON local y registra su rostro
+// Guarda la persona en PostgreSQL, en JSON local y pasa al estado facial
 void completarRegistroPersona() {
   DynamicJsonDocument doc(2048);
   JsonArray personas = loadArray("/personas.json", doc);
 
-  // 1. Por defecto usamos ID local (por si estamos offline)
   String idReal = String(personas.size() + 1); 
 
-  // 2. Si hay internet, creamos la persona en el Backend PRIMERO
   if (isOnline) {
-    addLog("Guardando usuario en base de datos (PostgreSQL)...");
+    addLog("Guardando usuario en BD...");
     HTTPClient http;
     http.begin(backendURL + "/api/personas");
     http.addHeader("Content-Type", "application/json");
@@ -427,17 +480,11 @@ void completarRegistroPersona() {
       String response = http.getString();
       DynamicJsonDocument respDoc(256);
       deserializeJson(respDoc, response);
-      if (respDoc.containsKey("id")) {
-        idReal = respDoc["id"].as<String>(); // Capturamos el ID real de Neon
-        addLog("Persona creada en BD con ID: " + idReal);
-      }
-    } else {
-      addLog("Error creando persona en backend: " + String(httpCode));
+      if (respDoc.containsKey("id")) idReal = respDoc["id"].as<String>();
     }
     http.end();
   }
 
-  // 3. Guardar en JSON local con el ID real
   JsonObject p = personas.createNestedObject();
   p["id"]             = idReal;
   p["nombre"]         = nombreRegistrando;
@@ -446,19 +493,21 @@ void completarRegistroPersona() {
   p["huella_id"]      = slotRegistrando;
   p["fecha_registro"] = getTimestamp();
   p["sincronizado"]   = isOnline;
-
   saveArray("/personas.json", doc);
 
-  // 4. Registrar rostro apuntando al ID de la Base de Datos
+  // === PREPARAR EL BUCLE FACIAL ===
   if (camaraIniciada && isOnline) {
-    addLog("=== MIRE A LA CAMARA DEL ESP32 AHORA ===");
-    delay(2500); // Dar 2.5 segundos para que la persona pose
-    registrarRostroEnBackend(idReal);
+    addLog("Iniciando Bucle de Captura Facial...");
+    idParaRostro = idReal;
+    intentosFacial = 0;
+    estadoActual = ESTADO_REGISTRO_FACIAL; // Cambia el estado para que el loop() tome el control
+    tiempoUltimoEstado = millis();
   } else {
-    addLog("Rostro pendiente (Sin WiFi o sin camara)");
+    addLog("Sin cámara o WiFi. Registro finalizado sin rostro.");
+    estadoActual = ESTADO_IDLE; 
   }
 
-  // Limpiar variables de registro
+  // Limpiar RAM
   slotRegistrando   = -1;
   nombreRegistrando = "";
   rutRegistrando    = "";
@@ -534,6 +583,89 @@ String registrarAsistenciaAutomatica(int huellaID) {
 // HANDLERS WEB
 // ============================================================
 
+// ======================= BORRAR DATOS INDIVIDUALES =======================
+// ... Sección HANDLERS WEB ...
+
+void handleUltimoRegistro() {
+    // Buscamos la última persona en personas.json
+    DynamicJsonDocument doc(2048);
+    JsonArray personas = loadArray("/personas.json", doc);
+    if (personas.size() == 0) {
+        server.send(404, "application/json", "{\"error\": \"No hay registros\"}");
+        return;
+    }
+    JsonObject lastP = personas[personas.size() - 1];
+    
+    // Armamos el JSON con los datos locales + la URL de imagen capturada de Flask
+    String json = "{";
+    json += "\"id\":\"" + lastP["id"].as<String>() + "\",";
+    json += "\"nombre\":\"" + lastP["nombre"].as<String>() + "\",";
+    json += "\"rut\":\"" + lastP["rut"].as<String>() + "\",";
+    json += "\"imagen_url\":\"" + lastCapturedImageUrl + "\"";
+    json += "}";
+    server.send(200, "application/json", json);
+}
+
+
+void handleBorrarPersona() {
+  if (!server.hasArg("id")) { server.send(400, "text/plain", "Falta ID"); return; }
+  String id = server.arg("id");
+  DynamicJsonDocument doc(2048);
+  JsonArray arr = loadArray("/personas.json", doc);
+  
+  for (JsonArray::iterator it = arr.begin(); it != arr.end(); ++it) {
+    if ((*it)["id"].as<String>() == id) {
+      int huella = (*it)["huella_id"].as<int>();
+      // ¡Crucial! Borrar la huella de la memoria del sensor AS608
+      if (huella > 0) finger.deleteModel(huella); 
+      
+      arr.remove(it); // Eliminar del JSON
+      saveArray("/personas.json", doc);
+      server.send(200, "text/plain", "Persona y huella eliminadas localmente");
+      return;
+    }
+  }
+  server.send(404, "text/plain", "Persona no encontrada");
+}
+
+void handleBorrarTurno() {
+  if (!server.hasArg("id")) { server.send(400, "text/plain", "Falta ID"); return; }
+  String id = server.arg("id");
+  DynamicJsonDocument doc(1024);
+  JsonArray arr = loadArray("/turnos.json", doc);
+  
+  for (JsonArray::iterator it = arr.begin(); it != arr.end(); ++it) {
+    if ((*it)["id"].as<String>() == id) {
+      arr.remove(it);
+      saveArray("/turnos.json", doc);
+      server.send(200, "text/plain", "Turno eliminado");
+      return;
+    }
+  }
+  server.send(404, "text/plain", "Turno no encontrado");
+}
+
+void handleBorrarAsignacion() {
+  if (!server.hasArg("persona") || !server.hasArg("turno")) { 
+      server.send(400, "text/plain", "Faltan datos"); return; 
+  }
+  String persona = server.arg("persona");
+  String turno = server.arg("turno");
+  
+  DynamicJsonDocument doc(1024);
+  JsonArray arr = loadArray("/asignaciones.json", doc);
+  
+  for (JsonArray::iterator it = arr.begin(); it != arr.end(); ++it) {
+    if ((*it)["persona_id"].as<String>() == persona && (*it)["turno_id"].as<String>() == turno) {
+      arr.remove(it);
+      saveArray("/asignaciones.json", doc);
+      server.send(200, "text/plain", "Asignacion eliminada");
+      return;
+    }
+  }
+  server.send(404, "text/plain", "Asignacion no encontrada");
+}
+
 void servirArchivo(const char* path, const char* tipo) {
   if (!SPIFFS.exists(path)) {
     server.send(404, "text/plain",
@@ -544,18 +676,21 @@ void servirArchivo(const char* path, const char* tipo) {
   server.streamFile(f, tipo);
   f.close();
 }
-
 void handleWiFiConfig() {
   if (server.hasArg("ssid") && server.hasArg("pass")) {
-    saveWiFiConfig(server.arg("ssid"), server.arg("pass"));
-    server.send(200, "text/plain", "Configuracion guardada. Reiniciando...");
-    delay(1000);
+    // Si no envían backend o mqtt, mantenemos los actuales para no borrarlos por error
+    String b = server.hasArg("backend") ? server.arg("backend") : backendURL;
+    String m = server.hasArg("mqtt") ? server.arg("mqtt") : mqttBroker;
+    
+    saveConfig(server.arg("ssid"), server.arg("pass"), b, m);
+    
+    server.send(200, "text/plain", "Configuracion general guardada. Reiniciando equipo...");
+    delay(1500);
     ESP.restart();
   } else {
-    server.send(400, "text/plain", "Faltan parametros");
+    server.send(400, "text/plain", "Faltan parametros (SSID o Password)");
   }
 }
-
 void handleRegisterUser() {
   if (!server.hasArg("name") || !server.hasArg("rut") ||
       !server.hasArg("email")) {
@@ -726,6 +861,10 @@ void handleSetBackend() {
 // SETUP
 // ============================================================
 
+// ============================================================
+// SETUP
+// ============================================================
+
 void setup() {
   pinMode(13, INPUT_PULLUP); // Configuramos el pin 13 con resistencia interna
   
@@ -733,10 +872,9 @@ void setup() {
   if (digitalRead(13) == LOW) {
     delay(1000); // Debounce simple
     if (digitalRead(13) == LOW) {
-      initSPIFFS(); // Aseguramos que SPIFFS este listo [cite: 116]
-      saveWiFiConfig("", ""); // Borramos el WiFi 
+      initSPIFFS(); // Aseguramos que SPIFFS este listo
+      saveConfig("", "", backendURL, mqttBroker); // Borramos el WiFi y conservamos servers
       Serial.println("¡RESET DE WIFI DETECTADO POR HARDWARE!");
-      // Opcional: parpadear el LED del flash para avisar
     }
   }
   
@@ -758,27 +896,33 @@ void setup() {
     addLog("Sensor AS608 NO detectado - verificar GPIO14/15");
   }
 
-  // 3. SPIFFS
+  // 3. SPIFFS y Configuraciones
   initSPIFFS();
   delay(500);
   loadWiFiConfig();
 
-  // 4. WiFi externo
+  // 4. WiFi externo (Modo Exclusivo STA)
   tryConnectWiFi();
 
-  // 5. AP siempre activo para acceso local
-  WiFi.mode(isOnline ? WIFI_AP_STA : WIFI_AP);
-  WiFi.setTxPower(WIFI_POWER_11dBm);
-  WiFi.softAP(apSSID, apPASS, 1, 0, 4);
-  WiFi.softAPConfig(
-    IPAddress(192, 168, 4, 1),
-    IPAddress(192, 168, 4, 1),
-    IPAddress(255, 255, 255, 0)
-  );
-
-  addLog("AP: " + String(apSSID) +
-         " | IP: " + WiFi.softAPIP().toString());
-  if (isOnline) addLog("WiFi: " + WiFi.localIP().toString());
+  // 5. Decisión de Arquitectura: STA Exclusivo o AP de Rescate
+  if (isOnline) {
+    // Logró conectar a tu iPhone/Router
+    addLog("Operando en Modo Cliente (STA). AP desactivado.");
+    addLog("IP Asignada: " + WiFi.localIP().toString());
+  } else {
+    // Falló la conexión o no hay credenciales guardadas
+    addLog("Iniciando Modo Offline (AP de Rescate)...");
+    WiFi.mode(WIFI_AP);
+    WiFi.setTxPower(WIFI_POWER_11dBm);
+    WiFi.softAP(apSSID, apPASS, 1, 0, 4);
+    WiFi.softAPConfig(
+      IPAddress(192, 168, 4, 1),
+      IPAddress(192, 168, 4, 1),
+      IPAddress(255, 255, 255, 0)
+    );
+    addLog("Red AP Levantada: " + String(apSSID));
+    addLog("IP de configuracion: " + WiFi.softAPIP().toString());
+  }
 
   // 6. Paginas HTML desde SPIFFS
   server.on("/",             []() { servirArchivo("/index.html",       "text/html"); });
@@ -799,20 +943,27 @@ void setup() {
   server.on("/limpiar",        handleLimpiarDatos);
   server.on("/sincronizar",    handleSincronizar);
   server.on("/set-backend",    handleSetBackend);
+  server.on("/borrar_persona", handleBorrarPersona);
+  server.on("/borrar_turno",   handleBorrarTurno);
+  server.on("/borrar_asignacion", handleBorrarAsignacion);
 
   // 8. APIs REST
   server.on("/api/personas",     handleGetPersonas);
   server.on("/api/turnos",       handleGetTurnos);
   server.on("/api/asignaciones", handleGetAsignaciones);
   server.on("/api/asistencias",  handleGetAsistencias);
+  server.on("/ultimo_registro",  handleUltimoRegistro); // <--- Vital para ver la foto
 
   // 9. Estado del sistema en JSON
   server.on("/estado", []() {
     String json = "{";
     json += "\"estado\":\""  + String(estadoActual == ESTADO_IDLE ? "idle" : "ocupado") + "\",";
+    json += "\"codigo_paso\":" + String(estadoActual) + ",";
+    json += "\"intentos_facial\":" + String(intentosFacial) + ",";
     json += "\"online\":"    + String(isOnline ? "true" : "false") + ",";
     json += "\"camara\":"    + String(camaraIniciada ? "true" : "false") + ",";
-    json += "\"backend\":\"" + backendURL + "\"";
+    json += "\"backend\":\"" + backendURL + "\",";
+    json += "\"mqtt\":\""    + mqttBroker + "\"";
     json += "}";
     server.send(200, "application/json", json);
   });
@@ -831,7 +982,7 @@ void setup() {
   });
 
   server.begin();
-  addLog("Sistema listo - acceda a http://192.168.4.1");
+  addLog("Sistema listo.");
 }
 
 // ============================================================
@@ -865,6 +1016,7 @@ void loop() {
   }
 
   // ===== Registro: segunda huella =====
+  // ===== Registro: segunda huella =====
   if (estadoActual == ESTADO_REGISTRO_SEGUNDA_HUELLA) {
     int p = finger.getImage();
     if (p == FINGERPRINT_NOFINGER) return;
@@ -875,8 +1027,8 @@ void loop() {
         if (p == FINGERPRINT_OK) {
           p = finger.storeModel(slotRegistrando);
           if (p == FINGERPRINT_OK) {
-            completarRegistroPersona();
-            addLog("Registro completado exitosamente");
+            completarRegistroPersona(); // <--- Esto cambiará el estado automáticamente a FACIAL
+            return; // Salimos inmediatamente
           } else {
             addLog("Error guardando huella en sensor");
           }
@@ -887,34 +1039,38 @@ void loop() {
           return;
         }
       }
-      estadoActual = ESTADO_IDLE;
     }
+    estadoActual = ESTADO_IDLE; // Si hubo un error irrecuperable
     return;
   }
 
-  // ===== IDLE: escaneo automatico cada 500ms =====
-  if (estadoActual == ESTADO_IDLE &&
-      (ahora - lastFingerCheck) >= FINGER_CHECK_INTERVAL) {
-    lastFingerCheck = ahora;
-
-    int p = finger.getImage();
-    if (p == FINGERPRINT_OK) {
-      p = finger.image2Tz();
-      if (p == FINGERPRINT_OK) {
-        p = finger.fingerSearch();
-        if (p == FINGERPRINT_OK && finger.fingerID > 0) {
-          int huellaID = finger.fingerID;
-          if (huellaID != lastFingerID ||
-              (ahora - lastFingerTime) > FINGER_DEBOUNCE) {
-            lastFingerID   = huellaID;
-            lastFingerTime = ahora;
-            addLog("Huella detectada ID: " + String(huellaID));
-            String resultado = registrarAsistenciaAutomatica(huellaID);
-            addLog(resultado);
-          }
+  // ===== Registro: Captura Facial Iterativa (NUEVO) =====
+  if (estadoActual == ESTADO_REGISTRO_FACIAL) {
+    unsigned long ahoraLoop = millis();
+    static unsigned long ultimoIntentoFoto = 0;
+    
+    // Intenta tomar una foto cada 2.5 segundos
+    if (ahoraLoop - ultimoIntentoFoto > 2500) {
+      ultimoIntentoFoto = ahoraLoop;
+      intentosFacial++;
+      addLog("Intento facial #" + String(intentosFacial) + " de 6...");
+      
+      bool exito = registrarRostroEnBackend(idParaRostro);
+      
+      if (exito) {
+        addLog("¡Rostro detectado y guardado exitosamente!");
+        estadoActual = ESTADO_IDLE; // Termina feliz
+      } else {
+        if (intentosFacial >= 6) {
+          addLog("Límite de intentos alcanzado. Registro completado sin rostro.");
+          estadoActual = ESTADO_IDLE; // Se rinde tras 6 fotos malas
+        } else {
+          addLog("Rostro no detectado. Reintentando captura...");
         }
       }
+      tiempoUltimoEstado = millis(); // Evita que se cancele por timeout general
     }
+    return;
   }
 
   // Sincronizacion automatica cada 5 minutos si hay conexion
