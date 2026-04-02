@@ -49,6 +49,9 @@ def create_persona():
         return jsonify({'ok': True, 'id': persona_id})
     except Exception as e:
         conn.rollback()
+        # --- NUEVO: Imprimir el error real en la consola ---
+        print(f"❌ ERROR FATAL POSTGRESQL: {str(e)}")
+        # ---------------------------------------------------
         return jsonify({'error': str(e)}), 500
     finally:
         cur.close()

@@ -1,0 +1,21 @@
+version: '3.8'
+
+services:
+  mosquitto:
+    image: eclipse-mosquitto:latest
+    container_name: mqtt_broker
+    ports:
+      - "1883:1883"
+      - "9001:9001" # Puerto para WebSockets (útil si luego quieres conectar una página web en tiempo real)
+    volumes:
+      - ./mosquitto/config/mosquitto.conf:/mosquitto/config/mosquitto.conf
+      - ./mosquitto/data:/mosquitto/data
+      - ./mosquitto/log:/mosquitto/log
+    restart: unless-stopped
+    networks:
+      - teleasist_net
+
+networks:
+  teleasist_net:
+    name: teleasist_network
+    driver: bridge

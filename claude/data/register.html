@@ -70,8 +70,10 @@ button:hover{transform:scale(1.02)}
 
         <div class="step-box" id="step3">
             <div class="step-icon" id="camIcon">📸</div>
-            <div class="step-title">3. Mire a la cámara del Reloj</div>
-            <small>Se registrará su rostro en la Base de Datos</small>
+            <img id="camPreview" src="" style="display:none; width:100%; max-width:240px; border-radius:8px; margin:10px auto; border:3px solid #2a5298;">
+            
+            <div class="step-title" id="step3-title">3. Mire a la cámara del Reloj</div>
+            <small id="step3-desc">Se registrará su rostro en la Base de Datos</small>
         </div>
 
         <button class="btn-success" id="btn-finish" style="display:none;" onclick="window.location.reload()">Registrar a otra persona</button>
@@ -82,6 +84,7 @@ button:hover{transform:scale(1.02)}
 
 <script>
 let checkInterval;
+let previewInterval; // NUEVO: Para controlar el polling de la foto
 let stepActual = 0;
 
 async function iniciarRegistro() {
@@ -115,32 +118,48 @@ async function iniciarRegistro() {
 
 async function monitorearHardware() {
     try {
-        // Pedimos el estado actual al ESP32
         const r = await fetch('/estado');
         const data = await r.json();
         
-        // Lógica de transición de pasos
         if (stepActual === 1 && data.codigo_paso === 2) {
-            // Pasó de pedir huella 1 a pedir huella 2
             marcarPasoActivo(2);
         } 
         else if (stepActual === 2 && data.codigo_paso === 0) {
-            // Terminó todo y volvió a IDLE
             marcarExito();
         }
     } catch(e) {
-        // Cuando el ESP32 toma la foto, el procesador se bloquea por 2.5 seg y la petición falla o se retrasa.
-        // ¡Usamos esa "caída" a nuestro favor para activar la animación de la cámara!
+        // El ESP32 se bloquea al tomar la primera foto, disparamos el Paso 3
         if (stepActual === 2) {
             marcarPasoActivo(3);
+            // Iniciamos la búsqueda de la imagen cada 1.5 segundos
+            previewInterval = setInterval(obtenerVistaPrevia, 1500); 
         }
     }
 }
-
+async function obtenerVistaPrevia() {
+    try {
+        const r = await fetch('/ultimo_registro');
+        if (r.ok) {
+            const data = await r.json();
+            // Si el JSON trae una URL válida de Flask
+            if (data.imagen_url && data.imagen_url.startsWith("http")) {
+                const img = document.getElementById('camPreview');
+                const icon = document.getElementById('camIcon');
+                
+                icon.style.display = 'none'; // Ocultamos el emoji
+                img.style.display = 'block'; // Mostramos la foto
+                
+                // Truco para evitar que el navegador guarde la foto vieja en caché
+                img.src = data.imagen_url + "?t=" + new Date().getTime();
+            }
+        }
+    } catch(e) {
+        console.log("Esperando imagen...");
+    }
+}
 function marcarPasoActivo(paso) {
     stepActual = paso;
     
-    // Reset visual
     document.getElementById('step1').className = 'step-box';
     document.getElementById('step2').className = 'step-box';
     document.getElementById('step3').className = 'step-box';
@@ -157,19 +176,23 @@ function marcarPasoActivo(paso) {
         document.getElementById('step1').classList.add('done');
         document.getElementById('step2').classList.add('done');
         document.getElementById('step3').classList.add('active');
-        document.getElementById('camIcon').classList.add('camera-flash'); // Animación de sacar foto
+        document.getElementById('camIcon').classList.add('camera-flash');
     }
 }
 
 function marcarExito() {
     clearInterval(checkInterval);
+    if(previewInterval) clearInterval(previewInterval); // Detenemos la búsqueda de fotos
+    
     document.getElementById('step1').className = 'step-box done';
     document.getElementById('step2').className = 'step-box done';
     document.getElementById('step3').className = 'step-box done';
+    document.getElementById('camIcon').style.display = 'block'; // Volvemos a mostrar el emoji
+    document.getElementById('camPreview').style.display = 'none'; // Ocultamos la foto final
     document.getElementById('camIcon').classList.remove('camera-flash');
     
-    document.getElementById('step3').querySelector('.step-title').innerText = "¡Registro Completo!";
-    document.getElementById('step3').querySelector('small').innerText = "Rostro y huellas sincronizados.";
+    document.getElementById('step3-title').innerText = "¡Registro Completo!";
+    document.getElementById('step3-desc').innerText = "Rostro y huellas sincronizados.";
     document.getElementById('btn-finish').style.display = 'block';
 }
 </script>

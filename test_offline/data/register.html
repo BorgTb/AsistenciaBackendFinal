@@ -78,12 +78,47 @@ button:hover{transform:scale(1.02)}
         <button class="btn-success" id="btn-finish" style="display:none;" onclick="window.location.reload()">Registrar a otra persona</button>
         <button class="btn-secondary" onclick="window.location.href='/'">Volver al Inicio</button>
     </div>
+
+    <div id="terminal-container" style="display:none; margin-top: 20px;">
+        <h4 style="color: #333; font-size: 13px; margin-bottom: 5px;">Consola del Sistema:</h4>
+        <div id="terminal" style="background: #1e1e1e; color: #00ff00; font-family: monospace; font-size: 12px; padding: 10px; height: 120px; overflow-y: auto; border-radius: 8px; border: 2px solid #333; line-height: 1.4;">
+            Cargando logs...
+        </div>
+    </div>
 </div>
 
 <script>
 let checkInterval;
 let stepActual = 0;
+// NUEVO: Función para inyectar los logs del ESP32
+async function actualizarTerminal() {
+    // Solo actualiza si la terminal está visible
+    if (document.getElementById('terminal-container').style.display !== 'block') return;
 
+    try {
+        const r = await fetch('/logs');
+        const html = await r.text();
+        
+        // Usamos DOMParser para extraer solo el contenido del <div> de los logs
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(html, 'text/html');
+        const logsExtraidos = doc.querySelector('div').innerHTML; 
+        
+        const terminal = document.getElementById('terminal');
+        
+        // Solo actualizamos si hay texto nuevo (para no parpadear)
+        if (terminal.innerHTML !== logsExtraidos) {
+            terminal.innerHTML = logsExtraidos;
+            // Scroll automático hacia el final
+            terminal.scrollTop = terminal.scrollHeight;
+        }
+    } catch(e) {
+        console.log("Error leyendo logs");
+    }
+}
+
+// Ejecutar la actualización de la terminal cada 1 segundo
+setInterval(actualizarTerminal, 1000);
 async function iniciarRegistro() {
     const nombre = document.getElementById('personName').value.trim();
     const rut = document.getElementById('personRut').value.trim();
@@ -95,6 +130,10 @@ async function iniciarRegistro() {
         const r = await fetch('/registrar?name=' + encodeURIComponent(nombre) + '&rut=' + encodeURIComponent(rut) + '&email=' + encodeURIComponent(email));
         if(r.ok) {
             document.getElementById('form-container').style.display = 'none';
+            // ... dentro de iniciarRegistro(), justo debajo de donde ocultas el form:
+document.getElementById('form-container').style.display = 'none';
+document.getElementById('biometric-process').style.display = 'block';
+document.getElementById('terminal-container').style.display = 'block'; // <--- Mostrar terminal
             document.getElementById('biometric-process').style.display = 'block';
             marcarPasoActivo(1);
             checkInterval = setInterval(monitorearHardware, 800); // Polling ligero

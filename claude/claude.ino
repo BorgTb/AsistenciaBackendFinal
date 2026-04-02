@@ -12,12 +12,20 @@
 #include <Adafruit_Fingerprint.h>
 #include <HTTPClient.h>
 #include "esp_camera.h"
+#include "mqtt_client.h"
+#include "esp_crt_bundle.h" // <--- NUEVO: Librería de certificados de fábrica del ESP32
+
+
+
+esp_mqtt_client_handle_t mqtt_client = NULL;
+bool mqttConnected = false;
 
 // ===== Sensor de huellas (RX=GPIO14, TX=GPIO15) =====
 HardwareSerial FingerSerial(2);
 Adafruit_Fingerprint finger = Adafruit_Fingerprint(&FingerSerial);
 
 WebServer server(80);
+
 
 // ===== Configuracion AP =====
 const char* apSSID   = "ESP32-ASISTENCIA";
@@ -30,7 +38,7 @@ String savedPASS = "";
 bool   isOnline  = false;
 
 // ===== Backend y MQTT =====
-String backendURL     = "http://172.20.10.3:5000";
+String backendURL     = "https://sculpture-kong-filtering-essential.trycloudflare.com";
 String mqttBroker     = ""; // Nueva variable para guardar la IP del MQTT
 String lastCapturedImageUrl = "";
 bool   camaraIniciada = false;
@@ -49,6 +57,7 @@ const unsigned long FINGER_DEBOUNCE = 3000;
 enum EstadoSistema {
   ESTADO_IDLE = 0,
   ESTADO_ESPERANDO_HUELLA_REGISTRO = 1,
+  ESTADO_ESPERANDO_SOLTAR_DEDO = 4, // <--- NUEVO ESTADO
   ESTADO_REGISTRO_SEGUNDA_HUELLA = 2,
   ESTADO_REGISTRO_FACIAL = 3  // <--- NUEVO ESTADO
 };
@@ -81,7 +90,47 @@ void      sincronizarAsistencias();
 // ============================================================
 // UTILIDADES
 // ============================================================
-
+static void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_t event_id, void *event_data) {
+  esp_mqtt_event_handle_t event = (esp_mqtt_event_handle_t)event_data;
+  
+  switch ((esp_mqtt_event_id_t)event_id) {
+    case MQTT_EVENT_CONNECTED:
+      addLog("¡MQTT Conectado por WebSockets!");
+      mqttConnected = true;
+      // Nos suscribimos a la respuesta del backend
+      esp_mqtt_client_subscribe(mqtt_client, "esp32/respuesta/facial", 0);
+      break;
+      
+    case MQTT_EVENT_DISCONNECTED:
+      addLog("MQTT Desconectado");
+      mqttConnected = false;
+      break;
+      
+    case MQTT_EVENT_DATA: {
+      String topic = String(event->topic).substring(0, event->topic_len);
+      String mensaje = String(event->data).substring(0, event->data_len);
+      
+      if (topic == "esp32/respuesta/facial") {
+        DynamicJsonDocument doc(512);
+        deserializeJson(doc, mensaje);
+        
+        if (doc["status"] == "ok") {
+          addLog("¡Backend confirmó rostro OK!");
+          String fileName = doc["file_name"].as<String>();
+          String urlBase = backendURL;
+          if (urlBase.endsWith("/")) urlBase = urlBase.substring(0, urlBase.length() - 1);
+          lastCapturedImageUrl = urlBase + "/static/previews/" + fileName;
+          estadoActual = ESTADO_IDLE; // Terminamos el registro
+        } else {
+          addLog("Rostro rechazado: " + doc["mensaje"].as<String>());
+        }
+      }
+      break;
+    }
+    default:
+      break;
+  }
+}
 void addLog(String msg) {
   Serial.println(msg);
   logBuffer += msg + "<br>";
@@ -131,6 +180,11 @@ void initCamera() {
   } else {
     addLog("Error iniciando camara - continuando sin camara");
   }
+  sensor_t * s = esp_camera_sensor_get();
+  s->set_brightness(s, 1);     // Rango: -2 a 2 (Sube un poco el brillo)
+  s->set_contrast(s, 1);       // Rango: -2 a 2 (Aumenta el contraste para definir rasgos)
+  s->set_special_effect(s, 0); // 0 = Sin efecto
+  s->set_vflip(s, 1);          // Si la imagen llega invertida, usa 1 para voltearla
 }
 
 // Codifica imagen en base64 sin libreria externa
@@ -153,6 +207,8 @@ String capturarImagenBase64() {
   unsigned char buf3[3], buf4[4];
   int     len  = fb->len;
   uint8_t* data = fb->buf;
+  
+  int contador_wdt = 0; // NUEVO CONTADOR
 
   while (len--) {
     buf3[i++] = *(data++);
@@ -164,14 +220,12 @@ String capturarImagenBase64() {
       for (i = 0; i < 4; i++) encoded += b64chars[buf4[i]];
       i = 0;
     }
-  }
-  if (i) {
-    for (int j = i; j < 3; j++) buf3[j] = '\0';
-    buf4[0] = (buf3[0] & 0xfc) >> 2;
-    buf4[1] = ((buf3[0] & 0x03) << 4) + ((buf3[1] & 0xf0) >> 4);
-    buf4[2] = ((buf3[1] & 0x0f) << 2) + ((buf3[2] & 0xc0) >> 6);
-    for (int j = 0; j < i + 1; j++) encoded += b64chars[buf4[j]];
-    while (i++ < 3) encoded += '=';
+    
+    // NUEVO: Cada 500 bytes procesados, le damos un respiro al CPU
+    contador_wdt++;
+    if (contador_wdt % 500 == 0) {
+        yield();
+    }
   }
 
   esp_camera_fb_return(fb);
@@ -251,53 +305,93 @@ String verificarRostroEnBackend(String personaId) {
     return "backend_error";
   }
 }
+void mantenerConexionMQTT() {
+  if (mqttBroker == "" || !isOnline) return;
+  
+  // Si el cliente ya está inicializado, no hacemos nada 
+  if (mqtt_client != NULL) return;
+
+  addLog("Iniciando MQTT sobre WebSockets...");
+  
+  String brokerUrl = mqttBroker;
+
+  // 1. Limpiamos cualquier prefijo guardado
+  if (brokerUrl.startsWith("https://")) brokerUrl = brokerUrl.substring(8);
+  else if (brokerUrl.startsWith("http://")) brokerUrl = brokerUrl.substring(7);
+  if (brokerUrl.startsWith("wss://")) brokerUrl = brokerUrl.substring(6);
+  else if (brokerUrl.startsWith("ws://")) brokerUrl = brokerUrl.substring(5);
+
+  // 2. Le agregamos el path obligatorio (/mqtt)
+  if (!brokerUrl.endsWith("/mqtt")) {
+    if (brokerUrl.endsWith("/")) brokerUrl += "mqtt";
+    else brokerUrl += "/mqtt";
+  }
+
+  // 3. Forzamos el protocolo Seguro WSS
+  brokerUrl = "wss://" + brokerUrl;
+
+  esp_mqtt_client_config_t mqtt_cfg = {};
+  
+  // Compatibilidad y asignación de certificados
+  #if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 0, 0)
+    mqtt_cfg.broker.address.uri = brokerUrl.c_str();
+    mqtt_cfg.broker.verification.crt_bundle_attach = esp_crt_bundle_attach; // <--- Validación de cert en nuevas versiones
+  #else
+    mqtt_cfg.uri = brokerUrl.c_str();
+    mqtt_cfg.crt_bundle_attach = esp_crt_bundle_attach; // <--- Validación de cert en versiones anteriores
+  #endif
+
+  mqtt_client = esp_mqtt_client_init(&mqtt_cfg);
+  esp_mqtt_client_register_event(mqtt_client, (esp_mqtt_event_id_t)ESP_EVENT_ANY_ID, mqtt_event_handler, NULL);
+  esp_mqtt_client_start(mqtt_client);
+}
 
 // Registra el rostro de una persona nueva en el backend
 bool registrarRostroEnBackend(String personaId) {
-  if (!camaraIniciada) {
-    addLog("Camara no disponible para registro facial");
-    return false;
+  if (!camaraIniciada || !isOnline) return false;
+
+  // Si el cliente no existe, intentamos levantarlo
+  if (mqtt_client == NULL) {
+      mantenerConexionMQTT();
   }
-  if (!isOnline || WiFi.status() != WL_CONNECTED) {
-    addLog("Sin WiFi - rostro se registrara cuando haya conexion");
-    return false;
+  
+  // Verificamos nuestra variable de estado
+  if (!mqttConnected || mqtt_client == NULL) {
+      addLog("Error: MQTT no conectado");
+      return false;
   }
 
   addLog("Capturando rostro para registro...");
   String imgBase64 = capturarImagenBase64();
+  
   if (imgBase64.length() == 0) return false;
 
-  String payload = "{\"persona_id\":\"" + personaId +
-                   "\",\"imagen\":\"" + imgBase64 + "\"}";
+  addLog("Transmitiendo imagen via MQTT...");
 
-  HTTPClient http;
-  http.begin(backendURL + "/api/facial/registrar");
-  http.addHeader("Content-Type", "application/json");
-  http.setTimeout(10000);
-
-  int httpCode = http.POST(payload);
-  http.end();
-
-  if (httpCode == 200) {
-    String responseBody = http.getString();
-    DynamicJsonDocument respDoc(512); 
-    DeserializationError err = deserializeJson(respDoc, responseBody);
+ esp_mqtt_client_publish(mqtt_client, "esp32/imagen/start", personaId.c_str(), 0, 0, 0);
+  
+  // 2. Fragmentación (Podemos usar chunks más grandes, ej. 500 bytes)
+  int chunkSize = 500; 
+  int longitudTotal = imgBase64.length();
+  
+  for (int i = 0; i < longitudTotal; i += chunkSize) {
+    String chunk = imgBase64.substring(i, min(i + chunkSize, longitudTotal));
+    esp_mqtt_client_publish(mqtt_client, "esp32/imagen/part", chunk.c_str(), 0, 0, 0);
     
-    // Si el backend nos responde con JSON y trae 'preview_url'
-    if (!err && respDoc.containsKey("preview_url")) {
-        lastCapturedImageUrl = respDoc["preview_url"].as<String>();
-        Serial.println("URL de vista previa: " + lastCapturedImageUrl);
-    } else {
-        addLog("Backend no retorno URL de verificacion (Verificar codigo Flask)");
-        lastCapturedImageUrl = ""; // Limpiamos si falla
-    }
-    // ------------------------------------
-    http.end();
-    return true;
-  } else {
-    addLog("Error registrando rostro: " + String(httpCode));
-    return false;
+    // ¡ESTO ES VITAL!
+    // Obliga al ESP32 a esperar 30ms para que la antena WiFi tenga 
+    // tiempo de enviar el paquete real antes de encolar el siguiente.
+    delay(30); 
+    yield(); 
   }
+  
+ // 3. Finalizamos la transmisión
+  esp_mqtt_client_publish(mqtt_client, "esp32/imagen/end", "fin", 0, 0, 0);
+  
+  addLog("Transmision WS completa. Peso: " + String(longitudTotal) + " bytes");
+  imgBase64 = String();
+  
+  return true; // Asumimos éxito al enviar. El backend procesará de forma asíncrona.
 }
 
 // Sincroniza asistencias pendientes al backend
@@ -457,34 +551,63 @@ bool turnoActivo(const String& personaId) {
 }
 
 // Guarda la persona en PostgreSQL, en JSON local y registra su rostro
-// Guarda la persona en PostgreSQL, en JSON local y pasa al estado facial
+// ============================================================
+// GUARDAR REGISTRO FINAL (POSTGRES + JSON + INICIAR FACIAL)
+// ============================================================
+// ============================================================
+// GUARDAR REGISTRO FINAL (POSTGRES + JSON + INICIAR FACIAL)
+// ============================================================
 void completarRegistroPersona() {
-  DynamicJsonDocument doc(2048);
-  JsonArray personas = loadArray("/personas.json", doc);
-
-  String idReal = String(personas.size() + 1); 
-
-  if (isOnline) {
-    addLog("Guardando usuario en BD...");
-    HTTPClient http;
-    http.begin(backendURL + "/api/personas");
-    http.addHeader("Content-Type", "application/json");
-
-    String payload = "{\"nombre\":\"" + nombreRegistrando + 
-                     "\",\"rut\":\"" + rutRegistrando + 
-                     "\",\"email\":\"" + emailRegistrando + 
-                     "\",\"huella_id\":" + String(slotRegistrando) + "}";
-
-    int httpCode = http.POST(payload);
-    if (httpCode == 200) {
-      String response = http.getString();
-      DynamicJsonDocument respDoc(256);
-      deserializeJson(respDoc, response);
-      if (respDoc.containsKey("id")) idReal = respDoc["id"].as<String>();
-    }
-    http.end();
+  if (!isOnline) {
+    addLog("Error: Sin conexión WiFi para registrar en BD. Abortando.");
+    estadoActual = ESTADO_IDLE;
+    nombreRegistrando = ""; rutRegistrando = ""; emailRegistrando = ""; slotRegistrando = -1;
+    return;
   }
 
+  addLog("Enviando datos al servidor...");
+  HTTPClient http;
+  http.begin(backendURL + "/api/personas");
+  http.addHeader("Content-Type", "application/json");
+  
+  // Aumentamos a 10 segundos para darle tiempo al túnel de Cloudflare
+  http.setTimeout(10000); 
+
+  String payload = "{\"nombre\":\"" + nombreRegistrando + 
+                   "\",\"rut\":\"" + rutRegistrando + 
+                   "\",\"email\":\"" + emailRegistrando + 
+                   "\",\"huella_id\":" + String(slotRegistrando) + "}";
+
+  int httpCode = http.POST(payload);
+  String idReal = "";
+
+  if (httpCode == 200 || httpCode == 201) {
+    String response = http.getString();
+    DynamicJsonDocument respDoc(256);
+    deserializeJson(respDoc, response);
+    
+    if (respDoc.containsKey("id")) {
+        idReal = respDoc["id"].as<String>();
+        addLog("Usuario creado en BD ID: " + idReal);
+    }
+  } else {
+    // FRENO DE MANO: Si el POST falla (Cod -1, 404, 500), detenemos todo.
+    addLog("Error BD (Cod:" + String(httpCode) + "). Abortando captura facial.");
+    estadoActual = ESTADO_IDLE; 
+    
+    // Si la huella se guardó en el sensor, deberíamos borrarla para no dejar basura
+    finger.deleteModel(slotRegistrando);
+    
+    // Limpiamos variables
+    nombreRegistrando = ""; rutRegistrando = ""; emailRegistrando = ""; slotRegistrando = -1;
+    http.end();
+    return; 
+  }
+  http.end();
+
+  // Guardamos en el JSON local del SPIFFS solo si tuvimos éxito en el backend
+  DynamicJsonDocument doc(2048);
+  JsonArray personas = loadArray("/personas.json", doc);
   JsonObject p = personas.createNestedObject();
   p["id"]             = idReal;
   p["nombre"]         = nombreRegistrando;
@@ -492,26 +615,21 @@ void completarRegistroPersona() {
   p["email"]          = emailRegistrando;
   p["huella_id"]      = slotRegistrando;
   p["fecha_registro"] = getTimestamp();
-  p["sincronizado"]   = isOnline;
+  p["sincronizado"]   = true;
   saveArray("/personas.json", doc);
 
-  // === PREPARAR EL BUCLE FACIAL ===
-  if (camaraIniciada && isOnline) {
-    addLog("Iniciando Bucle de Captura Facial...");
-    idParaRostro = idReal;
-    intentosFacial = 0;
-    estadoActual = ESTADO_REGISTRO_FACIAL; // Cambia el estado para que el loop() tome el control
+  // === TRANSICIÓN AL REGISTRO FACIAL ===
+  if (camaraIniciada) {
+    addLog("Iniciando Bucle Facial. Mire a la cámara...");
+    idParaRostro = idReal;   // Usamos el ID real de Postgres
+    intentosFacial = 0;      
+    estadoActual = ESTADO_REGISTRO_FACIAL; 
     tiempoUltimoEstado = millis();
   } else {
-    addLog("Sin cámara o WiFi. Registro finalizado sin rostro.");
-    estadoActual = ESTADO_IDLE; 
+    addLog("Registro finalizado (Sin cámara)");
+    estadoActual = ESTADO_IDLE;
+    nombreRegistrando = ""; rutRegistrando = ""; emailRegistrando = ""; slotRegistrando = -1;
   }
-
-  // Limpiar RAM
-  slotRegistrando   = -1;
-  nombreRegistrando = "";
-  rutRegistrando    = "";
-  emailRegistrando  = "";
 }
 
 // Registra asistencia con verificacion facial si hay backend disponible
@@ -692,37 +810,28 @@ void handleWiFiConfig() {
   }
 }
 void handleRegisterUser() {
-  if (!server.hasArg("name") || !server.hasArg("rut") ||
-      !server.hasArg("email")) {
-    server.send(400, "text/plain", "Faltan datos requeridos");
-    return;
+  if (!server.hasArg("name") || !server.hasArg("rut")) { 
+    server.send(400, "text/plain", "Faltan datos"); 
+    return; 
   }
-
-  DynamicJsonDocument doc(2048);
-  JsonArray personas = loadArray("/personas.json", doc);
-  String rut = server.arg("rut");
-
-  for (JsonObject p : personas) {
-    if (p["rut"] == rut) {
-      server.send(400, "text/plain", "RUT ya registrado");
-      return;
-    }
-  }
-
+  
   int slot = encontrarSlotLibre();
-  if (slot < 0) {
-    server.send(500, "text/plain", "No hay slots libres en el sensor");
-    return;
-  }
-
-  slotRegistrando    = slot;
-  nombreRegistrando  = server.arg("name");
-  rutRegistrando     = rut;
-  emailRegistrando   = server.arg("email");
-  estadoActual       = ESTADO_ESPERANDO_HUELLA_REGISTRO;
+  if (slot < 0) { server.send(500, "text/plain", "Sin slots"); return; }
+  
+  // Guardar datos en globales
+  slotRegistrando = slot;
+  nombreRegistrando = server.arg("name");
+  rutRegistrando = server.arg("rut");
+  emailRegistrando = server.arg("email");
+  
+  // ESTO ES LO ÚNICO QUE DEBE HACER: Cambiar el estado
+  estadoActual = ESTADO_ESPERANDO_HUELLA_REGISTRO;
   tiempoUltimoEstado = millis();
-
-  server.send(200, "text/plain", "Coloque el dedo en el sensor...");
+  
+  // AVISAR AL NAVEGADOR
+  server.send(200, "text/plain", "OK: Ponga el dedo en el lector físico ahora...");
+  
+  // IMPORTANTE: BORRA la línea que decía completarRegistroPersona(); aquí.
 }
 
 void handleCreateTurn() {
@@ -992,8 +1101,12 @@ void setup() {
 void loop() {
   server.handleClient();
 
+  if (isOnline && mqtt_client == NULL) {
+      mantenerConexionMQTT();
+  }
+  
   unsigned long ahora = millis();
-
+  
   // Timeout de estados bloqueados
   if (estadoActual != ESTADO_IDLE &&
       (ahora - tiempoUltimoEstado) > TIMEOUT_REGISTRO) {
@@ -1008,14 +1121,27 @@ void loop() {
       p = finger.image2Tz(1);
       if (p == FINGERPRINT_OK) {
         addLog("Primera huella OK - retire el dedo...");
-        estadoActual       = ESTADO_REGISTRO_SEGUNDA_HUELLA;
+        estadoActual       = ESTADO_ESPERANDO_SOLTAR_DEDO; // <--- CAMBIO AQUÍ
         tiempoUltimoEstado = millis();
       }
     }
     return;
   }
 
-  // ===== Registro: segunda huella =====
+  // ===== NUEVO: Esperar a que quite el dedo =====
+  if (estadoActual == ESTADO_ESPERANDO_SOLTAR_DEDO) {
+    int p = finger.getImage();
+    // Solo avanzamos si el sensor confirma que quitaste el dedo
+    if (p == FINGERPRINT_NOFINGER) {
+      addLog("Vuelva a colocar el mismo dedo...");
+      estadoActual       = ESTADO_REGISTRO_SEGUNDA_HUELLA;
+      tiempoUltimoEstado = millis();
+    }
+    // Si sigue detectando dedo (FINGERPRINT_OK), hace "return" y sigue esperando
+    return;
+  }
+
+
   // ===== Registro: segunda huella =====
   if (estadoActual == ESTADO_REGISTRO_SEGUNDA_HUELLA) {
     int p = finger.getImage();
@@ -1045,30 +1171,26 @@ void loop() {
   }
 
   // ===== Registro: Captura Facial Iterativa (NUEVO) =====
+// ===== Registro: Captura Facial Iterativa =====
   if (estadoActual == ESTADO_REGISTRO_FACIAL) {
     unsigned long ahoraLoop = millis();
     static unsigned long ultimoIntentoFoto = 0;
     
-    // Intenta tomar una foto cada 2.5 segundos
-    if (ahoraLoop - ultimoIntentoFoto > 2500) {
+    // Le damos 4000ms (4 seg) al backend para analizar y responder por MQTT
+    if (ahoraLoop - ultimoIntentoFoto > 4000) { 
       ultimoIntentoFoto = ahoraLoop;
       intentosFacial++;
-      addLog("Intento facial #" + String(intentosFacial) + " de 6...");
       
-      bool exito = registrarRostroEnBackend(idParaRostro);
-      
-      if (exito) {
-        addLog("¡Rostro detectado y guardado exitosamente!");
-        estadoActual = ESTADO_IDLE; // Termina feliz
-      } else {
-        if (intentosFacial >= 6) {
-          addLog("Límite de intentos alcanzado. Registro completado sin rostro.");
-          estadoActual = ESTADO_IDLE; // Se rinde tras 6 fotos malas
-        } else {
-          addLog("Rostro no detectado. Reintentando captura...");
-        }
+      if (intentosFacial > 6) {
+        addLog("Límite de intentos alcanzado. Registro sin rostro.");
+        estadoActual = ESTADO_IDLE;
+        return;
       }
-      tiempoUltimoEstado = millis(); // Evita que se cancele por timeout general
+      
+      addLog("Tomando foto #" + String(intentosFacial) + " de 6...");
+      
+      // Disparamos la ráfaga MQTT (no bloquea el procesador)
+      registrarRostroEnBackend(idParaRostro); 
     }
     return;
   }
