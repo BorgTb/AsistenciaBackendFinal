@@ -7,3 +7,5 @@ lol.txt
 __pycache__/
 *.pyc
 .DS_Store
+static/previews/*
+static/*.*

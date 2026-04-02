@@ -15,12 +15,13 @@ def get_personas():
     personas = []
     for r in rows:
         personas.append({
-            "id": r[0],
+            "id": str(r[0]), # <-- Parseado a string para que el ESP32 no sufra
             "nombre": r[1],
             "rut": r[2],
-            "email": r[3],
-            "huella_id": r[4],
-            "created_at": str(r[5])
+            "email": r[3] if r[3] else "", # Por si algún email viene nulo desde la BD
+            "huella_id": r[4] if r[4] else 0,
+            "fecha_registro": str(r[5]), # <-- Homologado con el Arduino
+            "sincronizado": True # <-- Flag vital para el almacenamiento local
         })
     return jsonify(personas)
 

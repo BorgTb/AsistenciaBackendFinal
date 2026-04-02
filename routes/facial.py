@@ -8,6 +8,8 @@ from PIL import Image
 import io
 import tempfile
 import os
+import uuid
+
 
 facial_bp = Blueprint('facial', __name__)
 
@@ -152,3 +154,66 @@ def verificar_facial():
         # Siempre borramos la foto temporal de verificación para no llenar el disco duro
         if tmp_path and os.path.exists(tmp_path):
             os.unlink(tmp_path)
+@facial_bp.route('/api/facial/identificar', methods=['POST'])
+def identificar_facial():
+    data = request.json
+    if not data or 'imagen' not in data:
+        return jsonify({'error': 'No se proporcionó imagen'}), 400
+
+    imagen_b64 = data['imagen']
+    
+    # 1. Generar un nombre temporal único para la foto entrante
+    tmp_filename = f"temp_ident_{uuid.uuid4().hex}.jpg"
+    tmp_path = os.path.join("static", tmp_filename) # Guarda temporalmente en static
+    
+    try:
+        # 2. Decodificar la imagen Base64 enviada por el ESP32
+        img_data = base64.b64decode(imagen_b64)
+        with open(tmp_path, 'wb') as f:
+            f.write(img_data)
+            
+        # 3. Ruta de tu base de datos de rostros (Ajusta esto si usas otra carpeta)
+        # Asumimos que las fotos de registro se guardan como "1.jpg", "2.jpg" en static/previews
+        CARPETA_ROSTROS = "static/previews" 
+        
+        # Validar que la carpeta exista para evitar crasheos
+        if not os.path.exists(CARPETA_ROSTROS):
+            os.makedirs(CARPETA_ROSTROS)
+            
+        # 4. Magia de DeepFace: Buscar el rostro en la carpeta
+        # enforce_detection=False es VITAL para que no crashee si la foto sale borrosa o sin rostros
+        resultados = DeepFace.find(
+            img_path=tmp_path, 
+            db_path=CARPETA_ROSTROS, 
+            model_name="Facenet",
+            detector_backend="retinaface",
+            enforce_detection=False,
+            silent=True
+        )
+        
+        # 5. Analizar el resultado
+        if len(resultados) > 0 and not resultados[0].empty:
+            # Se encontró al menos una coincidencia
+            df_resultado = resultados[0]
+            
+            # Obtener la ruta del archivo que hizo match (ej: static/previews/15.jpg)
+            path_encontrado = df_resultado.iloc[0]['identity']
+            
+            # Extraer solo el número (el ID) del nombre del archivo
+            nombre_archivo = os.path.basename(path_encontrado)
+            persona_id = nombre_archivo.split('.')[0] # "15.jpg" -> "15"
+            
+            print(f"🟢 Rostro identificado exitosamente. ID: {persona_id}")
+            return jsonify({'ok': True, 'persona_id': persona_id}), 200
+            
+        print("🟡 Rostro no reconocido en la base de datos.")
+        return jsonify({'error': 'Rostro no reconocido en la base de datos'}), 404
+        
+    except Exception as e:
+        print(f"🔴 Error en identificar_facial: {e}")
+        return jsonify({'error': str(e)}), 500
+        
+    finally:
+        # 6. Limpieza: BORRAR siempre la foto temporal para no llenar el disco duro
+        if os.path.exists(tmp_path):
+            os.remove(tmp_path)
