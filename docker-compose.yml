@@ -1,27 +1,21 @@
-version: "3.9"
+version: '3.8'
 
 services:
   mosquitto:
-    image: eclipse-mosquitto:2
-    container_name: mosquitto
-    restart: always
+    image: eclipse-mosquitto:latest
+    container_name: mqtt_broker
     ports:
       - "1883:1883"
+      - "9001:9001" # Puerto para WebSockets (útil si luego quieres conectar una página web en tiempo real)
     volumes:
-      - ./mosquitto.conf:/mosquitto/config/mosquitto.conf
-      - ./data:/mosquitto/data
-      - ./log:/mosquitto/log
+      - ./mosquitto/config/mosquitto.conf:/mosquitto/config/mosquitto.conf
+      - ./mosquitto/data:/mosquitto/data
+      - ./mosquitto/log:/mosquitto/log
+    restart: unless-stopped
+    networks:
+      - teleasist_net
 
-  reconocimiento:
-    build: .
-    container_name: reconocimiento_facial
-    depends_on:
-      - mosquitto
-    restart: always
-    environment:
-      - BROKER_HOST=mosquitto
-      - BROKER_PORT=1883
-      - MQTT_TOPIC=test/imagenes/#
-    volumes:
-      - ./imagenes:/app/imagenes
-      - ./rostros:/app/rostros
+networks:
+  teleasist_net:
+    name: teleasist_network
+    driver: bridge

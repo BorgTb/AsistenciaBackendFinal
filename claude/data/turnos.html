@@ -1,0 +1,143 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Gestion de Turnos</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:Arial,sans-serif;background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);min-height:100vh;padding:10px}
+.container{background:white;border-radius:15px;box-shadow:0 10px 30px rgba(0,0,0,0.3);padding:20px;max-width:800px;margin:0 auto}
+h1{color:#333;text-align:center;margin-bottom:15px}
+h2{color:#667eea;font-size:18px;margin:15px 0 10px 0;border-bottom:2px solid #667eea;padding-bottom:5px}
+.section{background:#f9f9f9;padding:15px;border-radius:8px;margin-bottom:15px}
+input{width:100%;padding:10px;border:2px solid #ddd;border-radius:6px;font-size:14px;margin:5px 0}
+.dias-picker{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:6px;margin:8px 0 6px}
+.dia-btn{padding:10px 0;border:2px solid #cfd6ff;border-radius:8px;background:#fff;color:#4a56a6;font-weight:700;cursor:pointer;transition:.15s}
+.dia-btn.activo{background:#667eea;color:#fff;border-color:#667eea}
+.hint{font-size:12px;color:#666;margin:4px 0 0}
+button{width:100%;padding:12px;border:none;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;margin-bottom:8px;color:white}
+.btn-primary{background:#667eea}
+.btn-primary:hover{background:#5568c0}
+.btn-success{background:#4CAF50}
+.btn-success:hover{background:#45a049}
+.item{padding:10px;margin:8px 0;background:white;border-left:4px solid #667eea;border-radius:6px;font-size:13px}
+.item strong{display:block;margin-bottom:4px;color:#333}
+.item small{color:#666}
+.status{text-align:center;padding:10px;margin:10px 0;border-radius:6px;background:#f5f5f5}
+</style>
+</head>
+<body>
+<div class="container">
+<h1>Gestion de Turnos</h1>
+
+<div class="section">
+<h2>Crear Nuevo Turno</h2>
+<input id="turnoNombre" placeholder="Nombre del turno (ej: Turno Mañana)">
+<input id="turnoInicio" type="time" value="08:00">
+<input id="turnoFin" type="time" value="16:00">
+<div class="dias-picker" id="diasPicker">
+<button type="button" class="dia-btn" data-dia="L" onclick="toggleDia(this)">L</button>
+<button type="button" class="dia-btn" data-dia="M" onclick="toggleDia(this)">M</button>
+<button type="button" class="dia-btn" data-dia="X" onclick="toggleDia(this)">X</button>
+<button type="button" class="dia-btn" data-dia="J" onclick="toggleDia(this)">J</button>
+<button type="button" class="dia-btn" data-dia="V" onclick="toggleDia(this)">V</button>
+<button type="button" class="dia-btn" data-dia="S" onclick="toggleDia(this)">S</button>
+<button type="button" class="dia-btn" data-dia="D" onclick="toggleDia(this)">D</button>
+</div>
+<div class="hint" id="diasPreview">Dias seleccionados: L,M,X,J,V</div>
+<button class="btn-success" onclick="crearTurno()">Crear Turno</button>
+</div>
+
+<div class="section">
+<h2>Turnos Existentes</h2>
+<div id="listaTurnos">Cargando...</div>
+</div>
+
+<button class="btn-primary" onclick="window.location.href='/gestion'">Volver</button>
+<div class="status" id="status"></div>
+</div>
+
+<script>
+const ordenDias=['L','M','X','J','V','S','D'];
+const diasSeleccionados=new Set(['L','M','X','J','V']);
+
+function renderDiasPreview(){
+const dias=ordenDias.filter(d=>diasSeleccionados.has(d));
+document.getElementById('diasPreview').textContent='Dias seleccionados: '+(dias.length?dias.join(','):'(ninguno)');
+document.querySelectorAll('.dia-btn').forEach(btn=>{
+btn.classList.toggle('activo',diasSeleccionados.has(btn.dataset.dia));
+});
+}
+
+function toggleDia(btn){
+const d=btn.dataset.dia;
+if(diasSeleccionados.has(d)) diasSeleccionados.delete(d);
+else diasSeleccionados.add(d);
+renderDiasPreview();
+}
+
+async function cargarTurnos(){
+try{
+const r=await fetch('/api/turnos');
+const turnos=await r.json();
+const lista=document.getElementById('listaTurnos');
+if(turnos.length===0){
+lista.innerHTML='<div style="text-align:center;color:#999;padding:20px">No hay turnos creados</div>';
+return;
+}
+let html='';
+turnos.forEach(t=>{
+html+=`<div class="item">
+<strong>${t.nombre}</strong>
+<small>${t.inicio} - ${t.fin} | ${t.dias} | ID: ${t.id}</small>
+<button style="background:#f44336; padding:8px; font-size:12px;" onclick="borrarTurno('${t.id}')">Borrar</button>
+</div>`;
+});
+lista.innerHTML=html;
+}catch(e){
+document.getElementById('listaTurnos').innerHTML='Error';
+}
+}
+async function borrarTurno(id) {
+    if(!confirm('¿Desea borrar este turno?')) return;
+    try {
+        const r = await fetch('/borrar_turno?id=' + encodeURIComponent(id));
+        const msg = await r.text();
+        alert(msg);
+        cargarTurnos();
+    } catch(e) { alert('Error al borrar'); }
+}
+async function crearTurno(){
+const nombre=document.getElementById('turnoNombre').value;
+const inicio=document.getElementById('turnoInicio').value;
+const fin=document.getElementById('turnoFin').value;
+const dias=ordenDias.filter(d=>diasSeleccionados.has(d)).join(',');
+if(!nombre||!inicio||!fin){
+alert('Complete todos los campos');
+return;
+}
+if(!dias){
+alert('Seleccione al menos un dia');
+return;
+}
+try{
+const r=await fetch(`/crear_turno?nombre=${encodeURIComponent(nombre)}&inicio=${inicio}&fin=${fin}&dias=${encodeURIComponent(dias)}`);
+const msg=await r.text();
+document.getElementById('status').innerHTML=msg;
+if(msg.includes('creado')){
+document.getElementById('turnoNombre').value='';
+cargarTurnos();
+}
+}catch(e){
+document.getElementById('status').innerHTML='Error: '+e.message;
+}
+}
+
+renderDiasPreview();
+cargarTurnos();
+setInterval(cargarTurnos,15000);
+</script>
+</body>
+</html>

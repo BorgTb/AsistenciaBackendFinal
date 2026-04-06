@@ -2,3 +2,10 @@ data/*
 imagenes/*
 rostros/*
 lol.txt
+
+.venv/
+__pycache__/
+*.pyc
+.DS_Store
+static/previews/*
+static/*.*

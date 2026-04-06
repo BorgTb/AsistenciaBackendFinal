@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Logs del Sistema</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:Arial,sans-serif;background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);min-height:100vh;padding:10px}
+.container{background:white;border-radius:15px;box-shadow:0 10px 30px rgba(0,0,0,0.3);padding:20px;max-width:900px;margin:0 auto}
+h1{color:#333;text-align:center;margin-bottom:12px}
+.actions{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px}
+button{padding:10px 12px;border:none;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;color:white}
+.btn-primary{background:#667eea}
+.btn-success{background:#4CAF50}
+.btn-danger{background:#f44336}
+.logs{background:#10131a;color:#d7e4ff;border-radius:10px;padding:12px;min-height:320px;max-height:65vh;overflow:auto;font-family:Consolas,monospace;font-size:13px;line-height:1.5;white-space:normal;word-break:break-word}
+.status{margin-top:8px;font-size:12px;color:#555}
+</style>
+</head>
+<body>
+<div class="container">
+<h1>Logs del Sistema</h1>
+<div class="actions">
+<button class="btn-success" onclick="cargarLogs()">Actualizar</button>
+<button class="btn-danger" onclick="limpiarLogs()">Limpiar Logs</button>
+<button class="btn-primary" onclick="window.location.href='/'">Volver</button>
+</div>
+<div id="logs" class="logs">Cargando logs...</div>
+<div id="status" class="status">Auto-refresh cada 2 segundos</div>
+</div>
+
+<script>
+let timer=null;
+
+async function cargarLogs(){
+  try{
+    const r=await fetch('/api/logs');
+    const html=await r.text();
+    const box=document.getElementById('logs');
+    box.innerHTML=html || 'Sin logs disponibles';
+    box.scrollTop=box.scrollHeight;
+    document.getElementById('status').textContent='Ultima actualizacion: '+new Date().toLocaleTimeString();
+  }catch(e){
+    document.getElementById('status').textContent='Error cargando logs: '+e.message;
+  }
+}
+
+async function limpiarLogs(){
+  if(!confirm('Desea limpiar el buffer de logs?')) return;
+  try{
+    const r=await fetch('/api/logs/clear');
+    const msg=await r.text();
+    document.getElementById('status').textContent=msg;
+    cargarLogs();
+  }catch(e){
+    document.getElementById('status').textContent='Error limpiando logs: '+e.message;
+  }
+}
+
+cargarLogs();
+timer=setInterval(cargarLogs,2000);
+</script>
+</body>
+</html>

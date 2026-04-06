@@ -1,4 +1,9 @@
-paho-mqtt
-face-recognition
-opencv-python
+flask
+psycopg2-binary
+python-dotenv
+deepface
 numpy
+pillow
+flask-cors
+paho-mqtt
+requests
