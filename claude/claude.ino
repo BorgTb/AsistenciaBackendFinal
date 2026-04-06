@@ -99,6 +99,9 @@ bool registrarRostroEnBackend(String personaId);
 void completarRegistroPersona();
 void sincronizarAsistencias();
 void sincronizarPersonasDesdeBackend();
+void sincronizarTurnosDesdeBackend();
+void sincronizarAsignacionesDesdeBackend();
+void sincronizarPendientes();
 String procesarAsistencia(String personaId, String metodo);
 String buscarPersonaPorHuella(int huellaID);
 void addLog(String msg);
@@ -113,6 +116,12 @@ String motivoAsistenciaAutomatica(unsigned long ahora);
 void flashExito();
 void flashError();
 bool resultadoAsistenciaExitosa(const String& resultado);
+bool postAsistenciaEnBackend(const String& personaId, const String& nombre, const String& tipo, const String& metodo);
+bool crearTurnoEnBackend(const String& nombre, const String& inicio, const String& fin, const String& dias, String& idBackend);
+bool crearAsignacionEnBackend(const String& personaId, const String& turnoIdBackend, String& idBackend);
+String obtenerTurnoBackendId(const String& turnoLocalId);
+void sincronizarTurnosPendientes();
+void sincronizarAsignacionesPendientes();
 
 void handleWiFiConfig();
 void handleRegisterUser();
@@ -566,12 +575,130 @@ String procesarAsistencia(String personaId, String metodo) {
   a["metodo"]       = metodo;
   a["timestamp"]    = getTimestamp();
   a["sincronizado"] = false;
+
+  if (postAsistenciaEnBackend(personaId, nombre, tipo, metodo)) {
+    a["sincronizado"] = true;
+  }
   
   saveArray("/asistencias.json", docA);
 
   String tipoMayus = tipo;
   tipoMayus.toUpperCase();
   return tipoMayus + " OK: " + nombre + " (" + metodo + ")";
+}
+
+bool postAsistenciaEnBackend(const String& personaId, const String& nombre, const String& tipo, const String& metodo) {
+  if (!isOnline || WiFi.status() != WL_CONNECTED) return false;
+  if (personaId.startsWith("local-")) return false;
+
+  HTTPClient http;
+  http.begin(backendURL + "/api/asistencias");
+  http.addHeader("Content-Type", "application/json");
+  http.setTimeout(10000);
+
+  DynamicJsonDocument payloadDoc(512);
+  payloadDoc["persona_id"] = personaId;
+  payloadDoc["nombre"] = nombre;
+  payloadDoc["tipo"] = tipo;
+  payloadDoc["metodo"] = metodo;
+  payloadDoc["origen"] = "dispositivo";
+  payloadDoc["sincronizado"] = true;
+  String payload;
+  serializeJson(payloadDoc, payload);
+
+  int code = http.POST(payload);
+  if (code != 200 && code != 201) {
+    addLog("Asistencia local guardada, backend pendiente. Codigo: " + String(code));
+    http.end();
+    return false;
+  }
+
+  http.end();
+  return true;
+}
+
+bool crearTurnoEnBackend(const String& nombre, const String& inicio, const String& fin, const String& dias, String& idBackend) {
+  idBackend = "";
+  if (!isOnline || WiFi.status() != WL_CONNECTED) return false;
+
+  HTTPClient http;
+  http.begin(backendURL + "/api/turnos");
+  http.addHeader("Content-Type", "application/json");
+  http.setTimeout(10000);
+
+  DynamicJsonDocument payloadDoc(512);
+  payloadDoc["nombre"] = nombre;
+  payloadDoc["inicio"] = inicio;
+  payloadDoc["fin"] = fin;
+  payloadDoc["dias"] = dias;
+  String payload;
+  serializeJson(payloadDoc, payload);
+
+  int code = http.POST(payload);
+  if (code != 200 && code != 201) {
+    addLog("Turno local guardado, backend pendiente. Codigo: " + String(code));
+    http.end();
+    return false;
+  }
+
+  DynamicJsonDocument respDoc(256);
+  DeserializationError err = deserializeJson(respDoc, http.getString());
+  http.end();
+  if (!err && respDoc.containsKey("id")) {
+    idBackend = respDoc["id"].as<String>();
+    return idBackend.length() > 0;
+  }
+
+  addLog("Turno creado en backend sin ID util.");
+  return false;
+}
+
+bool crearAsignacionEnBackend(const String& personaId, const String& turnoIdBackend, String& idBackend) {
+  idBackend = "";
+  if (!isOnline || WiFi.status() != WL_CONNECTED) return false;
+  if (personaId.startsWith("local-") || turnoIdBackend.length() == 0) return false;
+
+  HTTPClient http;
+  http.begin(backendURL + "/api/asignaciones");
+  http.addHeader("Content-Type", "application/json");
+  http.setTimeout(10000);
+
+  DynamicJsonDocument payloadDoc(512);
+  payloadDoc["persona_id"] = personaId;
+  payloadDoc["turno_id"] = turnoIdBackend;
+  String payload;
+  serializeJson(payloadDoc, payload);
+
+  int code = http.POST(payload);
+  if (code != 200 && code != 201) {
+    addLog("Asignacion local guardada, backend pendiente. Codigo: " + String(code));
+    http.end();
+    return false;
+  }
+
+  DynamicJsonDocument respDoc(256);
+  DeserializationError err = deserializeJson(respDoc, http.getString());
+  http.end();
+  if (!err && respDoc.containsKey("id")) {
+    idBackend = respDoc["id"].as<String>();
+  }
+  return true;
+}
+
+String obtenerTurnoBackendId(const String& turnoLocalId) {
+  DynamicJsonDocument doc(4096);
+  JsonArray turnos = loadArray("/turnos.json", doc);
+  for (JsonObject t : turnos) {
+    if (t["id"].as<String>() == turnoLocalId) {
+      if (t.containsKey("backend_id") && t["backend_id"].as<String>().length() > 0) {
+        return t["backend_id"].as<String>();
+      }
+      String id = t["id"].as<String>();
+      if (!id.startsWith("local-")) return id;
+      return "";
+    }
+  }
+  return "";
 }
 
 // ============================================================
@@ -724,6 +851,156 @@ void sincronizarAsistencias() {
   }
 }
 
+void sincronizarTurnosPendientes() {
+  if (!isOnline || WiFi.status() != WL_CONNECTED) return;
+
+  DynamicJsonDocument doc(8192);
+  JsonArray turnos = loadArray("/turnos.json", doc);
+  bool huboCambios = false;
+
+  for (JsonObject t : turnos) {
+    bool sincronizado = t.containsKey("sincronizado") ? t["sincronizado"].as<bool>() : false;
+    String backendId = t.containsKey("backend_id") ? t["backend_id"].as<String>() : "";
+    if (sincronizado && backendId.length() > 0) continue;
+
+    String nuevoId = "";
+    if (crearTurnoEnBackend(
+      t["nombre"].as<String>(),
+      t["inicio"].as<String>(),
+      t["fin"].as<String>(),
+      t["dias"].as<String>(),
+      nuevoId
+    )) {
+      if (nuevoId.length() > 0) {
+        t["backend_id"] = nuevoId;
+        t["sincronizado"] = true;
+        huboCambios = true;
+      }
+    }
+  }
+
+  if (huboCambios) {
+    saveArray("/turnos.json", doc);
+    addLog("Turnos pendientes sincronizados");
+  }
+}
+
+void sincronizarAsignacionesPendientes() {
+  if (!isOnline || WiFi.status() != WL_CONNECTED) return;
+
+  DynamicJsonDocument doc(8192);
+  JsonArray asignaciones = loadArray("/asignaciones.json", doc);
+  bool huboCambios = false;
+
+  for (JsonObject a : asignaciones) {
+    bool sincronizado = a.containsKey("sincronizado") ? a["sincronizado"].as<bool>() : false;
+    if (sincronizado) continue;
+
+    String personaId = a["persona_id"].as<String>();
+    if (personaId.startsWith("local-")) continue;
+
+    String turnoBackendId = obtenerTurnoBackendId(a["turno_id"].as<String>());
+    if (turnoBackendId.length() == 0) continue;
+
+    String asigBackendId = "";
+    if (crearAsignacionEnBackend(personaId, turnoBackendId, asigBackendId)) {
+      a["sincronizado"] = true;
+      if (asigBackendId.length() > 0) a["backend_id"] = asigBackendId;
+      huboCambios = true;
+    }
+  }
+
+  if (huboCambios) {
+    saveArray("/asignaciones.json", doc);
+    addLog("Asignaciones pendientes sincronizadas");
+  }
+}
+
+void sincronizarTurnosDesdeBackend() {
+  if (!isOnline || WiFi.status() != WL_CONNECTED) return;
+
+  DynamicJsonDocument docLocal(8192);
+  JsonArray turnosLocales = loadArray("/turnos.json", docLocal);
+  for (JsonObject t : turnosLocales) {
+    bool sincronizado = t.containsKey("sincronizado") ? t["sincronizado"].as<bool>() : false;
+    if (!sincronizado) {
+      addLog("Turnos locales pendientes detectados, se omite sobreescritura desde backend");
+      return;
+    }
+  }
+
+  HTTPClient http;
+  http.begin(backendURL + "/api/turnos");
+  http.setTimeout(10000);
+  int code = http.GET();
+  if (code != 200) {
+    addLog("Error HTTP al fetchear turnos: " + String(code));
+    http.end();
+    return;
+  }
+
+  DynamicJsonDocument doc(8192);
+  DeserializationError error = deserializeJson(doc, http.getStream());
+  http.end();
+  if (error || !doc.is<JsonArray>()) {
+    addLog("Error parseando JSON de turnos.");
+    return;
+  }
+
+  JsonArray arr = doc.as<JsonArray>();
+  for (JsonObject t : arr) {
+    String id = t["id"].as<String>();
+    t["backend_id"] = id;
+    t["sincronizado"] = true;
+  }
+  saveArray("/turnos.json", doc);
+}
+
+void sincronizarAsignacionesDesdeBackend() {
+  if (!isOnline || WiFi.status() != WL_CONNECTED) return;
+
+  DynamicJsonDocument docLocal(8192);
+  JsonArray asignLocales = loadArray("/asignaciones.json", docLocal);
+  for (JsonObject a : asignLocales) {
+    bool sincronizado = a.containsKey("sincronizado") ? a["sincronizado"].as<bool>() : false;
+    if (!sincronizado) {
+      addLog("Asignaciones locales pendientes detectadas, se omite sobreescritura desde backend");
+      return;
+    }
+  }
+
+  HTTPClient http;
+  http.begin(backendURL + "/api/asignaciones");
+  http.setTimeout(10000);
+  int code = http.GET();
+  if (code != 200) {
+    addLog("Error HTTP al fetchear asignaciones: " + String(code));
+    http.end();
+    return;
+  }
+
+  DynamicJsonDocument doc(12288);
+  DeserializationError error = deserializeJson(doc, http.getStream());
+  http.end();
+  if (error || !doc.is<JsonArray>()) {
+    addLog("Error parseando JSON de asignaciones.");
+    return;
+  }
+
+  JsonArray arr = doc.as<JsonArray>();
+  for (JsonObject a : arr) {
+    a["backend_id"] = a["id"].as<String>();
+    a["sincronizado"] = true;
+  }
+  saveArray("/asignaciones.json", doc);
+}
+
+void sincronizarPendientes() {
+  sincronizarTurnosPendientes();
+  sincronizarAsignacionesPendientes();
+  sincronizarAsistencias();
+}
+
 // ============================================================
 // SPIFFS — JSON
 // ============================================================
@@ -814,16 +1091,28 @@ void handleCreateTurn() {
     server.send(400, "text/plain", "Datos incompletos");
     return;
   }
-  DynamicJsonDocument doc(1024);
+  DynamicJsonDocument doc(4096);
   JsonArray turnos = loadArray("/turnos.json", doc);
   JsonObject t = turnos.createNestedObject();
-  t["id"]     = String(turnos.size() + 1);
-  t["nombre"] = server.arg("nombre");
-  t["inicio"] = server.arg("inicio");
-  t["fin"]    = server.arg("fin");
-  t["dias"]   = server.arg("dias");
+
+  String nombre = server.arg("nombre");
+  String inicio = server.arg("inicio");
+  String fin = server.arg("fin");
+  String dias = server.arg("dias");
+  String localId = "local-" + String(getTimestamp()) + "-" + String(turnos.size() + 1);
+  String backendId = "";
+  bool synced = crearTurnoEnBackend(nombre, inicio, fin, dias, backendId);
+
+  t["id"] = synced && backendId.length() > 0 ? backendId : localId;
+  t["backend_id"] = synced && backendId.length() > 0 ? backendId : "";
+  t["nombre"] = nombre;
+  t["inicio"] = inicio;
+  t["fin"] = fin;
+  t["dias"] = dias;
+  t["sincronizado"] = synced;
+
   saveArray("/turnos.json", doc);
-  server.send(200, "text/plain", "Turno creado");
+  server.send(200, "text/plain", synced ? "Turno creado y sincronizado" : "Turno creado local (pendiente sync)");
 }
 
 void handleAssignTurn() {
@@ -832,9 +1121,10 @@ void handleAssignTurn() {
     server.send(400, "text/plain", "Falta persona o turno");
     return;
   }
-  DynamicJsonDocument doc(1024);
+  DynamicJsonDocument doc(4096);
   JsonArray asignaciones = loadArray("/asignaciones.json", doc);
   String personaId = server.arg("persona");
+  String turnoId = server.arg("turno");
   
   for (JsonObject a : asignaciones) {
     if (a["persona_id"] == personaId) {
@@ -842,12 +1132,26 @@ void handleAssignTurn() {
       return;
     }
   }
+
+  String backendAsignacionId = "";
+  bool synced = false;
+  String turnoBackendId = obtenerTurnoBackendId(turnoId);
+  if (turnoBackendId.length() == 0 && isOnline) {
+    sincronizarTurnosPendientes();
+    turnoBackendId = obtenerTurnoBackendId(turnoId);
+  }
+  if (turnoBackendId.length() > 0) {
+    synced = crearAsignacionEnBackend(personaId, turnoBackendId, backendAsignacionId);
+  }
+
   JsonObject a = asignaciones.createNestedObject();
   a["persona_id"]       = personaId;
-  a["turno_id"]         = server.arg("turno");
+  a["turno_id"]         = turnoId;
   a["fecha_asignacion"] = getTimestamp();
+  a["sincronizado"]     = synced;
+  if (backendAsignacionId.length() > 0) a["backend_id"] = backendAsignacionId;
   saveArray("/asignaciones.json", doc);
-  server.send(200, "text/plain", "Turno asignado");
+  server.send(200, "text/plain", synced ? "Turno asignado y sincronizado" : "Turno asignado local (pendiente sync)");
 }
 
 void handleMarcarAsistencia() {
@@ -896,7 +1200,10 @@ void handleLimpiarDatos() {
 void handleSincronizar() {
   actualizarBloqueoAsistencia();
   if (!isOnline) { server.send(503, "text/plain", "Sin conexion"); return; }
-  sincronizarAsistencias();
+  sincronizarPendientes();
+  sincronizarPersonasDesdeBackend();
+  sincronizarTurnosDesdeBackend();
+  sincronizarAsignacionesDesdeBackend();
   server.send(200, "text/plain", "Sincronizacion ejecutada");
 }
 
@@ -1231,7 +1538,10 @@ void setup() {
   
   if (isOnline) {
     WiFi.setTxPower(WIFI_POWER_8_5dBm); 
-    sincronizarPersonasDesdeBackend(); // Obtener BD limpia al arrancar
+    sincronizarPendientes();
+    sincronizarPersonasDesdeBackend();
+    sincronizarTurnosDesdeBackend();
+    sincronizarAsignacionesDesdeBackend();
   } else {
     WiFi.mode(WIFI_AP); WiFi.softAP(apSSID, apPASS, 1, 0, 4);
     WiFi.softAPConfig(IPAddress(192, 168, 4, 1), IPAddress(192, 168, 4, 1), IPAddress(255, 255, 255, 0));
@@ -1454,7 +1764,7 @@ void loop() {
   static unsigned long lastSync = 0;
   if (isOnline && (ahora - lastSync) > 300000UL) {
     lastSync = ahora;
-    sincronizarAsistencias();
+    sincronizarPendientes();
   }
 
   delay(5); 
