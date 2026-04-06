@@ -87,6 +87,7 @@ bool modoEdicionHuella = false;
 bool modoEdicionRostro = false;
 String personaEditandoId = "";
 int huellaAnteriorEditando = -1;
+unsigned long ultimoLogDiagnosticoOffline = 0;
 
 // ============================================================
 // PROTOTIPOS (Vitales para evitar errores del compilador)
@@ -107,6 +108,8 @@ bool asistenciaAutomaticaHabilitada(unsigned long ahora);
 bool detectarMovimientoCamara();
 uint32_t calcularFirmaMovimiento(const uint8_t* data, size_t len);
 String jsonEscape(const String& src);
+bool datosOfflineListos(String& motivo);
+String motivoAsistenciaAutomatica(unsigned long ahora);
 void flashExito();
 void flashError();
 bool resultadoAsistenciaExitosa(const String& resultado);
@@ -218,10 +221,40 @@ void actualizarBloqueoAsistencia(unsigned long duracionMs) {
 }
 
 bool asistenciaAutomaticaHabilitada(unsigned long ahora) {
-  if (estadoActual != ESTADO_IDLE) return false;
-  if (ahora < bloqueoAsistenciaHasta) return false;
-  if (ahora - cooldownAsistencia <= COOLDOWN_TIEMPO) return false;
+  return motivoAsistenciaAutomatica(ahora) == "habilitada";
+}
+
+bool datosOfflineListos(String& motivo) {
+  DynamicJsonDocument docPersonas(2048);
+  JsonArray personas = loadArray("/personas.json", docPersonas);
+  if (personas.size() == 0) {
+    motivo = "sin_personas_locales";
+    return false;
+  }
+
+  DynamicJsonDocument docAsignaciones(1024);
+  JsonArray asignaciones = loadArray("/asignaciones.json", docAsignaciones);
+  if (asignaciones.size() == 0) {
+    motivo = "sin_asignaciones_locales";
+    return false;
+  }
+
+  motivo = "habilitada";
   return true;
+}
+
+String motivoAsistenciaAutomatica(unsigned long ahora) {
+  if (estadoActual != ESTADO_IDLE) return "sistema_ocupado";
+  if (ahora - cooldownAsistencia <= COOLDOWN_TIEMPO) return "cooldown";
+
+  if (!isOnline) {
+    String motivo = "";
+    if (!datosOfflineListos(motivo)) return motivo;
+    return "habilitada";
+  }
+
+  if (ahora < bloqueoAsistenciaHasta) return "bloqueo_menu";
+  return "habilitada";
 }
 
 uint32_t calcularFirmaMovimiento(const uint8_t* data, size_t len) {
@@ -1213,6 +1246,7 @@ void setup() {
   server.on("/turnos", []() { actualizarBloqueoAsistencia(); servirArchivo("/turnos.html", "text/html"); });
   server.on("/asignaciones", []() { actualizarBloqueoAsistencia(); servirArchivo("/asignaciones.html", "text/html"); });
   server.on("/wifi-setup", []() { actualizarBloqueoAsistencia(120000); servirArchivo("/wifi-setup.html", "text/html"); });
+  server.on("/logs", []() { servirArchivo("/logs.html", "text/html"); });
   
   // Rutas de Acción
   server.on("/wifi-config", handleWiFiConfig);
@@ -1236,15 +1270,31 @@ void setup() {
   server.on("/api/turnos", handleGetTurnos);
   server.on("/api/asignaciones", handleGetAsignaciones);
   server.on("/api/asistencias", handleGetAsistencias);
+  server.on("/api/logs", []() {
+    String contenido = logBuffer;
+    if (contenido.length() == 0) contenido = "Sin logs disponibles";
+    server.send(200, "text/html", contenido);
+  });
+  server.on("/api/logs/clear", []() {
+    logBuffer = "";
+    server.send(200, "text/plain", "Logs limpiados");
+  });
   server.on("/ultimo_registro", handleUltimoRegistro); 
 
   server.on("/estado", []() {
     String referer = server.header("Referer");
-    if (referer.indexOf("/register") >= 0 || referer.indexOf("/wifi-setup") >= 0 || referer.indexOf("/gestion") >= 0 ||
-        referer.indexOf("/personas") >= 0 || referer.indexOf("/turnos") >= 0 || referer.indexOf("/asignaciones") >= 0 ||
-        referer.indexOf("/asistencias") >= 0) {
+    if (referer.indexOf("/register") >= 0 || referer.indexOf("/wifi-setup") >= 0 ||
+        (referer.indexOf("/gestion") >= 0 && estadoActual != ESTADO_IDLE)) {
       actualizarBloqueoAsistencia();
     }
+
+    DynamicJsonDocument docPersonas(2048);
+    DynamicJsonDocument docAsignaciones(1024);
+    DynamicJsonDocument docAsistencias(2048);
+    JsonArray personas = loadArray("/personas.json", docPersonas);
+    JsonArray asignaciones = loadArray("/asignaciones.json", docAsignaciones);
+    JsonArray asistencias = loadArray("/asistencias.json", docAsistencias);
+    String motivoAuto = motivoAsistenciaAutomatica(millis());
 
     String json = "{";
     json += "\"estado\":\""  + String(estadoActual == ESTADO_IDLE ? "idle" : "ocupado") + "\",";
@@ -1256,6 +1306,11 @@ void setup() {
     json += "\"error_registro\":\"" + jsonEscape(ultimoErrorRegistro) + "\",";
     json += "\"asistencia_bloqueada\":" + String(millis() < bloqueoAsistenciaHasta ? "true" : "false") + ",";
     json += "\"bloqueo_restante_ms\":" + String(millis() < bloqueoAsistenciaHasta ? (bloqueoAsistenciaHasta - millis()) : 0) + ",";
+    json += "\"asistencia_auto_huella_habilitada\":" + String(motivoAuto == "habilitada" ? "true" : "false") + ",";
+    json += "\"motivo_asistencia_auto\":\"" + motivoAuto + "\",";
+    json += "\"personas_locales\":" + String(personas.size()) + ",";
+    json += "\"asignaciones_locales\":" + String(asignaciones.size()) + ",";
+    json += "\"asistencias_locales\":" + String(asistencias.size()) + ",";
     json += "\"backend\":\"" + backendURL + "\",";
     json += "\"mqtt\":\""    + mqttBroker + "\"";
     json += "}";
@@ -1285,6 +1340,11 @@ void loop() {
   // LÓGICA DE ASISTENCIA HÍBRIDA (CENTINELA + HUELLA)
   // ==========================================================
   if (estadoActual == ESTADO_IDLE) {
+    String motivoAuto = motivoAsistenciaAutomatica(ahora);
+    if (!isOnline && motivoAuto != "habilitada" && (ahora - ultimoLogDiagnosticoOffline) > 15000) {
+      ultimoLogDiagnosticoOffline = ahora;
+      addLog("[OFFLINE] Auto-huella inactiva: " + motivoAuto);
+    }
       
     // 1. MODO CENTINELA (ROSTRO) 
     if (isOnline && asistenciaAutomaticaHabilitada(ahora) && (ahora - lastFaceCheck > FACE_CHECK_INTERVAL)) {

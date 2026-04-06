@@ -29,8 +29,9 @@ h3{color:#667eea;margin-bottom:8px;font-size:16px}
 <div class="container">
 <h1>ESP32 Sistema Asistencia</h1>
 <div class="status-bar">
-<div class="status-item"><span>Modo:</span><strong>OFFLINE</strong></div>
+<div class="status-item"><span>Modo:</span><strong id="modoEstado">OFFLINE</strong></div>
 <div class="status-item"><span>Sensor:</span><strong style="color:#4CAF50">Activo</strong></div>
+<div class="status-item"><span>Auto huella:</span><strong id="autoHuellaEstado">Verificando...</strong></div>
 </div>
 
 <div class="section">
@@ -45,6 +46,7 @@ h3{color:#667eea;margin-bottom:8px;font-size:16px}
 <button class="btn-primary" onclick="window.location.href='/gestion'">Gestion Turnos</button>
 <button class="btn-info" onclick="window.location.href='/asistencias'">Ver Asistencias</button>
 <button class="btn-info" onclick="window.location.href='/personas'">Ver Personas</button>
+<button class="btn-info" onclick="window.location.href='/logs'">Ver Logs</button>
 <button class="btn-primary" onclick="window.location.href='/wifi-setup'">Configurar WiFi</button>
 </div>
 
@@ -56,6 +58,35 @@ h3{color:#667eea;margin-bottom:8px;font-size:16px}
 <div class="status" id="status">Sistema listo</div>
 </div>
 <script>
+function traducirMotivo(m){
+if(m==='habilitada') return 'Activa';
+if(m==='sistema_ocupado') return 'Sistema ocupado';
+if(m==='cooldown') return 'En cooldown';
+if(m==='bloqueo_menu') return 'Bloqueada por menu';
+if(m==='sin_personas_locales') return 'Sin personas locales';
+if(m==='sin_asignaciones_locales') return 'Sin asignaciones locales';
+return m || 'Sin estado';
+}
+
+async function actualizarEstadoAuto(){
+try{
+const r=await fetch('/estado');
+const e=await r.json();
+const modo=document.getElementById('modoEstado');
+const auto=document.getElementById('autoHuellaEstado');
+modo.textContent=e.online?'ONLINE':'OFFLINE';
+modo.style.color=e.online?'#2e7d32':'#e65100';
+
+const habilitada=!!e.asistencia_auto_huella_habilitada;
+auto.textContent=traducirMotivo(e.motivo_asistencia_auto);
+auto.style.color=habilitada?'#2e7d32':'#c62828';
+}catch(err){
+const auto=document.getElementById('autoHuellaEstado');
+auto.textContent='Error de conexion';
+auto.style.color='#c62828';
+}
+}
+
 async function marcar(){
 document.getElementById('status').innerHTML='Esperando huella...';
 try{
@@ -85,6 +116,8 @@ document.getElementById('status').innerHTML='Error: '+e.message;
 setInterval(()=>{
 document.getElementById('status').innerHTML='Sistema listo';
 },5000);
+actualizarEstadoAuto();
+setInterval(actualizarEstadoAuto,3000);
 </script>
 </body>
 </html>

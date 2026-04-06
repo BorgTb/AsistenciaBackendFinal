@@ -13,6 +13,15 @@ h1{color:#333;text-align:center;margin-bottom:15px}
 .item{background:#f5f5f5;padding:12px;margin:8px 0;border-left:4px solid #667eea;border-radius:6px}
 .item-nombre{font-size:16px;font-weight:bold;color:#333;margin-bottom:4px}
 .item-info{font-size:12px;color:#666}
+.panel-proceso{display:none;margin:12px 0;padding:12px;border-radius:10px;background:#eef2ff;border:1px solid #cdd7ff}
+.panel-proceso.activo{display:block}
+.panel-titulo{font-weight:700;color:#2f3d8f;margin-bottom:4px}
+.panel-texto{font-size:13px;color:#334}
+.spinner{display:inline-block;width:13px;height:13px;border:2px solid #b9c5ff;border-top-color:#4f62d4;border-radius:50%;animation:spin .8s linear infinite;vertical-align:-2px;margin-right:6px}
+@keyframes spin{to{transform:rotate(360deg)}}
+.toast{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);background:#333;color:#fff;padding:10px 14px;border-radius:8px;font-size:13px;display:none;z-index:20;max-width:90vw;text-align:center}
+.toast.ok{background:#2e7d32}
+.toast.err{background:#c62828}
 button{width:100%;padding:12px;border:none;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;margin-top:10px;color:white;background:#667eea}
 button:hover{background:#5568c0}
 .btn-success{background:#4CAF50;margin-top:0;margin-bottom:15px}
@@ -24,10 +33,82 @@ button:hover{background:#5568c0}
 <div class="container">
 <h1>Personas Registradas</h1>
 <button class="btn-success" onclick="window.location.href='/register'">Registrar Nueva Persona</button>
+<div id="panelProceso" class="panel-proceso">
+<div class="panel-titulo"><span class="spinner"></span><span id="panelTitulo">Procesando...</span></div>
+<div id="panelTexto" class="panel-texto">Espere un momento.</div>
+</div>
 <div id="lista">Cargando...</div>
 <button onclick="window.location.href='/gestion'">Volver</button>
 </div>
+<div id="toast" class="toast"></div>
 <script>
+let timerProceso=null;
+let procesoActivo='';
+
+function mostrarToast(msg,tipo=''){
+    const el=document.getElementById('toast');
+    el.className='toast'+(tipo?' '+tipo:'');
+    el.textContent=msg;
+    el.style.display='block';
+    setTimeout(()=>{el.style.display='none';},2600);
+}
+
+function mostrarPanel(titulo,texto){
+    document.getElementById('panelTitulo').textContent=titulo;
+    document.getElementById('panelTexto').textContent=texto;
+    document.getElementById('panelProceso').classList.add('activo');
+}
+
+function ocultarPanel(){
+    document.getElementById('panelProceso').classList.remove('activo');
+}
+
+function textoEstado(codigo){
+    if(codigo===1) return 'Coloque el dedo por primera vez.';
+    if(codigo===4) return 'Retire el dedo del sensor.';
+    if(codigo===2) return 'Coloque el mismo dedo por segunda vez.';
+    if(codigo===3) return 'Mire a la camara para capturar el rostro.';
+    return 'Procesando...';
+}
+
+function detenerSeguimiento(){
+    if(timerProceso){ clearInterval(timerProceso); timerProceso=null; }
+    procesoActivo='';
+    ocultarPanel();
+}
+
+function iniciarSeguimiento(tipo,nombre){
+    detenerSeguimiento();
+    procesoActivo=tipo;
+    mostrarPanel('Actualizando '+tipo,'Preparando proceso para '+nombre+'...');
+    timerProceso=setInterval(async()=>{
+        try{
+            const r=await fetch('/estado');
+            const e=await r.json();
+            if(procesoActivo==='huella'){
+                if(e.codigo_paso===0){
+                    detenerSeguimiento();
+                    mostrarToast('Huella actualizada o finalizada. Revise logs si hubo fallo.','ok');
+                    cargar();
+                    return;
+                }
+                mostrarPanel('Actualizando huella',textoEstado(e.codigo_paso));
+            }else if(procesoActivo==='rostro'){
+                if(e.codigo_paso===0){
+                    detenerSeguimiento();
+                    if(e.rostro_ok) mostrarToast('Rostro actualizado correctamente','ok');
+                    else mostrarToast(e.error_registro||'Proceso facial finalizado','err');
+                    cargar();
+                    return;
+                }
+                mostrarPanel('Actualizando rostro',textoEstado(e.codigo_paso));
+            }
+        }catch(err){
+            mostrarPanel('Esperando respuesta','No se pudo leer estado, reintentando...');
+        }
+    },1500);
+}
+
 async function cargar(){
 try{
 const r=await fetch('/api/personas');
@@ -62,10 +143,10 @@ async function borrarPersona(id) {
     try {
         const r = await fetch('/borrar_persona?id=' + encodeURIComponent(id));
         const msg = await r.text();
-        alert(msg);
+        mostrarToast(msg,r.ok?'ok':'err');
         cargar(); // Recarga la lista automáticamente
     } catch(e) {
-        alert('Error al borrar');
+        mostrarToast('Error al borrar','err');
     }
 }
 
@@ -82,10 +163,10 @@ async function editarPersona(idx) {
     try {
         const r = await fetch('/editar_persona?id=' + encodeURIComponent(p.id) + '&name=' + encodeURIComponent(nombre) + '&email=' + encodeURIComponent(nuevoEmail.trim()));
         const msg = await r.text();
-        alert(msg);
+        mostrarToast(msg,r.ok?'ok':'err');
         cargar();
     } catch(e) {
-        alert('Error al editar: ' + e.message);
+        mostrarToast('Error al editar: ' + e.message,'err');
     }
 }
 
@@ -96,10 +177,14 @@ async function actualizarHuella(idx) {
     try {
         const r = await fetch('/actualizar_huella?id=' + encodeURIComponent(p.id));
         const msg = await r.text();
-        alert(msg);
-        cargar();
+        if(!r.ok){
+          mostrarToast(msg,'err');
+          return;
+        }
+        mostrarToast(msg,'ok');
+        iniciarSeguimiento('huella',p.nombre);
     } catch(e) {
-        alert('Error al actualizar huella: ' + e.message);
+        mostrarToast('Error al actualizar huella: ' + e.message,'err');
     }
 }
 
@@ -110,9 +195,14 @@ async function actualizarRostro(idx) {
     try {
         const r = await fetch('/actualizar_rostro?id=' + encodeURIComponent(p.id));
         const msg = await r.text();
-        alert(msg);
+        if(!r.ok){
+          mostrarToast(msg,'err');
+          return;
+        }
+        mostrarToast(msg,'ok');
+        iniciarSeguimiento('rostro',p.nombre);
     } catch(e) {
-        alert('Error al actualizar rostro: ' + e.message);
+        mostrarToast('Error al actualizar rostro: ' + e.message,'err');
     }
 }
 cargar();
