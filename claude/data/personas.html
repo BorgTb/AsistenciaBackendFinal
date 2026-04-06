@@ -38,12 +38,16 @@ lista.innerHTML='<div class="empty">No hay personas registradas</div>';
 return;
 }
 let html='';
+window.cachePersonas = personas;
 // ... dentro de cargar() en personas.html
-personas.forEach(p=>{
+personas.forEach((p, idx)=>{
 html+=`<div class="item">
 <div class="item-nombre">${p.nombre}</div>
 <div class="item-info">RUT: ${p.rut || 'N/A'} | Email: ${p.email || 'N/A'}</div>
 <div class="item-info">Huella ID: ${p.huella_id} | ID Sistema: ${p.id}</div>
+<button style="background:#ff9800; margin-top:8px;" onclick="editarPersona(${idx})">Editar Nombre/Email</button>
+<button style="background:#795548; margin-top:8px;" onclick="actualizarHuella(${idx})">Actualizar Huella</button>
+<button style="background:#009688; margin-top:8px;" onclick="actualizarRostro(${idx})">Actualizar Rostro</button>
 <button style="background:#f44336; margin-top:8px;" onclick="borrarPersona('${p.id}')">Eliminar Trabajador</button>
 </div>`;
 });
@@ -62,6 +66,53 @@ async function borrarPersona(id) {
         cargar(); // Recarga la lista automáticamente
     } catch(e) {
         alert('Error al borrar');
+    }
+}
+
+async function editarPersona(idx) {
+    const p = window.cachePersonas[idx];
+    if(!p) return;
+    const nuevoNombre = prompt('Nuevo nombre:', p.nombre || '');
+    if(nuevoNombre === null) return;
+    const nombre = nuevoNombre.trim();
+    if(!nombre) { alert('Nombre invalido'); return; }
+    const nuevoEmail = prompt('Nuevo email (opcional):', p.email || '');
+    if(nuevoEmail === null) return;
+
+    try {
+        const r = await fetch('/editar_persona?id=' + encodeURIComponent(p.id) + '&name=' + encodeURIComponent(nombre) + '&email=' + encodeURIComponent(nuevoEmail.trim()));
+        const msg = await r.text();
+        alert(msg);
+        cargar();
+    } catch(e) {
+        alert('Error al editar: ' + e.message);
+    }
+}
+
+async function actualizarHuella(idx) {
+    const p = window.cachePersonas[idx];
+    if(!p) return;
+    if(!confirm('Se actualizara la huella de ' + p.nombre + '.\n\nDeberas poner el dedo 2 veces en el sensor.')) return;
+    try {
+        const r = await fetch('/actualizar_huella?id=' + encodeURIComponent(p.id));
+        const msg = await r.text();
+        alert(msg);
+        cargar();
+    } catch(e) {
+        alert('Error al actualizar huella: ' + e.message);
+    }
+}
+
+async function actualizarRostro(idx) {
+    const p = window.cachePersonas[idx];
+    if(!p) return;
+    if(!confirm('Se capturara una nueva foto facial para ' + p.nombre + '.')) return;
+    try {
+        const r = await fetch('/actualizar_rostro?id=' + encodeURIComponent(p.id));
+        const msg = await r.text();
+        alert(msg);
+    } catch(e) {
+        alert('Error al actualizar rostro: ' + e.message);
     }
 }
 cargar();

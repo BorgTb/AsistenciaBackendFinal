@@ -18,6 +18,8 @@
 esp_mqtt_client_handle_t mqtt_client = NULL;
 bool mqttConnected = false;
 
+#define FLASH_PIN 4
+
 // ===== Sensor de huellas (RX=GPIO14, TX=GPIO15) =====
 HardwareSerial FingerSerial(2);
 Adafruit_Fingerprint finger = Adafruit_Fingerprint(&FingerSerial);
@@ -52,6 +54,13 @@ const unsigned long FACE_CHECK_INTERVAL = 6000;
 int   lastFingerID   = -1;
 unsigned long lastFingerTime = 0;
 const unsigned long FINGER_DEBOUNCE = 4000;       
+unsigned long bloqueoAsistenciaHasta = 0;
+const unsigned long BLOQUEO_MENU_MS = 90000;
+bool baselineMovimientoLista = false;
+uint32_t firmaMovimientoAnterior = 0;
+const uint32_t UMBRAL_MOVIMIENTO = 1800;
+bool rostroRegistroExitoso = false;
+String ultimoErrorRegistro = "";
 
 // ===== Maquina de estados =====
 enum EstadoSistema {
@@ -74,6 +83,10 @@ const unsigned long TIMEOUT_REGISTRO = 30000;
 int intentosFacial = 0;
 String idParaRostro = "";
 String logBuffer = "";
+bool modoEdicionHuella = false;
+bool modoEdicionRostro = false;
+String personaEditandoId = "";
+int huellaAnteriorEditando = -1;
 
 // ============================================================
 // PROTOTIPOS (Vitales para evitar errores del compilador)
@@ -89,6 +102,14 @@ String procesarAsistencia(String personaId, String metodo);
 String buscarPersonaPorHuella(int huellaID);
 void addLog(String msg);
 unsigned long getTimestamp();
+void actualizarBloqueoAsistencia(unsigned long duracionMs = BLOQUEO_MENU_MS);
+bool asistenciaAutomaticaHabilitada(unsigned long ahora);
+bool detectarMovimientoCamara();
+uint32_t calcularFirmaMovimiento(const uint8_t* data, size_t len);
+String jsonEscape(const String& src);
+void flashExito();
+void flashError();
+bool resultadoAsistenciaExitosa(const String& resultado);
 
 void handleWiFiConfig();
 void handleRegisterUser();
@@ -99,6 +120,9 @@ void handleLimpiarDatos();
 void handleSincronizar();
 void handleFetchPersonas();
 void handleSetBackend();
+void handleEditarPersona();
+void handleActualizarHuellaPersona();
+void handleActualizarRostroPersona();
 void handleBorrarPersona();
 void handleBorrarTurno();
 void handleBorrarAsignacion();
@@ -108,6 +132,7 @@ void handleGetAsignaciones();
 void handleGetAsistencias();
 void handleUltimoRegistro();
 void servirArchivo(const char* path, const char* tipo);
+void completarEdicionHuellaExistente();
 
 // ============================================================
 // EVENTOS MQTT Y LOGS
@@ -135,9 +160,20 @@ static void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_
           String urlBase = backendURL;
           if (urlBase.endsWith("/")) urlBase = urlBase.substring(0, urlBase.length() - 1);
           lastCapturedImageUrl = urlBase + "/static/previews/" + fileName;
+          rostroRegistroExitoso = true;
+          ultimoErrorRegistro = "";
           estadoActual = ESTADO_IDLE;
+          nombreRegistrando = "";
+          rutRegistrando = "";
+          emailRegistrando = "";
+          slotRegistrando = -1;
+          idParaRostro = "";
+          modoEdicionRostro = false;
+          personaEditandoId = "";
         } else {
-          addLog("Rostro rechazado: " + doc["mensaje"].as<String>());
+          String detalle = doc["mensaje"].as<String>();
+          addLog("Rostro rechazado: " + detalle);
+          ultimoErrorRegistro = "Rostro rechazado: " + detalle;
         }
       }
       break;
@@ -155,9 +191,87 @@ void addLog(String msg) {
   }
 }
 
+void flashExito() {   // 2 destellos rapidos = OK
+  for (int i = 0; i < 2; i++) {
+    digitalWrite(FLASH_PIN, HIGH); delay(150);
+    digitalWrite(FLASH_PIN, LOW);  delay(150);
+  }
+}
+
+void flashError() {   // 1 destello largo = error
+  digitalWrite(FLASH_PIN, HIGH); delay(800);
+  digitalWrite(FLASH_PIN, LOW);
+}
+
+bool resultadoAsistenciaExitosa(const String& resultado) {
+  return resultado.indexOf(" OK: ") >= 0;
+}
+
 unsigned long getTimestamp() {
   if (bootEpoch > 0) return bootEpoch + millis() / 1000;
   return millis() / 1000;
+}
+
+void actualizarBloqueoAsistencia(unsigned long duracionMs) {
+  unsigned long nuevoBloqueo = millis() + duracionMs;
+  if (nuevoBloqueo > bloqueoAsistenciaHasta) bloqueoAsistenciaHasta = nuevoBloqueo;
+}
+
+bool asistenciaAutomaticaHabilitada(unsigned long ahora) {
+  if (estadoActual != ESTADO_IDLE) return false;
+  if (ahora < bloqueoAsistenciaHasta) return false;
+  if (ahora - cooldownAsistencia <= COOLDOWN_TIEMPO) return false;
+  return true;
+}
+
+uint32_t calcularFirmaMovimiento(const uint8_t* data, size_t len) {
+  if (!data || len == 0) return 0;
+  const size_t muestras = 128;
+  size_t salto = len / muestras;
+  if (salto == 0) salto = 1;
+
+  uint32_t acumulador = 0;
+  for (size_t i = 0, tomadas = 0; i < len && tomadas < muestras; i += salto, tomadas++) {
+    acumulador += data[i];
+  }
+  return acumulador;
+}
+
+String jsonEscape(const String& src) {
+  String out = "";
+  out.reserve(src.length() + 8);
+  for (size_t i = 0; i < src.length(); i++) {
+    char c = src[i];
+    if (c == '\\') out += "\\\\";
+    else if (c == '"') out += "\\\"";
+    else if (c == '\n') out += "\\n";
+    else if (c == '\r') out += "\\r";
+    else if (c == '\t') out += "\\t";
+    else out += c;
+  }
+  return out;
+}
+
+bool detectarMovimientoCamara() {
+  if (!camaraIniciada) return false;
+
+  camera_fb_t* fb = esp_camera_fb_get();
+  if (!fb) return false;
+
+  uint32_t firmaActual = calcularFirmaMovimiento(fb->buf, fb->len);
+  esp_camera_fb_return(fb);
+
+  if (!baselineMovimientoLista) {
+    baselineMovimientoLista = true;
+    firmaMovimientoAnterior = firmaActual;
+    return false;
+  }
+
+  long delta = (long)firmaActual - (long)firmaMovimientoAnterior;
+  if (delta < 0) delta = -delta;
+
+  firmaMovimientoAnterior = (firmaMovimientoAnterior * 3 + firmaActual) / 4;
+  return (uint32_t)delta >= UMBRAL_MOVIMIENTO;
 }
 
 // ============================================================
@@ -192,6 +306,7 @@ void initCamera() {
   if (esp_camera_init(&config) == ESP_OK) {
     camaraIniciada = true;
     addLog("Camara iniciada");
+    baselineMovimientoLista = false;
   } else {
     addLog("Error iniciando camara");
   }
@@ -270,22 +385,34 @@ void mantenerConexionMQTT() {
   if (mqtt_client != NULL) return;
   
   String brokerUrl = mqttBroker;
-  if (brokerUrl.startsWith("https://")) brokerUrl = brokerUrl.substring(8);
-  else if (brokerUrl.startsWith("http://")) brokerUrl = brokerUrl.substring(7);
-  if (brokerUrl.startsWith("wss://")) brokerUrl = brokerUrl.substring(6);
-  else if (brokerUrl.startsWith("ws://")) brokerUrl = brokerUrl.substring(5);
-  
-  if (!brokerUrl.endsWith("/mqtt")) brokerUrl += brokerUrl.endsWith("/") ? "mqtt" : "/mqtt";
+  bool tieneEsquema = brokerUrl.startsWith("mqtt://") || brokerUrl.startsWith("ws://") || brokerUrl.startsWith("wss://") ||
+                     brokerUrl.startsWith("http://") || brokerUrl.startsWith("https://");
 
-  brokerUrl = "wss://" + brokerUrl;
+  if (!tieneEsquema) {
+    if (brokerUrl.indexOf(":") == -1) brokerUrl += ":1883";
+    brokerUrl = "mqtt://" + brokerUrl;
+  } else {
+    if (brokerUrl.startsWith("http://")) brokerUrl = "ws://" + brokerUrl.substring(7);
+    else if (brokerUrl.startsWith("https://")) brokerUrl = "wss://" + brokerUrl.substring(8);
+
+    if (brokerUrl.startsWith("ws://") || brokerUrl.startsWith("wss://")) {
+      if (!brokerUrl.endsWith("/mqtt")) brokerUrl += brokerUrl.endsWith("/") ? "mqtt" : "/mqtt";
+    }
+  }
+
+  addLog("Conectando MQTT: " + brokerUrl);
   esp_mqtt_client_config_t mqtt_cfg = {};
   
   #if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 0, 0)
     mqtt_cfg.broker.address.uri = brokerUrl.c_str();
-    mqtt_cfg.broker.verification.crt_bundle_attach = esp_crt_bundle_attach; 
+    if (brokerUrl.startsWith("wss://")) {
+      mqtt_cfg.broker.verification.crt_bundle_attach = esp_crt_bundle_attach;
+    }
   #else
     mqtt_cfg.uri = brokerUrl.c_str();
-    mqtt_cfg.crt_bundle_attach = esp_crt_bundle_attach; 
+    if (brokerUrl.startsWith("wss://")) {
+      mqtt_cfg.crt_bundle_attach = esp_crt_bundle_attach;
+    }
   #endif
 
   mqtt_client = esp_mqtt_client_init(&mqtt_cfg);
@@ -431,43 +558,49 @@ int encontrarSlotLibre() {
 }
 
 void completarRegistroPersona() {
-  if (!isOnline) {
-    addLog("Error: Sin conexión. Abortando registro.");
-    estadoActual = ESTADO_IDLE;
-    nombreRegistrando = ""; rutRegistrando = ""; emailRegistrando = ""; slotRegistrando = -1;
-    return;
-  }
+  ultimoErrorRegistro = "";
+  rostroRegistroExitoso = false;
 
-  HTTPClient http;
-  http.begin(backendURL + "/api/personas");
-  http.addHeader("Content-Type", "application/json");
-  http.setTimeout(10000);
-  
-  String payload = "{\"nombre\":\"" + nombreRegistrando + 
-                   "\",\"rut\":\"" + rutRegistrando + 
-                   "\",\"email\":\"" + emailRegistrando + 
-                   "\",\"huella_id\":" + String(slotRegistrando) + "}";
-                   
-  int httpCode = http.POST(payload);
   String idReal = "";
+  bool personaCreadaEnBackend = false;
 
-  if (httpCode == 200 || httpCode == 201) {
-    String response = http.getString();
-    DynamicJsonDocument respDoc(256);
-    deserializeJson(respDoc, response);
-    if (respDoc.containsKey("id")) {
+  if (isOnline && WiFi.status() == WL_CONNECTED) {
+    HTTPClient http;
+    http.begin(backendURL + "/api/personas");
+    http.addHeader("Content-Type", "application/json");
+    http.setTimeout(10000);
+
+    DynamicJsonDocument bodyDoc(512);
+    bodyDoc["nombre"] = nombreRegistrando;
+    bodyDoc["rut"] = rutRegistrando;
+    bodyDoc["email"] = emailRegistrando;
+    bodyDoc["huella_id"] = slotRegistrando;
+    String payload;
+    serializeJson(bodyDoc, payload);
+
+    int httpCode = http.POST(payload);
+    if (httpCode == 200 || httpCode == 201) {
+      String response = http.getString();
+      DynamicJsonDocument respDoc(256);
+      DeserializationError err = deserializeJson(respDoc, response);
+      if (!err && respDoc.containsKey("id")) {
         idReal = respDoc["id"].as<String>();
+        personaCreadaEnBackend = true;
         addLog("Usuario creado en BD ID: " + idReal);
+      } else {
+        addLog("Advertencia: backend no devolvio ID. Guardando registro local.");
+      }
+    } else {
+      addLog("Advertencia BD (Cod:" + String(httpCode) + "). Guardando registro local.");
     }
-  } else {
-    addLog("Error BD (Cod:" + String(httpCode) + "). Abortando.");
-    estadoActual = ESTADO_IDLE;
-    if(slotRegistrando > 0) finger.deleteModel(slotRegistrando);
-    nombreRegistrando = ""; rutRegistrando = ""; emailRegistrando = ""; slotRegistrando = -1;
     http.end();
-    return;
+  } else {
+    addLog("Sin internet: guardando persona solo en memoria local.");
   }
-  http.end();
+
+  if (idReal == "") {
+    idReal = "local-" + String(getTimestamp()) + "-" + String(slotRegistrando);
+  }
 
   DynamicJsonDocument doc(2048);
   JsonArray personas = loadArray("/personas.json", doc);
@@ -478,16 +611,21 @@ void completarRegistroPersona() {
   p["email"]          = emailRegistrando;
   p["huella_id"]      = slotRegistrando;
   p["fecha_registro"] = getTimestamp();
-  p["sincronizado"]   = true;
+  p["sincronizado"]   = personaCreadaEnBackend;
   saveArray("/personas.json", doc);
   
-  if (camaraIniciada) {
+  if (personaCreadaEnBackend && camaraIniciada) {
     addLog("Mire a la cámara para la foto...");
     idParaRostro = idReal;   
     intentosFacial = 0;      
+    actualizarBloqueoAsistencia(120000);
     estadoActual = ESTADO_REGISTRO_FACIAL;
     tiempoUltimoEstado = millis();
   } else {
+    if (!personaCreadaEnBackend) {
+      addLog("Registro local completado (pendiente de sincronizacion con backend).");
+    }
+    rostroRegistroExitoso = true;
     estadoActual = ESTADO_IDLE;
     nombreRegistrando = ""; rutRegistrando = ""; emailRegistrando = ""; slotRegistrando = -1;
   }
@@ -618,6 +756,7 @@ void servirArchivo(const char* path, const char* tipo) {
 // ============================================================
 void handleWiFiConfig() {
   if (server.hasArg("ssid") && server.hasArg("pass")) {
+    actualizarBloqueoAsistencia(120000);
     saveConfig(server.arg("ssid"), server.arg("pass"), server.hasArg("backend") ? server.arg("backend") : backendURL, server.hasArg("mqtt") ? server.arg("mqtt") : mqttBroker);
     server.send(200, "text/plain", "Guardado. Reiniciando...");
     delay(1500); ESP.restart();
@@ -626,6 +765,9 @@ void handleWiFiConfig() {
 
 void handleRegisterUser() {
   if (!server.hasArg("name") || !server.hasArg("rut")) { server.send(400, "text/plain", "Faltan datos"); return; }
+  ultimoErrorRegistro = "";
+  rostroRegistroExitoso = false;
+  actualizarBloqueoAsistencia(120000);
   int slot = encontrarSlotLibre();
   if (slot < 0) { server.send(500, "text/plain", "Sin slots"); return; }
   slotRegistrando = slot; nombreRegistrando = server.arg("name"); rutRegistrando = server.arg("rut"); emailRegistrando = server.arg("email");
@@ -634,6 +776,7 @@ void handleRegisterUser() {
 }
 
 void handleCreateTurn() {
+  actualizarBloqueoAsistencia();
   if (!server.hasArg("nombre") || !server.hasArg("inicio") || !server.hasArg("fin") || !server.hasArg("dias")) {
     server.send(400, "text/plain", "Datos incompletos");
     return;
@@ -651,6 +794,7 @@ void handleCreateTurn() {
 }
 
 void handleAssignTurn() {
+  actualizarBloqueoAsistencia();
   if (!server.hasArg("persona") || !server.hasArg("turno")) {
     server.send(400, "text/plain", "Falta persona o turno");
     return;
@@ -674,26 +818,33 @@ void handleAssignTurn() {
 }
 
 void handleMarcarAsistencia() {
+  actualizarBloqueoAsistencia(30000);
   addLog("Esperando huella...");
   int p = finger.getImage();
   if (p != FINGERPRINT_OK) {
+    flashError();
     server.send(500, "text/plain", "No se detecta huella");
     return;
   }
   if (finger.image2Tz() != FINGERPRINT_OK) {
+    flashError();
     server.send(500, "text/plain", "Error procesando imagen");
     return;
   }
   if (finger.fingerSearch() != FINGERPRINT_OK) {
+    flashError();
     server.send(500, "text/plain", "Huella no encontrada");
     return;
   }
   String pId = buscarPersonaPorHuella(finger.fingerID);
   String resultado = procesarAsistencia(pId, "huella_manual");
+  if (resultadoAsistenciaExitosa(resultado)) flashExito();
+  else flashError();
   server.send(200, "text/plain", resultado);
 }
 
 void handleLimpiarDatos() {
+  actualizarBloqueoAsistencia(120000);
   if (!server.hasArg("codigo") || server.arg("codigo") != "1234") {
     server.send(403, "text/plain", "Codigo incorrecto");
     return;
@@ -710,25 +861,243 @@ void handleLimpiarDatos() {
 }
 
 void handleSincronizar() {
+  actualizarBloqueoAsistencia();
   if (!isOnline) { server.send(503, "text/plain", "Sin conexion"); return; }
   sincronizarAsistencias();
   server.send(200, "text/plain", "Sincronizacion ejecutada");
 }
 
 void handleFetchPersonas() {
+  actualizarBloqueoAsistencia();
   if (!isOnline) { server.send(503, "text/plain", "Sin conexion WiFi"); return; }
   sincronizarPersonasDesdeBackend();
   server.send(200, "text/plain", "Personas obtenidas. Revisa los logs.");
 }
 
 void handleSetBackend() {
+  actualizarBloqueoAsistencia(120000);
   if (!server.hasArg("url")) { server.send(400, "text/plain", "Falta url"); return; }
   backendURL = server.arg("url");
   addLog("Backend actualizado: " + backendURL);
   server.send(200, "text/plain", "Backend: " + backendURL);
 }
 
+void handleEditarPersona() {
+  actualizarBloqueoAsistencia(120000);
+  if (!server.hasArg("id") || !server.hasArg("name")) {
+    server.send(400, "text/plain", "Faltan id o name");
+    return;
+  }
+
+  String id = server.arg("id");
+  String nuevoNombre = server.arg("name");
+  String nuevoEmail = server.hasArg("email") ? server.arg("email") : "";
+  nuevoNombre.trim();
+  nuevoEmail.trim();
+
+  if (nuevoNombre.length() == 0) {
+    server.send(400, "text/plain", "Nombre invalido");
+    return;
+  }
+
+  DynamicJsonDocument doc(4096);
+  JsonArray arr = loadArray("/personas.json", doc);
+  JsonObject objetivo;
+  bool encontrado = false;
+  for (JsonObject p : arr) {
+    if (p["id"].as<String>() == id) {
+      objetivo = p;
+      encontrado = true;
+      break;
+    }
+  }
+
+  if (!encontrado) {
+    server.send(404, "text/plain", "Persona no encontrada local");
+    return;
+  }
+
+  objetivo["nombre"] = nuevoNombre;
+  objetivo["email"] = nuevoEmail;
+  objetivo["sincronizado"] = false;
+
+  bool synced = false;
+  if (isOnline && WiFi.status() == WL_CONNECTED && !id.startsWith("local-")) {
+    HTTPClient http;
+    http.begin(backendURL + "/api/personas/" + id);
+    http.addHeader("Content-Type", "application/json");
+    http.setTimeout(10000);
+
+    DynamicJsonDocument payloadDoc(512);
+    payloadDoc["nombre"] = nuevoNombre;
+    payloadDoc["email"] = nuevoEmail;
+    String payload;
+    serializeJson(payloadDoc, payload);
+
+    int code = http.sendRequest("PATCH", payload);
+    if (code == 200) {
+      synced = true;
+      objetivo["sincronizado"] = true;
+      addLog("Persona editada y sincronizada: " + id);
+    } else {
+      addLog("Edicion local OK, backend pendiente. Codigo: " + String(code));
+    }
+    http.end();
+  } else {
+    addLog("Edicion local guardada (sin backend disponible)");
+  }
+
+  saveArray("/personas.json", doc);
+  server.send(200, "text/plain", synced ? "Persona actualizada y sincronizada" : "Persona actualizada local (pendiente sync)");
+}
+
+void handleActualizarHuellaPersona() {
+  actualizarBloqueoAsistencia(120000);
+  if (!server.hasArg("id")) {
+    server.send(400, "text/plain", "Falta id");
+    return;
+  }
+  if (estadoActual != ESTADO_IDLE) {
+    server.send(409, "text/plain", "Sistema ocupado, intente de nuevo");
+    return;
+  }
+
+  String id = server.arg("id");
+  DynamicJsonDocument doc(4096);
+  JsonArray arr = loadArray("/personas.json", doc);
+
+  JsonObject objetivo;
+  bool encontrado = false;
+  for (JsonObject p : arr) {
+    if (p["id"].as<String>() == id) {
+      objetivo = p;
+      encontrado = true;
+      break;
+    }
+  }
+
+  if (!encontrado) {
+    server.send(404, "text/plain", "Persona no encontrada local");
+    return;
+  }
+
+  int slot = encontrarSlotLibre();
+  if (slot < 0) {
+    server.send(500, "text/plain", "Sin slots de huella disponibles");
+    return;
+  }
+
+  int viejaHuella = objetivo["huella_id"].as<int>();
+  if (viejaHuella > 0) finger.deleteModel(viejaHuella);
+
+  modoEdicionHuella = true;
+  personaEditandoId = id;
+  huellaAnteriorEditando = viejaHuella;
+  slotRegistrando = slot;
+  estadoActual = ESTADO_ESPERANDO_HUELLA_REGISTRO;
+  tiempoUltimoEstado = millis();
+
+  server.send(200, "text/plain", "OK: Coloque el dedo para actualizar huella");
+}
+
+void handleActualizarRostroPersona() {
+  actualizarBloqueoAsistencia(120000);
+  if (!server.hasArg("id")) {
+    server.send(400, "text/plain", "Falta id");
+    return;
+  }
+  if (estadoActual != ESTADO_IDLE) {
+    server.send(409, "text/plain", "Sistema ocupado, intente de nuevo");
+    return;
+  }
+
+  String id = server.arg("id");
+  if (id.startsWith("local-")) {
+    server.send(409, "text/plain", "Persona local sin ID remoto, sincronice primero");
+    return;
+  }
+  if (!isOnline || WiFi.status() != WL_CONNECTED) {
+    server.send(503, "text/plain", "Sin conexion para actualizar rostro");
+    return;
+  }
+
+  modoEdicionRostro = true;
+  personaEditandoId = id;
+  idParaRostro = id;
+  intentosFacial = 0;
+  rostroRegistroExitoso = false;
+  ultimoErrorRegistro = "";
+  estadoActual = ESTADO_REGISTRO_FACIAL;
+  tiempoUltimoEstado = millis();
+
+  server.send(200, "text/plain", "Mire a la camara para actualizar rostro");
+}
+
+void completarEdicionHuellaExistente() {
+  if (!modoEdicionHuella || personaEditandoId.length() == 0 || slotRegistrando <= 0) {
+    estadoActual = ESTADO_IDLE;
+    return;
+  }
+
+  DynamicJsonDocument doc(4096);
+  JsonArray arr = loadArray("/personas.json", doc);
+  JsonObject objetivo;
+  bool encontrado = false;
+  for (JsonObject p : arr) {
+    if (p["id"].as<String>() == personaEditandoId) {
+      objetivo = p;
+      encontrado = true;
+      break;
+    }
+  }
+
+  if (!encontrado) {
+    addLog("No se encontro persona para actualizar huella");
+    estadoActual = ESTADO_IDLE;
+    modoEdicionHuella = false;
+    personaEditandoId = "";
+    slotRegistrando = -1;
+    huellaAnteriorEditando = -1;
+    return;
+  }
+
+  objetivo["huella_id"] = slotRegistrando;
+  objetivo["sincronizado"] = false;
+  bool synced = false;
+
+  if (isOnline && WiFi.status() == WL_CONNECTED && !personaEditandoId.startsWith("local-")) {
+    HTTPClient http;
+    http.begin(backendURL + "/api/personas/" + personaEditandoId + "/huella");
+    http.addHeader("Content-Type", "application/json");
+    http.setTimeout(10000);
+
+    DynamicJsonDocument payloadDoc(256);
+    payloadDoc["huella_id"] = slotRegistrando;
+    String payload;
+    serializeJson(payloadDoc, payload);
+
+    int code = http.sendRequest("PUT", payload);
+    if (code == 200) {
+      synced = true;
+      objetivo["sincronizado"] = true;
+    } else {
+      addLog("Huella local actualizada, backend pendiente. Codigo: " + String(code));
+    }
+    http.end();
+  }
+
+  saveArray("/personas.json", doc);
+  addLog(synced ? "Huella actualizada y sincronizada" : "Huella actualizada localmente");
+
+  modoEdicionHuella = false;
+  personaEditandoId = "";
+  slotRegistrando = -1;
+  huellaAnteriorEditando = -1;
+  estadoActual = ESTADO_IDLE;
+}
+
 void handleBorrarPersona() {
+  actualizarBloqueoAsistencia();
   if (!server.hasArg("id")) { server.send(400, "text/plain", "Falta ID"); return; }
   String id = server.arg("id");
   DynamicJsonDocument doc(2048);
@@ -747,6 +1116,7 @@ void handleBorrarPersona() {
 }
 
 void handleBorrarTurno() {
+  actualizarBloqueoAsistencia();
   if (!server.hasArg("id")) { server.send(400, "text/plain", "Falta ID"); return; }
   String id = server.arg("id");
   DynamicJsonDocument doc(1024);
@@ -763,6 +1133,7 @@ void handleBorrarTurno() {
 }
 
 void handleBorrarAsignacion() {
+  actualizarBloqueoAsistencia();
   if (!server.hasArg("persona") || !server.hasArg("turno")) { server.send(400, "text/plain", "Faltan datos"); return; }
   String persona = server.arg("persona");
   String turno = server.arg("turno");
@@ -780,6 +1151,7 @@ void handleBorrarAsignacion() {
 }
 
 void handleUltimoRegistro() {
+  actualizarBloqueoAsistencia(120000);
     DynamicJsonDocument doc(2048);
     JsonArray personas = loadArray("/personas.json", doc);
     if (personas.size() == 0) {
@@ -796,16 +1168,18 @@ void handleUltimoRegistro() {
     server.send(200, "application/json", json);
 }
 
-void handleGetPersonas() { servirArchivo("/personas.json", "application/json"); }
-void handleGetTurnos() { servirArchivo("/turnos.json", "application/json"); }
-void handleGetAsignaciones() { servirArchivo("/asignaciones.json", "application/json"); }
-void handleGetAsistencias() { servirArchivo("/asistencias.json", "application/json"); }
+void handleGetPersonas() { actualizarBloqueoAsistencia(); servirArchivo("/personas.json", "application/json"); }
+void handleGetTurnos() { actualizarBloqueoAsistencia(); servirArchivo("/turnos.json", "application/json"); }
+void handleGetAsignaciones() { actualizarBloqueoAsistencia(); servirArchivo("/asignaciones.json", "application/json"); }
+void handleGetAsistencias() { actualizarBloqueoAsistencia(); servirArchivo("/asistencias.json", "application/json"); }
 
 // ============================================================
 // SETUP
 // ============================================================
 void setup() {
   pinMode(13, INPUT_PULLUP);
+  pinMode(FLASH_PIN, OUTPUT);
+  digitalWrite(FLASH_PIN, LOW);
   if (digitalRead(13) == LOW) {
     delay(1000);
     if (digitalRead(13) == LOW) {
@@ -831,14 +1205,14 @@ void setup() {
   }
 
   // Rutas HTML
-  server.on("/", []() { servirArchivo("/index.html", "text/html"); });
-  server.on("/register", []() { servirArchivo("/register.html", "text/html"); });
-  server.on("/gestion", []() { servirArchivo("/gestion.html", "text/html"); });
-  server.on("/personas", []() { servirArchivo("/personas.html", "text/html"); });
-  server.on("/asistencias", []() { servirArchivo("/asistencias.html", "text/html"); });
-  server.on("/turnos", []() { servirArchivo("/turnos.html", "text/html"); });
-  server.on("/asignaciones", []() { servirArchivo("/asignaciones.html", "text/html"); });
-  server.on("/wifi-setup", []() { servirArchivo("/wifi-setup.html", "text/html"); });
+  server.on("/", []() { actualizarBloqueoAsistencia(); servirArchivo("/index.html", "text/html"); });
+  server.on("/register", []() { actualizarBloqueoAsistencia(120000); servirArchivo("/register.html", "text/html"); });
+  server.on("/gestion", []() { actualizarBloqueoAsistencia(); servirArchivo("/gestion.html", "text/html"); });
+  server.on("/personas", []() { actualizarBloqueoAsistencia(); servirArchivo("/personas.html", "text/html"); });
+  server.on("/asistencias", []() { actualizarBloqueoAsistencia(); servirArchivo("/asistencias.html", "text/html"); });
+  server.on("/turnos", []() { actualizarBloqueoAsistencia(); servirArchivo("/turnos.html", "text/html"); });
+  server.on("/asignaciones", []() { actualizarBloqueoAsistencia(); servirArchivo("/asignaciones.html", "text/html"); });
+  server.on("/wifi-setup", []() { actualizarBloqueoAsistencia(120000); servirArchivo("/wifi-setup.html", "text/html"); });
   
   // Rutas de Acción
   server.on("/wifi-config", handleWiFiConfig);
@@ -850,6 +1224,9 @@ void setup() {
   server.on("/sincronizar", handleSincronizar);
   server.on("/fetch-personas", handleFetchPersonas);
   server.on("/set-backend", handleSetBackend);
+  server.on("/editar_persona", handleEditarPersona);
+  server.on("/actualizar_huella", handleActualizarHuellaPersona);
+  server.on("/actualizar_rostro", handleActualizarRostroPersona);
   server.on("/borrar_persona", handleBorrarPersona);
   server.on("/borrar_turno", handleBorrarTurno);
   server.on("/borrar_asignacion", handleBorrarAsignacion);
@@ -862,12 +1239,23 @@ void setup() {
   server.on("/ultimo_registro", handleUltimoRegistro); 
 
   server.on("/estado", []() {
+    String referer = server.header("Referer");
+    if (referer.indexOf("/register") >= 0 || referer.indexOf("/wifi-setup") >= 0 || referer.indexOf("/gestion") >= 0 ||
+        referer.indexOf("/personas") >= 0 || referer.indexOf("/turnos") >= 0 || referer.indexOf("/asignaciones") >= 0 ||
+        referer.indexOf("/asistencias") >= 0) {
+      actualizarBloqueoAsistencia();
+    }
+
     String json = "{";
     json += "\"estado\":\""  + String(estadoActual == ESTADO_IDLE ? "idle" : "ocupado") + "\",";
     json += "\"codigo_paso\":" + String(estadoActual) + ",";
     json += "\"intentos_facial\":" + String(intentosFacial) + ",";
     json += "\"online\":"    + String(isOnline ? "true" : "false") + ",";
     json += "\"camara\":"    + String(camaraIniciada ? "true" : "false") + ",";
+    json += "\"rostro_ok\":" + String(rostroRegistroExitoso ? "true" : "false") + ",";
+    json += "\"error_registro\":\"" + jsonEscape(ultimoErrorRegistro) + "\",";
+    json += "\"asistencia_bloqueada\":" + String(millis() < bloqueoAsistenciaHasta ? "true" : "false") + ",";
+    json += "\"bloqueo_restante_ms\":" + String(millis() < bloqueoAsistenciaHasta ? (bloqueoAsistenciaHasta - millis()) : 0) + ",";
     json += "\"backend\":\"" + backendURL + "\",";
     json += "\"mqtt\":\""    + mqttBroker + "\"";
     json += "}";
@@ -899,24 +1287,29 @@ void loop() {
   if (estadoActual == ESTADO_IDLE) {
       
     // 1. MODO CENTINELA (ROSTRO) 
-    if (isOnline && (ahora - cooldownAsistencia > COOLDOWN_TIEMPO) && (ahora - lastFaceCheck > FACE_CHECK_INTERVAL)) {
+    if (isOnline && asistenciaAutomaticaHabilitada(ahora) && (ahora - lastFaceCheck > FACE_CHECK_INTERVAL)) {
         lastFaceCheck = ahora;
-        
+
+      if (detectarMovimientoCamara()) {
+        addLog("Movimiento detectado. Ejecutando reconocimiento facial...");
         String personaIdEncontrada = identificarPorRostro();
         if (personaIdEncontrada != "") {
-            estadoActual = ESTADO_PROCESANDO_ASISTENCIA;
-            addLog("Rostro detectado ID: " + personaIdEncontrada);
-            
-            String res = procesarAsistencia(personaIdEncontrada, "facial");
-            addLog(res);
-            
-            cooldownAsistencia = millis(); 
-            estadoActual = ESTADO_IDLE;
+          estadoActual = ESTADO_PROCESANDO_ASISTENCIA;
+          addLog("Rostro detectado ID: " + personaIdEncontrada);
+
+          String res = procesarAsistencia(personaIdEncontrada, "facial");
+          addLog(res);
+          if (resultadoAsistenciaExitosa(res)) flashExito();
+          else flashError();
+
+          cooldownAsistencia = millis();
+          estadoActual = ESTADO_IDLE;
+        }
         }
     }
 
     // 2. MODO RESPALDO (HUELLA)
-    if ((ahora - cooldownAsistencia > COOLDOWN_TIEMPO) && (ahora - lastFingerCheck > FINGER_CHECK_INTERVAL)) {
+    if (asistenciaAutomaticaHabilitada(ahora) && (ahora - lastFingerCheck > FINGER_CHECK_INTERVAL)) {
       lastFingerCheck = ahora;
       int p = finger.getImage();
       if (p == FINGERPRINT_OK && finger.image2Tz() == FINGERPRINT_OK && finger.fingerSearch() == FINGERPRINT_OK) {
@@ -929,9 +1322,12 @@ void loop() {
               if (personaId != "") {
                   String res = procesarAsistencia(personaId, isOnline ? "huella_online" : "huella_offline");
                   addLog(res);
+                  if (resultadoAsistenciaExitosa(res)) flashExito();
+                  else flashError();
                   cooldownAsistencia = millis();
               } else {
                   addLog("Huella no vinculada.");
+                  flashError();
               }
               
               lastFingerID = finger.fingerID;
@@ -963,7 +1359,8 @@ void loop() {
     if (finger.getImage() == FINGERPRINT_OK && finger.image2Tz(2) == FINGERPRINT_OK) {
         if (finger.createModel() == FINGERPRINT_OK && finger.storeModel(slotRegistrando) == FINGERPRINT_OK) {
             addLog("Huella guardada fisicamente. Enviando datos a DB...");
-            completarRegistroPersona(); 
+            if (modoEdicionHuella) completarEdicionHuellaExistente();
+            else completarRegistroPersona(); 
         } else {
           addLog("Las huellas no coinciden. Intente de nuevo.");
           estadoActual = ESTADO_ESPERANDO_HUELLA_REGISTRO;
@@ -978,10 +1375,18 @@ void loop() {
       intentosFacial++;
       if (intentosFacial > 6) {
         addLog("Se alcanzó el límite de intentos faciales. Volviendo a menú.");
+        ultimoErrorRegistro = "No se pudo registrar rostro tras multiples intentos";
         estadoActual = ESTADO_IDLE;
+        nombreRegistrando = ""; rutRegistrando = ""; emailRegistrando = ""; slotRegistrando = -1;
+        idParaRostro = "";
+        modoEdicionRostro = false;
+        personaEditandoId = "";
       } else {
         addLog("Enviando fotografía #" + String(intentosFacial) + " para registro...");
-        registrarRostroEnBackend(idParaRostro); 
+        if (!registrarRostroEnBackend(idParaRostro)) {
+          addLog("No se pudo enviar foto por MQTT. Reintentando...");
+          if (mqtt_client == NULL && mqttBroker != "") mantenerConexionMQTT();
+        }
       }
     }
   }

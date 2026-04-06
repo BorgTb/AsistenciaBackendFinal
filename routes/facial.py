@@ -91,6 +91,60 @@ def registrar_facial():
         return jsonify({'error': str(e)}), 500
 
 
+@facial_bp.route('/api/facial/actualizar/<persona_id>', methods=['PUT'])
+def actualizar_facial(persona_id):
+    data = request.json or {}
+    imagen_b64 = data.get('imagen')
+
+    if not imagen_b64:
+        return jsonify({'error': 'Falta imagen'}), 400
+
+    conn = get_connection()
+    cur = conn.cursor()
+    try:
+        cur.execute("SELECT id FROM personas WHERE id::text = %s", (str(persona_id),))
+        if not cur.fetchone():
+            return jsonify({'error': 'Persona no encontrada'}), 404
+
+        file_name = f"{persona_id}.jpg"
+        file_path = os.path.join(PREVIEWS_DIR, file_name)
+
+        img_bytes = base64.b64decode(imagen_b64)
+        img = Image.open(io.BytesIO(img_bytes)).convert('RGB')
+        img.save(file_path)
+
+        resultado = DeepFace.represent(
+            img_path=file_path,
+            model_name="Facenet",
+            enforce_detection=True,
+            detector_backend="retinaface",
+            anti_spoofing=True
+        )
+        embedding = resultado[0]['embedding']
+
+        cur.execute(
+            "UPDATE personas SET encoding_facial = %s WHERE id::text = %s",
+            (json.dumps(embedding), str(persona_id))
+        )
+        conn.commit()
+
+        preview_url = f"{request.host_url.rstrip('/')}/static/previews/{file_name}"
+        return jsonify({
+            'ok': True,
+            'mensaje': 'Rostro actualizado correctamente',
+            'preview_url': preview_url
+        })
+
+    except ValueError:
+        return jsonify({'error': 'No se detecto rostro en la imagen'}), 400
+    except Exception as e:
+        conn.rollback()
+        return jsonify({'error': str(e)}), 500
+    finally:
+        cur.close()
+        conn.close()
+
+
 @facial_bp.route('/api/facial/verificar', methods=['POST'])
 def verificar_facial():
     data = request.json

@@ -86,8 +86,10 @@ button:hover{transform:scale(1.02)}
 let checkInterval;
 let previewInterval; // NUEVO: Para controlar el polling de la foto
 let stepActual = 0;
+let registroFinalizado = false;
 
 async function iniciarRegistro() {
+    registroFinalizado = false;
     const nombre = document.getElementById('personName').value.trim();
     const rut = document.getElementById('personRut').value.trim();
     const email = document.getElementById('personEmail').value.trim();
@@ -120,20 +122,33 @@ async function monitorearHardware() {
     try {
         const r = await fetch('/estado');
         const data = await r.json();
-        
-        if (stepActual === 1 && data.codigo_paso === 2) {
+
+        if (registroFinalizado) return;
+
+        if (data.error_registro && data.error_registro.length > 0) {
+            clearInterval(checkInterval);
+            if(previewInterval) clearInterval(previewInterval);
+            alert('Error de registro: ' + data.error_registro);
+            return;
+        }
+
+        if (stepActual === 1 && (data.codigo_paso === 4 || data.codigo_paso === 2)) {
             marcarPasoActivo(2);
-        } 
-        else if (stepActual === 2 && data.codigo_paso === 0) {
+        }
+
+        if (data.codigo_paso === 3 && stepActual < 3) {
+            marcarPasoActivo(3);
+            if(!previewInterval) {
+                previewInterval = setInterval(obtenerVistaPrevia, 1500);
+            }
+        }
+
+        if (data.rostro_ok === true && data.codigo_paso === 0) {
+            registroFinalizado = true;
             marcarExito();
         }
     } catch(e) {
-        // El ESP32 se bloquea al tomar la primera foto, disparamos el Paso 3
-        if (stepActual === 2) {
-            marcarPasoActivo(3);
-            // Iniciamos la búsqueda de la imagen cada 1.5 segundos
-            previewInterval = setInterval(obtenerVistaPrevia, 1500); 
-        }
+        // Mantener polling sin adelantar pasos ante errores de red temporales.
     }
 }
 async function obtenerVistaPrevia() {
