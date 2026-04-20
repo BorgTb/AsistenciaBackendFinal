@@ -46,3 +46,18 @@ def create_turno():
     finally:
         cur.close()
         conn.close()
+
+@turnos_bp.route('/api/turnos/<turno_id>', methods=['DELETE'])
+def delete_turno(turno_id):
+    conn = get_connection()
+    cur = conn.cursor()
+    try:
+        cur.execute("DELETE FROM turnos WHERE id::text = %s", (str(turno_id),))
+        conn.commit()
+        return jsonify({'ok': True})
+    except Exception as e:
+        conn.rollback()
+        return jsonify({'error': str(e)}), 500
+    finally:
+        cur.close()
+        conn.close()

@@ -193,3 +193,20 @@ def update_huella_persona(persona_id):
     finally:
         cur.close()
         conn.close()
+
+@personas_bp.route('/api/personas/<persona_id>', methods=['DELETE'])
+def delete_persona(persona_id):
+    conn = get_connection()
+    cur = conn.cursor()
+    try:
+        # PostgreSQL arrojará error si esta persona tiene asistencias o asignaciones debido a llaves foráneas.
+        # Lo ideal es que tu BD tenga "ON DELETE CASCADE", o borrar primero los hijos.
+        cur.execute("DELETE FROM personas WHERE id::text = %s", (str(persona_id),))
+        conn.commit()
+        return jsonify({'ok': True})
+    except Exception as e:
+        conn.rollback()
+        return jsonify({'error': str(e)}), 500
+    finally:
+        cur.close()
+        conn.close()

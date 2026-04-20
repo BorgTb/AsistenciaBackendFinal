@@ -50,3 +50,18 @@ def create_asignacion():
     finally:
         cur.close()
         conn.close()
+
+@asignaciones_bp.route('/api/asignaciones/<asignacion_id>', methods=['DELETE'])
+def delete_asignacion(asignacion_id):
+    conn = get_connection()
+    cur = conn.cursor()
+    try:
+        cur.execute("DELETE FROM asignaciones WHERE id::text = %s", (str(asignacion_id),))
+        conn.commit()
+        return jsonify({'ok': True})
+    except Exception as e:
+        conn.rollback()
+        return jsonify({'error': str(e)}), 500
+    finally:
+        cur.close()
+        conn.close()
