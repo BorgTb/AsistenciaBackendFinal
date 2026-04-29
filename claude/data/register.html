@@ -2,213 +2,148 @@
 <html>
 <head>
 <meta charset="utf-8">
-<title>Registro Biométrico</title>
+<title>Alta de Trabajador</title>
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
-body{font-family:Arial,sans-serif;background:linear-gradient(135deg,#1e3c72 0%,#2a5298 100%);min-height:100vh;padding:20px;display:flex;align-items:center;justify-content:center}
-.container{background:white;border-radius:15px;box-shadow:0 10px 30px rgba(0,0,0,0.3);padding:30px;max-width:500px;width:100%}
-h1{color:#333;text-align:center;margin-bottom:20px;font-size:24px}
-.form-group{margin-bottom:15px}
-label{display:block;color:#333;font-weight:600;margin-bottom:5px;font-size:14px}
-input{width:100%;padding:12px;border:2px solid #ddd;border-radius:8px;font-size:14px;transition:0.3s}
-input:focus{outline:none;border-color:#2a5298}
-button{width:100%;padding:14px;border:none;border-radius:8px;font-size:16px;font-weight:600;cursor:pointer;margin-top:10px;color:white;transition:0.3s}
-button:hover{transform:scale(1.02)}
-.btn-success{background:#4CAF50}
-.btn-secondary{background:#6c757d}
+:root{--bg:#0d0f14;--surface:#141720;--surface2:#1a1e2b;--border:#252a3a;--accent:#00e5a0;--accent2:#3d8ef8;--warn:#f59e0b;--danger:#ef4444;--text:#e2e8f0;--dim:#6b7a99;--r:4px}
+body{font-family:'Courier New',Courier,monospace;background:var(--bg);color:var(--text);min-height:100vh;padding:12px}
+.wrap{max-width:480px;margin:0 auto}
+header{display:flex;align-items:center;gap:10px;padding:14px 0 10px;border-bottom:1px solid var(--border);margin-bottom:16px}
+.back{background:none;border:1px solid var(--border);color:var(--dim);padding:5px 10px;border-radius:var(--r);font-family:inherit;font-size:11px;cursor:pointer;letter-spacing:1px}
+.back:hover{color:var(--text);border-color:var(--dim)}
+h1{font-size:14px;letter-spacing:2px;text-transform:uppercase;color:var(--accent);flex:1;text-align:center}
+label{display:block;font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--dim);margin-bottom:4px}
+input{width:100%;padding:10px 12px;background:var(--surface);border:1px solid var(--border);border-radius:var(--r);color:var(--text);font-family:inherit;font-size:13px;margin-bottom:12px;transition:.15s}
+input:focus{outline:none;border-color:var(--accent);background:var(--surface2)}
+.btn{width:100%;padding:12px;border:none;border-radius:var(--r);font-family:inherit;font-size:12px;font-weight:700;letter-spacing:2px;text-transform:uppercase;cursor:pointer;margin-bottom:8px;transition:.15s}
+.btn-go{background:var(--accent);color:#0d0f14}
+.btn-go:hover{background:#00c98e}
+.btn-sec{background:var(--surface);border:1px solid var(--border);color:var(--dim)}
+.btn-sec:hover{color:var(--text);border-color:var(--dim)}
 
-/* --- ESTILOS DEL STEPPER BIOMÉTRICO --- */
-#biometric-process{display:none;text-align:center}
-.step-box{background:#f9f9f9;border:2px solid #eee;border-radius:10px;padding:20px;margin-bottom:15px;opacity:0.4;transition:0.5s}
-.step-box.active{opacity:1;border-color:#2a5298;background:#e3f2fd;transform:scale(1.05);box-shadow:0 5px 15px rgba(42,82,152,0.2)}
-.step-box.done{opacity:1;border-color:#4CAF50;background:#e8f5e9}
-.step-icon{font-size:40px;margin-bottom:10px}
-.step-title{font-weight:bold;color:#333;font-size:16px}
-.camera-flash{animation: flash 1s infinite alternate;}
-@keyframes flash {
-    0% { color: #333; text-shadow: none; }
-    100% { color: #ffeb3b; text-shadow: 0 0 20px #ffeb3b; }
-}
+/* Stepper */
+#biometric-process{display:none}
+.steps{display:flex;gap:8px;margin-bottom:16px;padding:12px;background:var(--surface);border:1px solid var(--border);border-radius:var(--r)}
+.step{flex:1;text-align:center;opacity:.3;transition:.4s}
+.step.active{opacity:1}
+.step.done{opacity:.7}
+.step-num{width:28px;height:28px;border-radius:50%;border:2px solid var(--border);display:flex;align-items:center;justify-content:center;margin:0 auto 6px;font-size:11px;font-weight:700;transition:.3s}
+.step.active .step-num{border-color:var(--accent);color:var(--accent);box-shadow:0 0 12px rgba(0,229,160,.3)}
+.step.done .step-num{border-color:var(--accent);background:var(--accent);color:#0d0f14}
+.step-label{font-size:9px;letter-spacing:1px;text-transform:uppercase;color:var(--dim)}
+.step.active .step-label{color:var(--text)}
+
+.step-detail{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:14px;text-align:center;margin-bottom:12px}
+.step-icon{font-size:32px;margin-bottom:8px}
+.step-title{font-size:13px;font-weight:700;color:var(--text);margin-bottom:4px}
+.step-desc{font-size:11px;color:var(--dim)}
+.pulse{animation:pulseGlow 1s ease infinite alternate}
+@keyframes pulseGlow{from{color:#333;text-shadow:none}to{color:#ffd700;text-shadow:0 0 16px #ffd700}}
+#camPreview{display:none;width:100%;max-width:220px;border-radius:var(--r);margin:10px auto 0;border:2px solid var(--accent);display:block}
 </style>
 </head>
 <body>
-
-<div class="container">
+<div class="wrap">
+  <header>
+    <button class="back" onclick="window.location.href='/'">← VOLVER</button>
     <h1>Alta de Trabajador</h1>
+  </header>
 
-    <div id="form-container">
-        <div class="form-group">
-            <label>Nombre Completo</label>
-            <input type="text" id="personName" placeholder="Ej: Juan Perez" required>
-        </div>
-        <div class="form-group">
-            <label>RUT</label>
-            <input type="text" id="personRut" placeholder="Ej: 12345678-9" required>
-        </div>
-        <div class="form-group">
-            <label>Email Corporativo</label>
-            <input type="email" id="personEmail" placeholder="Ej: juan@empresa.com" required>
-        </div>
-        
-        <button class="btn-success" onclick="iniciarRegistro()">Iniciar Escaneo</button>
-        <button class="btn-secondary" onclick="window.location.href='/'">Cancelar</button>
+  <div id="form-container">
+    <label>Nombre Completo</label>
+    <input type="text" id="personName" placeholder="Juan Pérez" required>
+    <label>RUT</label>
+    <input type="text" id="personRut" placeholder="12345678-9" required>
+    <label>Email Corporativo</label>
+    <input type="email" id="personEmail" placeholder="juan@empresa.com" required>
+    <button class="btn btn-go" onclick="iniciarRegistro()">▶ INICIAR ESCANEO</button>
+    <button class="btn btn-sec" onclick="window.location.href='/'">CANCELAR</button>
+  </div>
+
+  <div id="biometric-process">
+    <div class="steps">
+      <div class="step active" id="step1"><div class="step-num">1</div><div class="step-label">Huella 1</div></div>
+      <div class="step" id="step2"><div class="step-num">2</div><div class="step-label">Huella 2</div></div>
+      <div class="step" id="step3"><div class="step-num">3</div><div class="step-label">Rostro</div></div>
     </div>
-
-    <div id="biometric-process">
-        <div class="step-box" id="step1">
-            <div class="step-icon">👆</div>
-            <div class="step-title">1. Coloque el dedo en el sensor</div>
-            <small>Mantenga presionado firmemente</small>
-        </div>
-
-        <div class="step-box" id="step2">
-            <div class="step-icon">👆</div>
-            <div class="step-title">2. Levante y vuelva a colocarlo</div>
-            <small>Para confirmar la plantilla biométrica</small>
-        </div>
-
-        <div class="step-box" id="step3">
-            <div class="step-icon" id="camIcon">📸</div>
-            <img id="camPreview" src="" style="display:none; width:100%; max-width:240px; border-radius:8px; margin:10px auto; border:3px solid #2a5298;">
-            
-            <div class="step-title" id="step3-title">3. Mire a la cámara del Reloj</div>
-            <small id="step3-desc">Se registrará su rostro en la Base de Datos</small>
-        </div>
-
-        <button class="btn-success" id="btn-finish" style="display:none;" onclick="window.location.reload()">Registrar a otra persona</button>
-        <button class="btn-secondary" onclick="window.location.href='/'">Volver al Inicio</button>
+    <div class="step-detail">
+      <div class="step-icon" id="camIcon">👆</div>
+      <img id="camPreview" src="">
+      <div class="step-title" id="step3-title">Coloque el dedo en el sensor</div>
+      <div class="step-desc" id="step3-desc">Mantenga presionado firmemente</div>
     </div>
-
+    <button class="btn btn-go" id="btn-finish" style="display:none;" onclick="window.location.reload()">+ REGISTRAR OTRA PERSONA</button>
+    <button class="btn btn-sec" onclick="window.location.href='/'">VOLVER AL INICIO</button>
+  </div>
 </div>
 
 <script>
-let checkInterval;
-let previewInterval; // NUEVO: Para controlar el polling de la foto
-let stepActual = 0;
-let registroFinalizado = false;
+let checkInterval,previewInterval,stepActual=0,registroFinalizado=false;
 
-async function iniciarRegistro() {
-    registroFinalizado = false;
-    const nombre = document.getElementById('personName').value.trim();
-    const rut = document.getElementById('personRut').value.trim();
-    const email = document.getElementById('personEmail').value.trim();
-    
-    if(!nombre || !rut || !email) {
-        alert('Por favor complete todos los datos antes de continuar.');
-        return;
-    }
-
-    try {
-        const r = await fetch('/registrar?name=' + encodeURIComponent(nombre) + '&rut=' + encodeURIComponent(rut) + '&email=' + encodeURIComponent(email));
-        if(r.ok) {
-            // Ocultar form y mostrar UI biométrica
-            document.getElementById('form-container').style.display = 'none';
-            document.getElementById('biometric-process').style.display = 'block';
-            
-            // Iniciar motor de pasos
-            marcarPasoActivo(1);
-            checkInterval = setInterval(monitorearHardware, 800);
-        } else {
-            const msg = await r.text();
-            alert("Error: " + msg);
-        }
-    } catch(e) {
-        alert('Error conectando con el reloj.');
-    }
+async function iniciarRegistro(){
+  const nombre=document.getElementById('personName').value.trim();
+  const rut=document.getElementById('personRut').value.trim();
+  const email=document.getElementById('personEmail').value.trim();
+  if(!nombre||!rut||!email){alert('Complete todos los datos.');return;}
+  try{
+    const r=await fetch('/registrar?name='+encodeURIComponent(nombre)+'&rut='+encodeURIComponent(rut)+'&email='+encodeURIComponent(email));
+    if(r.ok){
+      document.getElementById('form-container').style.display='none';
+      document.getElementById('biometric-process').style.display='block';
+      marcarPasoActivo(1);
+      checkInterval=setInterval(monitorearHardware,800);
+    }else{alert('Error: '+(await r.text()));}
+  }catch(e){alert('Error conectando con el reloj.');}
 }
 
-async function monitorearHardware() {
-    try {
-        const r = await fetch('/estado');
-        const data = await r.json();
-
-        if (registroFinalizado) return;
-
-        if (data.error_registro && data.error_registro.length > 0) {
-            clearInterval(checkInterval);
-            if(previewInterval) clearInterval(previewInterval);
-            alert('Error de registro: ' + data.error_registro);
-            return;
-        }
-
-        if (stepActual === 1 && (data.codigo_paso === 4 || data.codigo_paso === 2)) {
-            marcarPasoActivo(2);
-        }
-
-        if (data.codigo_paso === 3 && stepActual < 3) {
-            marcarPasoActivo(3);
-            if(!previewInterval) {
-                previewInterval = setInterval(obtenerVistaPrevia, 1500);
-            }
-        }
-
-        if (data.rostro_ok === true && data.codigo_paso === 0) {
-            registroFinalizado = true;
-            marcarExito();
-        }
-    } catch(e) {
-        // Mantener polling sin adelantar pasos ante errores de red temporales.
-    }
-}
-async function obtenerVistaPrevia() {
-    try {
-        const r = await fetch('/ultimo_registro');
-        if (r.ok) {
-            const data = await r.json();
-            // Si el JSON trae una URL válida de Flask
-            if (data.imagen_url && data.imagen_url.startsWith("http")) {
-                const img = document.getElementById('camPreview');
-                const icon = document.getElementById('camIcon');
-                
-                icon.style.display = 'none'; // Ocultamos el emoji
-                img.style.display = 'block'; // Mostramos la foto
-                
-                // Truco para evitar que el navegador guarde la foto vieja en caché
-                img.src = data.imagen_url + "?t=" + new Date().getTime();
-            }
-        }
-    } catch(e) {
-        console.log("Esperando imagen...");
-    }
-}
-function marcarPasoActivo(paso) {
-    stepActual = paso;
-    
-    document.getElementById('step1').className = 'step-box';
-    document.getElementById('step2').className = 'step-box';
-    document.getElementById('step3').className = 'step-box';
-    document.getElementById('camIcon').classList.remove('camera-flash');
-
-    if(paso === 1) {
-        document.getElementById('step1').classList.add('active');
-    }
-    else if(paso === 2) {
-        document.getElementById('step1').classList.add('done');
-        document.getElementById('step2').classList.add('active');
-    }
-    else if(paso === 3) {
-        document.getElementById('step1').classList.add('done');
-        document.getElementById('step2').classList.add('done');
-        document.getElementById('step3').classList.add('active');
-        document.getElementById('camIcon').classList.add('camera-flash');
-    }
+async function monitorearHardware(){
+  try{
+    const data=await fetch('/estado').then(r=>r.json());
+    if(registroFinalizado)return;
+    if(data.error_registro&&data.error_registro.length>0){clearInterval(checkInterval);if(previewInterval)clearInterval(previewInterval);alert('Error: '+data.error_registro);return;}
+    if(stepActual===1&&(data.codigo_paso===4||data.codigo_paso===2))marcarPasoActivo(2);
+    if(data.codigo_paso===3&&stepActual<3){marcarPasoActivo(3);if(!previewInterval)previewInterval=setInterval(obtenerVistaPrevia,1500);}
+    if(data.rostro_ok===true&&data.codigo_paso===0){registroFinalizado=true;marcarExito();}
+  }catch(e){}
 }
 
-function marcarExito() {
-    clearInterval(checkInterval);
-    if(previewInterval) clearInterval(previewInterval); // Detenemos la búsqueda de fotos
-    
-    document.getElementById('step1').className = 'step-box done';
-    document.getElementById('step2').className = 'step-box done';
-    document.getElementById('step3').className = 'step-box done';
-    document.getElementById('camIcon').style.display = 'block'; // Volvemos a mostrar el emoji
-    document.getElementById('camPreview').style.display = 'none'; // Ocultamos la foto final
-    document.getElementById('camIcon').classList.remove('camera-flash');
-    
-    document.getElementById('step3-title').innerText = "¡Registro Completo!";
-    document.getElementById('step3-desc').innerText = "Rostro y huellas sincronizados.";
-    document.getElementById('btn-finish').style.display = 'block';
+async function obtenerVistaPrevia(){
+  try{
+    const data=await fetch('/ultimo_registro').then(r=>r.json());
+    if(data.imagen_url&&data.imagen_url.startsWith('http')){
+      const img=document.getElementById('camPreview');
+      document.getElementById('camIcon').style.display='none';
+      img.style.display='block';
+      img.src=data.imagen_url+'?t='+Date.now();
+    }
+  }catch(e){}
+}
+
+function marcarPasoActivo(paso){
+  stepActual=paso;
+  ['step1','step2','step3'].forEach(id=>document.getElementById(id).className='step');
+  document.getElementById('camIcon').classList.remove('pulse');
+  const icons=['👆','👆','📸'];
+  const titles=['Coloque el dedo en el sensor','Levante y vuelva a colocarlo','Mire a la cámara del reloj'];
+  const descs=['Mantenga presionado firmemente','Para confirmar la plantilla biométrica','Se registrará su rostro en la BD'];
+  document.getElementById('camIcon').textContent=icons[paso-1];
+  document.getElementById('step3-title').textContent=titles[paso-1];
+  document.getElementById('step3-desc').textContent=descs[paso-1];
+  if(paso===1)document.getElementById('step1').className='step active';
+  else if(paso===2){document.getElementById('step1').className='step done';document.getElementById('step2').className='step active';}
+  else if(paso===3){document.getElementById('step1').className='step done';document.getElementById('step2').className='step done';document.getElementById('step3').className='step active';document.getElementById('camIcon').classList.add('pulse');}
+}
+
+function marcarExito(){
+  clearInterval(checkInterval);if(previewInterval)clearInterval(previewInterval);
+  ['step1','step2','step3'].forEach(id=>document.getElementById(id).className='step done');
+  const icon=document.getElementById('camIcon');
+  icon.textContent='✓';icon.style.display='block';icon.classList.remove('pulse');icon.style.color='var(--accent)';
+  document.getElementById('camPreview').style.display='none';
+  document.getElementById('step3-title').textContent='¡Registro Completo!';
+  document.getElementById('step3-desc').textContent='Rostro y huellas sincronizados.';
+  document.getElementById('btn-finish').style.display='block';
 }
 </script>
 </body>

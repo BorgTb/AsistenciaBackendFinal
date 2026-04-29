@@ -1,111 +1,91 @@
-
 <!DOCTYPE html>
 <html>
 <head>
 <meta charset="utf-8">
-<title>Gestion de Turnos</title>
+<title>Gestión de Turnos</title>
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
-body{font-family:Arial,sans-serif;background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);min-height:100vh;padding:10px}
-.container{background:white;border-radius:15px;box-shadow:0 10px 30px rgba(0,0,0,0.3);padding:20px;max-width:900px;margin:0 auto}
-h1{color:#333;text-align:center;margin-bottom:15px;font-size:22px}
-h2{color:#667eea;font-size:18px;margin:15px 0 10px 0;border-bottom:2px solid #667eea;padding-bottom:5px}
-.section{background:#f9f9f9;padding:15px;border-radius:8px;margin-bottom:15px}
-.list{max-height:300px;overflow-y:auto;background:white;border:1px solid #ddd;border-radius:6px;padding:10px;margin:10px 0}
-.item{padding:8px;margin:5px 0;background:#f5f5f5;border-left:4px solid #667eea;border-radius:4px;font-size:13px}
-button{width:100%;padding:12px;border:none;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;margin-bottom:8px;color:white;background:#667eea}
-button:hover{background:#5568c0}
-.badge{display:inline-block;padding:3px 8px;border-radius:10px;font-size:11px;background:#e0e0e0;margin-left:5px}
+:root{--bg:#0d0f14;--surface:#141720;--surface2:#1a1e2b;--border:#252a3a;--accent:#00e5a0;--accent2:#3d8ef8;--warn:#f59e0b;--danger:#ef4444;--text:#e2e8f0;--dim:#6b7a99;--r:4px}
+body{font-family:'Courier New',Courier,monospace;background:var(--bg);color:var(--text);min-height:100vh;padding:12px}
+.wrap{max-width:700px;margin:0 auto}
+header{display:flex;align-items:center;gap:8px;padding:14px 0 10px;border-bottom:1px solid var(--border);margin-bottom:14px}
+.back{background:none;border:1px solid var(--border);color:var(--dim);padding:5px 10px;border-radius:var(--r);font-family:inherit;font-size:11px;cursor:pointer;letter-spacing:1px}
+.back:hover{color:var(--text);border-color:var(--dim)}
+h1{font-size:13px;letter-spacing:2px;text-transform:uppercase;color:var(--accent);flex:1;text-align:center}
+.section-head{font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--dim);margin-bottom:6px;padding:0 2px 4px 8px;border-left:2px solid var(--border);display:flex;justify-content:space-between;align-items:center}
+.badge{background:var(--surface2);border:1px solid var(--border);color:var(--dim);font-size:10px;padding:1px 7px;border-radius:10px}
+.list{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);max-height:220px;overflow-y:auto;padding:8px;margin:8px 0}
+.list::-webkit-scrollbar{width:4px}.list::-webkit-scrollbar-track{background:var(--surface)}.list::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
+.item{padding:8px;margin:4px 0;background:var(--surface2);border-left:3px solid var(--border);border-radius:var(--r);font-size:11px}
+.item strong{display:block;color:var(--text);margin-bottom:2px}
+.item small{color:var(--dim)}
+.btn{width:100%;padding:10px;border:none;border-radius:var(--r);font-family:inherit;font-size:11px;font-weight:700;letter-spacing:2px;text-transform:uppercase;cursor:pointer;margin-bottom:6px;color:var(--text);background:var(--surface);border:1px solid var(--border);transition:.15s}
+.btn:hover{border-color:var(--dim)}
+.btn-accent{border-color:var(--accent);color:var(--accent)}
+.btn-accent:hover{background:var(--accent);color:#0d0f14}
+.btn-blue{border-color:var(--accent2);color:var(--accent2)}
+.btn-blue:hover{background:var(--accent2);color:#0d0f14}
+.section{margin-bottom:16px}
+.empty{text-align:center;padding:20px;color:var(--dim);font-size:11px}
 </style>
 </head>
 <body>
-<div class="container">
-<h1>Gestion de Turnos</h1>
+<div class="wrap">
+  <header>
+    <button class="back" onclick="window.location.href='/'">← INICIO</button>
+    <h1>Gestión de Turnos</h1>
+  </header>
 
-<div class="section">
-<h2>Turnos <span class="badge" id="countTurnos">0</span></h2>
-<div class="list" id="listTurnos">Cargando...</div>
-<button onclick="window.location.href='/turnos'">Gestionar Turnos</button>
-</div>
+  <div class="section">
+    <div class="section-head">Turnos <span class="badge" id="countTurnos">0</span></div>
+    <div class="list" id="listTurnos"><div class="empty">Cargando...</div></div>
+    <button class="btn btn-accent" onclick="window.location.href='/turnos'">▶ GESTIONAR TURNOS</button>
+  </div>
 
-<div class="section">
-<h2>Asignaciones <span class="badge" id="countAsignaciones">0</span></h2>
-<div class="list" id="listAsignaciones">Cargando...</div>
-<button onclick="window.location.href='/asignaciones'">Gestionar Asignaciones</button>
-</div>
+  <div class="section">
+    <div class="section-head">Asignaciones <span class="badge" id="countAsignaciones">0</span></div>
+    <div class="list" id="listAsignaciones"><div class="empty">Cargando...</div></div>
+    <button class="btn btn-accent" onclick="window.location.href='/asignaciones'">▶ GESTIONAR ASIGNACIONES</button>
+  </div>
 
-<div class="section">
-<h2>Sincronizacion</h2>
-<button onclick="sincronizarTodo()">Sincronizar Todo con Backend</button>
-</div>
-
-<button onclick="window.location.href='/'">Volver al Inicio</button>
+  <div class="section">
+    <div class="section-head">Sincronización</div>
+    <button class="btn btn-blue" onclick="sincronizarTodo()">↑ SINCRONIZAR TODO CON BACKEND</button>
+  </div>
 </div>
 
 <script>
-let personas=[];
-let turnos=[];
-let asignaciones=[];
-
-async function cargarPersonas(){
-try{
-const r=await fetch('/api/personas');
-personas=await r.json();
-}catch(e){}
-}
-
+let personas=[],turnos=[],asignaciones=[];
+async function cargarPersonas(){try{personas=await fetch('/api/personas').then(r=>r.json());}catch(e){}}
 async function cargarTurnos(){
-try{
-const r=await fetch('/api/turnos');
-turnos=await r.json();
-document.getElementById('countTurnos').textContent=turnos.length;
-const container=document.getElementById('listTurnos');
-if(turnos.length===0){container.innerHTML='<div style="text-align:center;color:#999">No hay turnos</div>';return;}
-let html='';
-turnos.forEach(t=>{
-html+=`<div class="item"><strong>${t.nombre}</strong><br><small>${t.inicio} - ${t.fin} (${t.dias})</small></div>`;
-});
-container.innerHTML=html;
-}catch(e){document.getElementById('listTurnos').innerHTML='Error';}
+  try{
+    turnos=await fetch('/api/turnos').then(r=>r.json());
+    document.getElementById('countTurnos').textContent=turnos.length;
+    const c=document.getElementById('listTurnos');
+    if(!turnos.length){c.innerHTML='<div class="empty">No hay turnos</div>';return;}
+    c.innerHTML=turnos.map(t=>`<div class="item"><strong>${t.nombre}</strong><small>${t.inicio} – ${t.fin} &nbsp;|&nbsp; ${t.dias}</small></div>`).join('');
+  }catch(e){document.getElementById('listTurnos').innerHTML='<div class="empty">Error</div>';}
 }
-
 async function cargarAsignaciones(){
-try{
-const r=await fetch('/api/asignaciones');
-asignaciones=await r.json();
-document.getElementById('countAsignaciones').textContent=asignaciones.length;
-const container=document.getElementById('listAsignaciones');
-if(asignaciones.length===0){container.innerHTML='<div style="text-align:center;color:#999">No hay asignaciones</div>';return;}
-let html='';
-asignaciones.forEach(a=>{
-const persona=personas.find(p=>p.id===a.persona_id);
-const turno=turnos.find(t=>t.id===a.turno_id);
-const nombrePersona=persona?persona.nombre:'ID '+a.persona_id;
-const nombreTurno=turno?turno.nombre:'ID '+a.turno_id;
-html+=`<div class="item"><strong>${nombrePersona}</strong> -> ${nombreTurno}</div>`;
-});
-container.innerHTML=html;
-}catch(e){document.getElementById('listAsignaciones').innerHTML='Error';}
+  try{
+    asignaciones=await fetch('/api/asignaciones').then(r=>r.json());
+    document.getElementById('countAsignaciones').textContent=asignaciones.length;
+    const c=document.getElementById('listAsignaciones');
+    if(!asignaciones.length){c.innerHTML='<div class="empty">No hay asignaciones</div>';return;}
+    c.innerHTML=asignaciones.map(a=>{
+      const p=personas.find(x=>x.id===a.persona_id);
+      const t=turnos.find(x=>x.id===a.turno_id);
+      return `<div class="item"><strong>${p?p.nombre:'ID '+a.persona_id}</strong><small>→ ${t?t.nombre:'ID '+a.turno_id}</small></div>`;
+    }).join('');
+  }catch(e){document.getElementById('listAsignaciones').innerHTML='<div class="empty">Error</div>';}
 }
-
 async function sincronizarTodo(){
-try{
-const r=await fetch('/sincronizar');
-const msg=await r.text();
-alert(msg);
-await cargarPersonas();
-await cargarTurnos();
-await cargarAsignaciones();
-}catch(e){
-alert('Error de sincronizacion: '+e.message);
+  try{const r=await fetch('/sincronizar');alert(await r.text());await Promise.all([cargarPersonas(),cargarTurnos(),cargarAsignaciones()]);}
+  catch(e){alert('Error: '+e.message);}
 }
-}
-
-cargarPersonas();
-cargarTurnos();
-cargarAsignaciones();
-setInterval(()=>{cargarPersonas();cargarTurnos();cargarAsignaciones();},30000);
+async function init(){await cargarPersonas();await Promise.all([cargarTurnos(),cargarAsignaciones()]);}
+init();setInterval(()=>{cargarPersonas();cargarTurnos();cargarAsignaciones();},30000);
 </script>
 </body>
 </html>

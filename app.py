@@ -25,6 +25,7 @@ def health():
     return {'status': 'ok', 'version': '1.0'}
 
 if __name__ == '__main__':
+    print("¡¡¡NUEVO CÓDIGO CARGADO!!!")
     init_db()           # crea las tablas si no existen
     start_mqtt()        # inicia el listener MQTT
     app.run(

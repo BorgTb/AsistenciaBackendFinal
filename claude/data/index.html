@@ -1,136 +1,111 @@
-
 <!DOCTYPE html>
 <html>
 <head>
 <meta charset="utf-8">
-<title>ESP32 Sistema Asistencia</title>
+<title>ESP32 · Sistema Asistencia</title>
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
-body{font-family:Arial,sans-serif;background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);min-height:100vh;padding:10px}
-.container{background:white;border-radius:15px;box-shadow:0 10px 30px rgba(0,0,0,0.3);padding:20px;max-width:600px;margin:0 auto}
-h1{color:#333;text-align:center;margin-bottom:10px}
-.status-bar{background:#f5f5f5;padding:10px;border-radius:8px;margin-bottom:15px;text-align:center}
-.status-item{display:flex;justify-content:space-between;padding:6px 0}
-button{width:100%;padding:12px;border:none;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;margin-bottom:8px;color:white;transition:0.3s}
-button:hover{transform:scale(1.02)}
-button:active{transform:scale(0.98)}
-.btn-primary{background:#667eea}
-.btn-success{background:#4CAF50}
-.btn-warning{background:#ff9800}
-.btn-danger{background:#f44336}
-.btn-info{background:#00bcd4}
-.status{background:#f5f5f5;padding:12px;border-radius:8px;margin-top:10px;text-align:center;min-height:50px;display:flex;align-items:center;justify-content:center;font-size:13px}
-.section{margin:15px 0;padding:10px;background:#f9f9f9;border-radius:8px}
-h3{color:#667eea;margin-bottom:8px;font-size:16px}
+:root{--bg:#0d0f14;--surface:#141720;--surface2:#1a1e2b;--border:#252a3a;--accent:#00e5a0;--accent2:#3d8ef8;--warn:#f59e0b;--danger:#ef4444;--text:#e2e8f0;--dim:#6b7a99;--r:4px}
+body{font-family:'Courier New',Courier,monospace;background:var(--bg);color:var(--text);min-height:100vh;padding:12px}
+.wrap{max-width:480px;margin:0 auto}
+header{display:flex;align-items:center;gap:10px;padding:14px 0 10px;border-bottom:1px solid var(--border);margin-bottom:14px}
+.logo{width:32px;height:32px;border:2px solid var(--accent);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:14px;color:var(--accent);font-weight:700;flex-shrink:0}
+h1{font-size:15px;letter-spacing:2px;text-transform:uppercase;color:var(--accent)}
+h1 span{display:block;font-size:10px;color:var(--dim);letter-spacing:1px;margin-top:1px}
+.status-bar{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:10px 12px;margin-bottom:14px;display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px}
+.stat{text-align:center}
+.stat-label{font-size:9px;color:var(--dim);text-transform:uppercase;letter-spacing:1px}
+.stat-val{font-size:12px;font-weight:700;margin-top:2px}
+.online{color:var(--accent)}.offline{color:var(--danger)}.active{color:var(--accent)}
+section{margin-bottom:12px}
+.section-head{font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--dim);margin-bottom:6px;padding-left:2px;border-left:2px solid var(--border);padding-left:8px}
+.btn{display:block;width:100%;padding:11px 14px;border:1px solid var(--border);border-radius:var(--r);background:var(--surface);color:var(--text);font-family:inherit;font-size:12px;font-weight:700;letter-spacing:1px;text-transform:uppercase;cursor:pointer;text-align:left;margin-bottom:6px;transition:.15s;position:relative;overflow:hidden}
+.btn::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px}
+.btn:hover{background:var(--surface2);border-color:var(--dim)}
+.btn-accent::before{background:var(--accent)}.btn-accent{border-left-color:var(--accent)}
+.btn-blue::before{background:var(--accent2)}.btn-blue{border-left-color:var(--accent2)}
+.btn-warn::before{background:var(--warn)}.btn-warn{border-left-color:var(--warn)}
+.btn-danger{border-left-color:var(--danger)}.btn-danger::before{background:var(--danger)}
+.btn-icon{float:right;opacity:.5;font-size:14px}
+.toast{background:var(--surface2);border:1px solid var(--border);border-radius:var(--r);padding:10px 12px;margin-top:10px;font-size:11px;color:var(--dim);min-height:36px;line-height:1.5}
+.toast.active{border-color:var(--accent);color:var(--text)}
+.dot{display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--accent);margin-right:6px;animation:blink 1.2s ease infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.2}}
 </style>
 </head>
 <body>
-<div class="container">
-<h1>ESP32 Sistema Asistencia</h1>
-<div class="status-bar">
-<div class="status-item"><span>Modo:</span><strong id="modoEstado">OFFLINE</strong></div>
-<div class="status-item"><span>Sensor:</span><strong style="color:#4CAF50">Activo</strong></div>
-<div class="status-item"><span>Auto huella:</span><strong id="autoHuellaEstado">Verificando...</strong></div>
+<div class="wrap">
+  <header>
+    <div class="logo">32</div>
+    <h1>Sistema Asistencia<span>ESP32-CAM · BIOMÉTRICO</span></h1>
+  </header>
+
+  <div class="status-bar">
+    <div class="stat"><div class="stat-label">Modo</div><div class="stat-val offline" id="modoEstado">OFFLINE</div></div>
+    <div class="stat"><div class="stat-label">Sensor</div><div class="stat-val active">ACTIVO</div></div>
+    <div class="stat"><div class="stat-label">Auto</div><div class="stat-val" id="autoHuellaEstado" style="font-size:10px;margin-top:2px;color:var(--dim)">...</div></div>
+  </div>
+
+  <section>
+    <div class="section-head">Registro</div>
+    <button class="btn btn-warn" onclick="window.location.href='/register'"><span class="btn-icon">›</span>Registrar Persona</button>
+  </section>
+
+  <section>
+    <div class="section-head">Gestión</div>
+    <button class="btn btn-blue" onclick="window.location.href='/gestion'"><span class="btn-icon">›</span>Gestión de Turnos</button>
+    <button class="btn btn-accent" onclick="window.location.href='/asistencias'"><span class="btn-icon">›</span>Ver Asistencias</button>
+    <button class="btn btn-accent" onclick="window.location.href='/personas'"><span class="btn-icon">›</span>Ver Personas</button>
+    <button class="btn btn-accent" onclick="window.location.href='/logs'"><span class="btn-icon">›</span>Ver Logs</button>
+    <button class="btn btn-blue" onclick="sincronizarTodo()"><span class="btn-icon">↑</span>Sincronizar con Backend</button>
+    <button class="btn btn-blue" onclick="window.location.href='/wifi-setup'"><span class="btn-icon">›</span>Configurar WiFi</button>
+  </section>
+
+  <section>
+    <div class="section-head">Zona Peligro</div>
+    <button class="btn btn-danger" onclick="limpiarDatos()"><span class="btn-icon">⚠</span>Limpiar Todos los Datos</button>
+  </section>
+
+  <div class="toast" id="status"><span class="dot"></span>Sistema listo</div>
 </div>
 
-<div class="section">
-<h3>Registro</h3>
-<button class="btn-warning" onclick="window.location.href='/register'">Registrar Persona</button>
-</div>
-
-
-
-<div class="section">
-<h3>Gestion</h3>
-<button class="btn-primary" onclick="window.location.href='/gestion'">Gestion Turnos</button>
-<button class="btn-info" onclick="window.location.href='/asistencias'">Ver Asistencias</button>
-<button class="btn-info" onclick="window.location.href='/personas'">Ver Personas</button>
-<button class="btn-info" onclick="window.location.href='/logs'">Ver Logs</button>
-<button class="btn-success" onclick="sincronizarTodo()">Sincronizar Todo con Backend</button>
-<button class="btn-primary" onclick="window.location.href='/wifi-setup'">Configurar WiFi</button>
-</div>
-
-<div class="section">
-<h3>Zona de Peligro</h3>
-<button class="btn-danger" onclick="limpiarDatos()">Limpiar Todos los Datos</button>
-</div>
-
-<div class="status" id="status">Sistema listo</div>
-</div>
 <script>
 function traducirMotivo(m){
-if(m==='habilitada') return 'Activa';
-if(m==='sistema_ocupado') return 'Sistema ocupado';
-if(m==='cooldown') return 'En cooldown';
-if(m==='bloqueo_menu') return 'Bloqueada por menu';
-if(m==='sin_personas_locales') return 'Sin personas locales';
-if(m==='sin_asignaciones_locales') return 'Sin asignaciones locales';
-return m || 'Sin estado';
+  const map={habilitada:'ACTIVA',sistema_ocupado:'OCUPADO',cooldown:'COOLDOWN',bloqueo_menu:'BLOQUEADO',sin_personas_locales:'SIN PERSONAS',sin_asignaciones_locales:'SIN ASIGNAC.'};
+  return map[m]||m||'--';
 }
-
-async function actualizarEstadoAuto(){
-try{
-const r=await fetch('/estado');
-const e=await r.json();
-const modo=document.getElementById('modoEstado');
-const auto=document.getElementById('autoHuellaEstado');
-modo.textContent=e.online?'ONLINE':'OFFLINE';
-modo.style.color=e.online?'#2e7d32':'#e65100';
-
-const habilitada=!!e.asistencia_auto_huella_habilitada;
-auto.textContent=traducirMotivo(e.motivo_asistencia_auto);
-auto.style.color=habilitada?'#2e7d32':'#c62828';
-}catch(err){
-const auto=document.getElementById('autoHuellaEstado');
-auto.textContent='Error de conexion';
-auto.style.color='#c62828';
+async function actualizarEstado(){
+  try{
+    const e=await fetch('/estado').then(r=>r.json());
+    const m=document.getElementById('modoEstado');
+    m.textContent=e.online?'ONLINE':'OFFLINE';
+    m.className='stat-val '+(e.online?'online':'offline');
+    const a=document.getElementById('autoHuellaEstado');
+    a.textContent=traducirMotivo(e.motivo_asistencia_auto);
+    a.style.color=e.asistencia_auto_huella_habilitada?'var(--accent)':'var(--danger)';
+  }catch(err){}
 }
-}
-
-async function marcar(){
-document.getElementById('status').innerHTML='Esperando huella...';
-try{
-const r=await fetch('/marcar');
-const msg=await r.text();
-document.getElementById('status').innerHTML=msg.replace(/\n/g,'<br>');
-}catch(e){
-document.getElementById('status').innerHTML='Error: '+e.message;
-}
+function setStatus(msg,ok=true){
+  const el=document.getElementById('status');
+  el.className='toast active';
+  el.innerHTML=msg.replace(/\n/g,'<br>');
+  el.style.borderColor=ok?'var(--accent)':'var(--warn)';
+  setTimeout(()=>{el.className='toast';el.innerHTML='<span class="dot"></span>Sistema listo';el.style.borderColor='';},5000);
 }
 async function limpiarDatos(){
-const codigo=prompt('ADVERTENCIA: Esto eliminara TODOS los datos del sistema.\\n\\nIngrese el codigo de seguridad para continuar:');
-if(!codigo){return;}
-if(!confirm('Esta SEGURO de que desea eliminar:\\n\\n- Todas las personas\\n- Todos los turnos\\n- Todas las asignaciones\\n- Todas las asistencias\\n- Todas las huellas del sensor\\n\\nEsta accion NO se puede deshacer.')){return;}
-document.getElementById('status').innerHTML='Limpiando datos...';
-try{
-const r=await fetch('/limpiar?codigo='+encodeURIComponent(codigo));
-const msg=await r.text();
-document.getElementById('status').innerHTML=msg.replace(/\n/g,'<br>');
-if(msg.includes('correctamente')){
-setTimeout(()=>{location.reload();},3000);
+  const codigo=prompt('ADVERTENCIA: Se eliminarán TODOS los datos.\nIngrese el código de seguridad:');
+  if(!codigo)return;
+  if(!confirm('¿Confirmar eliminación total?'))return;
+  setStatus('Limpiando datos...');
+  try{const r=await fetch('/limpiar?codigo='+encodeURIComponent(codigo));const msg=await r.text();setStatus(msg);if(msg.includes('correctamente'))setTimeout(()=>location.reload(),3000);}catch(e){setStatus('Error: '+e.message,false);}
 }
-}catch(e){
-document.getElementById('status').innerHTML='Error: '+e.message;
-}
-}
-
 async function sincronizarTodo(){
-document.getElementById('status').innerHTML='Sincronizando con backend...';
-try{
-const r=await fetch('/sincronizar');
-const msg=await r.text();
-document.getElementById('status').innerHTML=msg.replace(/\n/g,'<br>');
-}catch(e){
-document.getElementById('status').innerHTML='Error de sincronizacion: '+e.message;
+  setStatus('Sincronizando...');
+  try{const r=await fetch('/sincronizar');const msg=await r.text();setStatus(msg);}catch(e){setStatus('Error: '+e.message,false);}
 }
-}
-
-setInterval(()=>{
-document.getElementById('status').innerHTML='Sistema listo';
-},5000);
-actualizarEstadoAuto();
-setInterval(actualizarEstadoAuto,3000);
+actualizarEstado();
+setInterval(actualizarEstado,3000);
 </script>
 </body>
 </html>

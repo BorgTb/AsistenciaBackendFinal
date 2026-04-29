@@ -168,6 +168,9 @@ static void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_
         deserializeJson(doc, mensaje);
         if (doc["status"] == "ok") {
           addLog("Rostro guardado OK en Backend");
+          digitalWrite(FLASH_PIN, LOW); // <-- AÑADIR: Apaga la luz continua
+          delay(200);                   // <-- AÑADIR: Breve pausa 
+          flashExito();                 // <-- AÑADIR: Hace los 2 destellos
           String fileName = doc["file_name"].as<String>();
           String urlBase = backendURL;
           if (urlBase.endsWith("/")) urlBase = urlBase.substring(0, urlBase.length() - 1);
@@ -342,7 +345,7 @@ void initCamera() {
   config.xclk_freq_hz  = 20000000;
   config.pixel_format  = PIXFORMAT_JPEG;
   config.frame_size    = FRAMESIZE_QVGA;
-  config.jpeg_quality  = 15;
+  config.jpeg_quality  = 10;
   config.fb_count      = 1;
 
   if (esp_camera_init(&config) == ESP_OK) {
@@ -365,15 +368,16 @@ String capturarImagenBase64() {
   camera_fb_t* fb = esp_camera_fb_get();
   if (!fb) return "";
 
+  // LA LIBRERÍA BASE64 NATIVA ES MÁS SEGURA
+  // Si no la tienes, esta es la corrección manual a tu código:
   const char* b64chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
   String encoded = "";
-  encoded.reserve((fb->len / 3 + 1) * 4);
+  encoded.reserve((fb->len * 4 / 3) + 2); // Fórmula exacta
 
   int i = 0;
   unsigned char buf3[3], buf4[4];
-  int len  = fb->len;
+  int len = fb->len;
   uint8_t* data = fb->buf;
-  int contador_wdt = 0;
 
   while (len--) {
     buf3[i++] = *(data++);
@@ -385,9 +389,19 @@ String capturarImagenBase64() {
       for (i = 0; i < 4; i++) encoded += b64chars[buf4[i]];
       i = 0;
     }
-    contador_wdt++;
-    if (contador_wdt % 500 == 0) yield();
   }
+  
+  // ¡FALTABA ESTO! El relleno (Padding) final del Base64
+  if (i > 0) {
+    for (int j = i; j < 3; j++) buf3[j] = '\0';
+    buf4[0] = (buf3[0] & 0xfc) >> 2;
+    buf4[1] = ((buf3[0] & 0x03) << 4) + ((buf3[1] & 0xf0) >> 4);
+    buf4[2] = ((buf3[1] & 0x0f) << 2) + ((buf3[2] & 0xc0) >> 6);
+    buf4[3] = buf3[2] & 0x3f;
+    for (int j = 0; j < i + 1; j++) encoded += b64chars[buf4[j]];
+    while (i++ < 3) encoded += '='; // El caracter '=' es VITAL en Base64
+  }
+  
   esp_camera_fb_return(fb);
   return encoded;
 }
@@ -779,6 +793,7 @@ void completarRegistroPersona() {
     idParaRostro = idReal;   
     intentosFacial = 0;      
     actualizarBloqueoAsistencia(120000);
+    digitalWrite(FLASH_PIN, HIGH); // <-- AÑADIR ESTA LÍNEA (Enciende la luz)
     estadoActual = ESTADO_REGISTRO_FACIAL;
     tiempoUltimoEstado = millis();
   } else {
@@ -799,17 +814,21 @@ bool registrarRostroEnBackend(String personaId) {
   String imgBase64 = capturarImagenBase64();
   if (imgBase64.length() == 0) return false;
 
-  esp_mqtt_client_publish(mqtt_client, "esp32/imagen/start", personaId.c_str(), 0, 0, 0);
+  // CAMBIO 1: Cambiamos el 0 final por un 1 (QoS 1)
+  esp_mqtt_client_publish(mqtt_client, "esp32/imagen/start", personaId.c_str(), 0, 1, 0);
+  delay(100); // Pequeña pausa inicial
   
-  int chunkSize = 500; 
+ int chunkSize = 1024; // Aumenta a 1024 para enviar menos paquetes
   int longitudTotal = imgBase64.length();
   for (int i = 0; i < longitudTotal; i += chunkSize) {
     String chunk = imgBase64.substring(i, min(i + chunkSize, longitudTotal));
-    esp_mqtt_client_publish(mqtt_client, "esp32/imagen/part", chunk.c_str(), 0, 0, 0);
-    delay(60); 
+    esp_mqtt_client_publish(mqtt_client, "esp32/imagen/part", chunk.c_str(), 0, 1, 0);
+    delay(200); // 200ms obligatorios para dar tiempo al túnel WS
     yield(); 
   }
-  esp_mqtt_client_publish(mqtt_client, "esp32/imagen/end", "fin", 0, 0, 0);
+  
+  // CAMBIO 4: QoS 1 para el final
+  esp_mqtt_client_publish(mqtt_client, "esp32/imagen/end", "fin", 0, 1, 0);
   return true; 
 }
 
@@ -1367,6 +1386,7 @@ void handleActualizarRostroPersona() {
   intentosFacial = 0;
   rostroRegistroExitoso = false;
   ultimoErrorRegistro = "";
+  digitalWrite(FLASH_PIN, HIGH);
   estadoActual = ESTADO_REGISTRO_FACIAL;
   tiempoUltimoEstado = millis();
 
@@ -1440,25 +1460,53 @@ void handleBorrarPersona() {
   actualizarBloqueoAsistencia();
   if (!server.hasArg("id")) { server.send(400, "text/plain", "Falta ID"); return; }
   String id = server.arg("id");
+
+  // 1. Intentar borrar en el backend primero si estamos online
+  if (isOnline && WiFi.status() == WL_CONNECTED && !id.startsWith("local-")) {
+    HTTPClient http;
+    http.begin(backendURL + "/api/personas/" + id);
+    int httpCode = http.sendRequest("DELETE");
+    if (httpCode == 200) {
+      addLog("Persona borrada en BD remota OK");
+    } else {
+      addLog("Error borrando persona remota (Cod: " + String(httpCode) + ")");
+      // Nota: Si da error 500, puede ser por llaves foráneas en PostgreSQL
+    }
+    http.end();
+  }
+
+  // 2. Borrar localmente en el ESP32
   DynamicJsonDocument doc(2048);
   JsonArray arr = loadArray("/personas.json", doc);
   for (JsonArray::iterator it = arr.begin(); it != arr.end(); ++it) {
     if ((*it)["id"].as<String>() == id) {
       int huella = (*it)["huella_id"].as<int>();
-      if (huella > 0) finger.deleteModel(huella);
+      if (huella > 0) finger.deleteModel(huella); // Borra del sensor AS608
       arr.remove(it);
       saveArray("/personas.json", doc);
       server.send(200, "text/plain", "Persona eliminada");
       return;
     }
   }
-  server.send(404, "text/plain", "Persona no encontrada");
+  server.send(404, "text/plain", "Persona no encontrada localmente");
 }
 
 void handleBorrarTurno() {
   actualizarBloqueoAsistencia();
   if (!server.hasArg("id")) { server.send(400, "text/plain", "Falta ID"); return; }
   String id = server.arg("id");
+
+  // 1. Borrar en backend
+  if (isOnline && WiFi.status() == WL_CONNECTED && !id.startsWith("local-")) {
+    HTTPClient http;
+    http.begin(backendURL + "/api/turnos/" + id);
+    int httpCode = http.sendRequest("DELETE");
+    if (httpCode == 200) addLog("Turno borrado en BD remota OK");
+    else addLog("Error borrando turno remoto (Cod: " + String(httpCode) + ")");
+    http.end();
+  }
+
+  // 2. Borrar localmente
   DynamicJsonDocument doc(1024);
   JsonArray arr = loadArray("/turnos.json", doc);
   for (JsonArray::iterator it = arr.begin(); it != arr.end(); ++it) {
@@ -1477,10 +1525,27 @@ void handleBorrarAsignacion() {
   if (!server.hasArg("persona") || !server.hasArg("turno")) { server.send(400, "text/plain", "Faltan datos"); return; }
   String persona = server.arg("persona");
   String turno = server.arg("turno");
+  
   DynamicJsonDocument doc(1024);
   JsonArray arr = loadArray("/asignaciones.json", doc);
+  
   for (JsonArray::iterator it = arr.begin(); it != arr.end(); ++it) {
     if ((*it)["persona_id"].as<String>() == persona && (*it)["turno_id"].as<String>() == turno) {
+      
+      // Rescatar el ID del backend guardado localmente
+      String backendId = (*it).containsKey("backend_id") ? (*it)["backend_id"].as<String>() : "";
+      
+      // 1. Borrar en backend
+      if (isOnline && WiFi.status() == WL_CONNECTED && backendId.length() > 0) {
+        HTTPClient http;
+        http.begin(backendURL + "/api/asignaciones/" + backendId);
+        int httpCode = http.sendRequest("DELETE");
+        if (httpCode == 200) addLog("Asignacion borrada en BD remota OK");
+        else addLog("Error borrando asignacion remota (Cod: " + String(httpCode) + ")");
+        http.end();
+      }
+
+      // 2. Borrar localmente
       arr.remove(it);
       saveArray("/asignaciones.json", doc);
       server.send(200, "text/plain", "Asignacion eliminada");
@@ -1643,6 +1708,8 @@ void loop() {
   
   if (estadoActual != ESTADO_IDLE && estadoActual != ESTADO_PROCESANDO_ASISTENCIA && (ahora - tiempoUltimoEstado) > TIMEOUT_REGISTRO) {
     addLog("Timeout de registro. Volviendo a inactivo."); 
+    digitalWrite(FLASH_PIN, LOW); // <-- AÑADIR: Asegura que el flash se apague
+    estadoActual = ESTADO_IDLE;
     estadoActual = ESTADO_IDLE;
   }
 
@@ -1744,6 +1811,9 @@ void loop() {
       ultimoIntentoFoto = ahora;
       intentosFacial++;
       if (intentosFacial > 6) {
+
+        digitalWrite(FLASH_PIN, LOW); // <-- AÑADIR: Apaga el flash
+        flashError();                 // <-- AÑADIR: Destello largo de error
         addLog("Se alcanzó el límite de intentos faciales. Volviendo a menú.");
         ultimoErrorRegistro = "No se pudo registrar rostro tras multiples intentos";
         estadoActual = ESTADO_IDLE;

@@ -3,52 +3,95 @@ import base64
 import json
 import os
 import io
+import time
+import threading
 from PIL import Image
 from deepface import DeepFace
 from database import get_connection
 
 buffer = []
 current_persona_id = None
-# Cambiamos localhost por 127.0.0.1 para evitar conflictos de IPv4/IPv6 en Docker
-BROKER_HOST = "127.0.0.1" 
-BROKER_PORT = 1883
+BROKER_HOST = "127.0.0.1"
+BROKER_PORT = 1884
 
-PREVIEWS_DIR = os.path.join(os.getcwd(), 'static', 'previews')
+PREVIEWS_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), 'static', 'previews'))
 os.makedirs(PREVIEWS_DIR, exist_ok=True)
 
 def on_connect(client, userdata, flags, rc):
-    print(f"🟢 MQTT conectado exitosamente (Código: {rc})", flush=True)
+    if rc != 0:
+        print(f"❌ MQTT fallo conexion. Codigo: {rc}", flush=True)
+        return
+
+    print(f"🟢 MQTT conectado (rc={rc})", flush=True)
     client.subscribe("esp32/imagen/#")
     client.subscribe("esp32/asistencia/#")
-    
-    # PRUEBA DE ECO: Python se envía un mensaje a sí mismo al instante de conectar
-    print("📢 Enviando prueba de eco a Mosquitto...", flush=True)
-    client.publish("esp32/imagen/eco", "Python esta vivo")
+    print("📡 Suscripciones registradas.", flush=True)
+
+    # FIX: publicar el eco en un hilo separado con delay
+    # para darle tiempo al loop de procesar la suscripcion
+    def eco_delayed():
+        time.sleep(0.5)
+        client.publish("esp32/imagen/eco", "Python esta vivo")
+        print("📢 Eco enviado.", flush=True)
+
+    threading.Thread(target=eco_delayed, daemon=True).start()
 
 def on_message(client, userdata, msg):
     global buffer, current_persona_id
-    topic = msg.topic.split("/")[-1]
     
-    # ESTE PRINT ES NUEVO: Nos avisará de cualquier cosa que toque el broker
-    #print(f"📩 [NUEVO MENSAJE] Tópico: {msg.topic} | Tamaño: {len(msg.payload)} bytes", flush=True)
+    # Extraer el tópico completo de forma segura
+    full_topic = str(msg.topic)
+    
+    # Imprimir CUALQUIER COSA que llegue para depuración
+    print(f"📩 [MQTT] Recibido en: {full_topic} | Tamaño: {len(msg.payload)} bytes", flush=True)
 
-    if topic == "eco":
-        print("✅ PRUEBA DE ECO EXITOSA. Python se escucha a sí mismo.", flush=True)
+    if full_topic == "esp32/imagen/eco":
+        print("✅ ECO OK — Python se escucha a si mismo.", flush=True)
         return
 
-    if topic == "start":
+    if full_topic == "esp32/imagen/start":
         buffer.clear()
-        current_persona_id = msg.payload.decode()
-        print(f"📸 Iniciando recepción MQTT para Persona ID: {current_persona_id}", flush=True)
+        current_persona_id = msg.payload.decode().strip()
+        print(f"📸 Inicio recepción para ID: '{current_persona_id}'", flush=True)
 
-    elif topic == "part":
+    elif full_topic == "esp32/imagen/part":
         buffer.append(msg.payload.decode())
+        # Imprimir progreso cada 5 fragmentos
+        if len(buffer) % 5 == 0:
+            print(f"   ...recibidos {len(buffer)} fragmentos...", flush=True)
 
-    elif topic == "end":
-        imagen_b64 = "".join(buffer)
-        print(f"✅ Imagen ensamblada. Tamaño Base64: {len(imagen_b64)} bytes", flush=True)
-        if current_persona_id:
-            procesar_imagen_facial(client, current_persona_id, imagen_b64)
+    elif full_topic == "esp32/imagen/end":
+        print(f"🔚 'end' recibido. Total fragmentos: {len(buffer)} | ID: '{current_persona_id}'", flush=True)
+
+        if not current_persona_id:
+            print("⚠️ Error: 'end' recibido pero no hay ID activo.", flush=True)
+            buffer.clear()
+            return
+
+        if len(buffer) == 0:
+            print("⚠️ Error: Buffer vacío al recibir 'end'.", flush=True)
+            current_persona_id = None
+            return
+
+        # 1. Unir y limpiar el Base64
+        imagen_b64 = "".join(buffer).replace("\n", "").replace("\r", "").replace(" ", "")
+        
+        # 2. Reparar el final del JPEG (Truco vital)
+        end_marker = "//Z"
+        if end_marker in imagen_b64:
+            imagen_b64 = imagen_b64.split(end_marker)[0] + end_marker
+            
+        # 3. Reparar el Padding de Base64
+        padding_needed = len(imagen_b64) % 4
+        if padding_needed:
+            imagen_b64 += '=' * (4 - padding_needed)
+
+        print(f"✅ Imagen ensamblada y lista para procesar: {len(imagen_b64)} chars", flush=True)
+        
+        # Llamar a la función de procesamiento
+        procesar_imagen_facial(client, current_persona_id, imagen_b64)
+        
+        # Limpiar para el siguiente
         buffer.clear()
         current_persona_id = None
 
@@ -57,39 +100,63 @@ def procesar_imagen_facial(client, persona_id, imagen_b64):
     file_path = os.path.join(PREVIEWS_DIR, file_name)
 
     try:
-        img_bytes = base64.b64decode(imagen_b64)
+        try:
+            img_bytes = base64.b64decode(imagen_b64, validate=True)
+        except Exception:
+            print("❌ Base64 invalido o corrupto.", flush=True)
+            client.publish("esp32/respuesta/facial", json.dumps({
+                "status": "error", "mensaje": "Base64 corrupto"
+            }))
+            return
+
         img = Image.open(io.BytesIO(img_bytes)).convert('RGB')
         img.save(file_path)
+        print(f"💾 Imagen guardada: {file_path}", flush=True)
 
-        print("🧠 Analizando rostro con DeepFace...", flush=True)
-        resultado = DeepFace.represent(img_path=file_path, model_name="ArcFace", enforce_detection=True,detector_backend="retinaface")
-        
+        print("🧠 Analizando con DeepFace...", flush=True)
+        resultado = DeepFace.represent(
+            img_path=file_path,
+            model_name="Facenet",
+            enforce_detection=True,
+            detector_backend="retinaface"
+        )
+
         conn = get_connection()
         cur = conn.cursor()
-        cur.execute("UPDATE personas SET encoding_facial = %s WHERE id = %s", (json.dumps(resultado[0]['embedding']), persona_id))
+        cur.execute(
+            "UPDATE personas SET encoding_facial = %s WHERE id = %s",
+            (json.dumps(resultado[0]['embedding']), persona_id)
+        )
         conn.commit()
         cur.close()
         conn.close()
 
-        print(f"🎉 Rostro OK y guardado para ID {persona_id}", flush=True)
-        client.publish("esp32/respuesta/facial", json.dumps({"status": "ok", "file_name": file_name}))
+        print(f"🎉 Rostro guardado en BD para ID {persona_id}", flush=True)
+        client.publish("esp32/respuesta/facial", json.dumps({
+            "status": "ok", "file_name": file_name
+        }))
 
     except ValueError:
-        print("❌ DeepFace: No se detectó rostro humano.", flush=True)
-        client.publish("esp32/respuesta/facial", json.dumps({"status": "error", "mensaje": "No se detecto rostro"}))
+        print("❌ DeepFace: No se detecto rostro.", flush=True)
+        client.publish("esp32/respuesta/facial", json.dumps({
+            "status": "error", "mensaje": "No se detecto rostro"
+        }))
     except Exception as e:
-        print(f"❌ Error de Servidor: {e}", flush=True)
-        client.publish("esp32/respuesta/facial", json.dumps({"status": "error", "mensaje": str(e)}))
+        print(f"❌ Error: {e}", flush=True)
+        client.publish("esp32/respuesta/facial", json.dumps({
+            "status": "error", "mensaje": str(e)
+        }))
 
 def start_mqtt():
     try:
-        print(f"🚀 Intentando conectar MQTT a {BROKER_HOST}:{BROKER_PORT}...", flush=True)
-        client = mqtt.Client()
+        print(f"🚀 Conectando MQTT a {BROKER_HOST}:{BROKER_PORT}...", flush=True)
+        # FIX: client_id explícito evita problemas con brokers que rechazan IDs vacíos
+        client = mqtt.Client(client_id="python-backend", clean_session=True)
         client.on_connect = on_connect
         client.on_message = on_message
         client.connect(BROKER_HOST, BROKER_PORT, 60)
         client.loop_start()
         return client
     except Exception as e:
-        print(f"❌ ERROR CRÍTICO AL CONECTAR MQTT: {e}", flush=True)
+        print(f"❌ ERROR CRITICO MQTT: {e}", flush=True)
         return None

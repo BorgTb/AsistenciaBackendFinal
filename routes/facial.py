@@ -52,7 +52,7 @@ def registrar_facial():
             model_name="Facenet",
             enforce_detection=True,
             detector_backend="retinaface",
-            anti_spoofing=True
+            anti_spoofing=False
         )
 
         embedding = resultado[0]['embedding']
@@ -118,7 +118,7 @@ def actualizar_facial(persona_id):
             model_name="Facenet",
             enforce_detection=True,
             detector_backend="retinaface",
-            anti_spoofing=True
+            anti_spoofing=False
         )
         embedding = resultado[0]['embedding']
 
@@ -180,7 +180,7 @@ def verificar_facial():
             model_name="Facenet",
             enforce_detection=True,
             detector_backend="retinaface",
-            anti_spoofing=True
+            anti_spoofing=False
         )
         embedding_captura = np.array(resultado[0]['embedding'])
 

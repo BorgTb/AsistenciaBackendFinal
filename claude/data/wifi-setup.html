@@ -2,86 +2,78 @@
 <html>
 <head>
 <meta charset="utf-8">
-<title>Configuración de Red y Servidores</title>
+<title>Configuración de Red</title>
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
-body{font-family:Arial,sans-serif;background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px}
-.container{background:white;border-radius:15px;box-shadow:0 10px 30px rgba(0,0,0,0.3);padding:30px;max-width:450px;width:100%}
-h1{color:#667eea;text-align:center;margin-bottom:20px;font-size:24px}
-.form-group{margin-bottom:15px}
-label{display:block;color:#333;font-weight:600;margin-bottom:5px;font-size:14px}
-input{width:100%;padding:12px;border:2px solid #ddd;border-radius:8px;font-size:14px}
-input:focus{outline:none;border-color:#667eea}
-h3{color:#555;font-size:16px;margin:20px 0 10px;border-bottom:2px solid #eee;padding-bottom:5px}
-button{width:100%;padding:14px;border:none;border-radius:8px;font-size:16px;font-weight:600;cursor:pointer;margin-top:10px;color:white;background:#667eea}
-button:hover{background:#5568c0}
-.btn-secondary{background:#6c757d;margin-top:5px}
-.btn-secondary:hover{background:#5a6268}
-.status{margin-top:15px;padding:12px;border-radius:8px;text-align:center;display:none}
-.status.show{display:block}
-.status.success{background:#d4edda;color:#155724}
-.status.error{background:#f8d7da;color:#721c24}
+:root{--bg:#0d0f14;--surface:#141720;--surface2:#1a1e2b;--border:#252a3a;--accent:#00e5a0;--accent2:#3d8ef8;--warn:#f59e0b;--danger:#ef4444;--text:#e2e8f0;--dim:#6b7a99;--r:4px}
+body{font-family:'Courier New',Courier,monospace;background:var(--bg);color:var(--text);min-height:100vh;padding:12px;display:flex;align-items:flex-start;justify-content:center}
+.wrap{max-width:440px;width:100%}
+header{display:flex;align-items:center;gap:8px;padding:14px 0 10px;border-bottom:1px solid var(--border);margin-bottom:16px}
+.back{background:none;border:1px solid var(--border);color:var(--dim);padding:5px 10px;border-radius:var(--r);font-family:inherit;font-size:11px;cursor:pointer;letter-spacing:1px}
+.back:hover{color:var(--text);border-color:var(--dim)}
+h1{font-size:13px;letter-spacing:2px;text-transform:uppercase;color:var(--accent);flex:1;text-align:center}
+.section-head{font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--dim);margin:14px 0 8px;padding-left:8px;border-left:2px solid var(--accent2)}
+label{display:block;font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--dim);margin-bottom:4px}
+input{width:100%;padding:10px 12px;background:var(--surface);border:1px solid var(--border);border-radius:var(--r);color:var(--text);font-family:inherit;font-size:13px;margin-bottom:12px;transition:.15s}
+input:focus{outline:none;border-color:var(--accent);background:var(--surface2)}
+.btn{width:100%;padding:12px;border:none;border-radius:var(--r);font-family:inherit;font-size:12px;font-weight:700;letter-spacing:2px;text-transform:uppercase;cursor:pointer;margin-bottom:8px;transition:.15s}
+.btn-go{background:var(--accent);color:#0d0f14}
+.btn-go:hover{background:#00c98e}
+.btn-sec{background:var(--surface);border:1px solid var(--border);color:var(--dim)}
+.btn-sec:hover{color:var(--text);border-color:var(--dim)}
+.msg{padding:10px 12px;border-radius:var(--r);font-size:11px;margin-top:8px;display:none}
+.msg.show{display:block}
+.msg.success{background:rgba(0,229,160,.1);border:1px solid var(--accent);color:var(--accent)}
+.msg.error{background:rgba(239,68,68,.1);border:1px solid var(--danger);color:var(--danger)}
 </style>
 </head>
 <body>
-<div class="container">
-<h1>Configuración del Dispositivo</h1>
-<form id="wifiForm">
-    
-    <h3>Conexión Wi-Fi</h3>
-    <div class="form-group">
-        <label>SSID (Nombre de la Red)</label>
-        <input type="text" id="ssid" placeholder="Ej: MiRedWiFi" required>
-    </div>
-    <div class="form-group">
-        <label>Contraseña</label>
-        <input type="password" id="password" placeholder="********" required>
-    </div>
+<div class="wrap">
+  <header>
+    <button class="back" onclick="window.location.href='/'">← VOLVER</button>
+    <h1>Configuración de Red</h1>
+  </header>
 
-    <h3>Servidores (Opcional)</h3>
-    <div class="form-group">
-        <label>URL Backend HTTP</label>
-        <input type="text" id="backend" placeholder="http://192.168.1.X:5000">
-    </div>
-    <div class="form-group">
-        <label>IP Broker MQTT</label>
-        <input type="text" id="mqtt" placeholder="Ej: mqtt://192.168.1.X:1883 o 192.168.1.X">
-    </div>
+  <div class="section-head">Conexión Wi-Fi</div>
+  <label>SSID (Nombre de la Red)</label>
+  <input type="text" id="ssid" placeholder="MiRedWiFi" required>
+  <label>Contraseña</label>
+  <input type="password" id="password" placeholder="••••••••" required>
 
-    <button type="submit">Guardar y Reiniciar</button>
-    <button type="button" class="btn-secondary" onclick="window.location.href='/'">Volver</button>
-</form>
-<div id="status" class="status"></div>
+  <div class="section-head">Servidores (Opcional)</div>
+  <label>URL Backend HTTP</label>
+  <input type="text" id="backend" placeholder="http://192.168.1.X:5000">
+  <label>IP Broker MQTT</label>
+  <input type="text" id="mqtt" placeholder="192.168.1.X">
+
+  <button class="btn btn-go" onclick="guardar()">▶ GUARDAR Y REINICIAR</button>
+  <button class="btn btn-sec" onclick="window.location.href='/'">CANCELAR</button>
+
+  <div id="status" class="msg"></div>
 </div>
 
 <script>
-// Cargar valores actuales al abrir la página
-fetch('/estado').then(r => r.json()).then(data => {
-    if(data.backend) document.getElementById('backend').value = data.backend;
-    if(data.mqtt) document.getElementById('mqtt').value = data.mqtt;
+fetch('/estado').then(r=>r.json()).then(data=>{
+  if(data.backend)document.getElementById('backend').value=data.backend;
+  if(data.mqtt)document.getElementById('mqtt').value=data.mqtt;
 });
 
-document.getElementById('wifiForm').addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const ssid = document.getElementById('ssid').value.trim();
-    const pass = document.getElementById('password').value.trim();
-    const backend = document.getElementById('backend').value.trim();
-    const mqtt = document.getElementById('mqtt').value.trim();
-    const status = document.getElementById('status');
-    
-    try {
-        const url = `/wifi-config?ssid=${encodeURIComponent(ssid)}&pass=${encodeURIComponent(pass)}&backend=${encodeURIComponent(backend)}&mqtt=${encodeURIComponent(mqtt)}`;
-        const r = await fetch(url);
-        const msg = await r.text();
-        status.className = 'status show success';
-        status.textContent = msg;
-        setTimeout(() => location.href = '/', 3000);
-    } catch (e) {
-        status.className = 'status show error';
-        status.textContent = 'Error: ' + e.message;
-    }
-});
+async function guardar(){
+  const ssid=document.getElementById('ssid').value.trim();
+  const pass=document.getElementById('password').value.trim();
+  const backend=document.getElementById('backend').value.trim();
+  const mqtt=document.getElementById('mqtt').value.trim();
+  const el=document.getElementById('status');
+  try{
+    const url=`/wifi-config?ssid=${encodeURIComponent(ssid)}&pass=${encodeURIComponent(pass)}&backend=${encodeURIComponent(backend)}&mqtt=${encodeURIComponent(mqtt)}`;
+    const msg=await fetch(url).then(r=>r.text());
+    el.className='msg show success';el.textContent=msg;
+    setTimeout(()=>location.href='/',3000);
+  }catch(e){
+    el.className='msg show error';el.textContent='Error: '+e.message;
+  }
+}
 </script>
 </body>
 </html>
