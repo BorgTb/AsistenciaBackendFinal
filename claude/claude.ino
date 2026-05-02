@@ -19,10 +19,14 @@ esp_mqtt_client_handle_t mqtt_client = NULL;
 bool mqttConnected = false;
 
 #define FLASH_PIN 4
+#define PIR_PIN 12
+
 
 // ===== Sensor de huellas (RX=GPIO14, TX=GPIO15) =====
 HardwareSerial FingerSerial(2);
 Adafruit_Fingerprint finger = Adafruit_Fingerprint(&FingerSerial);
+
+unsigned long ultimoDisparoPIR = 0; // Para evitar que envíe 10 fotos en un segundo
 
 WebServer server(80);
 
@@ -259,16 +263,16 @@ String motivoAsistenciaAutomatica(unsigned long ahora) {
   if (estadoActual != ESTADO_IDLE) return "sistema_ocupado";
   if (ahora - cooldownAsistencia <= COOLDOWN_TIEMPO) return "cooldown";
 
+  // BLOQUEO ESTRICTO: Si estoy en el menú, NO usar la cámara ni la huella
+  if (ahora < bloqueoAsistenciaHasta) return "bloqueo_menu";
+
   if (!isOnline) {
     String motivo = "";
     if (!datosOfflineListos(motivo)) return motivo;
     return "habilitada";
   }
-
-  if (ahora < bloqueoAsistenciaHasta) return "bloqueo_menu";
   return "habilitada";
 }
-
 uint32_t calcularFirmaMovimiento(const uint8_t* data, size_t len) {
   if (!data || len == 0) return 0;
   const size_t muestras = 128;
@@ -1582,6 +1586,9 @@ void handleGetAsistencias() { actualizarBloqueoAsistencia(); servirArchivo("/asi
 // SETUP
 // ============================================================
 void setup() {
+  pinMode(PIR_PIN, INPUT);
+  addLog("Calibrando sensor PIR...");
+  delay(3000);
   pinMode(13, INPUT_PULLUP);
   pinMode(FLASH_PIN, OUTPUT);
   digitalWrite(FLASH_PIN, LOW);
@@ -1724,25 +1731,29 @@ void loop() {
     }
       
     // 1. MODO CENTINELA (ROSTRO) 
-    if (isOnline && asistenciaAutomaticaHabilitada(ahora) && (ahora - lastFaceCheck > FACE_CHECK_INTERVAL)) {
+    if (isOnline && (ahora - cooldownAsistencia > COOLDOWN_TIEMPO) && (ahora - lastFaceCheck > FACE_CHECK_INTERVAL)) {
         lastFaceCheck = ahora;
 
-      if (detectarMovimientoCamara()) {
-        addLog("Movimiento detectado. Ejecutando reconocimiento facial...");
-        String personaIdEncontrada = identificarPorRostro();
-        if (personaIdEncontrada != "") {
-          estadoActual = ESTADO_PROCESANDO_ASISTENCIA;
-          addLog("Rostro detectado ID: " + personaIdEncontrada);
+      if (digitalRead(PIR_PIN) == HIGH) {
+        if (ahora - ultimoDisparoPIR > 5000) { 
+            ultimoDisparoPIR = ahora;
+            lastFaceCheck = ahora;
+            
+            // Opcional: bajar un poco el bloqueo para que no se extienda infinitamente al detectar gente
+            // actualizarBloqueoAsistencia(5000); 
 
-          String res = procesarAsistencia(personaIdEncontrada, "facial");
-          addLog(res);
-          if (resultadoAsistenciaExitosa(res)) flashExito();
-          else flashError();
-
-          cooldownAsistencia = millis();
-          estadoActual = ESTADO_IDLE;
+            String personaIdEncontrada = identificarPorRostro(); 
+            
+            if (personaIdEncontrada != "" && personaIdEncontrada != "unknown") {
+                estadoActual = ESTADO_PROCESANDO_ASISTENCIA;
+                String res = procesarAsistencia(personaIdEncontrada, "facial");
+                addLog(res);
+                if (resultadoAsistenciaExitosa(res)) flashExito(); else flashError();
+                cooldownAsistencia = millis();
+            }
+            estadoActual = ESTADO_IDLE;
         }
-        }
+    }
     }
 
     // 2. MODO RESPALDO (HUELLA)
