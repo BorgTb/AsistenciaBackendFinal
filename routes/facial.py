@@ -9,7 +9,7 @@ import io
 import tempfile
 import os
 import uuid
-
+from datetime import datetime
 
 facial_bp = Blueprint('facial', __name__)
 
@@ -33,63 +33,58 @@ def registrar_facial():
     persona_id = data.get('persona_id')
     imagen_b64 = data.get('imagen')
 
-    if not persona_id or not imagen_b64:
-        return jsonify({'error': 'Faltan datos'}), 400
-
-    # Definimos la ruta permanente donde se guardará la foto de esta persona
-    file_name = f"{persona_id}.jpg"
-    file_path = os.path.join(PREVIEWS_DIR, file_name)
-
+    # 1. Procesar la imagen y sacar el embedding
+    file_path = guardar_imagen_de_registro(persona_id, imagen_b64) # Tu función actual
+    
     try:
-        # 1. Decodificar y guardar la imagen permanentemente en la carpeta public (static)
-        img_bytes = base64.b64decode(imagen_b64)
-        img = Image.open(io.BytesIO(img_bytes)).convert('RGB')
-        img.save(file_path)
-
-        # 2. Analizar el rostro usando la imagen recién guardada
         resultado = DeepFace.represent(
             img_path=file_path,
             model_name="Facenet",
-            enforce_detection=True,
-            detector_backend="retinaface",
-            anti_spoofing=False
+            enforce_detection=True, # Obligatorio para evitar fotos del techo
+            detector_backend="retinaface"
         )
+        nuevo_embedding = np.array(resultado[0]['embedding'])
 
-        embedding = resultado[0]['embedding']
-
-        # 3. Guardar el mapa facial en la base de datos
+        # --- VALIDACIÓN DE DUPLICADOS ---
         conn = get_connection()
         cur = conn.cursor()
+        cur.execute("SELECT id, nombre, encoding_facial FROM personas WHERE encoding_facial IS NOT NULL")
+        registros_existentes = cur.fetchall()
+
+        UMBRAL_DUPLICADO = 10.0 # Si la distancia es menor a 10, es la misma persona
+
+        for ex_id, ex_nombre, ex_encoding in registros_existentes:
+            embedding_db = np.array(json.loads(ex_encoding))
+            distancia = np.linalg.norm(embedding_db - nuevo_embedding)
+
+            if distancia < UMBRAL_DUPLICADO:
+                cur.close()
+                conn.close()
+                # Borramos la foto física que se acaba de crear porque no la usaremos
+                if os.path.exists(file_path):
+                    os.unlink(file_path)
+                return jsonify({
+                    'error': 'Rostro ya registrado',
+                    'mensaje': f'Esta persona ya está registrada como "{ex_nombre}" (ID: {ex_id})'
+                }), 409 # Código 409: Conflicto
+        
+        # --- SI PASA LA VALIDACIÓN, GUARDAR ---
+        encoding_json = json.dumps(nuevo_embedding.tolist())
         cur.execute(
             "UPDATE personas SET encoding_facial = %s WHERE id = %s",
-            (json.dumps(embedding), persona_id)
+            (encoding_json, persona_id)
         )
         conn.commit()
         cur.close()
         conn.close()
 
-        # 4. Construir la URL pública para que el ESP32 y el navegador la vean
-        # request.host_url te da "http://172.20.10.3:5000/" automáticamente
-        preview_url = f"{request.host_url.rstrip('/')}/static/previews/{file_name}"
+        return jsonify({'ok': True, 'mensaje': 'Registro exitoso'}), 200
 
-        return jsonify({
-            'ok': True, 
-            'mensaje': 'Rostro registrado correctamente',
-            'preview_url': preview_url # <--- El ESP32 está esperando este dato exacto
-        })
-
-    except ValueError as e:
-        # Si DeepFace no detecta un rostro humano válido, borramos la foto mala
-        # Agregamos un print para verlo en la consola de tu PC
-        print(f"❌ FALLO DE ROSTRO: La imagen se guardó en {file_path} para que la revises.")
-        
-        return jsonify({'error': 'No se detecto rostro en la imagen'}), 400
-        
+    except ValueError:
+        if os.path.exists(file_path): os.unlink(file_path)
+        return jsonify({'error': 'No se detectó un rostro claro'}), 400
     except Exception as e:
-        if os.path.exists(file_path):
-            os.unlink(file_path)
         return jsonify({'error': str(e)}), 500
-
 
 @facial_bp.route('/api/facial/actualizar/<persona_id>', methods=['PUT'])
 def actualizar_facial(persona_id):
@@ -118,7 +113,7 @@ def actualizar_facial(persona_id):
             model_name="Facenet",
             enforce_detection=True,
             detector_backend="retinaface",
-            anti_spoofing=False
+            anti_spoofing=True
         )
         embedding = resultado[0]['embedding']
 
@@ -151,12 +146,19 @@ def verificar_facial():
     persona_id = data.get('persona_id')
     imagen_b64 = data.get('imagen')
 
+    imagen_b64 += "=" * ((4 - len(imagen_b64) % 4) % 4)
+
     if not persona_id or not imagen_b64:
         return jsonify({'error': 'Faltan datos'}), 400
 
     tmp_path = None
     try:
         tmp_path = decodificar_y_guardar_temporal(imagen_b64)
+        file_path = guardar_imagen_temporal(imagen_b64)
+        import shutil
+        copia_debug = f"./static/capturas_prueba/debug_live_{datetime.now().strftime('%H%M%S')}.jpg"
+        shutil.copyfile(file_path, copia_debug)
+        print(f"📸 Imagen en vivo interceptada y guardada en: {copia_debug}")
 
         # Obtener embedding guardado
         conn = get_connection()
@@ -180,7 +182,7 @@ def verificar_facial():
             model_name="Facenet",
             enforce_detection=True,
             detector_backend="retinaface",
-            anti_spoofing=False
+            anti_spoofing=True
         )
         embedding_captura = np.array(resultado[0]['embedding'])
 
@@ -208,6 +210,8 @@ def verificar_facial():
         # Siempre borramos la foto temporal de verificación para no llenar el disco duro
         if tmp_path and os.path.exists(tmp_path):
             os.unlink(tmp_path)
+
+            
 @facial_bp.route('/api/facial/identificar', methods=['POST'])
 def identificar_facial():
     data = request.json
@@ -216,58 +220,76 @@ def identificar_facial():
 
     imagen_b64 = data['imagen']
     
-    # 1. Generar un nombre temporal único para la foto entrante
-    tmp_filename = f"temp_ident_{uuid.uuid4().hex}.jpg"
-    tmp_path = os.path.join("static", tmp_filename) # Guarda temporalmente en static
+    # --- MODO PRUEBA: GUARDAR FOTOS ---
+    # Creamos una carpeta especial para no mezclar con las fotos oficiales
+    debug_dir = os.path.join(os.getcwd(), 'static', 'capturas_prueba')
+    os.makedirs(debug_dir, exist_ok=True)
+    
+    # Generamos un nombre único con la fecha y hora exacta
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    file_name = f"intento_{timestamp}_{uuid.uuid4().hex[:4]}.jpg"
+    file_path = os.path.join(debug_dir, file_name)
     
     try:
-        # 2. Decodificar la imagen Base64 enviada por el ESP32
-        img_data = base64.b64decode(imagen_b64)
-        with open(tmp_path, 'wb') as f:
-            f.write(img_data)
-            
-        # 3. Ruta de tu base de datos de rostros (Ajusta esto si usas otra carpeta)
-        # Asumimos que las fotos de registro se guardan como "1.jpg", "2.jpg" en static/previews
-        CARPETA_ROSTROS = "static/previews" 
+        # 1. Decodificar y GUARDAR la imagen físicamente para auditarla
+        img_bytes = base64.b64decode(imagen_b64)
+        img = Image.open(io.BytesIO(img_bytes)).convert('RGB')
+        img.save(file_path)
         
-        # Validar que la carpeta exista para evitar crasheos
-        if not os.path.exists(CARPETA_ROSTROS):
-            os.makedirs(CARPETA_ROSTROS)
-            
-        # 4. Magia de DeepFace: Buscar el rostro en la carpeta
-        # enforce_detection=False es VITAL para que no crashee si la foto sale borrosa o sin rostros
-        resultados = DeepFace.find(
-            img_path=tmp_path, 
-            db_path=CARPETA_ROSTROS, 
+        print(f"📸 [AUDITORÍA] Foto guardada para revisión en: {file_path}")
+        
+        # 2. Extraer el mapa facial de la captura recién guardada
+        print("🧠 Extrayendo mapa facial...")
+        resultado = DeepFace.represent(
+            img_path=file_path,
             model_name="Facenet",
+            enforce_detection=True, # Vital: no crashea si sale borrosa
             detector_backend="retinaface",
-            enforce_detection=False,
-            silent=True
+            anti_spoofing=True
         )
         
-        # 5. Analizar el resultado
-        if len(resultados) > 0 and not resultados[0].empty:
-            # Se encontró al menos una coincidencia
-            df_resultado = resultados[0]
-            
-            # Obtener la ruta del archivo que hizo match (ej: static/previews/15.jpg)
-            path_encontrado = df_resultado.iloc[0]['identity']
-            
-            # Extraer solo el número (el ID) del nombre del archivo
-            nombre_archivo = os.path.basename(path_encontrado)
-            persona_id = nombre_archivo.split('.')[0] # "15.jpg" -> "15"
-            
-            print(f"🟢 Rostro identificado exitosamente. ID: {persona_id}")
-            return jsonify({'ok': True, 'persona_id': persona_id}), 200
-            
-        print("🟡 Rostro no reconocido en la base de datos.")
-        return jsonify({'error': 'Rostro no reconocido en la base de datos'}), 404
+        embedding_captura = np.array(resultado[0]['embedding'])
         
+        # 3. Traer TODOS los mapas faciales de la Base de Datos
+        conn = get_connection()
+        cur = conn.cursor()
+        cur.execute("SELECT id, encoding_facial FROM personas WHERE encoding_facial IS NOT NULL")
+        personas_db = cur.fetchall()
+        cur.close()
+        conn.close()
+        
+        if not personas_db:
+            return jsonify({'error': 'Base de datos de rostros vacía'}), 404
+            
+        # 4. Comparar uno a uno
+        mejor_distancia = float('inf')
+        persona_identificada_id = None
+        
+        for row in personas_db:
+            persona_id = row[0]
+            embedding_db = np.array(json.loads(row[1]))
+            distancia = np.linalg.norm(embedding_db - embedding_captura)
+            
+            if distancia < mejor_distancia:
+                mejor_distancia = distancia
+                persona_identificada_id = persona_id
+                
+        # 5. Evaluar si supera el umbral
+        UMBRAL_FACENET = 10.0
+        
+        if mejor_distancia < UMBRAL_FACENET:
+            print(f"🟢 ID: {persona_identificada_id} (Distancia: {round(mejor_distancia, 2)})")
+            # Opcional: Podrías renombrar la foto aquí si quieres saber de quién fue
+            return jsonify({'ok': True, 'persona_id': str(persona_identificada_id)}), 200
+        else:
+            print(f"🟡 Desconocido. Distancia: {round(mejor_distancia, 2)}")
+            return jsonify({'error': 'Rostro no reconocido. Distancia muy alta.'}), 404
+
+    except ValueError:
+        print("🔴 DeepFace no encontró ningún rostro en la foto.")
+        return jsonify({'error': 'No se detectó ningún rostro humano'}), 400
     except Exception as e:
-        print(f"🔴 Error en identificar_facial: {e}")
+        print(f"🔴 Error grave: {e}")
         return jsonify({'error': str(e)}), 500
         
-    finally:
-        # 6. Limpieza: BORRAR siempre la foto temporal para no llenar el disco duro
-        if os.path.exists(tmp_path):
-            os.remove(tmp_path)
+    # ELIMINAMOS el bloque 'finally' que borraba la foto. ¡Ahora se quedan guardadas!

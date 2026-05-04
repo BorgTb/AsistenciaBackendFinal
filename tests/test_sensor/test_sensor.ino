@@ -1,73 +1,40 @@
-#include <WiFi.h>
-#include <WebServer.h>
-
-// Mismos ajustes de tu código principal
-const char* ssid = "ESP32-ASISTENCIA";
-const char* password = "12345678";
-
+// Pines de tu proyecto
 #define PIR_PIN 12
 #define FLASH_PIN 4
 
-WebServer server(80);
-String webLogs = ""; // Aquí guardaremos lo que pase
-
-void addLog(String msg) {
-  String timestamp = String(millis() / 1000);
-  String nuevaLinea = "[" + timestamp + "s] " + msg;
-  Serial.println(nuevaLinea); // Por si acaso
-  webLogs = nuevaLinea + "<br>" + webLogs; // El log más nuevo arriba
-  
-  // Limitar tamaño para no agotar la RAM
-  if (webLogs.length() > 2000) webLogs = webLogs.substring(0, 2000);
-}
-
-// Página Web Simple
-void handleRoot() {
-  String html = "<html><head><meta charset='UTF-8'><meta http-equiv='refresh' content='2'>";
-  html += "<title>Monitor de Logs WiFi</title>";
-  html += "<style>body{background:#111;color:#0f0;font-family:monospace;padding:20px;} h2{color:#fff;}</style></head><body>";
-  html += "<h2>Monitor de Sensor AM312</h2>";
-  html += "<p>Estado actual: <b>" + String(digitalRead(PIR_PIN) == HIGH ? "MOVIMIENTO" : "CALMA") + "</b></p>";
-  html += "<hr><div id='logs'>" + webLogs + "</div>";
-  html += "</body></html>";
-  server.send(200, "text/html", html);
-}
-
 void setup() {
+  // Iniciamos el monitor serie para ver los mensajes en la PC
   Serial.begin(115200);
-  pinMode(PIR_PIN, INPUT);
-  pinMode(FLASH_PIN, OUTPUT);
-
-  // Configurar como Access Point
-  WiFi.softAP(ssid, password);
-  IPAddress IP = WiFi.softAPIP();
+  delay(1000); // Esperamos a que el monitor serie abra
   
-  server.on("/", handleRoot);
-  server.begin();
-
-  addLog("Servidor de logs iniciado");
-  addLog("Conéctate a WiFi: " + String(ssid));
-  addLog("Abre en tu móvil: http://" + IP.toString());
+  Serial.println("\n--- INICIANDO TEST DE SENSOR PIR ---");
+  
+  // Configuramos el PIR con PULLDOWN para evitar el efecto antena (falsos positivos)
+  pinMode(PIR_PIN, INPUT_PULLDOWN); 
+  
+  // Configuramos el LED Flash y lo apagamos por defecto
+  pinMode(FLASH_PIN, OUTPUT);
+  digitalWrite(FLASH_PIN, LOW);
+  
+  Serial.println("Esperando 10 segundos para que el sensor PIR se estabilice...");
+  delay(10000); // Los PIR necesitan unos segundos al arrancar para "leer" la temperatura del cuarto
+  Serial.println("¡Test Listo! Pasa tu mano frente al sensor.");
 }
 
 void loop() {
-  server.handleClient();
+  // Leemos el voltaje del pin 12
+  int estadoPIR = digitalRead(PIR_PIN);
 
-  static int ultimoEstado = LOW;
-  int estadoActual = digitalRead(PIR_PIN);
-
-  // Detectar cambios en el sensor
-  if (estadoActual != ultimoEstado) {
-    if (estadoActual == HIGH) {
-      addLog("!!! MOVIMIENTO DETECTADO !!!");
-      digitalWrite(FLASH_PIN, HIGH);
-      delay(200); // Destello rápido
-      digitalWrite(FLASH_PIN, LOW);
-    } else {
-      addLog("... El sensor volvió a calma");
-    }
-    ultimoEstado = estadoActual;
+  if (estadoPIR == HIGH) {
+    // Si hay movimiento: Prendemos la luz y avisamos por consola
+    digitalWrite(FLASH_PIN, HIGH);
+    Serial.println("✋ ¡Movimiento detectado! (HIGH)");
+    
+  } else {
+    // Si no hay movimiento: Apagamos la luz
+    digitalWrite(FLASH_PIN, LOW);
   }
-  
-  delay(50); 
+
+  // Una pequeña pausa para no saturar el procesador
+  delay(100); 
 }
