@@ -9,3 +9,7 @@ __pycache__/
 .DS_Store
 static/previews/*
 static/*.*
+
+.next
+node_modules
+dist

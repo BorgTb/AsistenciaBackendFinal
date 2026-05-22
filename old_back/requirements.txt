@@ -1,8 +1,0 @@
-paho-mqtt
-face-recognition
-opencv-python
-numpy
-flask
-flask-cors
-pillow
-requests
