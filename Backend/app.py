@@ -1,3 +1,4 @@
+import os
 from flask import Flask
 from flask_cors import CORS
 from database import init_db
@@ -9,13 +10,16 @@ from routes.facial import facial_bp
 from routes.dispositivos import dispositivos_bp
 from routes.logs import logs_bp
 from routes.erp import erp_bp
+from routes.auth import auth_bp
 from mqtt_handler import start_mqtt
 
 
 app = Flask(__name__)
-CORS(app)  # permite conexiones desde el ESP32
+app.config['JWT_SECRET'] = os.getenv('JWT_SECRET', 'sas-secret-cambiar-en-produccion')
+CORS(app)
 
 # Registrar rutas
+app.register_blueprint(auth_bp)
 app.register_blueprint(personas_bp)
 app.register_blueprint(turnos_bp)
 app.register_blueprint(asignaciones_bp)

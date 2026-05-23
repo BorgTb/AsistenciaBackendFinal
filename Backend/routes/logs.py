@@ -1,19 +1,38 @@
 from flask import Blueprint, jsonify
 from database import get_connection
+from routes.auth import requiere_rol, requiere_login
 
 logs_bp = Blueprint('logs', __name__)
 
 
 @logs_bp.route('/api/logs', methods=['GET'])
+@requiere_rol('admin', 'empleador')
 def get_logs():
     conn = get_connection()
     cur = conn.cursor()
-    cur.execute("""
-        SELECT id, dispositivo_id, registros_enviados, registros_ok, estado, detalle, fecha
-        FROM sincronizacion_log
-        ORDER BY fecha DESC, id DESC
-        LIMIT 200
-    """)
+
+    rol = request.user_rol
+    empresa_id = request.empresa_id
+
+    if rol == 'admin':
+        cur.execute("""
+            SELECT s.id, s.dispositivo_id, s.registros_enviados, s.registros_ok,
+                   s.estado, s.detalle, s.fecha
+            FROM sincronizacion_log s
+            ORDER BY s.fecha DESC, s.id DESC
+            LIMIT 200
+        """)
+    else:
+        cur.execute("""
+            SELECT s.id, s.dispositivo_id, s.registros_enviados, s.registros_ok,
+                   s.estado, s.detalle, s.fecha
+            FROM sincronizacion_log s
+            JOIN dispositivos d ON d.id = s.dispositivo_id
+            WHERE d.empresa_id = %s
+            ORDER BY s.fecha DESC, s.id DESC
+            LIMIT 200
+        """, (empresa_id,))
+
     rows = cur.fetchall()
     cur.close()
     conn.close()
@@ -33,11 +52,18 @@ def get_logs():
 
 
 @logs_bp.route('/api/logs', methods=['DELETE'])
+@requiere_rol('admin', 'empleador')
 def clear_logs():
     conn = get_connection()
     cur = conn.cursor()
     try:
-        cur.execute('TRUNCATE TABLE sincronizacion_log RESTART IDENTITY')
+        if request.user_rol == 'admin':
+            cur.execute('TRUNCATE TABLE sincronizacion_log RESTART IDENTITY')
+        else:
+            cur.execute(
+                "DELETE FROM sincronizacion_log WHERE dispositivo_id IN (SELECT id FROM dispositivos WHERE empresa_id = %s)",
+                (request.empresa_id,)
+            )
         conn.commit()
         return jsonify({'ok': True})
     except Exception as e:

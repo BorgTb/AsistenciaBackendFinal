@@ -1,10 +1,10 @@
 import { RequireAuth } from '@/components/RequireAuth';
 import { SasDashboard } from '@/components/SasDashboard';
 
-export default function ErpPage() {
+export default function UsuariosPage() {
   return (
     <RequireAuth>
-      <SasDashboard initialSection="erp" />
+      <SasDashboard initialSection="usuarios" />
     </RequireAuth>
   );
 }

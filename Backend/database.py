@@ -14,10 +14,6 @@ def init_db():
         conn = get_connection()
         cur = conn.cursor()
 
-        # ── NUEVA: empresas ──────────────────────────────────────────
-        # Si alguien usa el sistema sin web, igual se crea una empresa
-        # por defecto en el seed (ver abajo). El reloj siempre manda
-        # empresa_id=1 si no está configurado de otra forma.
         cur.execute("""
             CREATE TABLE IF NOT EXISTS empresas (
                 id SERIAL PRIMARY KEY,
@@ -30,9 +26,6 @@ def init_db():
             )
         """)
 
-        # ── NUEVA: dispositivos ──────────────────────────────────────
-        # Cada reloj se registra aquí. Sin esto no sabes qué reloj
-        # sincronizó qué registros ni si está caído.
         cur.execute("""
             CREATE TABLE IF NOT EXISTS dispositivos (
                 id SERIAL PRIMARY KEY,
@@ -42,27 +35,43 @@ def init_db():
                 ip_local VARCHAR(20),
                 estado VARCHAR(20) DEFAULT 'activo',
                 ultimo_heartbeat TIMESTAMP,
+                codigo_enrol VARCHAR(8),
+                enrolado BOOLEAN DEFAULT TRUE,
                 created_at TIMESTAMP DEFAULT NOW()
             )
         """)
+        cur.execute("ALTER TABLE dispositivos ADD COLUMN IF NOT EXISTS codigo_enrol VARCHAR(8)")
+        cur.execute("ALTER TABLE dispositivos ADD COLUMN IF NOT EXISTS enrolado BOOLEAN DEFAULT TRUE")
 
-        # ── NUEVA: usuarios_web ──────────────────────────────────────
-        # Solo para quien use el panel web. No afecta al reloj.
         cur.execute("""
             CREATE TABLE IF NOT EXISTS usuarios_web (
                 id SERIAL PRIMARY KEY,
-                empresa_id INTEGER REFERENCES empresas(id) DEFAULT 1,
                 nombre VARCHAR(100) NOT NULL,
                 email VARCHAR(100) UNIQUE NOT NULL,
                 password_hash VARCHAR(200) NOT NULL,
-                rol VARCHAR(20) DEFAULT 'admin',
                 activo BOOLEAN DEFAULT TRUE,
                 created_at TIMESTAMP DEFAULT NOW()
             )
         """)
+        cur.execute("ALTER TABLE usuarios_web ALTER COLUMN empresa_id DROP NOT NULL")
+        cur.execute("ALTER TABLE usuarios_web DROP COLUMN IF EXISTS rol")
 
-        # ── MODIFICADA: personas ─────────────────────────────────────
-        # Se agrega empresa_id y activo. El resto igual que antes.
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS usuario_empresa (
+                id SERIAL PRIMARY KEY,
+                usuario_id INTEGER NOT NULL REFERENCES usuarios_web(id) ON DELETE CASCADE,
+                empresa_id INTEGER NOT NULL REFERENCES empresas(id) ON DELETE CASCADE,
+                rol VARCHAR(20) NOT NULL DEFAULT 'trabajador',
+                activo BOOLEAN DEFAULT TRUE,
+                created_at TIMESTAMP DEFAULT NOW(),
+                UNIQUE(usuario_id, empresa_id)
+            )
+        """)
+        cur.execute("CREATE INDEX IF NOT EXISTS idx_ue_usuario ON usuario_empresa(usuario_id)")
+        cur.execute("CREATE INDEX IF NOT EXISTS idx_ue_empresa ON usuario_empresa(empresa_id)")
+        cur.execute("ALTER TABLE usuario_empresa DROP CONSTRAINT IF EXISTS usuario_empresa_usuario_id_key")
+        cur.execute("ALTER TABLE usuario_empresa DROP CONSTRAINT IF EXISTS usuario_empresa_empresa_id_key")
+
         cur.execute("""
             CREATE TABLE IF NOT EXISTS personas (
                 id SERIAL PRIMARY KEY,
@@ -79,8 +88,6 @@ def init_db():
         cur.execute("ALTER TABLE personas ADD COLUMN IF NOT EXISTS empresa_id INTEGER REFERENCES empresas(id) DEFAULT 1")
         cur.execute("ALTER TABLE personas ADD COLUMN IF NOT EXISTS activo BOOLEAN DEFAULT TRUE")
 
-        # ── MODIFICADA: turnos ───────────────────────────────────────
-        # Se agrega empresa_id y activo.
         cur.execute("""
             CREATE TABLE IF NOT EXISTS turnos (
                 id SERIAL PRIMARY KEY,
@@ -96,7 +103,6 @@ def init_db():
         cur.execute("ALTER TABLE turnos ADD COLUMN IF NOT EXISTS empresa_id INTEGER REFERENCES empresas(id) DEFAULT 1")
         cur.execute("ALTER TABLE turnos ADD COLUMN IF NOT EXISTS activo BOOLEAN DEFAULT TRUE")
 
-        # ── SIN CAMBIOS: asignaciones ────────────────────────────────
         cur.execute("""
             CREATE TABLE IF NOT EXISTS asignaciones (
                 id SERIAL PRIMARY KEY,
@@ -107,10 +113,10 @@ def init_db():
                 UNIQUE(persona_id, turno_id, vigente)
             )
         """)
+        cur.execute("ALTER TABLE asignaciones DROP CONSTRAINT IF EXISTS asignaciones_persona_id_key")
+        cur.execute("ALTER TABLE asignaciones DROP CONSTRAINT IF EXISTS asignaciones_turno_id_key")
+        cur.execute("ALTER TABLE asignaciones DROP CONSTRAINT IF EXISTS asignaciones_vigente_key")
 
-        # ── MODIFICADA: asistencias ──────────────────────────────────
-        # Se agrega dispositivo_id y sincronizado_at para trazabilidad
-        # completa (necesario para Resolución Exenta N°38).
         cur.execute("""
             CREATE TABLE IF NOT EXISTS asistencias (
                 id SERIAL PRIMARY KEY,
@@ -131,9 +137,6 @@ def init_db():
         cur.execute("ALTER TABLE asistencias ADD COLUMN IF NOT EXISTS timestamp_local VARCHAR(50)")
         cur.execute("ALTER TABLE asistencias ADD COLUMN IF NOT EXISTS sincronizado_at TIMESTAMP")
 
-        # ── NUEVA: sincronizacion_log ────────────────────────────────
-        # Registra cada vez que el reloj sincroniza datos offline.
-        # Es la tabla que vas a usar en tus pruebas de confiabilidad.
         cur.execute("""
             CREATE TABLE IF NOT EXISTS sincronizacion_log (
                 id SERIAL PRIMARY KEY,
@@ -146,10 +149,10 @@ def init_db():
             )
         """)
 
-        # ── NUEVA: integraciones ERP ────────────────────────────────
         cur.execute("""
             CREATE TABLE IF NOT EXISTS integraciones_erp (
                 id SERIAL PRIMARY KEY,
+                empresa_id INTEGER REFERENCES empresas(id) DEFAULT 1,
                 nombre VARCHAR(120) NOT NULL,
                 tipo VARCHAR(40) NOT NULL,
                 webhook_url TEXT NOT NULL,
@@ -160,18 +163,15 @@ def init_db():
                 created_at TIMESTAMP DEFAULT NOW()
             )
         """)
+        cur.execute("ALTER TABLE integraciones_erp ADD COLUMN IF NOT EXISTS empresa_id INTEGER REFERENCES empresas(id) DEFAULT 1")
 
-        # ── ÍNDICES ──────────────────────────────────────────────────
         cur.execute("CREATE INDEX IF NOT EXISTS idx_asistencias_persona ON asistencias(persona_id)")
         cur.execute("CREATE INDEX IF NOT EXISTS idx_asistencias_dispositivo ON asistencias(dispositivo_id)")
         cur.execute("CREATE INDEX IF NOT EXISTS idx_asistencias_fecha ON asistencias(fecha_hora)")
         cur.execute("CREATE INDEX IF NOT EXISTS idx_personas_empresa ON personas(empresa_id)")
         cur.execute("CREATE INDEX IF NOT EXISTS idx_erp_activo ON integraciones_erp(activo)")
 
-        # ── SEED: empresa y dispositivo por defecto ──────────────────
-        # Esto es lo que hace que el sistema funcione SIN página web.
-        # El reloj siempre puede usar empresa_id=1 y dispositivo_id=1
-        # sin necesitar configuración adicional.
+        # ── SEED ─────────────────────────────────────────────────────
         cur.execute("""
             INSERT INTO empresas (id, nombre, rut_empresa)
             VALUES (1, 'Empresa por defecto', '00000000-0')
@@ -182,6 +182,25 @@ def init_db():
             VALUES (1, 1, 'Reloj Principal')
             ON CONFLICT (id) DO NOTHING
         """)
+
+        cur.execute("SELECT id FROM usuarios_web WHERE email = 'admin@empresa.cl'")
+        admin_row = cur.fetchone()
+        if admin_row:
+            admin_id = admin_row[0]
+        else:
+            import bcrypt
+            admin_hash = bcrypt.hashpw('admin123'.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+            cur.execute(
+                "INSERT INTO usuarios_web (nombre, email, password_hash) VALUES (%s, %s, %s) RETURNING id",
+                ('Administrador', 'admin@empresa.cl', admin_hash)
+            )
+            admin_id = cur.fetchone()[0]
+
+        cur.execute("""
+            INSERT INTO usuario_empresa (usuario_id, empresa_id, rol)
+            VALUES (%s, 1, 'admin')
+            ON CONFLICT (usuario_id, empresa_id) DO NOTHING
+        """, (admin_id,))
 
         conn.commit()
         print("Base de datos inicializada correctamente")

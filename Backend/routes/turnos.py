@@ -1,13 +1,39 @@
 from flask import Blueprint, request, jsonify
 from database import get_connection
+from routes.auth import token_opcional, requiere_rol
+
 
 turnos_bp = Blueprint('turnos', __name__)
 
+
 @turnos_bp.route('/api/turnos', methods=['GET'])
+@token_opcional
 def get_turnos():
     conn = get_connection()
     cur = conn.cursor()
-    cur.execute("SELECT id, nombre, hora_inicio, hora_fin, dias FROM turnos ORDER BY id")
+
+    rol = request.user_rol
+    empresa_id = request.empresa_id
+    persona_id = request.persona_id
+
+    if rol == 'admin':
+        cur.execute("SELECT id, nombre, hora_inicio, hora_fin, dias, empresa_id FROM turnos ORDER BY id")
+    elif rol == 'empleador' and empresa_id:
+        cur.execute(
+            "SELECT id, nombre, hora_inicio, hora_fin, dias, empresa_id FROM turnos WHERE empresa_id = %s ORDER BY id",
+            (empresa_id,)
+        )
+    elif rol == 'trabajador' and persona_id:
+        cur.execute(
+            """SELECT t.id, t.nombre, t.hora_inicio, t.hora_fin, t.dias, t.empresa_id
+               FROM turnos t
+               JOIN asignaciones a ON a.turno_id = t.id AND a.vigente = TRUE
+               WHERE a.persona_id = %s ORDER BY t.id""",
+            (persona_id,)
+        )
+    else:
+        cur.execute("SELECT id, nombre, hora_inicio, hora_fin, dias, empresa_id FROM turnos ORDER BY id")
+
     rows = cur.fetchall()
     cur.close()
     conn.close()
@@ -17,26 +43,23 @@ def get_turnos():
         "nombre": r[1],
         "inicio": str(r[2]),
         "fin": str(r[3]),
-        "dias": r[4]
+        "dias": r[4],
+        "empresa_id": r[5]
     } for r in rows])
 
 
 @turnos_bp.route('/api/turnos', methods=['POST'])
+@token_opcional
 def create_turno():
     data = request.json
+    empresa_id = request.empresa_id if request.empresa_id else 1
     conn = get_connection()
     cur = conn.cursor()
     try:
-        cur.execute("""
-            INSERT INTO turnos (nombre, hora_inicio, hora_fin, dias)
-            VALUES (%s, %s, %s, %s)
-            RETURNING id
-        """, (
-            data['nombre'],
-            data['inicio'],
-            data['fin'],
-            data.get('dias', '')
-        ))
+        cur.execute(
+            "INSERT INTO turnos (empresa_id, nombre, hora_inicio, hora_fin, dias) VALUES (%s, %s, %s, %s, %s) RETURNING id",
+            (empresa_id, data['nombre'], data['inicio'], data['fin'], data.get('dias', ''))
+        )
         turno_id = cur.fetchone()[0]
         conn.commit()
         return jsonify({'ok': True, 'id': turno_id})
@@ -47,12 +70,20 @@ def create_turno():
         cur.close()
         conn.close()
 
+
 @turnos_bp.route('/api/turnos/<turno_id>', methods=['DELETE'])
+@token_opcional
 def delete_turno(turno_id):
     conn = get_connection()
     cur = conn.cursor()
     try:
-        cur.execute("DELETE FROM turnos WHERE id::text = %s", (str(turno_id),))
+        if request.empresa_id and request.user_rol != 'admin':
+            cur.execute(
+                "DELETE FROM turnos WHERE id::text = %s AND empresa_id = %s",
+                (str(turno_id), request.empresa_id)
+            )
+        else:
+            cur.execute("DELETE FROM turnos WHERE id::text = %s", (str(turno_id),))
         conn.commit()
         return jsonify({'ok': True})
     except Exception as e:

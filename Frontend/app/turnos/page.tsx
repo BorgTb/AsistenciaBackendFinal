@@ -1,5 +1,10 @@
+import { RequireAuth } from '@/components/RequireAuth';
 import { SasDashboard } from '@/components/SasDashboard';
 
 export default function TurnosPage() {
-  return <SasDashboard initialSection="turnos" />;
+  return (
+    <RequireAuth>
+      <SasDashboard initialSection="turnos" />
+    </RequireAuth>
+  );
 }

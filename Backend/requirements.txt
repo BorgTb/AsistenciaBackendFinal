@@ -7,3 +7,5 @@ pillow
 flask-cors
 paho-mqtt
 requests
+bcrypt
+PyJWT

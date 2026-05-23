@@ -1,19 +1,56 @@
 from flask import Blueprint, request, jsonify
 from database import get_connection
+from routes.auth import token_opcional
 
 asistencias_bp = Blueprint('asistencias', __name__)
 
+
 @asistencias_bp.route('/api/asistencias', methods=['GET'])
+@token_opcional
 def get_asistencias():
     conn = get_connection()
     cur = conn.cursor()
-    cur.execute("""
-        SELECT id, persona_id, nombre, tipo, metodo, 
-               fecha_hora, origen, sincronizado
-        FROM asistencias
-        ORDER BY fecha_hora DESC
-        LIMIT 100
-    """)
+
+    rol = request.user_rol
+    empresa_id = request.empresa_id
+    persona_id = request.persona_id
+
+    if rol == 'admin':
+        cur.execute("""
+            SELECT a.id, a.persona_id, a.nombre, a.tipo, a.metodo,
+                   a.fecha_hora, a.origen, a.sincronizado, a.dispositivo_id
+            FROM asistencias a
+            ORDER BY a.fecha_hora DESC
+            LIMIT 500
+        """)
+    elif rol == 'empleador' and empresa_id:
+        cur.execute("""
+            SELECT a.id, a.persona_id, a.nombre, a.tipo, a.metodo,
+                   a.fecha_hora, a.origen, a.sincronizado, a.dispositivo_id
+            FROM asistencias a
+            JOIN personas p ON a.persona_id = p.id
+            WHERE p.empresa_id = %s
+            ORDER BY a.fecha_hora DESC
+            LIMIT 500
+        """, (empresa_id,))
+    elif rol == 'trabajador' and persona_id:
+        cur.execute("""
+            SELECT a.id, a.persona_id, a.nombre, a.tipo, a.metodo,
+                   a.fecha_hora, a.origen, a.sincronizado, a.dispositivo_id
+            FROM asistencias a
+            WHERE a.persona_id = %s
+            ORDER BY a.fecha_hora DESC
+            LIMIT 200
+        """, (persona_id,))
+    else:
+        cur.execute("""
+            SELECT a.id, a.persona_id, a.nombre, a.tipo, a.metodo,
+                   a.fecha_hora, a.origen, a.sincronizado, a.dispositivo_id
+            FROM asistencias a
+            ORDER BY a.fecha_hora DESC
+            LIMIT 500
+        """)
+
     rows = cur.fetchall()
     cur.close()
     conn.close()
@@ -26,7 +63,8 @@ def get_asistencias():
         "metodo": r[4],
         "fecha_hora": str(r[5]),
         "origen": r[6],
-        "sincronizado": r[7]
+        "sincronizado": r[7],
+        "dispositivo_id": r[8]
     } for r in rows])
 
 
@@ -36,19 +74,12 @@ def create_asistencia():
     conn = get_connection()
     cur = conn.cursor()
     try:
-        cur.execute("""
-            INSERT INTO asistencias 
-            (persona_id, nombre, tipo, metodo, origen, sincronizado)
-            VALUES (%s, %s, %s, %s, %s, %s)
-            RETURNING id
-        """, (
-            data.get('persona_id'),
-            data.get('nombre'),
-            data.get('tipo'),
-            data.get('metodo', 'huella'),
-            data.get('origen', 'dispositivo'),
-            data.get('sincronizado', False)
-        ))
+        dispositivo_id = data.get('dispositivo_id') or 1
+        persona_id = data.get('persona_id')
+        cur.execute(
+            "INSERT INTO asistencias (persona_id, dispositivo_id, nombre, tipo, metodo, origen, sincronizado) VALUES (%s, %s, %s, %s, %s, %s, %s) RETURNING id",
+            (persona_id, dispositivo_id, data.get('nombre'), data.get('tipo'), data.get('metodo', 'huella'), data.get('origen', 'dispositivo'), data.get('sincronizado', False))
+        )
         asist_id = cur.fetchone()[0]
         conn.commit()
         return jsonify({'ok': True, 'id': asist_id})
@@ -62,7 +93,6 @@ def create_asistencia():
 
 @asistencias_bp.route('/api/asistencias/sync', methods=['POST'])
 def sync_asistencias():
-    """Recibe lista de asistencias acumuladas offline"""
     data = request.json
     registros = data.get('registros', [])
     conn = get_connection()
@@ -72,24 +102,17 @@ def sync_asistencias():
 
     for r in registros:
         try:
-            # Verificar si ya existe para evitar duplicados
             cur.execute("""
-                SELECT id FROM asistencias 
-                WHERE persona_id = %s AND tipo = %s 
+                SELECT id FROM asistencias
+                WHERE persona_id = %s AND tipo = %s
                 AND ABS(EXTRACT(EPOCH FROM (fecha_hora - NOW()))) < 60
             """, (r.get('persona_id'), r.get('tipo')))
-            
+
             if not cur.fetchone():
-                cur.execute("""
-                    INSERT INTO asistencias
-                    (persona_id, nombre, tipo, metodo, origen, sincronizado)
-                    VALUES (%s, %s, %s, %s, 'sync', TRUE)
-                """, (
-                    r.get('persona_id'),
-                    r.get('nombre'),
-                    r.get('tipo'),
-                    r.get('metodo', 'huella')
-                ))
+                cur.execute(
+                    "INSERT INTO asistencias (persona_id, nombre, tipo, metodo, origen, sincronizado) VALUES (%s, %s, %s, %s, 'sync', TRUE)",
+                    (r.get('persona_id'), r.get('nombre'), r.get('tipo'), r.get('metodo', 'huella'))
+                )
                 insertados += 1
         except:
             errores += 1

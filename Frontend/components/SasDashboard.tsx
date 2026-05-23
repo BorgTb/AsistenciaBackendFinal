@@ -3,6 +3,19 @@
 import type { ReactNode } from 'react';
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
+import { useAuth } from '@/lib/auth-context';
+import {
+  changePassword,
+  createEmpresa,
+  deleteEmpresa,
+  deleteUsuario,
+  generarPinEnrolamiento,
+  getEmpresas,
+  getUsuarios,
+  registerUser,
+  type Empresa,
+  type UsuarioWeb
+} from '@/lib/auth-api';
 import {
   apiBaseUrl,
   clearLogs,
@@ -26,7 +39,7 @@ import {
 } from '@/lib/api';
 import type { Asignacion, Asistencia, DeviceStatus, ErpIntegration, LogEntry, Persona, Turno } from '@/lib/types';
 
-type Section = 'dashboard' | 'asistencias' | 'personas' | 'turnos' | 'asignaciones' | 'dispositivos' | 'erp' | 'logs';
+type Section = 'dashboard' | 'asistencias' | 'personas' | 'turnos' | 'asignaciones' | 'dispositivos' | 'erp' | 'logs' | 'usuarios' | 'empresas';
 type ToastState = { kind: 'success' | 'error'; message: string } | null;
 type ErpType = 'generic' | 'odoo' | 'defontana' | 'buk' | 'sap';
 type ErpFormState = {
@@ -48,7 +61,9 @@ const sectionPaths: Record<Section, string> = {
   asignaciones: '/asignaciones',
   dispositivos: '/dispositivos',
   erp: '/erp',
-  logs: '/logs'
+  logs: '/logs',
+  usuarios: '/usuarios',
+  empresas: '/empresas'
 };
 
 const dayCodes = ['L', 'M', 'X', 'J', 'V', 'S', 'D'] as const;
@@ -136,6 +151,7 @@ function Badge({ tone, children }: { tone: 'success' | 'warning' | 'danger' | 'i
 }
 
 export function SasDashboard({ initialSection = 'dashboard' }: { initialSection?: Section }) {
+  const { user, logout } = useAuth();
   const [section, setSection] = useState<Section>(initialSection);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [personas, setPersonas] = useState<Persona[]>([]);
@@ -146,13 +162,20 @@ export function SasDashboard({ initialSection = 'dashboard' }: { initialSection?
   const [erpList, setErpList] = useState<ErpIntegration[]>([]);
   const [logs, setLogs] = useState<LogEntry[]>([]);
   const [toast, setToast] = useState<ToastState>(null);
-  const [modal, setModal] = useState<'persona' | 'turno' | 'asignacion' | 'erp' | null>(null);
+  const [modal, setModal] = useState<'persona' | 'turno' | 'asignacion' | 'erp' | 'usuario' | 'password' | 'empresa' | null>(null);
   const [filterDate, setFilterDate] = useState('');
   const [filterType, setFilterType] = useState('');
   const [filterMethod, setFilterMethod] = useState('');
   const [logFilter, setLogFilter] = useState<'all' | 'ok' | 'err' | 'info' | 'warn'>('all');
   const [days, setDays] = useState<string[]>(['L', 'M', 'X', 'J', 'V']);
   const [formError, setFormError] = useState('');
+
+  const [usuarios, setUsuarios] = useState<UsuarioWeb[]>([]);
+  const [empresas, setEmpresas] = useState<Empresa[]>([]);
+  const [registerForm, setRegisterForm] = useState({ nombre: '', email: '', password: '', rol: 'trabajador', empresa_id: undefined as number | undefined });
+  const [empresaForm, setEmpresaForm] = useState({ nombre: '', rut_empresa: '', email_contacto: '', telefono: '', direccion: '' });
+  const [passwordForm, setPasswordForm] = useState({ passwordActual: '', passwordNueva: '', confirmacion: '' });
+  const [generatedPin, setGeneratedPin] = useState('');
 
   const [personaForm, setPersonaForm] = useState({ nombre: '', rut: '', email: '' });
   const [turnoForm, setTurnoForm] = useState({ nombre: '', inicio: '08:00', fin: '17:00' });
@@ -182,15 +205,19 @@ export function SasDashboard({ initialSection = 'dashboard' }: { initialSection?
       const needsDevices = view === 'dashboard' || view === 'dispositivos';
       const needsErp = view === 'erp';
       const needsLogs = view === 'logs';
+      const needsUsuarios = view === 'usuarios';
+      const needsEmpresas = view === 'empresas' || (view === 'usuarios' && user?.rol === 'admin');
 
-      const [personasRes, turnosRes, asignacionesRes, asistenciasRes, devicesRes, erpRes, logsRes] = await Promise.all([
+      const [personasRes, turnosRes, asignacionesRes, asistenciasRes, devicesRes, erpRes, logsRes, usuariosRes, empresasRes] = await Promise.all([
         needsPersonas ? getPersonas() : Promise.resolve(null),
         needsTurnos ? getTurnos() : Promise.resolve(null),
         needsAsignaciones ? getAsignaciones() : Promise.resolve(null),
         needsAsistencias ? getAsistencias() : Promise.resolve(null),
         needsDevices ? getDispositivos() : Promise.resolve(null),
         needsErp ? getErp() : Promise.resolve(null),
-        needsLogs ? getLogs() : Promise.resolve(null)
+        needsLogs ? getLogs() : Promise.resolve(null),
+        needsUsuarios ? getUsuarios() : Promise.resolve(null),
+        needsEmpresas ? getEmpresas() : Promise.resolve(null)
       ]);
 
       if (!alive) return;
@@ -230,6 +257,8 @@ export function SasDashboard({ initialSection = 'dashboard' }: { initialSection?
           time: item.fecha ? new Intl.DateTimeFormat('es-CL', { hour: '2-digit', minute: '2-digit', second: '2-digit' }).format(new Date(item.fecha)) : '--:--:--'
         })));
       }
+      if (usuariosRes) setUsuarios(usuariosRes);
+      if (empresasRes) setEmpresas(empresasRes);
     }
 
     loadData(section);
@@ -604,6 +633,141 @@ export function SasDashboard({ initialSection = 'dashboard' }: { initialSection?
     showToast('error', 'El marcaje manual quedó deshabilitado para usar solo datos de la base de datos');
   }
 
+  async function handleGenerarPin() {
+    setFormError('');
+    const result = await generarPinEnrolamiento();
+    if (result && 'ok' in result && result.ok) {
+      setGeneratedPin(result.pin);
+    } else {
+      const msg = result && 'error' in result ? String(result.error) : 'Error al generar PIN';
+      setFormError(msg);
+    }
+  }
+
+  async function handleCreateEmpresa() {
+    const { nombre } = empresaForm;
+    if (!nombre.trim()) {
+      setFormError('El nombre de la empresa es obligatorio');
+      return;
+    }
+
+    const result = await createEmpresa({
+      nombre: nombre.trim(),
+      rut_empresa: empresaForm.rut_empresa.trim(),
+      email_contacto: empresaForm.email_contacto.trim(),
+      telefono: empresaForm.telefono.trim(),
+      direccion: empresaForm.direccion.trim()
+    });
+
+    if (result && 'ok' in result && result.ok) {
+      showToast('success', 'Empresa creada');
+      setEmpresaForm({ nombre: '', rut_empresa: '', email_contacto: '', telefono: '', direccion: '' });
+      closeModal();
+      await refreshData();
+      return;
+    }
+
+    showToast('error', result && 'error' in result ? String(result.error) : 'Error al crear empresa');
+  }
+
+  async function handleDeleteEmpresa(empresaId: number, nombre: string) {
+    if (!window.confirm(`¿Eliminar la empresa "${nombre}"? Se borrarán todos sus datos.`)) return;
+
+    const result = await deleteEmpresa(empresaId);
+
+    if (result && 'ok' in result && result.ok) {
+      showToast('success', 'Empresa eliminada');
+      await refreshData();
+      return;
+    }
+
+    showToast('error', result && 'error' in result ? String(result.error) : 'Error al eliminar empresa');
+  }
+
+  async function handleRegisterUser() {
+    const { nombre, email, password, rol, empresa_id } = registerForm;
+
+    if (!nombre.trim() || !email.trim() || !password) {
+      setFormError('Completa todos los campos obligatorios');
+      return;
+    }
+
+    if (password.length < 4) {
+      setFormError('La contraseña debe tener al menos 4 caracteres');
+      return;
+    }
+
+    if (user?.rol === 'admin' && !empresa_id) {
+      setFormError('Selecciona una empresa');
+      return;
+    }
+
+    const result = await registerUser({
+      nombre: nombre.trim(),
+      email: email.trim().toLowerCase(),
+      password,
+      rol,
+      empresa_id: user?.rol === 'admin' ? empresa_id : undefined
+    });
+
+    if (result && 'ok' in result && result.ok) {
+      showToast('success', 'Usuario creado correctamente');
+      setRegisterForm({ nombre: '', email: '', password: '', rol: 'trabajador', empresa_id: undefined });
+      closeModal();
+      await refreshData();
+      return;
+    }
+
+    const msg = result && 'error' in result ? String(result.error) : 'Error al crear usuario';
+    showToast('error', msg);
+  }
+
+  async function handleDeleteUsuario(userId: number, empresaId: number, userName: string) {
+    if (!window.confirm(`¿Eliminar a ${userName}? Esta acción no se puede deshacer.`)) return;
+
+    const result = await deleteUsuario(userId, empresaId);
+
+    if (result && 'ok' in result && result.ok) {
+      showToast('success', 'Usuario eliminado');
+      await refreshData();
+      return;
+    }
+
+    const msg = result && 'error' in result ? String(result.error) : 'Error al eliminar usuario';
+    showToast('error', msg);
+  }
+
+  async function handleChangePassword() {
+    const { passwordActual, passwordNueva, confirmacion } = passwordForm;
+
+    if (!passwordActual || !passwordNueva || !confirmacion) {
+      setFormError('Completa todos los campos');
+      return;
+    }
+
+    if (passwordNueva.length < 4) {
+      setFormError('La nueva contraseña debe tener al menos 4 caracteres');
+      return;
+    }
+
+    if (passwordNueva !== confirmacion) {
+      setFormError('Las contraseñas no coinciden');
+      return;
+    }
+
+    const result = await changePassword(passwordActual, passwordNueva);
+
+    if (result && 'ok' in result && result.ok) {
+      showToast('success', 'Contraseña actualizada correctamente');
+      setPasswordForm({ passwordActual: '', passwordNueva: '', confirmacion: '' });
+      closeModal();
+      return;
+    }
+
+    const msg = result && 'error' in result ? String(result.error) : 'Error al cambiar contraseña';
+    setFormError(msg);
+  }
+
   const recentAsistencias = asistencias.slice(0, 6);
   const dashboardDevices = devices;
   const currentTitle = {
@@ -614,7 +778,9 @@ export function SasDashboard({ initialSection = 'dashboard' }: { initialSection?
     asignaciones: 'Asignaciones activas',
     dispositivos: 'Dispositivos conectados',
     erp: 'Integraciones ERP',
-    logs: 'Actividad y trazabilidad'
+    logs: 'Actividad y trazabilidad',
+    usuarios: 'Gestión de usuarios',
+    empresas: 'Gestión de empresas'
   }[section];
 
   const currentSubtitle = {
@@ -625,7 +791,9 @@ export function SasDashboard({ initialSection = 'dashboard' }: { initialSection?
     asignaciones: 'Relaciona personas y turnos con control visual del estado vigente.',
     dispositivos: 'Supervisa nodos ESP32, cámara, RAM libre y acceso al panel local.',
     erp: 'Guarda endpoints, cabeceras y mapeos sin tocar el backend.',
-    logs: 'Revisa eventos, filtrado de mensajes y evidencia operativa.'
+    logs: 'Revisa eventos, filtrado de mensajes y evidencia operativa.',
+    usuarios: 'Administra usuarios del sistema, roles y permisos de acceso.',
+    empresas: 'Crea y administra empresas del sistema. Cada empresa tiene sus propios usuarios, dispositivos y datos.'
   }[section];
 
   return (
@@ -655,31 +823,52 @@ export function SasDashboard({ initialSection = 'dashboard' }: { initialSection?
           </SectionButton>
         </div>
 
-        <div className="nav-group">
-          <div className="nav-label">Gestión</div>
-          <SectionButton active={section === 'personas'} href={sectionPaths.personas} onClick={() => setSidebarOpen(false)}>
-            <span>Personas</span>
-          </SectionButton>
-          <SectionButton active={section === 'turnos'} href={sectionPaths.turnos} onClick={() => setSidebarOpen(false)}>
-            <span>Turnos</span>
-          </SectionButton>
-          <SectionButton active={section === 'asignaciones'} href={sectionPaths.asignaciones} onClick={() => setSidebarOpen(false)}>
-            <span>Asignaciones</span>
-          </SectionButton>
-        </div>
+        {(user?.rol === 'admin' || user?.rol === 'empleador') && (
+          <div className="nav-group">
+            <div className="nav-label">Gestión</div>
+            <SectionButton active={section === 'personas'} href={sectionPaths.personas} onClick={() => setSidebarOpen(false)}>
+              <span>Personas</span>
+            </SectionButton>
+            <SectionButton active={section === 'turnos'} href={sectionPaths.turnos} onClick={() => setSidebarOpen(false)}>
+              <span>Turnos</span>
+            </SectionButton>
+            <SectionButton active={section === 'asignaciones'} href={sectionPaths.asignaciones} onClick={() => setSidebarOpen(false)}>
+              <span>Asignaciones</span>
+            </SectionButton>
+          </div>
+        )}
 
-        <div className="nav-group">
-          <div className="nav-label">Sistema</div>
-          <SectionButton active={section === 'dispositivos'} href={sectionPaths.dispositivos} onClick={() => setSidebarOpen(false)}>
-            <span>Dispositivos</span>
-          </SectionButton>
-          <SectionButton active={section === 'erp'} href={sectionPaths.erp} onClick={() => setSidebarOpen(false)}>
-            <span>ERP</span>
-          </SectionButton>
-          <SectionButton active={section === 'logs'} href={sectionPaths.logs} onClick={() => setSidebarOpen(false)}>
-            <span>Logs</span>
-          </SectionButton>
-        </div>
+        {(user?.rol === 'admin' || user?.rol === 'empleador') && (
+          <div className="nav-group">
+            <div className="nav-label">Sistema</div>
+            {user?.rol === 'admin' && (
+              <SectionButton active={section === 'empresas'} href={sectionPaths.empresas} onClick={() => setSidebarOpen(false)}>
+                <span>Empresas</span>
+              </SectionButton>
+            )}
+            <SectionButton active={section === 'dispositivos'} href={sectionPaths.dispositivos} onClick={() => setSidebarOpen(false)}>
+              <span>Dispositivos</span>
+            </SectionButton>
+            <SectionButton active={section === 'erp'} href={sectionPaths.erp} onClick={() => setSidebarOpen(false)}>
+              <span>ERP</span>
+            </SectionButton>
+            <SectionButton active={section === 'logs'} href={sectionPaths.logs} onClick={() => setSidebarOpen(false)}>
+              <span>Logs</span>
+            </SectionButton>
+            <SectionButton active={section === 'usuarios'} href={sectionPaths.usuarios} onClick={() => setSidebarOpen(false)}>
+              <span>Usuarios</span>
+            </SectionButton>
+          </div>
+        )}
+
+        {user?.rol === 'trabajador' && (
+          <div className="nav-group">
+            <div className="nav-label">Mi cuenta</div>
+            <SectionButton active={section === 'usuarios'} href={sectionPaths.usuarios} onClick={() => setSidebarOpen(false)}>
+              <span>Mi cuenta</span>
+            </SectionButton>
+          </div>
+        )}
 
         <div className="sidebar-card">
           <div className="status-row">
@@ -689,7 +878,12 @@ export function SasDashboard({ initialSection = 'dashboard' }: { initialSection?
               <div className="sidebar-card-subtitle">{apiBaseUrl()}</div>
             </div>
           </div>
-          <div className="sidebar-card-subtitle" style={{ marginTop: 12 }}>
+          {user && (
+            <div className="sidebar-card-subtitle" style={{ marginTop: 12 }}>
+              {user.empresa_nombre} · {user.rol}
+            </div>
+          )}
+          <div className="sidebar-card-subtitle" style={{ marginTop: user ? 2 : 12 }}>
             El frontend consume Flask por REST y todo el contenido operativo proviene de la base de datos.
           </div>
         </div>
@@ -707,13 +901,38 @@ export function SasDashboard({ initialSection = 'dashboard' }: { initialSection?
           </div>
 
           <div className="top-actions">
-            <span className="chip"><strong>{stats.onlineDevices}</strong> dispositivos online</span>
-            <button className="btn btn-secondary" type="button" onClick={handleSyncAll}>
-              Sincronizar
-            </button>
-            <button className="btn btn-primary" type="button" onClick={() => openModal(section === 'personas' ? 'persona' : section === 'turnos' ? 'turno' : section === 'asignaciones' ? 'asignacion' : 'erp')}>
-              Acción rápida
-            </button>
+            {(user?.rol === 'admin' || user?.rol === 'empleador') && (
+              <span className="chip"><strong>{stats.onlineDevices}</strong> dispositivos online</span>
+            )}
+            {user?.rol === 'trabajador' && (
+              <button className="btn btn-secondary" type="button" onClick={() => openModal('password')}>
+                Cambiar contraseña
+              </button>
+            )}
+            {(user?.rol === 'admin' || user?.rol === 'empleador') && (
+              <>
+                <button className="btn btn-secondary" type="button" onClick={handleSyncAll}>
+                  Sincronizar
+                </button>
+                <button className="btn btn-primary" type="button" onClick={() => openModal(section === 'personas' ? 'persona' : section === 'turnos' ? 'turno' : section === 'asignaciones' ? 'asignacion' : section === 'usuarios' ? 'usuario' : 'erp')}>
+                  Acción rápida
+                </button>
+              </>
+            )}
+            {user && (
+              <>
+                <div className="user-pill">
+                  <div className="user-pill-avatar">{user.nombre.charAt(0).toUpperCase()}</div>
+                  <div className="user-pill-meta">
+                    <span className="user-pill-name">{user.nombre}</span>
+                    <span className="user-pill-role">{user.rol}</span>
+                  </div>
+                </div>
+                <button className="logout-btn" type="button" onClick={logout}>
+                  Salir
+                </button>
+              </>
+            )}
           </div>
         </header>
 
@@ -721,9 +940,11 @@ export function SasDashboard({ initialSection = 'dashboard' }: { initialSection?
           <div className="panel hero-main">
             <div className="split-row" style={{ alignItems: 'start' }}>
               <div style={{ maxWidth: 720 }}>
-                <span className="eyebrow">Operación en tiempo real</span>
+                <span className="eyebrow">{user?.rol === 'trabajador' ? 'Mi asistencia' : 'Operación en tiempo real'}</span>
                 <h2 className="page-title" style={{ fontSize: 'clamp(1.7rem, 3vw, 3.1rem)', marginTop: 12 }}>
-                  Un panel más completo para control de asistencia, biometría y dispositivos IoT.
+                  {user?.rol === 'trabajador'
+                    ? 'Registro de asistencias y turno asignado.'
+                    : 'Un panel más completo para control de asistencia, biometría y dispositivos IoT.'}
                 </h2>
                 <p className="page-subtitle" style={{ marginTop: 12 }}>
                   Conserva tu backend Python y suma una capa Next.js más clara, responsiva y modular. Esta base ya trae navegación, filtros, formularios, logs y una estructura lista para seguir creciendo.
@@ -1014,7 +1235,7 @@ export function SasDashboard({ initialSection = 'dashboard' }: { initialSection?
                         <td className="mono">{item.fin}</td>
                         <td>
                           <div className="days">
-                            {item.dias.split('').map((code) => (
+                            {item.dias.split('').filter((c) => c !== ',').map((code) => (
                               <span key={code} className="day-chip active">{dayNames[code as keyof typeof dayNames] ?? code}</span>
                             ))}
                           </div>
@@ -1083,7 +1304,30 @@ export function SasDashboard({ initialSection = 'dashboard' }: { initialSection?
                 <h2 className="section-title">Dispositivos</h2>
                 <p className="section-subtitle">Estado del nodo local y acceso rápido al panel de cada equipo.</p>
               </div>
+              {user?.rol === 'empleador' && (
+                <button className="btn btn-primary" type="button" onClick={handleGenerarPin}>
+                  Agregar dispositivo
+                </button>
+              )}
             </div>
+
+            {generatedPin && (
+              <div className="card" style={{ marginBottom: 18, borderColor: 'rgba(56,217,255,0.4)', background: 'rgba(56,217,255,0.08)', padding: 20 }}>
+                <div className="status-row">
+                  <div className="status-dot" style={{ boxShadow: '0 0 0 6px rgba(56,217,255,0.3)' }} />
+                  <div>
+                    <div className="device-name" style={{ fontWeight: 700, fontSize: '1.1rem' }}>PIN de enrolamiento generado</div>
+                    <div className="device-ip">Copia este código para configurar el dispositivo físico</div>
+                  </div>
+                </div>
+                <div className="mono" style={{ marginTop: 16, padding: 16, borderRadius: 12, background: '#000', fontSize: '1.8rem', textAlign: 'center', letterSpacing: '0.3em', fontWeight: 700, color: 'var(--accent)' }}>
+                  {generatedPin}
+                </div>
+                <div className="muted" style={{ marginTop: 12, fontSize: '0.82rem' }}>
+                  1. Enciende el dispositivo · 2. Conéctate a su WiFi (192.168.4.1) · 3. Ve a WiFi Setup · 4. Ingresa el PIN y la URL del backend
+                </div>
+              </div>
+            )}
 
             <div className="device-grid">
               {dashboardDevices.map((item) => (
@@ -1217,7 +1461,283 @@ export function SasDashboard({ initialSection = 'dashboard' }: { initialSection?
             </div>
           </section>
         )}
+
+        {section === 'usuarios' && (
+          <section className="section">
+            <div className="section-head">
+              <div>
+                <h3 className="section-title">Usuarios del sistema</h3>
+                <p className="section-subtitle">Administra cuentas de acceso con roles y permisos.</p>
+              </div>
+              <div className="toolbar">
+                <button className="btn btn-secondary" type="button" onClick={() => openModal('password')}>
+                  Cambiar contraseña
+                </button>
+                <button className="btn btn-primary" type="button" onClick={() => openModal('usuario')}>
+                  Nuevo usuario
+                </button>
+              </div>
+            </div>
+
+            <div className="table-card">
+              <div className="table-wrap">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Nombre</th>
+                      <th>Email</th>
+                      {user?.rol === 'admin' && <th>Empresa</th>}
+                      <th>Rol</th>
+                      <th>Activo</th>
+                      <th>Creado</th>
+                      <th>Acciones</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {usuarios.map((item) => (
+                      <tr key={`${item.id}-${item.empresa_id}`}>
+                        <td>{item.nombre}</td>
+                        <td className="mono muted">{item.email}</td>
+                        {user?.rol === 'admin' && <td>{item.empresa_nombre}</td>}
+                        <td>
+                          <Badge tone={item.rol === 'admin' ? 'danger' : item.rol === 'empleador' ? 'warning' : 'info'}>
+                            {item.rol}
+                          </Badge>
+                        </td>
+                        <td>{item.activo ? 'Sí' : 'No'}</td>
+                        <td className="mono muted">{item.created_at ? formatDate(item.created_at) : '—'}</td>
+                        <td>
+                          {(user?.rol === 'admin' || (user?.rol === 'empleador' && item.rol === 'trabajador')) && item.id !== user?.id && (
+                            <button className="btn btn-danger" type="button" onClick={() => handleDeleteUsuario(item.id, item.empresa_id, item.nombre)}>
+                              Eliminar
+                            </button>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                    {usuarios.length === 0 && (
+                      <tr>
+                        <td colSpan={user?.rol === 'admin' ? 7 : 6} className="empty-state">No hay usuarios registrados.</td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </section>
+        )}
+
+        {section === 'empresas' && user?.rol === 'admin' && (
+          <section className="section">
+            <div className="section-head">
+              <div>
+                <h3 className="section-title">Empresas registradas</h3>
+                <p className="section-subtitle">Cada empresa tiene sus propios dispositivos, trabajadores y datos aislados.</p>
+              </div>
+              <div className="toolbar">
+                <button className="btn btn-primary" type="button" onClick={() => openModal('empresa')}>
+                  Nueva empresa
+                </button>
+              </div>
+            </div>
+
+            <div className="table-card">
+              <div className="table-wrap">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>ID</th>
+                      <th>Nombre</th>
+                      <th>RUT</th>
+                      <th>Email</th>
+                      <th>Teléfono</th>
+                      <th>Creada</th>
+                      <th>Acciones</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {empresas.map((item) => (
+                      <tr key={item.id}>
+                        <td className="mono muted">{item.id}</td>
+                        <td>{item.nombre}</td>
+                        <td className="mono">{item.rut_empresa || '—'}</td>
+                        <td className="mono muted">{item.email_contacto || '—'}</td>
+                        <td>{item.telefono || '—'}</td>
+                        <td className="mono muted">{item.created_at ? formatDate(item.created_at) : '—'}</td>
+                        <td>
+                          {item.id !== 1 && (
+                            <button className="btn btn-danger" type="button" onClick={() => handleDeleteEmpresa(item.id, item.nombre)}>
+                              Eliminar
+                            </button>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                    {empresas.length === 0 && (
+                      <tr>
+                        <td colSpan={7} className="empty-state">No hay empresas registradas.</td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </section>
+        )}
       </main>
+
+      {modal === 'empresa' && (
+        <div className="overlay" onClick={closeModal} role="presentation">
+          <div className="modal" onClick={(e) => e.stopPropagation()} role="presentation">
+            <div className="modal-head">
+              <h3 className="modal-title">Nueva empresa</h3>
+              <p className="modal-subtitle">Cada empresa aísla sus datos, usuarios, dispositivos y trabajadores.</p>
+            </div>
+            <div className="modal-body">
+              {formError && <div className="login-error" style={{ marginBottom: 12 }}>{formError}</div>}
+              <div className="field">
+                <label>Nombre de la empresa *</label>
+                <input type="text" placeholder="Ej: Constructora XYZ S.A." value={empresaForm.nombre} onChange={(e) => setEmpresaForm((c) => ({ ...c, nombre: e.target.value }))} />
+              </div>
+              <div className="field">
+                <label>RUT empresa</label>
+                <input type="text" placeholder="Ej: 76123456-7" value={empresaForm.rut_empresa} onChange={(e) => setEmpresaForm((c) => ({ ...c, rut_empresa: e.target.value }))} />
+              </div>
+              <div className="field">
+                <label>Email contacto</label>
+                <input type="email" placeholder="contacto@empresa.cl" value={empresaForm.email_contacto} onChange={(e) => setEmpresaForm((c) => ({ ...c, email_contacto: e.target.value }))} />
+              </div>
+              <div className="field">
+                <label>Teléfono</label>
+                <input type="text" placeholder="+56 9 XXXX XXXX" value={empresaForm.telefono} onChange={(e) => setEmpresaForm((c) => ({ ...c, telefono: e.target.value }))} />
+              </div>
+              <div className="field">
+                <label>Dirección</label>
+                <input type="text" placeholder="Av. Siempre Viva 742" value={empresaForm.direccion} onChange={(e) => setEmpresaForm((c) => ({ ...c, direccion: e.target.value }))} />
+              </div>
+            </div>
+            <div className="modal-footer">
+              <button className="btn btn-secondary" type="button" onClick={closeModal}>Cancelar</button>
+              <button className="btn btn-primary" type="button" onClick={handleCreateEmpresa}>Crear empresa</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {modal === 'usuario' && (
+        <div className="overlay" onClick={closeModal} role="presentation">
+          <div className="modal" onClick={(e) => e.stopPropagation()} role="presentation">
+            <div className="modal-head">
+              <h3 className="modal-title">Nuevo usuario</h3>
+              <p className="modal-subtitle">{user?.rol === 'admin' ? 'Crea una cuenta y asígnala a una empresa.' : 'Crea una cuenta de acceso. Se le asigna a tu misma empresa.'}</p>
+            </div>
+            <div className="modal-body">
+              {formError && <div className="login-error" style={{ marginBottom: 12 }}>{formError}</div>}
+              <div className="field">
+                <label>Nombre completo</label>
+                <input
+                  type="text"
+                  placeholder="Ej: Juan Pérez"
+                  value={registerForm.nombre}
+                  onChange={(e) => setRegisterForm((c) => ({ ...c, nombre: e.target.value }))}
+                />
+              </div>
+              <div className="field">
+                <label>Email</label>
+                <input
+                  type="email"
+                  placeholder="ejemplo@empresa.cl"
+                  value={registerForm.email}
+                  onChange={(e) => setRegisterForm((c) => ({ ...c, email: e.target.value }))}
+                />
+              </div>
+              <div className="field">
+                <label>Contraseña provisional</label>
+                <input
+                  type="password"
+                  placeholder="Mínimo 4 caracteres"
+                  value={registerForm.password}
+                  onChange={(e) => setRegisterForm((c) => ({ ...c, password: e.target.value }))}
+                />
+              </div>
+              {user?.rol === 'admin' && empresas.length > 0 && (
+                <div className="field">
+                  <label>Empresa</label>
+                  <select
+                    value={registerForm.empresa_id ?? ''}
+                    onChange={(e) => setRegisterForm((c) => ({ ...c, empresa_id: Number(e.target.value) }))}
+                  >
+                    <option value="">Selecciona una empresa</option>
+                    {empresas.map((emp) => (
+                      <option key={emp.id} value={emp.id}>{emp.nombre}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
+              <div className="field">
+                <label>Rol</label>
+                <select
+                  value={registerForm.rol}
+                  onChange={(e) => setRegisterForm((c) => ({ ...c, rol: e.target.value }))}
+                >
+                  {user?.rol === 'admin' && <option value="admin">Administrador</option>}
+                  {user?.rol === 'admin' && <option value="empleador">Empleador</option>}
+                  <option value="trabajador">Trabajador</option>
+                </select>
+              </div>
+            </div>
+            <div className="modal-footer">
+              <button className="btn btn-secondary" type="button" onClick={closeModal}>Cancelar</button>
+              <button className="btn btn-primary" type="button" onClick={handleRegisterUser}>Guardar</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {modal === 'password' && (
+        <div className="overlay" onClick={closeModal} role="presentation">
+          <div className="modal" onClick={(e) => e.stopPropagation()} role="presentation">
+            <div className="modal-head">
+              <h3 className="modal-title">Cambiar contraseña</h3>
+              <p className="modal-subtitle">Actualiza tu clave de acceso al sistema.</p>
+            </div>
+            <div className="modal-body">
+              {formError && <div className="login-error" style={{ marginBottom: 12 }}>{formError}</div>}
+              <div className="field">
+                <label>Contraseña actual</label>
+                <input
+                  type="password"
+                  placeholder="Tu contraseña actual"
+                  value={passwordForm.passwordActual}
+                  onChange={(e) => setPasswordForm((c) => ({ ...c, passwordActual: e.target.value }))}
+                />
+              </div>
+              <div className="field">
+                <label>Contraseña nueva</label>
+                <input
+                  type="password"
+                  placeholder="Mínimo 4 caracteres"
+                  value={passwordForm.passwordNueva}
+                  onChange={(e) => setPasswordForm((c) => ({ ...c, passwordNueva: e.target.value }))}
+                />
+              </div>
+              <div className="field">
+                <label>Confirmar contraseña</label>
+                <input
+                  type="password"
+                  placeholder="Repite la nueva contraseña"
+                  value={passwordForm.confirmacion}
+                  onChange={(e) => setPasswordForm((c) => ({ ...c, confirmacion: e.target.value }))}
+                />
+              </div>
+            </div>
+            <div className="modal-footer">
+              <button className="btn btn-secondary" type="button" onClick={closeModal}>Cancelar</button>
+              <button className="btn btn-primary" type="button" onClick={handleChangePassword}>Actualizar</button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {modal === 'persona' && (
         <div className="overlay" onClick={closeModal} role="presentation">

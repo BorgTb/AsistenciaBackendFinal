@@ -1,5 +1,10 @@
+import { RequireAuth } from '@/components/RequireAuth';
 import { SasDashboard } from '@/components/SasDashboard';
 
 export default function AsistenciasPage() {
-  return <SasDashboard initialSection="asistencias" />;
+  return (
+    <RequireAuth>
+      <SasDashboard initialSection="asistencias" />
+    </RequireAuth>
+  );
 }
