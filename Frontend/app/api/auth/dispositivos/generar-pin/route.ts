@@ -8,5 +8,5 @@ export async function POST(request: Request) {
   return proxyJsonRequest('/api/dispositivos/generar-pin', {
     method: 'POST',
     headers
-  });
+  }, request);
 }

@@ -5,6 +5,7 @@ import os
 import io
 import time
 import threading
+from datetime import datetime, timezone
 from PIL import Image
 from deepface import DeepFace
 from database import get_connection
@@ -13,6 +14,9 @@ buffer = []
 current_persona_id = None
 BROKER_HOST = "127.0.0.1"
 BROKER_PORT = 1884
+
+heartbeat_times = {}
+heartbeat_lock = threading.Lock()
 
 PREVIEWS_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), 'static', 'previews'))
 os.makedirs(PREVIEWS_DIR, exist_ok=True)
@@ -25,6 +29,8 @@ def on_connect(client, userdata, flags, rc):
     print(f"🟢 MQTT conectado (rc={rc})", flush=True)
     client.subscribe("esp32/imagen/#")
     client.subscribe("esp32/asistencia/#")
+    client.subscribe("esp32/heartbeat/#")
+    client.subscribe("esp32/lwt/#")
     print("📡 Suscripciones registradas.", flush=True)
 
     # FIX: publicar el eco en un hilo separado con delay
@@ -47,6 +53,49 @@ def on_message(client, userdata, msg):
 
     if full_topic == "esp32/imagen/eco":
         print("✅ ECO OK — Python se escucha a si mismo.", flush=True)
+        return
+
+    if full_topic.startswith("esp32/heartbeat/"):
+        mac = full_topic.split("/")[-1]
+        with heartbeat_lock:
+            heartbeat_times[mac] = time.time()
+        try:
+            payload = json.loads(msg.payload.decode() or '{}')
+            ip = payload.get('ip', '')
+            conn = get_connection()
+            cur = conn.cursor()
+            if ip:
+                cur.execute(
+                    "UPDATE dispositivos SET ultimo_heartbeat = NOW(), estado = 'activo', ip_local = %s WHERE REPLACE(mac_address, ':', '') = %s",
+                    (ip, mac)
+                )
+            else:
+                cur.execute(
+                    "UPDATE dispositivos SET ultimo_heartbeat = NOW(), estado = 'activo' WHERE REPLACE(mac_address, ':', '') = %s",
+                    (mac,)
+                )
+            conn.commit()
+            cur.close()
+            conn.close()
+        except Exception as e:
+            print(f"❌ Error heartbeat DB: {e}", flush=True)
+        return
+
+    if full_topic.startswith("esp32/lwt/"):
+        mac = full_topic.split("/")[-1]
+        print(f"⚠️ LWT recibido: dispositivo {mac} desconectado", flush=True)
+        try:
+            conn = get_connection()
+            cur = conn.cursor()
+            cur.execute(
+                "UPDATE dispositivos SET estado = 'inactivo' WHERE REPLACE(mac_address, ':', '') = %s",
+                (mac,)
+            )
+            conn.commit()
+            cur.close()
+            conn.close()
+        except Exception as e:
+            print(f"❌ Error LWT DB: {e}", flush=True)
         return
 
     if full_topic == "esp32/imagen/start":
@@ -150,13 +199,47 @@ def procesar_imagen_facial(client, persona_id, imagen_b64):
 def start_mqtt():
     try:
         print(f"🚀 Conectando MQTT a {BROKER_HOST}:{BROKER_PORT}...", flush=True)
-        # FIX: client_id explícito evita problemas con brokers que rechazan IDs vacíos
         client = mqtt.Client(client_id="python-backend", clean_session=True)
         client.on_connect = on_connect
         client.on_message = on_message
         client.connect(BROKER_HOST, BROKER_PORT, 60)
         client.loop_start()
+        threading.Thread(target=device_watchdog, daemon=True).start()
         return client
     except Exception as e:
         print(f"❌ ERROR CRITICO MQTT: {e}", flush=True)
         return None
+
+HEARTBEAT_TIMEOUT = 90
+
+def device_watchdog():
+    try:
+        conn = get_connection()
+        cur = conn.cursor()
+        cur.execute("UPDATE dispositivos SET estado = 'inactivo' WHERE mac_address IS NOT NULL AND mac_address != ''")
+        conn.commit()
+        cur.close()
+        conn.close()
+        print("🔌 Inicial: todos los dispositivos marcados inactivos (esperando heartbeat)", flush=True)
+    except Exception as e:
+        print(f"❌ Error sweep inicial: {e}", flush=True)
+
+    while True:
+        time.sleep(60)
+        ahora = time.time()
+        with heartbeat_lock:
+            vencidos = [mac for mac, t in heartbeat_times.items() if (ahora - t) > HEARTBEAT_TIMEOUT]
+        for mac in vencidos:
+            print(f"⏱ Watchdog: dispositivo {mac} sin heartbeat por >{HEARTBEAT_TIMEOUT}s", flush=True)
+            try:
+                conn = get_connection()
+                cur = conn.cursor()
+                cur.execute(
+                    "UPDATE dispositivos SET estado = 'inactivo' WHERE REPLACE(mac_address, ':', '') = %s",
+                    (mac,)
+                )
+                conn.commit()
+                cur.close()
+                conn.close()
+            except Exception as e:
+                print(f"❌ Error watchdog DB: {e}", flush=True)

@@ -9,6 +9,9 @@ import {
   createEmpresa,
   deleteEmpresa,
   deleteUsuario,
+  deleteDispositivo,
+  updateDispositivo,
+  verificarDispositivo,
   generarPinEnrolamiento,
   getEmpresas,
   getUsuarios,
@@ -162,7 +165,7 @@ export function SasDashboard({ initialSection = 'dashboard' }: { initialSection?
   const [erpList, setErpList] = useState<ErpIntegration[]>([]);
   const [logs, setLogs] = useState<LogEntry[]>([]);
   const [toast, setToast] = useState<ToastState>(null);
-  const [modal, setModal] = useState<'persona' | 'turno' | 'asignacion' | 'erp' | 'usuario' | 'password' | 'empresa' | null>(null);
+  const [modal, setModal] = useState<'persona' | 'turno' | 'asignacion' | 'erp' | 'usuario' | 'password' | 'empresa' | 'dispositivo' | null>(null);
   const [filterDate, setFilterDate] = useState('');
   const [filterType, setFilterType] = useState('');
   const [filterMethod, setFilterMethod] = useState('');
@@ -176,6 +179,11 @@ export function SasDashboard({ initialSection = 'dashboard' }: { initialSection?
   const [empresaForm, setEmpresaForm] = useState({ nombre: '', rut_empresa: '', email_contacto: '', telefono: '', direccion: '' });
   const [passwordForm, setPasswordForm] = useState({ passwordActual: '', passwordNueva: '', confirmacion: '' });
   const [generatedPin, setGeneratedPin] = useState('');
+  const [deviceForm, setDeviceForm] = useState({ nombre: '', ip: '' });
+  const [deviceVerify, setDeviceVerify] = useState<'idle' | 'checking' | 'ok' | 'fail'>('idle');
+  const [deviceVerifyMsg, setDeviceVerifyMsg] = useState('');
+  const [editingDeviceId, setEditingDeviceId] = useState<string | null>(null);
+  const [editDeviceName, setEditDeviceName] = useState('');
 
   const [personaForm, setPersonaForm] = useState({ nombre: '', rut: '', email: '' });
   const [turnoForm, setTurnoForm] = useState({ nombre: '', inicio: '08:00', fin: '17:00' });
@@ -228,6 +236,7 @@ export function SasDashboard({ initialSection = 'dashboard' }: { initialSection?
       if (asistenciasRes) setAsistencias(asistenciasRes);
       if (devicesRes) {
         setDevices(devicesRes.map((item) => ({
+          id: item.id,
           nombre: item.nombre,
           ip: item.ip_local || '—',
           online: (item.estado || '').toLowerCase() === 'activo',
@@ -318,6 +327,9 @@ export function SasDashboard({ initialSection = 'dashboard' }: { initialSection?
   function closeModal() {
     setModal(null);
     setFormError('');
+    setDeviceForm({ nombre: '', ip: '' });
+    setDeviceVerify('idle');
+    setDeviceVerifyMsg('');
   }
 
   async function refreshData() {
@@ -355,6 +367,7 @@ export function SasDashboard({ initialSection = 'dashboard' }: { initialSection?
       const devicesRes = await getDispositivos();
       if (devicesRes) {
         setDevices(devicesRes.map((item) => ({
+          id: item.id,
           nombre: item.nombre,
           ip: item.ip_local || '—',
           online: (item.estado || '').toLowerCase() === 'activo',
@@ -408,9 +421,7 @@ export function SasDashboard({ initialSection = 'dashboard' }: { initialSection?
 
     if (result && 'ok' in result && result.ok) {
       pushLog('ok', `Persona creada: ${nombre}`);
-      showToast('success', `Persona ${nombre} registrada`);
-      const registerUrl = `${deviceBase}/register?name=${encodeURIComponent(nombre)}&rut=${encodeURIComponent(rut)}&email=${encodeURIComponent(personaForm.email.trim())}`;
-      window.open(registerUrl, '_blank', 'noopener,noreferrer');
+      showToast('success', `Persona ${nombre} guardada. Complete huella/rostro desde el dispositivo ESP32.`);
       closeModal();
       setPersonaForm({ nombre: '', rut: '', email: '' });
       await refreshData();
@@ -520,12 +531,13 @@ export function SasDashboard({ initialSection = 'dashboard' }: { initialSection?
     const result = await deletePersona(personaId);
     if (result && 'ok' in result && result.ok) {
       setPersonas((current) => current.filter((item) => item.id !== personaId));
-      pushLog('ok', `Persona eliminada: ${personaId}`);
-      showToast('success', 'Persona eliminada');
+      const label = user?.rol === 'admin' ? 'eliminada' : 'desactivada';
+      pushLog('ok', `Persona ${label}: ${personaId}`);
+      showToast('success', `Persona ${label}`);
       return;
     }
 
-    showToast('error', 'No se pudo eliminar la persona');
+    showToast('error', 'No se pudo desactivar la persona');
   }
 
   async function handleDeleteTurno(turnoId: string) {
@@ -550,6 +562,18 @@ export function SasDashboard({ initialSection = 'dashboard' }: { initialSection?
     }
 
     showToast('error', 'No se pudo eliminar la asignación');
+  }
+
+  async function handleDeleteDispositivo(dispositivoId: string, deviceName: string) {
+    if (!window.confirm(`¿Eliminar el dispositivo "${deviceName}"? Esta acción no se puede deshacer.`)) return;
+    const result = await deleteDispositivo(dispositivoId);
+    if (result && 'ok' in result && result.ok) {
+      setDevices((current) => current.filter((item) => item.id !== dispositivoId));
+      pushLog('ok', `Dispositivo eliminado: ${deviceName}`);
+      showToast('success', 'Dispositivo eliminado');
+      return;
+    }
+    showToast('error', 'No se pudo eliminar el dispositivo');
   }
 
   async function handleDeleteErp(erpId: string) {
@@ -635,13 +659,53 @@ export function SasDashboard({ initialSection = 'dashboard' }: { initialSection?
 
   async function handleGenerarPin() {
     setFormError('');
-    const result = await generarPinEnrolamiento();
+    const nombre = deviceForm.nombre.trim() || 'Nuevo dispositivo';
+    const result = await generarPinEnrolamiento(nombre);
     if (result && 'ok' in result && result.ok) {
       setGeneratedPin(result.pin);
+      showToast('success', `PIN generado para "${nombre}"`);
     } else {
       const msg = result && 'error' in result ? String(result.error) : 'Error al generar PIN';
       setFormError(msg);
     }
+  }
+
+  async function handleVerificarDispositivo() {
+    const ip = deviceForm.ip.trim();
+    if (!ip) {
+      showToast('error', 'Ingresa una IP para verificar');
+      return;
+    }
+    setDeviceVerify('checking');
+    setDeviceVerifyMsg('');
+    const result = await verificarDispositivo(ip);
+    if (result && 'ok' in result && result.ok) {
+      setDeviceVerify('ok');
+      setDeviceVerifyMsg(`Dispositivo responde · MAC: ${result.datos?.mac || 'N/D'}`);
+      showToast('success', 'Dispositivo verificado');
+    } else {
+      setDeviceVerify('fail');
+      const mensaje = result && 'error' in result ? String(result.error) : 'No responde';
+      setDeviceVerifyMsg(mensaje);
+      showToast('error', mensaje);
+    }
+  }
+
+  async function handleUpdateDeviceName(dispositivoId: string) {
+    const nombre = editDeviceName.trim();
+    if (!nombre) {
+      showToast('error', 'El nombre no puede estar vacío');
+      return;
+    }
+    const result = await updateDispositivo(dispositivoId, nombre);
+    if (result && 'ok' in result && result.ok) {
+      setDevices((current) => current.map((d) => (d.id === dispositivoId ? { ...d, nombre } : d)));
+      pushLog('ok', `Dispositivo renombrado: ${nombre}`);
+      showToast('success', 'Nombre actualizado');
+      setEditingDeviceId(null);
+      return;
+    }
+    showToast('error', 'No se pudo actualizar el nombre');
   }
 
   async function handleCreateEmpresa() {
@@ -1191,7 +1255,7 @@ export function SasDashboard({ initialSection = 'dashboard' }: { initialSection?
                         <td>
                           <div className="toolbar">
                             <button className="btn btn-secondary" type="button" onClick={() => handleMarkHuella(item.id)}>Huella</button>
-                            <button className="btn btn-danger" type="button" onClick={() => handleDeletePersona(item.id)}>Eliminar</button>
+                            <button className="btn btn-danger" type="button" onClick={() => handleDeletePersona(item.id)}>{user?.rol === 'admin' ? 'Eliminar' : 'Desactivar'}</button>
                           </div>
                         </td>
                       </tr>
@@ -1304,8 +1368,8 @@ export function SasDashboard({ initialSection = 'dashboard' }: { initialSection?
                 <h2 className="section-title">Dispositivos</h2>
                 <p className="section-subtitle">Estado del nodo local y acceso rápido al panel de cada equipo.</p>
               </div>
-              {user?.rol === 'empleador' && (
-                <button className="btn btn-primary" type="button" onClick={handleGenerarPin}>
+              {(user?.rol === 'admin' || user?.rol === 'empleador') && (
+                <button className="btn btn-primary" type="button" onClick={() => openModal('dispositivo')}>
                   Agregar dispositivo
                 </button>
               )}
@@ -1333,9 +1397,27 @@ export function SasDashboard({ initialSection = 'dashboard' }: { initialSection?
               {dashboardDevices.map((item) => (
                 <article className="device-card" key={item.ip}>
                   <div className="device-head">
-                    <div>
-                      <div className="device-name">{item.nombre}</div>
-                      <div className="device-ip">{item.ip}</div>
+                    <div style={{ flex: 1 }}>
+                      {editingDeviceId === item.id ? (
+                        <div className="status-row" style={{ gap: 8 }}>
+                          <input
+                            className="input"
+                            value={editDeviceName}
+                            onChange={(event) => setEditDeviceName(event.target.value)}
+                            onKeyDown={(event) => { if (event.key === 'Enter') handleUpdateDeviceName(item.id); }}
+                            placeholder="Nombre del dispositivo"
+                            autoFocus
+                            style={{ flex: 1, fontSize: '0.9rem' }}
+                          />
+                          <button className="btn btn-primary" type="button" onClick={() => handleUpdateDeviceName(item.id)}>Guardar</button>
+                          <button className="btn btn-secondary" type="button" onClick={() => setEditingDeviceId(null)}>Cancelar</button>
+                        </div>
+                      ) : (
+                        <>
+                          <div className="device-name">{item.nombre}</div>
+                          <div className="device-ip">{item.ip}</div>
+                        </>
+                      )}
                     </div>
                     <Badge tone={item.online ? 'success' : 'warning'}>{item.online ? 'online' : 'offline'}</Badge>
                   </div>
@@ -1354,9 +1436,10 @@ export function SasDashboard({ initialSection = 'dashboard' }: { initialSection?
                   <div className="progress"><span style={{ width: `${item.mem}%`, background: item.mem > 70 ? 'linear-gradient(90deg, var(--danger), var(--warning))' : 'linear-gradient(90deg, var(--accent), var(--success))' }} /></div>
 
                   <div className="device-actions">
-                    <a className="btn btn-secondary" href={deviceBase} target="_blank" rel="noreferrer">Abrir panel</a>
+                    <button className="btn btn-secondary" type="button" onClick={() => { setEditingDeviceId(item.id); setEditDeviceName(item.nombre); }}>Renombrar</button>
                     <a className="btn btn-secondary" href={`${deviceBase}/logs`} target="_blank" rel="noreferrer">Logs</a>
                     <button className="btn btn-secondary" type="button" onClick={() => handleDeviceSync(item.ip)}>Sync</button>
+                    <button className="btn btn-danger" type="button" onClick={() => handleDeleteDispositivo(item.id, item.nombre)}>Eliminar</button>
                   </div>
                 </article>
               ))}
@@ -1734,6 +1817,71 @@ export function SasDashboard({ initialSection = 'dashboard' }: { initialSection?
             <div className="modal-footer">
               <button className="btn btn-secondary" type="button" onClick={closeModal}>Cancelar</button>
               <button className="btn btn-primary" type="button" onClick={handleChangePassword}>Actualizar</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {modal === 'dispositivo' && (
+        <div className="overlay" onClick={closeModal} role="presentation">
+          <div className="modal" onClick={(e) => e.stopPropagation()} role="presentation">
+            <div className="modal-head">
+              <h3 className="modal-title">Agregar dispositivo</h3>
+              <p className="modal-subtitle">Asigna un nombre y verifica la conectividad antes de generar el PIN.</p>
+            </div>
+            <div className="modal-body">
+              {formError && <div className="login-error" style={{ marginBottom: 12 }}>{formError}</div>}
+              <div className="field">
+                <label>Nombre del dispositivo *</label>
+                <input
+                  type="text"
+                  placeholder="Ej: Reloj entrada principal"
+                  value={deviceForm.nombre}
+                  onChange={(e) => setDeviceForm((c) => ({ ...c, nombre: e.target.value }))}
+                />
+              </div>
+              <div className="field">
+                <label>IP del dispositivo</label>
+                <div className="status-row" style={{ gap: 8 }}>
+                  <input
+                    type="text"
+                    placeholder="Ej: 192.168.1.100"
+                    value={deviceForm.ip}
+                    onChange={(e) => { setDeviceForm((c) => ({ ...c, ip: e.target.value })); setDeviceVerify('idle'); setDeviceVerifyMsg(''); }}
+                  />
+                  <button
+                    className="btn btn-secondary"
+                    type="button"
+                    onClick={handleVerificarDispositivo}
+                    disabled={deviceVerify === 'checking' || !deviceForm.ip.trim()}
+                  >
+                    {deviceVerify === 'checking' ? 'Verificando...' : 'Verificar'}
+                  </button>
+                </div>
+                {deviceVerifyMsg && (
+                  <div className={`badge ${deviceVerify === 'ok' ? 'success' : 'danger'}`} style={{ marginTop: 8 }}>
+                    {deviceVerifyMsg}
+                  </div>
+                )}
+              </div>
+              {generatedPin && (
+                <div className="card" style={{ marginTop: 16, borderColor: 'rgba(56,217,255,0.4)', background: 'rgba(56,217,255,0.08)', padding: 16 }}>
+                  <div className="status-row">
+                    <div className="status-dot" style={{ boxShadow: '0 0 0 6px rgba(56,217,255,0.3)' }} />
+                    <div>
+                      <div className="device-name" style={{ fontWeight: 700 }}>PIN generado</div>
+                      <div className="device-ip">Copia este código para configurar el dispositivo</div>
+                    </div>
+                  </div>
+                  <div className="mono" style={{ marginTop: 12, padding: 12, borderRadius: 10, background: '#000', fontSize: '1.5rem', textAlign: 'center', letterSpacing: '0.3em', fontWeight: 700, color: 'var(--accent)' }}>
+                    {generatedPin}
+                  </div>
+                </div>
+              )}
+            </div>
+            <div className="modal-footer">
+              <button className="btn btn-secondary" type="button" onClick={closeModal}>Cerrar</button>
+              <button className="btn btn-primary" type="button" onClick={handleGenerarPin}>Generar PIN</button>
             </div>
           </div>
         </div>

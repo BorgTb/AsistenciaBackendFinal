@@ -44,7 +44,7 @@ section{margin-bottom:12px}
   <div class="status-bar">
     <div class="stat"><div class="stat-label">Modo</div><div class="stat-val offline" id="modoEstado">OFFLINE</div></div>
     <div class="stat"><div class="stat-label">Sensor</div><div class="stat-val active">ACTIVO</div></div>
-    <div class="stat"><div class="stat-label">Auto</div><div class="stat-val" id="autoHuellaEstado" style="font-size:10px;margin-top:2px;color:var(--dim)">...</div></div>
+    <div class="stat"><div class="stat-label">Enrolado</div><div class="stat-val" id="enrolEstado" style="color:var(--warn)">PEND.</div></div>
   </div>
 
   <section>
@@ -81,9 +81,9 @@ async function actualizarEstado(){
     const m=document.getElementById('modoEstado');
     m.textContent=e.online?'ONLINE':'OFFLINE';
     m.className='stat-val '+(e.online?'online':'offline');
-    const a=document.getElementById('autoHuellaEstado');
-    a.textContent=traducirMotivo(e.motivo_asistencia_auto);
-    a.style.color=e.asistencia_auto_huella_habilitada?'var(--accent)':'var(--danger)';
+    const a=document.getElementById('enrolEstado');
+    a.textContent=e.enrolado?'ENROLADO':'PEND.';
+    a.style.color=e.enrolado?'var(--accent)':'var(--warn)';
   }catch(err){}
 }
 function setStatus(msg,ok=true){

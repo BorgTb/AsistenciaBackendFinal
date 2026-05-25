@@ -5,5 +5,5 @@ export async function POST(request: Request, { params }: { params: Promise<{ erp
   return proxyJsonRequest(`/api/erp/${erpId}/test`, {
     method: 'POST',
     body: await request.text()
-  });
+  }, request);
 }

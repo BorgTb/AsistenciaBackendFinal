@@ -27,7 +27,7 @@ def get_personas():
         cur.execute("SELECT id, nombre, rut, email, huella_id, empresa_id, created_at FROM personas ORDER BY id")
     elif rol == 'empleador' and empresa_id:
         cur.execute(
-            "SELECT id, nombre, rut, email, huella_id, empresa_id, created_at FROM personas WHERE empresa_id = %s ORDER BY id",
+            "SELECT id, nombre, rut, email, huella_id, empresa_id, created_at FROM personas WHERE empresa_id = %s AND activo = true ORDER BY id",
             (empresa_id,)
         )
     elif rol == 'trabajador' and persona_id:
@@ -36,7 +36,7 @@ def get_personas():
             (persona_id,)
         )
     else:
-        cur.execute("SELECT id, nombre, rut, email, huella_id, empresa_id, created_at FROM personas ORDER BY id")
+        cur.execute("SELECT id, nombre, rut, email, huella_id, empresa_id, created_at FROM personas WHERE activo = true ORDER BY id")
 
     rows = cur.fetchall()
     cur.close()
@@ -228,13 +228,15 @@ def delete_persona(persona_id):
     conn = get_connection()
     cur = conn.cursor()
     try:
-        if request.empresa_id and request.user_rol != 'admin':
+        if request.user_rol == 'admin':
+            cur.execute("DELETE FROM personas WHERE id::text = %s", (str(persona_id),))
+        elif request.empresa_id:
             cur.execute(
-                "DELETE FROM personas WHERE id::text = %s AND empresa_id = %s",
+                "UPDATE personas SET activo = false WHERE id::text = %s AND empresa_id = %s",
                 (str(persona_id), request.empresa_id)
             )
         else:
-            cur.execute("DELETE FROM personas WHERE id::text = %s", (str(persona_id),))
+            return jsonify({'error': 'No autorizado'}), 403
         conn.commit()
         return jsonify({'ok': True})
     except Exception as e:

@@ -38,10 +38,14 @@ const char* apPASS   = "12345678";
 String savedSSID = "";
 String savedPASS = "";
 bool   isOnline  = false;
+String deviceMAC  = "";
+unsigned long lastHeartbeat = 0;
 
 // ===== Backend y MQTT =====
 String backendURL     = "https://sculpture-kong-filtering-essential.trycloudflare.com";
-String mqttBroker     = ""; 
+String mqttBroker     = "";
+String pinEnrol       = ""; 
+bool   estaEnrolado   = false;
 String lastCapturedImageUrl = "";
 bool   camaraIniciada = false;
 
@@ -126,6 +130,7 @@ bool crearAsignacionEnBackend(const String& personaId, const String& turnoIdBack
 String obtenerTurnoBackendId(const String& turnoLocalId);
 void sincronizarTurnosPendientes();
 void sincronizarAsignacionesPendientes();
+void enrolarDispositivo();
 
 void handleWiFiConfig();
 void handleRegisterUser();
@@ -428,8 +433,13 @@ void tryConnectWiFi() {
   Serial.println();
   isOnline = (WiFi.status() == WL_CONNECTED);
   
-  if (isOnline) addLog("WiFi conectado");
-  else { addLog("WiFi no disponible"); WiFi.disconnect(); }
+  if (isOnline) {
+    addLog("WiFi conectado");
+    deviceMAC = WiFi.macAddress();
+    deviceMAC.replace(":", "");
+    addLog("MAC: " + deviceMAC);
+    enrolarDispositivo();
+  } else { addLog("WiFi no disponible"); WiFi.disconnect(); }
 }
 
 void mantenerConexionMQTT() {
@@ -467,9 +477,60 @@ void mantenerConexionMQTT() {
     }
   #endif
 
+  String lwtTopic = "esp32/lwt/" + deviceMAC;
+  String lwtMsg = "{\"mac\":\"" + deviceMAC + "\",\"estado\":\"inactivo\"}";
+  #if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 0, 0)
+    mqtt_cfg.session.last_will.topic = lwtTopic.c_str();
+    mqtt_cfg.session.last_will.msg = lwtMsg.c_str();
+    mqtt_cfg.session.last_will.msg_len = lwtMsg.length();
+    mqtt_cfg.session.last_will.qos = 0;
+    mqtt_cfg.session.last_will.retain = 0;
+  #else
+    mqtt_cfg.lwt_topic = lwtTopic.c_str();
+    mqtt_cfg.lwt_msg = lwtMsg.c_str();
+    mqtt_cfg.lwt_msg_len = lwtMsg.length();
+    mqtt_cfg.lwt_qos = 0;
+    mqtt_cfg.lwt_retain = 0;
+  #endif
+
   mqtt_client = esp_mqtt_client_init(&mqtt_cfg);
   esp_mqtt_client_register_event(mqtt_client, (esp_mqtt_event_id_t)ESP_EVENT_ANY_ID, mqtt_event_handler, NULL);
   esp_mqtt_client_start(mqtt_client);
+}
+
+void enrolarDispositivo() {
+  if (pinEnrol.length() == 0 || estaEnrolado) return;
+  addLog("Enrolando dispositivo con PIN: " + pinEnrol);
+  HTTPClient http;
+  beginHttp(http, backendURL + "/api/dispositivos/enrolar");
+  http.addHeader("Content-Type", "application/json");
+  
+
+  String macConDosPuntos = WiFi.macAddress();
+  DynamicJsonDocument doc(256);
+  doc["codigo"] = pinEnrol;
+  doc["mac"] = macConDosPuntos;
+  doc["ip"] = WiFi.localIP().toString();
+  String payload;
+  serializeJson(doc, payload);
+
+  int code = http.POST(payload);
+  if (code == 200) {
+    addLog("Dispositivo enrolado correctamente");
+    estaEnrolado = true;
+    pinEnrol = "";
+    String ssid = savedSSID, pass = savedPASS, backend = backendURL, mqtt = mqttBroker;
+    saveConfig(ssid, pass, backend, mqtt, "");
+  } else {
+    addLog("Error enrolando: HTTP " + String(code) + " " + http.getString());
+  }
+  http.end();
+}
+
+void beginHttp(HTTPClient& http, const String& url) {
+  http.begin(url);
+  http.setTimeout(10000);
+  if (deviceMAC.length() > 0) http.addHeader("X-Device-MAC", deviceMAC);
 }
 
 void sincronizarPersonasDesdeBackend() {
@@ -479,8 +540,7 @@ void sincronizarPersonasDesdeBackend() {
   }
   addLog("Fetcheando lista de personas desde Backend...");
   HTTPClient http;
-  http.begin(backendURL + "/api/personas"); 
-  http.setTimeout(10000);
+  beginHttp(http, backendURL + "/api/personas");
 
   int httpCode = http.GET();
   if (httpCode == 200) {
@@ -522,7 +582,7 @@ String identificarPorRostro() {
   
   // 5. ENVÍO POR WIFI (La fuente está entregando 4.8V limpios al transmisor)
   HTTPClient http;
-  http.begin(backendURL + "/api/facial/identificar");
+  beginHttp(http, backendURL + "/api/facial/identificar");
   http.addHeader("Content-Type", "application/json");
   http.setTimeout(8000); 
 
@@ -613,9 +673,9 @@ bool postAsistenciaEnBackend(const String& personaId, const String& nombre, cons
   if (personaId.startsWith("local-")) return false;
 
   HTTPClient http;
-  http.begin(backendURL + "/api/asistencias");
+  beginHttp(http, backendURL + "/api/asistencias");
   http.addHeader("Content-Type", "application/json");
-  http.setTimeout(10000);
+  
 
   DynamicJsonDocument payloadDoc(512);
   payloadDoc["persona_id"] = personaId;
@@ -643,9 +703,9 @@ bool crearTurnoEnBackend(const String& nombre, const String& inicio, const Strin
   if (!isOnline || WiFi.status() != WL_CONNECTED) return false;
 
   HTTPClient http;
-  http.begin(backendURL + "/api/turnos");
+  beginHttp(http, backendURL + "/api/turnos");
   http.addHeader("Content-Type", "application/json");
-  http.setTimeout(10000);
+  
 
   DynamicJsonDocument payloadDoc(512);
   payloadDoc["nombre"] = nombre;
@@ -680,9 +740,9 @@ bool crearAsignacionEnBackend(const String& personaId, const String& turnoIdBack
   if (personaId.startsWith("local-") || turnoIdBackend.length() == 0) return false;
 
   HTTPClient http;
-  http.begin(backendURL + "/api/asignaciones");
+  beginHttp(http, backendURL + "/api/asignaciones");
   http.addHeader("Content-Type", "application/json");
-  http.setTimeout(10000);
+  
 
   DynamicJsonDocument payloadDoc(512);
   payloadDoc["persona_id"] = personaId;
@@ -747,9 +807,9 @@ void completarRegistroPersona() {
 
   if (isOnline && WiFi.status() == WL_CONNECTED) {
     HTTPClient http;
-    http.begin(backendURL + "/api/personas");
+  beginHttp(http, backendURL + "/api/personas");
     http.addHeader("Content-Type", "application/json");
-    http.setTimeout(10000);
+    
 
     DynamicJsonDocument bodyDoc(512);
     bodyDoc["nombre"] = nombreRegistrando;
@@ -866,9 +926,9 @@ void sincronizarAsistencias() {
   String body; serializeJson(payload, body);
 
   HTTPClient http;
-  http.begin(backendURL + "/api/asistencias/sync");
+  beginHttp(http, backendURL + "/api/asistencias/sync");
   http.addHeader("Content-Type", "application/json");
-  http.setTimeout(10000);
+  
   int code = http.POST(body);
   http.end();
 
@@ -958,8 +1018,8 @@ void sincronizarTurnosDesdeBackend() {
   }
 
   HTTPClient http;
-  http.begin(backendURL + "/api/turnos");
-  http.setTimeout(10000);
+  beginHttp(http, backendURL + "/api/turnos");
+  
   int code = http.GET();
   if (code != 200) {
     addLog("Error HTTP al fetchear turnos: " + String(code));
@@ -998,8 +1058,8 @@ void sincronizarAsignacionesDesdeBackend() {
   }
 
   HTTPClient http;
-  http.begin(backendURL + "/api/asignaciones");
-  http.setTimeout(10000);
+  beginHttp(http, backendURL + "/api/asignaciones");
+  
   int code = http.GET();
   if (code != 200) {
     addLog("Error HTTP al fetchear asignaciones: " + String(code));
@@ -1054,7 +1114,7 @@ void initSPIFFS() {
   for (auto f : files) {
     if (!SPIFFS.exists(f)) {
       File file = SPIFFS.open(f, "w");
-      file.println(String(f) == "/wifi.json" ? "{\"ssid\":\"\",\"pass\":\"\",\"backend\":\"http://172.20.10.3:5000\",\"mqtt\":\"\"}" : "[]");
+      file.println(String(f) == "/wifi.json" ? "{\"ssid\":\"\",\"pass\":\"\",\"backend\":\"http://172.20.10.3:5000\",\"mqtt\":\"\",\"pin\":\"\"}" : "[]");
       file.close();
     }
   }
@@ -1069,16 +1129,17 @@ void loadWiFiConfig() {
     if (doc.containsKey("pass")) savedPASS = doc["pass"].as<String>();
     if (doc.containsKey("backend")) backendURL = doc["backend"].as<String>();
     if (doc.containsKey("mqtt")) mqttBroker = doc["mqtt"].as<String>();
+    if (doc.containsKey("pin")) pinEnrol = doc["pin"].as<String>();
     file.close();
   }
 }
 
-void saveConfig(String ssid, String pass, String backend, String mqtt) {
+void saveConfig(String ssid, String pass, String backend, String mqtt, String pin) {
   DynamicJsonDocument doc(512);
-  doc["ssid"] = ssid; doc["pass"] = pass; doc["backend"] = backend; doc["mqtt"] = mqtt;
+  doc["ssid"] = ssid; doc["pass"] = pass; doc["backend"] = backend; doc["mqtt"] = mqtt; doc["pin"] = pin;
   File file = SPIFFS.open("/wifi.json", "w");
   serializeJson(doc, file); file.close();
-  savedSSID = ssid; savedPASS = pass; backendURL = backend; mqttBroker = mqtt;
+  savedSSID = ssid; savedPASS = pass; backendURL = backend; mqttBroker = mqtt; pinEnrol = pin;
 }
 
 void servirArchivo(const char* path, const char* tipo) {
@@ -1093,12 +1154,15 @@ void servirArchivo(const char* path, const char* tipo) {
 // HANDLERS WEB
 // ============================================================
 void handleWiFiConfig() {
-  if (server.hasArg("ssid") && server.hasArg("pass")) {
-    actualizarBloqueoAsistencia(60000);
-    saveConfig(server.arg("ssid"), server.arg("pass"), server.hasArg("backend") ? server.arg("backend") : backendURL, server.hasArg("mqtt") ? server.arg("mqtt") : mqttBroker);
-    server.send(200, "text/plain", "Guardado. Reiniciando...");
-    delay(1500); ESP.restart();
-  } else { server.send(400, "text/plain", "Faltan parametros"); }
+  actualizarBloqueoAsistencia(60000);
+  String ssid    = server.hasArg("ssid")    && server.arg("ssid").length()    > 0 ? server.arg("ssid")    : savedSSID;
+  String pass    = server.hasArg("pass")    && server.arg("pass").length()    > 0 ? server.arg("pass")    : savedPASS;
+  String backend = server.hasArg("backend") && server.arg("backend").length() > 0 ? server.arg("backend") : backendURL;
+  String mqtt    = server.hasArg("mqtt")    && server.arg("mqtt").length()    > 0 ? server.arg("mqtt")    : mqttBroker;
+  String pin     = server.hasArg("pin")     && server.arg("pin").length()     > 0 ? server.arg("pin")     : pinEnrol;
+  saveConfig(ssid, pass, backend, mqtt, pin);
+  server.send(200, "text/plain", "Guardado. Reiniciando...");
+  delay(1500); ESP.restart();
 }
 
 void handleRegisterUser() {
@@ -1292,9 +1356,9 @@ void handleEditarPersona() {
   bool synced = false;
   if (isOnline && WiFi.status() == WL_CONNECTED && !id.startsWith("local-")) {
     HTTPClient http;
-    http.begin(backendURL + "/api/personas/" + id);
+  beginHttp(http, backendURL + "/api/personas/" + id);
     http.addHeader("Content-Type", "application/json");
-    http.setTimeout(10000);
+    
 
     DynamicJsonDocument payloadDoc(512);
     payloadDoc["nombre"] = nuevoNombre;
@@ -1435,9 +1499,9 @@ void completarEdicionHuellaExistente() {
 
   if (isOnline && WiFi.status() == WL_CONNECTED && !personaEditandoId.startsWith("local-")) {
     HTTPClient http;
-    http.begin(backendURL + "/api/personas/" + personaEditandoId + "/huella");
+  beginHttp(http, backendURL + "/api/personas/" + personaEditandoId + "/huella");
     http.addHeader("Content-Type", "application/json");
-    http.setTimeout(10000);
+    
 
     DynamicJsonDocument payloadDoc(256);
     payloadDoc["huella_id"] = slotRegistrando;
@@ -1471,7 +1535,7 @@ void handleBorrarPersona() {
 
   if (isOnline && WiFi.status() == WL_CONNECTED && !id.startsWith("local-")) {
     HTTPClient http;
-    http.begin(backendURL + "/api/personas/" + id);
+  beginHttp(http, backendURL + "/api/personas/" + id);
     int httpCode = http.sendRequest("DELETE");
     if (httpCode == 200) {
       addLog("Persona borrada en BD remota OK");
@@ -1503,7 +1567,7 @@ void handleBorrarTurno() {
 
   if (isOnline && WiFi.status() == WL_CONNECTED && !id.startsWith("local-")) {
     HTTPClient http;
-    http.begin(backendURL + "/api/turnos/" + id);
+  beginHttp(http, backendURL + "/api/turnos/" + id);
     int httpCode = http.sendRequest("DELETE");
     if (httpCode == 200) addLog("Turno borrado en BD remota OK");
     else addLog("Error borrando turno remoto (Cod: " + String(httpCode) + ")");
@@ -1539,7 +1603,7 @@ void handleBorrarAsignacion() {
       
       if (isOnline && WiFi.status() == WL_CONNECTED && backendId.length() > 0) {
         HTTPClient http;
-        http.begin(backendURL + "/api/asignaciones/" + backendId);
+  beginHttp(http, backendURL + "/api/asignaciones/" + backendId);
         int httpCode = http.sendRequest("DELETE");
         if (httpCode == 200) addLog("Asignacion borrada en BD remota OK");
         else addLog("Error borrando asignacion remota (Cod: " + String(httpCode) + ")");
@@ -1591,11 +1655,11 @@ void setup() {
   if (digitalRead(13) == LOW) {
     delay(1000);
     if (digitalRead(13) == LOW) {
-      initSPIFFS(); saveConfig("", "", backendURL, mqttBroker); Serial.println("RESET DETECTADO");
+      initSPIFFS(); saveConfig("", "", backendURL, mqttBroker, ""); Serial.println("RESET DETECTADO");
     }
   }
   
-  Serial.begin(74880); delay(1000);
+  Serial.begin(115200); delay(1000);
 
   initCamera(); delay(500);
   FingerSerial.begin(57600, SERIAL_8N1, 14, 15);
@@ -1689,7 +1753,10 @@ void setup() {
     json += "\"asignaciones_locales\":" + String(asignaciones.size()) + ",";
     json += "\"asistencias_locales\":" + String(asistencias.size()) + ",";
     json += "\"backend\":\"" + backendURL + "\",";
-    json += "\"mqtt\":\""    + mqttBroker + "\"";
+    json += "\"mqtt\":\""    + mqttBroker + "\",";
+    json += "\"ssid\":\""    + jsonEscape(savedSSID) + "\",";
+    json += "\"enrolado\":"  + String(estaEnrolado ? "true" : "false") + ",";
+    json += "\"mac\":\""     + deviceMAC + "\"";
     json += "}";
     server.send(200, "application/json", json);
   });
@@ -1864,6 +1931,13 @@ void loop() {
         }
       }
     }
+  }
+
+  if (mqttConnected && mqtt_client != NULL && (ahora - lastHeartbeat) > 30000UL) {
+    lastHeartbeat = ahora;
+    String topic = "esp32/heartbeat/" + deviceMAC;
+    String payload = "{\"mac\":\"" + deviceMAC + "\",\"t\":" + String(millis()) + ",\"ip\":\"" + WiFi.localIP().toString() + "\"}";
+    esp_mqtt_client_publish(mqtt_client, topic.c_str(), payload.c_str(), 0, 0, 0);
   }
 
   static unsigned long lastSync = 0;

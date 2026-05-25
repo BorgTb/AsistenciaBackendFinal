@@ -9,5 +9,5 @@ export async function PUT(request: Request) {
     method: 'PUT',
     body: await request.text(),
     headers
-  });
+  }, request);
 }

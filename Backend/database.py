@@ -177,11 +177,6 @@ def init_db():
             VALUES (1, 'Empresa por defecto', '00000000-0')
             ON CONFLICT (id) DO NOTHING
         """)
-        cur.execute("""
-            INSERT INTO dispositivos (id, empresa_id, nombre)
-            VALUES (1, 1, 'Reloj Principal')
-            ON CONFLICT (id) DO NOTHING
-        """)
 
         cur.execute("SELECT id FROM usuarios_web WHERE email = 'admin@empresa.cl'")
         admin_row = cur.fetchone()

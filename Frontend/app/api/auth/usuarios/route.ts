@@ -8,5 +8,5 @@ export async function GET(request: Request) {
   return proxyJsonRequest('/api/auth/usuarios', {
     method: 'GET',
     headers
-  });
+  }, request);
 }

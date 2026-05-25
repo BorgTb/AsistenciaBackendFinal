@@ -1,0 +1,39 @@
+version: '3.8'
+services:
+
+  db:
+    image: postgres:15
+    container_name: odoo_db
+    restart: always
+    environment:
+      POSTGRES_USER:     odoo
+      POSTGRES_PASSWORD: odoo
+      POSTGRES_DB:       postgres
+    volumes:
+      - odoo_db:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U odoo"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  odoo:
+    image: odoo:17
+    container_name: odoo_app
+    restart: always
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "8069:8069"
+    volumes:
+      - odoo_data:/var/lib/odoo
+    environment:
+      HOST:     db
+      USER:     odoo
+      PASSWORD: odoo
+    # Sin db_name aquí — Odoo gestiona las DBs desde el navegador
+
+volumes:
+  odoo_db:
+  odoo_data:

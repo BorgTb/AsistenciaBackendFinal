@@ -5,7 +5,7 @@ export async function PUT(request: Request, { params }: { params: Promise<{ pers
   return proxyJsonRequest(`/api/personas/${personaId}`, {
     method: 'PUT',
     body: await request.text()
-  });
+  }, request);
 }
 
 export async function PATCH(request: Request, { params }: { params: Promise<{ personaId: string }> }) {
@@ -13,10 +13,10 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ pe
   return proxyJsonRequest(`/api/personas/${personaId}`, {
     method: 'PATCH',
     body: await request.text()
-  });
+  }, request);
 }
 
 export async function DELETE(_request: Request, { params }: { params: Promise<{ personaId: string }> }) {
   const { personaId } = await params;
-  return proxyJsonRequest(`/api/personas/${personaId}`, { method: 'DELETE' });
+  return proxyJsonRequest(`/api/personas/${personaId}`, { method: 'DELETE' }, _request);
 }

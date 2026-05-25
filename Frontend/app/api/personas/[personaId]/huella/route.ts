@@ -5,5 +5,5 @@ export async function PUT(request: Request, { params }: { params: Promise<{ pers
   return proxyJsonRequest(`/api/personas/${personaId}/huella`, {
     method: 'PUT',
     body: await request.text()
-  });
+  }, request);
 }

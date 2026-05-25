@@ -40,6 +40,7 @@ export interface Asistencia {
 }
 
 export interface DeviceStatus {
+  id: string;
   nombre: string;
   ip: string;
   online: boolean;

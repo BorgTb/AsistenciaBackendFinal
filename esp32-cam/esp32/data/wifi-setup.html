@@ -37,15 +37,19 @@ input:focus{outline:none;border-color:var(--accent);background:var(--surface2)}
 
   <div class="section-head">Conexión Wi-Fi</div>
   <label>SSID (Nombre de la Red)</label>
-  <input type="text" id="ssid" placeholder="MiRedWiFi" required>
+  <input type="text" id="ssid" placeholder="MiRedWiFi">
   <label>Contraseña</label>
-  <input type="password" id="password" placeholder="••••••••" required>
+  <input type="password" id="password" placeholder="••••••••">
 
   <div class="section-head">Servidores (Opcional)</div>
   <label>URL Backend HTTP</label>
   <input type="text" id="backend" placeholder="http://192.168.1.X:5000">
   <label>IP Broker MQTT</label>
   <input type="text" id="mqtt" placeholder="192.168.1.X">
+
+  <div class="section-head">Enrolamiento del Dispositivo</div>
+  <label>PIN de Enrolamiento (Opcional)</label>
+  <input type="text" id="pin" placeholder="Código de 6 dígitos" maxlength="8" pattern="[A-Za-z0-9]*" style="font-size:1.8rem;letter-spacing:0.3em;text-align:center">
 
   <button class="btn btn-go" onclick="guardar()">▶ GUARDAR Y REINICIAR</button>
   <button class="btn btn-sec" onclick="window.location.href='/'">CANCELAR</button>
@@ -55,6 +59,7 @@ input:focus{outline:none;border-color:var(--accent);background:var(--surface2)}
 
 <script>
 fetch('/estado').then(r=>r.json()).then(data=>{
+  if(data.ssid)document.getElementById('ssid').value=data.ssid;
   if(data.backend)document.getElementById('backend').value=data.backend;
   if(data.mqtt)document.getElementById('mqtt').value=data.mqtt;
 });
@@ -64,10 +69,16 @@ async function guardar(){
   const pass=document.getElementById('password').value.trim();
   const backend=document.getElementById('backend').value.trim();
   const mqtt=document.getElementById('mqtt').value.trim();
+  const pin=document.getElementById('pin').value.trim();
   const el=document.getElementById('status');
   try{
-    const url=`/wifi-config?ssid=${encodeURIComponent(ssid)}&pass=${encodeURIComponent(pass)}&backend=${encodeURIComponent(backend)}&mqtt=${encodeURIComponent(mqtt)}`;
-    const msg=await fetch(url).then(r=>r.text());
+    const params=new URLSearchParams();
+    if(ssid)params.append('ssid',ssid);
+    if(pass)params.append('pass',pass);
+    if(backend)params.append('backend',backend);
+    if(mqtt)params.append('mqtt',mqtt);
+    if(pin)params.append('pin',pin);
+    const msg=await fetch('/wifi-config?'+params.toString()).then(r=>r.text());
     el.className='msg show success';el.textContent=msg;
     setTimeout(()=>location.href='/',3000);
   }catch(e){

@@ -1,6 +1,7 @@
-from flask import Blueprint, jsonify
+from flask import Blueprint, request, jsonify
 from database import get_connection
-from routes.auth import token_opcional
+from routes.auth import token_opcional, requiere_rol
+import requests as http_requests
 
 dispositivos_bp = Blueprint('dispositivos', __name__)
 
@@ -62,3 +63,88 @@ def get_dispositivos():
         }
         for r in rows
     ])
+
+
+@dispositivos_bp.route('/api/dispositivos/<dispositivo_id>', methods=['DELETE'])
+@requiere_rol('admin', 'empleador')
+def delete_dispositivo(dispositivo_id):
+    conn = get_connection()
+    cur = conn.cursor()
+    try:
+        if request.user_rol == 'admin':
+            cur.execute("DELETE FROM dispositivos WHERE id::text = %s", (str(dispositivo_id),))
+        else:
+            cur.execute(
+                "DELETE FROM dispositivos WHERE id::text = %s AND empresa_id = %s",
+                (str(dispositivo_id), request.empresa_id)
+            )
+        conn.commit()
+        return jsonify({'ok': True})
+    except Exception as e:
+        conn.rollback()
+        return jsonify({'error': str(e)}), 500
+    finally:
+        cur.close()
+        conn.close()
+
+
+@dispositivos_bp.route('/api/dispositivos/<dispositivo_id>', methods=['PUT'])
+@requiere_rol('admin', 'empleador')
+def update_dispositivo(dispositivo_id):
+    data = request.json or {}
+    nombre = (data.get('nombre') or '').strip()
+    if not nombre:
+        return jsonify({'error': 'Nombre requerido'}), 400
+
+    conn = get_connection()
+    cur = conn.cursor()
+    try:
+        if request.user_rol == 'admin':
+            cur.execute(
+                "UPDATE dispositivos SET nombre = %s WHERE id::text = %s RETURNING id, nombre",
+                (nombre, str(dispositivo_id))
+            )
+        else:
+            cur.execute(
+                "UPDATE dispositivos SET nombre = %s WHERE id::text = %s AND empresa_id = %s RETURNING id, nombre",
+                (nombre, str(dispositivo_id), request.empresa_id)
+            )
+        row = cur.fetchone()
+        if not row:
+            return jsonify({'error': 'Dispositivo no encontrado'}), 404
+        conn.commit()
+        return jsonify({'ok': True, 'id': str(row[0]), 'nombre': row[1]})
+    except Exception as e:
+        conn.rollback()
+        return jsonify({'error': str(e)}), 500
+    finally:
+        cur.close()
+        conn.close()
+
+
+@dispositivos_bp.route('/api/dispositivos/verificar', methods=['POST'])
+@requiere_rol('admin', 'empleador')
+def verificar_dispositivo():
+    data = request.json or {}
+    ip = (data.get('ip') or '').strip()
+    if not ip:
+        return jsonify({'ok': False, 'error': 'IP requerida'}), 400
+
+    try:
+        resp = http_requests.get(f'http://{ip}/estado', timeout=5)
+        if resp.status_code == 200:
+            estado_data = resp.json() if resp.headers.get('content-type', '').startswith('application/json') else {}
+            return jsonify({
+                'ok': True,
+                'mensaje': 'Dispositivo responde correctamente',
+                'datos': {
+                    'mac': estado_data.get('mac', ''),
+                    'ssid': estado_data.get('ssid', ''),
+                    'enrolado': estado_data.get('enrolado', False)
+                }
+            })
+        return jsonify({'ok': False, 'error': f'HTTP {resp.status_code}'}), 200
+    except http_requests.ConnectionError:
+        return jsonify({'ok': False, 'error': 'No se pudo conectar al dispositivo'}), 200
+    except Exception as e:
+        return jsonify({'ok': False, 'error': str(e)}), 200

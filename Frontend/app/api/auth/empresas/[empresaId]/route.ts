@@ -8,5 +8,5 @@ export async function DELETE(
   const headers: Record<string, string> = {};
   const auth = request.headers.get('authorization');
   if (auth) headers['Authorization'] = auth;
-  return proxyJsonRequest(`/api/auth/empresas/${empresaId}`, { method: 'DELETE', headers });
+  return proxyJsonRequest(`/api/auth/empresas/${empresaId}`, { method: 'DELETE', headers }, request);
 }

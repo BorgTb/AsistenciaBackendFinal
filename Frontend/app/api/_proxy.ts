@@ -12,10 +12,20 @@ function copyHeaders(source: Headers) {
   return headers;
 }
 
-export async function proxyJsonRequest(path: string, init?: RequestInit) {
+export async function proxyJsonRequest(path: string, init?: RequestInit, incoming?: Request) {
+  const forwardedHeaders: Record<string, string> = {};
+
+  if (incoming) {
+    const auth = incoming.headers.get('Authorization');
+    if (auth) forwardedHeaders['Authorization'] = auth;
+    const mac = incoming.headers.get('X-Device-MAC');
+    if (mac) forwardedHeaders['X-Device-MAC'] = mac;
+  }
+
   const response = await fetch(`${backendUrl}${path}`, {
     ...init,
     headers: {
+      ...forwardedHeaders,
       'Content-Type': 'application/json',
       ...(init?.headers || {})
     },

@@ -12,5 +12,5 @@ export async function DELETE(
   return proxyJsonRequest(`/api/auth/usuarios/${userId}`, {
     method: 'DELETE',
     headers
-  });
+  }, request);
 }

@@ -74,6 +74,24 @@ def token_opcional(fn):
             except (jwt.ExpiredSignatureError, jwt.InvalidTokenError):
                 pass
 
+        if request.empresa_id is None:
+            device_mac = request.headers.get('X-Device-MAC', '').strip()
+            if device_mac:
+                try:
+                    conn = get_connection()
+                    cur = conn.cursor()
+                    cur.execute(
+                        "SELECT empresa_id FROM dispositivos WHERE REPLACE(mac_address, ':', '') = %s",
+                        (device_mac,)
+                    )
+                    row = cur.fetchone()
+                    cur.close()
+                    conn.close()
+                    if row and row[0] is not None:
+                        request.empresa_id = row[0]
+                except Exception:
+                    pass
+
         return fn(*args, **kwargs)
 
     return wrapper
@@ -570,17 +588,28 @@ def me():
 @requiere_rol('admin', 'empleador')
 def generar_pin_enrolamiento():
     empresa_id = request.empresa_id
+    data = request.json or {}
+    nombre = (data.get('nombre') or 'Nuevo dispositivo').strip()
     pin = ''.join(secrets.choice(string.ascii_uppercase + string.digits) for _ in range(8))
 
     conn = get_connection()
     cur = conn.cursor()
     try:
         cur.execute(
-            "INSERT INTO dispositivos (empresa_id, nombre, codigo_enrol, enrolado) VALUES (%s, %s, %s, FALSE) RETURNING id",
-            (empresa_id, 'Nuevo dispositivo', pin)
+            "SELECT id, codigo_enrol FROM dispositivos WHERE empresa_id = %s AND enrolado = FALSE AND codigo_enrol IS NOT NULL ORDER BY id DESC LIMIT 1",
+            (empresa_id,)
         )
-        device_id = cur.fetchone()[0]
-        conn.commit()
+        existing = cur.fetchone()
+        if existing:
+            device_id = existing[0]
+            pin = existing[1]
+        else:
+            cur.execute(
+                "INSERT INTO dispositivos (empresa_id, nombre, codigo_enrol, enrolado) VALUES (%s, %s, %s, FALSE) RETURNING id",
+                (empresa_id, nombre, pin)
+            )
+            device_id = cur.fetchone()[0]
+            conn.commit()
         return jsonify({'ok': True, 'pin': pin, 'dispositivo_id': device_id})
     except Exception as e:
         conn.rollback()

@@ -93,9 +93,30 @@ export async function changePassword(passwordActual: string, passwordNueva: stri
   });
 }
 
-export async function generarPinEnrolamiento() {
+export async function generarPinEnrolamiento(nombre?: string) {
   return request<{ ok: boolean; pin: string; dispositivo_id: number }>('/api/auth/dispositivos/generar-pin', {
-    method: 'POST'
+    method: 'POST',
+    body: nombre ? JSON.stringify({ nombre }) : undefined
+  });
+}
+
+export async function deleteDispositivo(dispositivoId: string) {
+  return request<{ ok: boolean; mensaje: string }>(`/api/dispositivos/${dispositivoId}`, {
+    method: 'DELETE'
+  });
+}
+
+export async function updateDispositivo(dispositivoId: string, nombre: string) {
+  return request<{ ok: boolean; id: string; nombre: string }>(`/api/dispositivos/${dispositivoId}`, {
+    method: 'PUT',
+    body: JSON.stringify({ nombre })
+  });
+}
+
+export async function verificarDispositivo(ip: string) {
+  return request<{ ok: boolean; error?: string; mensaje?: string; datos?: { mac: string; ssid: string; enrolado: boolean } }>('/api/dispositivos/verificar', {
+    method: 'POST',
+    body: JSON.stringify({ ip })
   });
 }
 
