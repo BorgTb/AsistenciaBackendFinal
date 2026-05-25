@@ -1,8 +1,25 @@
 from flask import Blueprint, request, jsonify
 from database import get_connection
 from routes.auth import token_opcional
+import threading
 
 asistencias_bp = Blueprint('asistencias', __name__)
+
+
+def _erp_push_async(persona_id, nombre, tipo, metodo, fecha_hora, empresa_id):
+    try:
+        from routes.erp import enviar_asistencia_a_erps
+        enviar_asistencia_a_erps(persona_id, nombre, tipo, metodo, fecha_hora, empresa_id)
+    except Exception:
+        pass
+
+
+def _disparar_erp_push(persona_id, nombre, tipo, metodo, fecha_hora, empresa_id):
+    if not empresa_id:
+        return
+    t = threading.Thread(target=_erp_push_async, args=(persona_id, nombre, tipo, metodo, fecha_hora, empresa_id))
+    t.daemon = True
+    t.start()
 
 
 @asistencias_bp.route('/api/asistencias', methods=['GET'])
@@ -76,12 +93,28 @@ def create_asistencia():
     try:
         dispositivo_id = data.get('dispositivo_id') or 1
         persona_id = data.get('persona_id')
+        nombre = data.get('nombre')
+        tipo = data.get('tipo')
+        metodo = data.get('metodo', 'huella')
+
         cur.execute(
-            "INSERT INTO asistencias (persona_id, dispositivo_id, nombre, tipo, metodo, origen, sincronizado) VALUES (%s, %s, %s, %s, %s, %s, %s) RETURNING id",
-            (persona_id, dispositivo_id, data.get('nombre'), data.get('tipo'), data.get('metodo', 'huella'), data.get('origen', 'dispositivo'), data.get('sincronizado', False))
+            "INSERT INTO asistencias (persona_id, dispositivo_id, nombre, tipo, metodo, origen, sincronizado) VALUES (%s, %s, %s, %s, %s, %s, %s) RETURNING id, fecha_hora",
+            (persona_id, dispositivo_id, nombre, tipo, metodo, data.get('origen', 'dispositivo'), data.get('sincronizado', False))
         )
-        asist_id = cur.fetchone()[0]
+        row = cur.fetchone()
+        asist_id = row[0]
+        fecha_hora = row[1]
         conn.commit()
+
+        empresa_id = None
+        if persona_id:
+            cur.execute("SELECT empresa_id FROM personas WHERE id = %s", (persona_id,))
+            emp_row = cur.fetchone()
+            if emp_row:
+                empresa_id = emp_row[0]
+
+        _disparar_erp_push(persona_id, nombre, tipo, metodo, fecha_hora, empresa_id)
+
         return jsonify({'ok': True, 'id': asist_id})
     except Exception as e:
         conn.rollback()
@@ -102,18 +135,33 @@ def sync_asistencias():
 
     for r in registros:
         try:
+            persona_id_buscar = r.get('persona_id')
+            tipo_buscar = r.get('tipo')
             cur.execute("""
                 SELECT id FROM asistencias
                 WHERE persona_id = %s AND tipo = %s
                 AND ABS(EXTRACT(EPOCH FROM (fecha_hora - NOW()))) < 60
-            """, (r.get('persona_id'), r.get('tipo')))
+            """, (persona_id_buscar, tipo_buscar))
 
             if not cur.fetchone():
                 cur.execute(
-                    "INSERT INTO asistencias (persona_id, nombre, tipo, metodo, origen, sincronizado) VALUES (%s, %s, %s, %s, 'sync', TRUE)",
-                    (r.get('persona_id'), r.get('nombre'), r.get('tipo'), r.get('metodo', 'huella'))
+                    "INSERT INTO asistencias (persona_id, nombre, tipo, metodo, origen, sincronizado) VALUES (%s, %s, %s, %s, 'sync', TRUE) RETURNING id, fecha_hora",
+                    (persona_id_buscar, r.get('nombre'), tipo_buscar, r.get('metodo', 'huella'))
                 )
+                row = cur.fetchone()
                 insertados += 1
+
+                empresa_id = None
+                if persona_id_buscar:
+                    cur.execute("SELECT empresa_id FROM personas WHERE id = %s", (persona_id_buscar,))
+                    emp_row = cur.fetchone()
+                    if emp_row:
+                        empresa_id = emp_row[0]
+
+                _disparar_erp_push(
+                    persona_id_buscar, r.get('nombre'), tipo_buscar,
+                    r.get('metodo', 'huella'), row[1], empresa_id
+                )
         except:
             errores += 1
 

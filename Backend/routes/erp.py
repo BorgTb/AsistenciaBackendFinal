@@ -1,11 +1,101 @@
 import json
+import traceback
+from datetime import datetime
 
 import requests
 from flask import Blueprint, jsonify, request
 from database import get_connection
-from routes.auth import requiere_rol, requiere_login
+from routes.auth import requiere_rol, requiere_login, token_opcional
 
 erp_bp = Blueprint('erp', __name__)
+
+
+def _transformar_datos(datos_originales, field_map_json):
+    if not field_map_json or field_map_json == '{}':
+        return dict(datos_originales)
+    try:
+        field_map = json.loads(field_map_json) if isinstance(field_map_json, str) else field_map_json
+    except Exception:
+        return dict(datos_originales)
+    resultado = {}
+    for clave_origen, clave_destino in field_map.items():
+        valor = datos_originales.get(clave_origen, datos_originales.get(clave_destino))
+        if valor is not None:
+            resultado[clave_destino] = valor
+    for k, v in datos_originales.items():
+        if k not in field_map:
+            resultado[k] = v
+    return resultado
+
+
+def _enviar_a_webhook(webhook_url, headers_json, payload, timeout=10):
+    headers = {}
+    if headers_json and headers_json != '{}':
+        try:
+            headers = json.loads(headers_json) if isinstance(headers_json, str) else headers_json
+        except Exception:
+            headers = {'Content-Type': 'application/json'}
+    if 'Content-Type' not in headers:
+        headers['Content-Type'] = 'application/json'
+    try:
+        resp = requests.post(webhook_url, json=payload, headers=headers, timeout=timeout)
+        return {'ok': resp.ok, 'status_code': resp.status_code, 'respuesta': resp.text[:500]}
+    except requests.ConnectionError:
+        return {'ok': False, 'error': 'No se pudo conectar al endpoint ERP'}
+    except requests.Timeout:
+        return {'ok': False, 'error': 'Timeout al contactar ERP'}
+    except Exception as e:
+        return {'ok': False, 'error': str(e)}
+
+
+def enviar_asistencia_a_erps(persona_id, nombre, tipo, metodo, fecha_hora, empresa_id):
+    conn = get_connection()
+    cur = conn.cursor()
+    try:
+        cur.execute(
+            """SELECT id, webhook_url, headers, field_map
+               FROM integraciones_erp
+               WHERE empresa_id = %s AND activo = TRUE AND envio_auto = TRUE""",
+            (empresa_id,)
+        )
+        erps = cur.fetchall()
+    finally:
+        cur.close()
+        conn.close()
+
+    datos = {
+        'persona_id': str(persona_id) if persona_id else '',
+        'nombre': nombre or '',
+        'tipo': tipo or '',
+        'metodo': metodo or '',
+        'fecha_hora': str(fecha_hora) if fecha_hora else '',
+        'timestamp': datetime.utcnow().isoformat()
+    }
+
+    resultados = []
+    for erp_id, webhook_url, headers_json, field_map_json in erps:
+        payload = _transformar_datos(datos, field_map_json)
+        resultado = _enviar_a_webhook(webhook_url, headers_json, payload)
+        _guardar_estado_envio(erp_id, resultado)
+        resultados.append({'erp_id': erp_id, 'resultado': resultado})
+    return resultados
+
+
+def _guardar_estado_envio(erp_id, resultado):
+    conn = get_connection()
+    cur = conn.cursor()
+    try:
+        estado = 'ok' if resultado.get('ok') else 'error: ' + str(resultado.get('error', resultado.get('status_code', 'desconocido')))[:195]
+        cur.execute(
+            "UPDATE integraciones_erp SET ultimo_envio = NOW(), ultimo_estado = %s WHERE id = %s",
+            (estado, erp_id)
+        )
+        conn.commit()
+    except Exception:
+        conn.rollback()
+    finally:
+        cur.close()
+        conn.close()
 
 
 @erp_bp.route('/api/erp', methods=['GET'])
@@ -19,13 +109,15 @@ def get_erp():
 
     if rol == 'admin':
         cur.execute("""
-            SELECT id, nombre, tipo, webhook_url, headers, field_map, envio_auto, activo, created_at
+            SELECT id, nombre, tipo, webhook_url, headers, field_map, envio_auto, activo,
+                   ultimo_envio, ultimo_estado, created_at
             FROM integraciones_erp
             ORDER BY id
         """)
     else:
         cur.execute("""
-            SELECT id, nombre, tipo, webhook_url, headers, field_map, envio_auto, activo, created_at
+            SELECT id, nombre, tipo, webhook_url, headers, field_map, envio_auto, activo,
+                   ultimo_envio, ultimo_estado, created_at
             FROM integraciones_erp
             WHERE empresa_id = %s
             ORDER BY id
@@ -45,7 +137,9 @@ def get_erp():
             'fieldMap': r[5] or '{}',
             'envioAuto': r[6],
             'activo': r[7],
-            'createdAt': str(r[8]) if r[8] else None,
+            'ultimoEnvio': str(r[8]) if r[8] else None,
+            'ultimoEstado': r[9] or '',
+            'createdAt': str(r[10]) if r[10] else None,
         }
         for r in rows
     ])
@@ -147,27 +241,155 @@ def test_erp(erp_id):
     if not activo:
         return jsonify({'ok': False, 'mensaje': 'La integración está inactiva'}), 400
 
-    try:
-        headers = json.loads(headers_text or '{}')
-    except Exception:
-        headers = {}
-
     payload = {
-        'nombre': nombre,
-        'tipo': tipo,
-        'webhook_url': webhook_url,
-        'field_map': field_map_text or '{}',
-        'envio_auto': envio_auto,
-        'test': True,
+        'persona_id': '99',
+        'nombre': 'Test Usuario',
+        'tipo': 'entrada',
+        'metodo': 'test',
+        'fecha_hora': datetime.utcnow().isoformat(),
     }
+    transformed = _transformar_datos(payload, field_map_text)
+    resultado = _enviar_a_webhook(webhook_url, headers_text, transformed)
+    _guardar_estado_envio(erp_id, resultado)
 
+    return jsonify({
+        'ok': resultado.get('ok', False),
+        'status_code': resultado.get('status_code'),
+        'mensaje': 'Test ejecutado',
+        'respuesta': resultado.get('respuesta', resultado.get('error', ''))
+    })
+
+
+@erp_bp.route('/api/erp/<erp_id>/enviar', methods=['POST'])
+@requiere_rol('admin', 'empleador')
+def enviar_erp(erp_id):
+    conn = get_connection()
+    cur = conn.cursor()
+
+    if request.user_rol != 'admin':
+        cur.execute(
+            "SELECT empresa_id FROM integraciones_erp WHERE id::text = %s",
+            (str(erp_id),)
+        )
+        row_check = cur.fetchone()
+        if not row_check or row_check[0] != request.empresa_id:
+            cur.close()
+            conn.close()
+            return jsonify({'ok': False, 'mensaje': 'Integración no encontrada'}), 404
+
+    cur.execute(
+        "SELECT webhook_url, headers, field_map, envio_auto, activo, empresa_id FROM integraciones_erp WHERE id::text = %s",
+        (str(erp_id),)
+    )
+    row = cur.fetchone()
+    if not row:
+        cur.close()
+        conn.close()
+        return jsonify({'ok': False, 'mensaje': 'Integración no encontrada'}), 404
+
+    webhook_url, headers_text, field_map_text, envio_auto, activo, empresa_id = row
+
+    if not activo:
+        return jsonify({'ok': False, 'mensaje': 'La integración está inactiva'}), 400
+
+    cur.execute("""
+        SELECT a.persona_id, a.nombre, a.tipo, a.metodo, a.fecha_hora
+        FROM asistencias a
+        JOIN personas p ON a.persona_id = p.id
+        WHERE p.empresa_id = %s
+        ORDER BY a.fecha_hora DESC
+        LIMIT 200
+    """, (empresa_id,))
+    rows = cur.fetchall()
+    cur.close()
+    conn.close()
+
+    if not rows:
+        return jsonify({'ok': True, 'mensaje': 'Sin asistencias para enviar', 'enviados': 0})
+
+    enviados = 0
+    errores = 0
+    ultimo_resultado = None
+
+    for persona_id, nombre, tipo, metodo, fecha_hora in rows:
+        datos = {
+            'persona_id': str(persona_id) if persona_id else '',
+            'nombre': nombre or '',
+            'tipo': tipo or '',
+            'metodo': metodo or '',
+            'fecha_hora': str(fecha_hora) if fecha_hora else '',
+        }
+        payload = _transformar_datos(datos, field_map_text)
+        resultado = _enviar_a_webhook(webhook_url, headers_text, payload)
+        ultimo_resultado = resultado
+        if resultado.get('ok'):
+            enviados += 1
+        else:
+            errores += 1
+
+    _guardar_estado_envio(erp_id, ultimo_resultado or {'ok': False, 'error': 'sin datos'})
+
+    return jsonify({
+        'ok': True,
+        'enviados': enviados,
+        'errores': errores,
+        'ultimo_estado': ultimo_resultado
+    })
+
+
+@erp_bp.route('/api/erp/<erp_id>/estado', methods=['GET'])
+@requiere_rol('admin', 'empleador')
+def estado_erp(erp_id):
+    conn = get_connection()
+    cur = conn.cursor()
     try:
-        response = requests.post(webhook_url, json=payload, headers=headers, timeout=8)
+        if request.user_rol != 'admin':
+            cur.execute(
+                "SELECT ultimo_envio, ultimo_estado FROM integraciones_erp WHERE id::text = %s AND empresa_id = %s",
+                (str(erp_id), request.empresa_id)
+            )
+        else:
+            cur.execute(
+                "SELECT ultimo_envio, ultimo_estado FROM integraciones_erp WHERE id::text = %s",
+                (str(erp_id),)
+            )
+        row = cur.fetchone()
         return jsonify({
-            'ok': response.ok,
-            'status_code': response.status_code,
-            'mensaje': 'Test ejecutado',
-            'respuesta': response.text[:500]
+            'ultimoEnvio': str(row[0]) if row and row[0] else None,
+            'ultimoEstado': row[1] if row and row[1] else ''
         })
-    except Exception as e:
-        return jsonify({'ok': False, 'mensaje': str(e)}), 200
+    finally:
+        cur.close()
+        conn.close()
+
+
+@erp_bp.route('/api/dispositivos/erp-config', methods=['GET'])
+@token_opcional
+def erp_config_dispositivo():
+    empresa_id = request.empresa_id
+    if not empresa_id:
+        return jsonify([])
+
+    conn = get_connection()
+    cur = conn.cursor()
+    try:
+        cur.execute(
+            """SELECT id, nombre, tipo, webhook_url, headers, field_map, envio_auto, activo
+               FROM integraciones_erp
+               WHERE empresa_id = %s AND activo = TRUE AND envio_auto = TRUE""",
+            (empresa_id,)
+        )
+        rows = cur.fetchall()
+        return jsonify([{
+            'id': str(r[0]),
+            'nombre': r[1],
+            'tipo': r[2],
+            'webhookUrl': r[3],
+            'headers': r[4] or '{}',
+            'fieldMap': r[5] or '{}',
+            'envioAuto': r[6],
+            'activo': r[7],
+        } for r in rows])
+    finally:
+        cur.close()
+        conn.close()

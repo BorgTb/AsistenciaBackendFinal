@@ -120,6 +120,30 @@ export async function verificarDispositivo(ip: string) {
   });
 }
 
+export async function enviarErp(erpId: string) {
+  return request<{ ok: boolean; enviados: number; errores: number; mensaje?: string; ultimo_estado?: unknown }>(`/api/erp/${erpId}/enviar`, {
+    method: 'POST'
+  });
+}
+
+export async function getErpEstado(erpId: string) {
+  return request<{ ultimoEnvio: string | null; ultimoEstado: string }>(`/api/erp/${erpId}/estado`);
+}
+
+export async function registrarRostro(personaId: string, imagenBase64: string) {
+  return request<{ ok: boolean; mensaje: string }>(`/api/facial/registrar`, {
+    method: 'POST',
+    body: JSON.stringify({ persona_id: personaId, imagen: imagenBase64 })
+  });
+}
+
+export async function actualizarRostro(personaId: string, imagenBase64: string) {
+  return request<{ ok: boolean; mensaje: string; preview_url?: string }>(`/api/facial/actualizar/${personaId}`, {
+    method: 'PUT',
+    body: JSON.stringify({ imagen: imagenBase64 })
+  });
+}
+
 export interface Empresa {
   id: number;
   nombre: string;

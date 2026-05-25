@@ -59,6 +59,9 @@ export interface ErpIntegration {
   fieldMap: string;
   envioAuto: boolean;
   activo: boolean;
+  ultimoEnvio?: string | null;
+  ultimoEstado?: string;
+  createdAt?: string | null;
 }
 
 export interface LogEntry {

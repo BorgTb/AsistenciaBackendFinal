@@ -164,6 +164,8 @@ def init_db():
             )
         """)
         cur.execute("ALTER TABLE integraciones_erp ADD COLUMN IF NOT EXISTS empresa_id INTEGER REFERENCES empresas(id) DEFAULT 1")
+        cur.execute("ALTER TABLE integraciones_erp ADD COLUMN IF NOT EXISTS ultimo_envio TIMESTAMP")
+        cur.execute("ALTER TABLE integraciones_erp ADD COLUMN IF NOT EXISTS ultimo_estado VARCHAR(200)")
 
         cur.execute("CREATE INDEX IF NOT EXISTS idx_asistencias_persona ON asistencias(persona_id)")
         cur.execute("CREATE INDEX IF NOT EXISTS idx_asistencias_dispositivo ON asistencias(dispositivo_id)")

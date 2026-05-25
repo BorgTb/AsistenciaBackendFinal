@@ -12,6 +12,9 @@ import {
   deleteDispositivo,
   updateDispositivo,
   verificarDispositivo,
+  enviarErp,
+  registrarRostro,
+  actualizarRostro,
   generarPinEnrolamiento,
   getEmpresas,
   getUsuarios,
@@ -184,6 +187,8 @@ export function SasDashboard({ initialSection = 'dashboard' }: { initialSection?
   const [deviceVerifyMsg, setDeviceVerifyMsg] = useState('');
   const [editingDeviceId, setEditingDeviceId] = useState<string | null>(null);
   const [editDeviceName, setEditDeviceName] = useState('');
+  const [rostroPersonaId, setRostroPersonaId] = useState<string | null>(null);
+  const [uploadingRostro, setUploadingRostro] = useState(false);
 
   const [personaForm, setPersonaForm] = useState({ nombre: '', rut: '', email: '' });
   const [turnoForm, setTurnoForm] = useState({ nombre: '', inicio: '08:00', fin: '17:00' });
@@ -255,7 +260,9 @@ export function SasDashboard({ initialSection = 'dashboard' }: { initialSection?
           headers: item.headers,
           fieldMap: item.fieldMap,
           envioAuto: item.envioAuto,
-          activo: item.activo
+          activo: item.activo,
+          ultimoEnvio: item.ultimoEnvio,
+          ultimoEstado: item.ultimoEstado
         })));
       }
       if (logsRes) {
@@ -390,7 +397,9 @@ export function SasDashboard({ initialSection = 'dashboard' }: { initialSection?
           headers: item.headers,
           fieldMap: item.fieldMap,
           envioAuto: item.envioAuto,
-          activo: item.activo
+          activo: item.activo,
+          ultimoEnvio: item.ultimoEnvio,
+          ultimoEstado: item.ultimoEstado
         })));
       }
     }
@@ -609,6 +618,17 @@ export function SasDashboard({ initialSection = 'dashboard' }: { initialSection?
     showToast('error', `No se pudo probar ${nombre}`);
   }
 
+  async function handleEnviarErp(erpId: string, nombre: string) {
+    const result = await enviarErp(erpId);
+    if (result && 'ok' in result && result.ok) {
+      pushLog('ok', `ERP enviado a ${nombre}: ${result.enviados} registros`);
+      showToast('success', `Enviados ${result.enviados} registros a ${nombre}`);
+      await refreshData();
+      return;
+    }
+    showToast('error', `No se pudo enviar a ${nombre}`);
+  }
+
   async function handleClearLogs() {
     const result = await clearLogs();
     if (result && 'ok' in result && result.ok) {
@@ -639,18 +659,32 @@ export function SasDashboard({ initialSection = 'dashboard' }: { initialSection?
     showToast('success', `El dispositivo ${ip} se gestiona desde su backend`);
   }
 
-  function handleMarkHuella(personaId: string) {
-    const nextHuella = Math.max(1, ...personas.map((item) => item.huella_id || 0)) + 1;
-    setPersonaHuella(personaId, nextHuella).then((result) => {
-      if (result && 'ok' in result && result.ok) {
-        setPersonas((current) => current.map((item) => (item.id === personaId ? { ...item, huella_id: nextHuella } : item)));
-        pushLog('ok', `Huella asignada a persona ${personaId}`);
-        showToast('success', 'Huella actualizada');
-        return;
-      }
-
-      showToast('error', 'No se pudo actualizar la huella');
-    });
+  function handleRostroUpload(personaId: string) {
+    setRostroPersonaId(personaId);
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'image/*';
+    input.onchange = async (e) => {
+      const file = (e.target as HTMLInputElement).files?.[0];
+      if (!file) return;
+      setUploadingRostro(true);
+      const reader = new FileReader();
+      reader.onload = async (ev) => {
+        const base64 = (ev.target?.result as string).split(',')[1];
+        if (!base64) { setUploadingRostro(false); return; }
+        const result = await registrarRostro(personaId, base64);
+        if (result && 'ok' in result && result.ok) {
+          pushLog('ok', `Rostro registrado para persona ${personaId}`);
+          showToast('success', 'Rostro registrado correctamente');
+        } else {
+          const msg = result && 'error' in result ? String(result.error) : 'No se pudo registrar el rostro';
+          showToast('error', msg);
+        }
+        setUploadingRostro(false);
+      };
+      reader.readAsDataURL(file);
+    };
+    input.click();
   }
 
   function handleQuickEntry() {
@@ -1254,7 +1288,7 @@ export function SasDashboard({ initialSection = 'dashboard' }: { initialSection?
                         <td className="mono muted">{formatDate(item.fecha_registro)}</td>
                         <td>
                           <div className="toolbar">
-                            <button className="btn btn-secondary" type="button" onClick={() => handleMarkHuella(item.id)}>Huella</button>
+                            <button className="btn btn-secondary" type="button" disabled={uploadingRostro} onClick={() => handleRostroUpload(item.id)}>{uploadingRostro ? 'Subiendo...' : 'Rostro'}</button>
                             <button className="btn btn-danger" type="button" onClick={() => handleDeletePersona(item.id)}>{user?.rol === 'admin' ? 'Eliminar' : 'Desactivar'}</button>
                           </div>
                         </td>
@@ -1470,7 +1504,13 @@ export function SasDashboard({ initialSection = 'dashboard' }: { initialSection?
                     <Badge tone={item.activo ? 'success' : 'warning'}>{item.activo ? 'activo' : 'inactivo'}</Badge>
                   </div>
                   <div className="muted" style={{ marginTop: 14, wordBreak: 'break-word' }}>{item.webhookUrl}</div>
+                  {item.ultimoEstado && (
+                    <div className="muted" style={{ marginTop: 8, fontSize: '0.82rem' }}>
+                      Ultimo envio: {item.ultimoEnvio ? new Date(item.ultimoEnvio).toLocaleString() : '—'} · {item.ultimoEstado}
+                    </div>
+                  )}
                   <div className="device-actions" style={{ marginTop: 16 }}>
+                    <button className="btn btn-primary" type="button" onClick={() => handleEnviarErp(item.id, item.nombre)}>Enviar</button>
                     <button className="btn btn-secondary" type="button" onClick={() => handleTestErp(item.id, item.nombre)}>Test</button>
                     <button className="btn btn-danger" type="button" onClick={() => handleDeleteErp(item.id)}>Eliminar</button>
                   </div>

@@ -109,6 +109,8 @@ CREATE TABLE "integraciones_erp" (
     "field_map" text DEFAULT '{}',
     "envio_auto" boolean DEFAULT true,
     "activo" boolean DEFAULT true,
+    "ultimo_envio" timestamp,
+    "ultimo_estado" varchar(200),
     "created_at" timestamp DEFAULT now()
 );
 

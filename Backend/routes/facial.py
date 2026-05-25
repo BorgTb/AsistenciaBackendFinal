@@ -9,6 +9,7 @@ import io
 import tempfile
 import os
 import uuid
+import shutil
 from datetime import datetime
 
 facial_bp = Blueprint('facial', __name__)
@@ -19,6 +20,24 @@ os.makedirs(PREVIEWS_DIR, exist_ok=True)
 
 def decodificar_y_guardar_temporal(imagen_b64):
     """Usado solo para verificaciones rápidas, se borra al terminar"""
+    img_bytes = base64.b64decode(imagen_b64)
+    img = Image.open(io.BytesIO(img_bytes)).convert('RGB')
+    tmp = tempfile.NamedTemporaryFile(suffix='.jpg', delete=False)
+    img.save(tmp.name)
+    tmp.close()
+    return tmp.name
+
+
+def guardar_imagen_de_registro(persona_id, imagen_b64):
+    file_name = f"{persona_id}.jpg"
+    file_path = os.path.join(PREVIEWS_DIR, file_name)
+    img_bytes = base64.b64decode(imagen_b64)
+    img = Image.open(io.BytesIO(img_bytes)).convert('RGB')
+    img.save(file_path)
+    return file_path
+
+
+def guardar_imagen_temporal(imagen_b64):
     img_bytes = base64.b64decode(imagen_b64)
     img = Image.open(io.BytesIO(img_bytes)).convert('RGB')
     tmp = tempfile.NamedTemporaryFile(suffix='.jpg', delete=False)

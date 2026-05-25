@@ -1,4 +1,4 @@
-import type { Asignacion, Asistencia, Persona, Turno } from '@/lib/types';
+import type { Asignacion, Asistencia, ErpIntegration, Persona, Turno } from '@/lib/types';
 
 const baseUrl = '';
 
@@ -104,7 +104,7 @@ export async function clearLogs() {
 }
 
 export async function getErp() {
-  return request<Array<{ id: string; nombre: string; tipo: string; webhookUrl: string; headers: string; fieldMap: string; envioAuto: boolean; activo: boolean }>>('/api/erp');
+  return request<ErpIntegration[]>('/api/erp');
 }
 
 export async function createErp(payload: { nombre: string; tipo: string; webhookUrl: string; headers: string; fieldMap: string; envioAuto: boolean; activo?: boolean }) {
