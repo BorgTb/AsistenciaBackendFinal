@@ -13,7 +13,9 @@ function copyHeaders(source: Headers) {
 }
 
 export async function proxyJsonRequest(path: string, init?: RequestInit, incoming?: Request) {
-  const forwardedHeaders: Record<string, string> = {};
+  const forwardedHeaders: Record<string, string> = {
+    'User-Agent': 'SasFrontend/1.0'
+  };
 
   if (incoming) {
     const auth = incoming.headers.get('Authorization');
@@ -36,6 +38,15 @@ export async function proxyJsonRequest(path: string, init?: RequestInit, incomin
   const headers = copyHeaders(response.headers);
   headers.delete('content-encoding');
   headers.delete('transfer-encoding');
+
+  if (response.status === 403) {
+    const bodyPreview = await response.text().then(t => t.slice(0, 200));
+    if (bodyPreview.includes('cloudflare') || bodyPreview.includes('captcha') || bodyPreview.includes('challenge')) {
+      return NextResponse.json({
+        error: 'Bloqueado por Cloudflare. Verifica que FLASK_API_BASE_URL apunte directamente al backend local (127.0.0.1:5000) y no al dominio público.'
+      }, { status: 502 });
+    }
+  }
 
   if (contentType.includes('application/json')) {
     const data = await response.json();

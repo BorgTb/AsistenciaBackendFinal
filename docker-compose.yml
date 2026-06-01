@@ -1,0 +1,85 @@
+services:
+  postgres:
+    image: postgres:15
+    container_name: sas_postgres
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-sas}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-sas123}
+      POSTGRES_DB: ${POSTGRES_DB:-sas_db}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-sas} -d ${POSTGRES_DB:-sas_db}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+    networks:
+      - teleasist_net
+
+  mosquitto:
+    image: eclipse-mosquitto:latest
+    container_name: sas_mosquitto
+    ports:
+      - "1884:1883"
+      - "9001:9001"
+    volumes:
+      - ./Backend/mosquitto/config/mosquitto.conf:/mosquitto/config/mosquitto.conf
+      - mosquitto_data:/mosquitto/data
+      - mosquitto_log:/mosquitto/log
+    restart: unless-stopped
+    networks:
+      - teleasist_net
+
+  backend:
+    build:
+      context: ./Backend
+      dockerfile: Dockerfile
+    container_name: sas_backend
+    depends_on:
+      postgres:
+        condition: service_healthy
+      mosquitto:
+        condition: service_started
+    environment:
+      DATABASE_URL: ${DATABASE_URL:-postgresql://sas:sas123@postgres:5432/sas_db}
+      JWT_SECRET: ${JWT_SECRET:-sas-secret-cambiar-en-produccion}
+      MQTT_HOST: mosquitto
+      MQTT_PORT: "1883"
+    ports:
+      - "5000:5000"
+    volumes:
+      - backend_static:/app/static
+      - deepface_models:/root/.deepface
+    restart: unless-stopped
+    networks:
+      - teleasist_net
+
+  frontend:
+    build:
+      context: ./Frontend
+      dockerfile: Dockerfile
+    container_name: sas_frontend
+    depends_on:
+      - backend
+    environment:
+      FLASK_API_BASE_URL: http://backend:5000
+    ports:
+      - "3000:3000"
+    restart: unless-stopped
+    networks:
+      - teleasist_net
+
+volumes:
+  postgres_data:
+  mosquitto_data:
+  mosquitto_log:
+  backend_static:
+  deepface_models:
+
+networks:
+  teleasist_net:
+    name: teleasist_network
+    driver: bridge

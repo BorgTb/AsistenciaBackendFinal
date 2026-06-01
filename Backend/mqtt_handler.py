@@ -12,8 +12,8 @@ from database import get_connection
 
 buffer = []
 current_persona_id = None
-BROKER_HOST = "127.0.0.1"
-BROKER_PORT = 1884
+BROKER_HOST = os.getenv('MQTT_HOST', '127.0.0.1')
+BROKER_PORT = int(os.getenv('MQTT_PORT', '1884'))
 
 heartbeat_times = {}
 heartbeat_lock = threading.Lock()
