@@ -2,52 +2,46 @@
 <html>
 <head>
 <meta charset="utf-8">
-<title>Alta de Trabajador</title>
+<title>Registro de Trabajador</title>
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
-:root{--bg:#0d0f14;--surface:#141720;--surface2:#1a1e2b;--border:#252a3a;--accent:#00e5a0;--accent2:#3d8ef8;--warn:#f59e0b;--danger:#ef4444;--text:#e2e8f0;--dim:#6b7a99;--r:4px}
-body{font-family:'Courier New',Courier,monospace;background:var(--bg);color:var(--text);min-height:100vh;padding:12px}
-.wrap{max-width:480px;margin:0 auto}
-header{display:flex;align-items:center;gap:10px;padding:14px 0 10px;border-bottom:1px solid var(--border);margin-bottom:16px}
-.back{background:none;border:1px solid var(--border);color:var(--dim);padding:5px 10px;border-radius:var(--r);font-family:inherit;font-size:11px;cursor:pointer;letter-spacing:1px}
-.back:hover{color:var(--text);border-color:var(--dim)}
-h1{font-size:14px;letter-spacing:2px;text-transform:uppercase;color:var(--accent);flex:1;text-align:center}
-label{display:block;font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--dim);margin-bottom:4px}
-input{width:100%;padding:10px 12px;background:var(--surface);border:1px solid var(--border);border-radius:var(--r);color:var(--text);font-family:inherit;font-size:13px;margin-bottom:12px;transition:.15s}
-input:focus{outline:none;border-color:var(--accent);background:var(--surface2)}
-.btn{width:100%;padding:12px;border:none;border-radius:var(--r);font-family:inherit;font-size:12px;font-weight:700;letter-spacing:2px;text-transform:uppercase;cursor:pointer;margin-bottom:8px;transition:.15s}
-.btn-go{background:var(--accent);color:#0d0f14}
-.btn-go:hover{background:#00c98e}
-.btn-sec{background:var(--surface);border:1px solid var(--border);color:var(--dim)}
-.btn-sec:hover{color:var(--text);border-color:var(--dim)}
-
-/* Stepper */
-#biometric-process{display:none}
-.steps{display:flex;gap:8px;margin-bottom:16px;padding:12px;background:var(--surface);border:1px solid var(--border);border-radius:var(--r)}
-.step{flex:1;text-align:center;opacity:.3;transition:.4s}
-.step.active{opacity:1}
-.step.done{opacity:.7}
-.step-num{width:28px;height:28px;border-radius:50%;border:2px solid var(--border);display:flex;align-items:center;justify-content:center;margin:0 auto 6px;font-size:11px;font-weight:700;transition:.3s}
-.step.active .step-num{border-color:var(--accent);color:var(--accent);box-shadow:0 0 12px rgba(0,229,160,.3)}
-.step.done .step-num{border-color:var(--accent);background:var(--accent);color:#0d0f14}
-.step-label{font-size:9px;letter-spacing:1px;text-transform:uppercase;color:var(--dim)}
-.step.active .step-label{color:var(--text)}
-
-.step-detail{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:14px;text-align:center;margin-bottom:12px}
-.step-icon{font-size:32px;margin-bottom:8px}
-.step-title{font-size:13px;font-weight:700;color:var(--text);margin-bottom:4px}
-.step-desc{font-size:11px;color:var(--dim)}
-.pulse{animation:pulseGlow 1s ease infinite alternate}
-@keyframes pulseGlow{from{color:#333;text-shadow:none}to{color:#ffd700;text-shadow:0 0 16px #ffd700}}
-#camPreview{display:none;width:100%;max-width:220px;border-radius:var(--r);margin:10px auto 0;border:2px solid var(--accent);display:block}
+:root{--bg:#0f172a;--s:#1e293b;--s2:#334155;--b:#475569;--a:#3b82f6;--g:#22c55e;--w:#f59e0b;--d:#ef4444;--t:#f1f5f9;--dim:#94a3b8;--r:8px}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:var(--bg);color:var(--t);min-height:100vh;font-size:14px}
+.wrap{max-width:440px;margin:0 auto;padding:16px 12px}
+header{display:flex;align-items:center;gap:10px;margin-bottom:18px}
+.back{background:var(--s);border:1px solid var(--b);color:var(--t);padding:7px 14px;border-radius:6px;font-family:inherit;font-size:12px;font-weight:500;cursor:pointer;white-space:nowrap}
+.back:hover{background:var(--s2)}
+h1{font-size:15px;font-weight:600;flex:1;text-align:center}
+label{display:block;font-size:10px;color:var(--dim);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px}
+input{width:100%;padding:10px 14px;background:var(--s);border:1px solid var(--b);border-radius:6px;color:var(--t);font-family:inherit;font-size:13px;margin-bottom:12px;transition:.15s}
+input:focus{outline:none;border-color:var(--a);box-shadow:0 0 0 3px rgba(59,130,246,.15)}
+.btn{width:100%;padding:12px;border:none;border-radius:6px;font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;margin-bottom:6px;transition:.15s}
+.btn-go{background:var(--a);color:#fff}.btn-go:hover{background:#2563eb}
+.btn-sec{background:var(--s);border:1px solid var(--b);color:var(--dim)}.btn-sec:hover{color:var(--t)}
+.btn-fin{background:var(--g);color:#fff}.btn-fin:hover{background:#16a34a}
+#bp{display:none}
+.steps{display:flex;gap:8px;margin-bottom:16px;padding:14px;background:var(--s);border:1px solid var(--b);border-radius:var(--r)}
+.step{flex:1;text-align:center;opacity:.25;transition:.3s}
+.step.on{opacity:1}
+.step.ok{opacity:.6}
+.step .n{width:28px;height:28px;border-radius:50%;border:2px solid var(--b);display:flex;align-items:center;justify-content:center;margin:0 auto 6px;font-size:12px;font-weight:700;transition:.3s}
+.step.on .n{border-color:var(--a);color:var(--a)}
+.step.ok .n{border-color:var(--g);background:var(--g);color:#fff}
+.step .l{font-size:9px;text-transform:uppercase;letter-spacing:.5px;color:var(--dim)}
+.step.on .l{color:var(--t)}
+.detail{background:var(--s);border:1px solid var(--b);border-radius:var(--r);padding:20px 14px;text-align:center;margin-bottom:12px}
+.detail .icon{font-size:36px;margin-bottom:8px;color:var(--a)}
+.detail .title{font-size:14px;font-weight:600;color:var(--t);margin-bottom:4px}
+.detail .desc{font-size:12px;color:var(--dim)}
+#camPreview{max-width:200px;border-radius:6px;margin:10px auto 0;border:2px solid var(--a);display:none}
 </style>
 </head>
 <body>
 <div class="wrap">
   <header>
-    <button class="back" onclick="window.location.href='/'">← VOLVER</button>
-    <h1>Alta de Trabajador</h1>
+    <button class="back" onclick="location.href='/'">← Volver</button>
+    <h1>Registro de Trabajador</h1>
   </header>
 
   <div id="form-container">
@@ -57,24 +51,24 @@ input:focus{outline:none;border-color:var(--accent);background:var(--surface2)}
     <input type="text" id="personRut" placeholder="12345678-9" required>
     <label>Email Corporativo</label>
     <input type="email" id="personEmail" placeholder="juan@empresa.com" required>
-    <button class="btn btn-go" onclick="iniciarRegistro()">▶ INICIAR ESCANEO</button>
-    <button class="btn btn-sec" onclick="window.location.href='/'">CANCELAR</button>
+    <button class="btn btn-go" onclick="iniciarRegistro()">Iniciar Escaneo Biométrico</button>
+    <button class="btn btn-sec" onclick="location.href='/'">Cancelar</button>
   </div>
 
-  <div id="biometric-process">
+  <div id="bp">
     <div class="steps">
-      <div class="step active" id="step1"><div class="step-num">1</div><div class="step-label">Huella 1</div></div>
-      <div class="step" id="step2"><div class="step-num">2</div><div class="step-label">Huella 2</div></div>
-      <div class="step" id="step3"><div class="step-num">3</div><div class="step-label">Rostro</div></div>
+      <div class="step on" id="step1"><div class="n">1</div><div class="l">Huella 1</div></div>
+      <div class="step" id="step2"><div class="n">2</div><div class="l">Huella 2</div></div>
+      <div class="step" id="step3"><div class="n">3</div><div class="l">Rostro</div></div>
     </div>
-    <div class="step-detail">
-      <div class="step-icon" id="camIcon">👆</div>
+    <div class="detail">
+      <div class="icon" id="camIcon">&#9997;</div>
       <img id="camPreview" src="">
-      <div class="step-title" id="step3-title">Coloque el dedo en el sensor</div>
-      <div class="step-desc" id="step3-desc">Mantenga presionado firmemente</div>
+      <div class="title" id="step3-title">Coloque el dedo en el sensor</div>
+      <div class="desc" id="step3-desc">Mantenga presionado firmemente sobre el lector</div>
     </div>
-    <button class="btn btn-go" id="btn-finish" style="display:none;" onclick="window.location.reload()">+ REGISTRAR OTRA PERSONA</button>
-    <button class="btn btn-sec" onclick="window.location.href='/'">VOLVER AL INICIO</button>
+    <button class="btn btn-fin" id="btn-finish" style="display:none" onclick="location.reload()">Registrar Otra Persona</button>
+    <button class="btn btn-sec" onclick="location.href='/'">Volver al Inicio</button>
   </div>
 </div>
 
@@ -90,7 +84,7 @@ async function iniciarRegistro(){
     const r=await fetch('/registrar?name='+encodeURIComponent(nombre)+'&rut='+encodeURIComponent(rut)+'&email='+encodeURIComponent(email));
     if(r.ok){
       document.getElementById('form-container').style.display='none';
-      document.getElementById('biometric-process').style.display='block';
+      document.getElementById('bp').style.display='block';
       marcarPasoActivo(1);
       checkInterval=setInterval(monitorearHardware,800);
     }else{alert('Error: '+(await r.text()));}
@@ -123,26 +117,25 @@ async function obtenerVistaPrevia(){
 function marcarPasoActivo(paso){
   stepActual=paso;
   ['step1','step2','step3'].forEach(id=>document.getElementById(id).className='step');
-  document.getElementById('camIcon').classList.remove('pulse');
-  const icons=['👆','👆','📸'];
+  const icons=['&#9997;','&#9997;','&#128247;'];
   const titles=['Coloque el dedo en el sensor','Levante y vuelva a colocarlo','Mire a la cámara del reloj'];
-  const descs=['Mantenga presionado firmemente','Para confirmar la plantilla biométrica','Se registrará su rostro en la BD'];
-  document.getElementById('camIcon').textContent=icons[paso-1];
+  const descs=['Mantenga presionado firmemente','Para confirmar la plantilla biométrica','Se registrará su rostro en la base de datos'];
+  document.getElementById('camIcon').innerHTML=icons[paso-1];
   document.getElementById('step3-title').textContent=titles[paso-1];
   document.getElementById('step3-desc').textContent=descs[paso-1];
-  if(paso===1)document.getElementById('step1').className='step active';
-  else if(paso===2){document.getElementById('step1').className='step done';document.getElementById('step2').className='step active';}
-  else if(paso===3){document.getElementById('step1').className='step done';document.getElementById('step2').className='step done';document.getElementById('step3').className='step active';document.getElementById('camIcon').classList.add('pulse');}
+  if(paso===1)document.getElementById('step1').className='step on';
+  else if(paso===2){document.getElementById('step1').className='step ok';document.getElementById('step2').className='step on';}
+  else if(paso===3){document.getElementById('step1').className='step ok';document.getElementById('step2').className='step ok';document.getElementById('step3').className='step on';}
 }
 
 function marcarExito(){
   clearInterval(checkInterval);if(previewInterval)clearInterval(previewInterval);
-  ['step1','step2','step3'].forEach(id=>document.getElementById(id).className='step done');
+  ['step1','step2','step3'].forEach(id=>document.getElementById(id).className='step ok');
   const icon=document.getElementById('camIcon');
-  icon.textContent='✓';icon.style.display='block';icon.classList.remove('pulse');icon.style.color='var(--accent)';
+  icon.innerHTML='&#10003;';icon.style.display='block';icon.style.color='var(--g)';
   document.getElementById('camPreview').style.display='none';
   document.getElementById('step3-title').textContent='¡Registro Completo!';
-  document.getElementById('step3-desc').textContent='Rostro y huellas sincronizados.';
+  document.getElementById('step3-desc').textContent='Rostro y huellas sincronizados correctamente.';
   document.getElementById('btn-finish').style.display='block';
 }
 </script>

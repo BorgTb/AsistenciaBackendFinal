@@ -1610,6 +1610,7 @@ void WiFiEvent(arduino_event_id_t event, arduino_event_info_t info) {
       wifiUptimeStart = millis();
       break;
     case ARDUINO_EVENT_WIFI_STA_DISCONNECTED: {
+      if (!wifiEstabaConectado) break;
       wifiDisconnectCount++;
       uint8_t reason = info.wifi_sta_disconnected.reason;
       char buf[64];

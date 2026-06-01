@@ -233,11 +233,26 @@ def verificar_facial():
             
 @facial_bp.route('/api/facial/identificar', methods=['POST'])
 def identificar_facial():
-    data = request.json
-    if not data or 'imagen' not in data:
-        return jsonify({'error': 'No se proporcionó imagen'}), 400
+    content_type = (request.content_type or '').lower()
+    print(f"📨 [IDENTIFICAR] Content-Type recibido: '{content_type}' | Body size: {len(request.data)} bytes", flush=True)
 
-    imagen_b64 = data['imagen']
+    # Intentar como octet-stream (JPEG crudo desde ESP32)
+    if 'octet-stream' in content_type or (len(request.data) > 0 and 'json' not in content_type):
+        img_bytes = request.data
+        print(f"📨 [IDENTIFICAR] Interpretado como JPEG crudo ({len(img_bytes)} bytes)", flush=True)
+    else:
+        # Fallback JSON/Base64 (web, tests)
+        try:
+            data = request.get_json(force=True, silent=True)
+            if data and 'imagen' in data:
+                img_bytes = base64.b64decode(data['imagen'])
+                print(f"📨 [IDENTIFICAR] Interpretado como JSON/Base64", flush=True)
+            else:
+                print(f"❌ [IDENTIFICAR] Body no es JSON ni octet-stream", flush=True)
+                return jsonify({'error': 'Formato no soportado. Enviar JPEG crudo (octet-stream) o JSON con Base64.'}), 415
+        except Exception as e:
+            print(f"❌ [IDENTIFICAR] Error decodificando: {e}", flush=True)
+            return jsonify({'error': f'Error decodificando: {str(e)}'}), 415
     
     # --- MODO PRUEBA: GUARDAR FOTOS ---
     # Creamos una carpeta especial para no mezclar con las fotos oficiales
@@ -251,7 +266,6 @@ def identificar_facial():
     
     try:
         # 1. Decodificar y GUARDAR la imagen físicamente para auditarla
-        img_bytes = base64.b64decode(imagen_b64)
         img = Image.open(io.BytesIO(img_bytes)).convert('RGB')
         img.save(file_path)
         

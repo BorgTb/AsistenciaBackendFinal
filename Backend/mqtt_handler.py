@@ -31,6 +31,7 @@ def on_connect(client, userdata, flags, rc):
     client.subscribe("esp32/asistencia/#")
     client.subscribe("esp32/heartbeat/#")
     client.subscribe("esp32/lwt/#")
+    client.subscribe("esp32/imagen/registrar")  # ← agregar
     print("📡 Suscripciones registradas.", flush=True)
 
     # FIX: publicar el eco en un hilo separado con delay
@@ -53,6 +54,22 @@ def on_message(client, userdata, msg):
 
     if full_topic == "esp32/imagen/eco":
         print("✅ ECO OK — Python se escucha a si mismo.", flush=True)
+        return
+    
+    if full_topic == "esp32/imagen/registrar":
+        try:
+            payload = json.loads(msg.payload.decode())
+            persona_id = payload.get("persona_id", "")
+            imagen_b64 = payload.get("imagen", "")
+            
+            if not persona_id or not imagen_b64:
+                print("❌ Mensaje de registro incompleto", flush=True)
+                return
+                
+            print(f"📸 Registro facial recibido para ID: {persona_id}", flush=True)
+            procesar_imagen_facial(client, persona_id, imagen_b64)
+        except Exception as e:
+            print(f"❌ Error procesando registro facial: {e}", flush=True)
         return
 
     if full_topic.startswith("esp32/heartbeat/"):

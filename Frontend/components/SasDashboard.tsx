@@ -1867,7 +1867,7 @@ export function SasDashboard({ initialSection = 'dashboard' }: { initialSection?
           <div className="modal" onClick={(e) => e.stopPropagation()} role="presentation">
             <div className="modal-head">
               <h3 className="modal-title">Agregar dispositivo</h3>
-              <p className="modal-subtitle">Asigna un nombre y verifica la conectividad antes de generar el PIN.</p>
+              <p className="modal-subtitle">Asigna un nombre y genera el PIN. El dispositivo enviará su IP automáticamente al enrolarse.</p>
             </div>
             <div className="modal-body">
               {formError && <div className="login-error" style={{ marginBottom: 12 }}>{formError}</div>}
@@ -1880,30 +1880,6 @@ export function SasDashboard({ initialSection = 'dashboard' }: { initialSection?
                   onChange={(e) => setDeviceForm((c) => ({ ...c, nombre: e.target.value }))}
                 />
               </div>
-              <div className="field">
-                <label>IP del dispositivo</label>
-                <div className="status-row" style={{ gap: 8 }}>
-                  <input
-                    type="text"
-                    placeholder="Ej: 192.168.1.100"
-                    value={deviceForm.ip}
-                    onChange={(e) => { setDeviceForm((c) => ({ ...c, ip: e.target.value })); setDeviceVerify('idle'); setDeviceVerifyMsg(''); }}
-                  />
-                  <button
-                    className="btn btn-secondary"
-                    type="button"
-                    onClick={handleVerificarDispositivo}
-                    disabled={deviceVerify === 'checking' || !deviceForm.ip.trim()}
-                  >
-                    {deviceVerify === 'checking' ? 'Verificando...' : 'Verificar'}
-                  </button>
-                </div>
-                {deviceVerifyMsg && (
-                  <div className={`badge ${deviceVerify === 'ok' ? 'success' : 'danger'}`} style={{ marginTop: 8 }}>
-                    {deviceVerifyMsg}
-                  </div>
-                )}
-              </div>
               {generatedPin && (
                 <div className="card" style={{ marginTop: 16, borderColor: 'rgba(56,217,255,0.4)', background: 'rgba(56,217,255,0.08)', padding: 16 }}>
                   <div className="status-row">
@@ -1915,6 +1891,9 @@ export function SasDashboard({ initialSection = 'dashboard' }: { initialSection?
                   </div>
                   <div className="mono" style={{ marginTop: 12, padding: 12, borderRadius: 10, background: '#000', fontSize: '1.5rem', textAlign: 'center', letterSpacing: '0.3em', fontWeight: 700, color: 'var(--accent)' }}>
                     {generatedPin}
+                  </div>
+                  <div className="muted" style={{ marginTop: 12, fontSize: '0.82rem' }}>
+                    1. Enciende el dispositivo · 2. Conéctate a su WiFi (192.168.4.1) · 3. Ve a WiFi Setup · 4. Ingresa el PIN y la URL del backend · 5. El dispositivo se enrolará automáticamente
                   </div>
                 </div>
               )}

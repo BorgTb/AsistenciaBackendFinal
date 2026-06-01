@@ -5,8 +5,11 @@ export async function POST(request: Request) {
   const auth = request.headers.get('authorization');
   if (auth) headers['Authorization'] = auth;
 
+  const body = await request.text();
+
   return proxyJsonRequest('/api/dispositivos/generar-pin', {
     method: 'POST',
-    headers
+    headers,
+    body: body || undefined
   }, request);
 }

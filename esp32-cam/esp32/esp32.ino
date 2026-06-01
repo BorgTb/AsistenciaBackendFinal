@@ -8,7 +8,7 @@
 #include <WebServer.h>
 #include <WiFi.h>
 #include <esp_wifi.h> // <-- VITAL: Para el manejo avanzado de energía del WiFi
-#include <SPIFFS.h>
+#include "LittleFS.h"
 #include <ArduinoJson.h>
 #include <Adafruit_Fingerprint.h>
 #include <HTTPClient.h>
@@ -32,7 +32,7 @@ WebServer server(80);
 
 // ===== Configuracion AP =====
 const char* apSSID   = "ESP32-ASISTENCIA";
-const char* apPASS   = "12345678";
+const char* apPASS   = "Asistencia2026";
 
 // ===== WiFi externo configurable =====
 String savedSSID = "";
@@ -353,6 +353,17 @@ void initCamera() {
   s->set_vflip(s, 1);          
 }
 
+// Nota: identificarPorRostro() captura el frame raw directamente con calidad 12
+// y lo envía como octet-stream sin Base64. Esta función queda disponible
+// si en algún flujo puntual se necesita Base64 con calidad reducida (ej: preview web).
+String capturarImagenBase64Identificacion() {
+  sensor_t* s = esp_camera_sensor_get();
+  s->set_quality(s, 12);
+  String img = capturarImagenBase64();
+  s->set_quality(s, 6);
+  return img;
+}
+
 
 String capturarImagenBase64() {
   if (!camaraIniciada) return "";
@@ -474,7 +485,11 @@ void verificarConexionWiFi() {
   ultimoIntentoWifi = ahora;
   addLog("WiFi perdido. Intento " + String(reintentosWifi) + "/5...");
 
-  WiFi.reconnect();
+  // Disconnect limpio antes de reconectar: evita el falso WL_WRONG_PASSWORD
+  // que ocurre cuando el stack queda en estado de autenticacion inconsistente.
+  WiFi.disconnect(false);
+  delay(200);
+  WiFi.begin(savedSSID.c_str(), savedPASS.c_str());
 
   int espera = 0;
   while (WiFi.status() != WL_CONNECTED && espera < 40) {
@@ -493,18 +508,22 @@ void verificarConexionWiFi() {
       mqttConnected = false;
     }
   } else if (reintentosWifi >= 5) {
-    addLog("5 intentos fallidos. Cambiando a modo AP...");
+    addLog("5 intentos fallidos. Activando AP para reconfigurar...");
     WiFi.disconnect(true);
     delay(500);
-    WiFi.mode(WIFI_AP);
-    WiFi.softAP(apSSID, apPASS, 1, 0, 4);
+    WiFi.mode(WIFI_AP_STA);
+    WiFi.softAP(apSSID, apPASS, 6, 0, 4);
+    Serial.println("AP SSID: " + String(apSSID));
+    Serial.println("AP PASS: " + String(apPASS));
+    Serial.println("AP IP: " + WiFi.softAPIP().toString());
+    Serial.println("AP Canal: " + String(WiFi.channel()));
     WiFi.softAPConfig(IPAddress(192, 168, 4, 1), IPAddress(192, 168, 4, 1), IPAddress(255, 255, 255, 0));
-    addLog("AP activo: 192.168.4.1");
-    wifiEstabaConectado = false;
+    addLog("AP activo: 192.168.4.1 - PASS=" + String(apPASS));
+    // NO reseteamos wifiEstabaConectado para que el watchdog
+    // pueda reintentar si el router vuelve a estar disponible.
     reintentosWifi = 0;
   }
 }
-
 void mantenerConexionMQTT() {
   if (mqttBroker == "" || !isOnline) return;
   if (mqtt_client != NULL) return;
@@ -611,7 +630,7 @@ void sincronizarPersonasDesdeBackend() {
     DeserializationError error = deserializeJson(doc, http.getStream());
 
     if (!error) {
-      File file = SPIFFS.open("/personas.json", "w");
+      File file = LittleFS.open("/personas.json", "w");
       serializeJson(doc, file);
       file.close();
       addLog("Personas fetcheadas y guardadas. Total: " + String(doc.size()));
@@ -629,41 +648,48 @@ void sincronizarPersonasDesdeBackend() {
 // LÓGICA DE ASISTENCIA BIOMÉTRICA
 // ============================================================
 String identificarPorRostro() {
-  if (!camaraIniciada || !isOnline || WiFi.status() != WL_CONNECTED) {
+  if (!camaraIniciada || !isOnline || WiFi.status() != WL_CONNECTED) return "";
+
+  // Calidad reducida para identificación: más rápido de transmitir y procesar
+  sensor_t* s = esp_camera_sensor_get();
+  s->set_quality(s, 12);
+
+  // Flash breve para iluminar el rostro
+  digitalWrite(FLASH_PIN, HIGH);
+  delay(150);
+  camera_fb_t* fb = esp_camera_fb_get();
+  digitalWrite(FLASH_PIN, LOW);
+
+  // Restaurar calidad original para registro
+  s->set_quality(s, 6);
+
+  if (!fb) {
+    addLog("Error: No se pudo capturar frame para identificacion");
     return "";
   }
-  
-  // Llama a la captura (que ahora hace el destello de flash internamente)
-  String imgBase64 = capturarImagenBase64();
-  
-  if (imgBase64.length() == 0) {
-    return "";
-  }
-  
-  // Preparamos el paquete de datos
-  String payload = "{\"imagen\":\"" + imgBase64 + "\"}";
-  
-  // 5. ENVÍO POR WIFI (La fuente está entregando 4.8V limpios al transmisor)
+
   HTTPClient http;
   beginHttp(http, backendURL + "/api/facial/identificar");
-  http.addHeader("Content-Type", "application/json");
-  http.setTimeout(8000); 
+  http.addHeader("Content-Type", "application/octet-stream");
+  http.setTimeout(10000);
 
-  int httpCode = http.POST(payload);
-  String personaIdEncontrada = "";
-  
+  // Enviar JPEG crudo directamente, sin Base64 (33% menos datos)
+  int httpCode = http.POST(fb->buf, fb->len);
+  esp_camera_fb_return(fb);
+
+  String personaId = "";
   if (httpCode == 200) {
     DynamicJsonDocument doc(256);
     deserializeJson(doc, http.getString());
     if (doc.containsKey("persona_id")) {
-      personaIdEncontrada = doc["persona_id"].as<String>();
+      personaId = doc["persona_id"].as<String>();
     }
-  } else {
-    addLog("Identificacion fallida, Codigo HTTP: " + String(httpCode));
+  } else if (httpCode != 404) {
+    // 404 es "rostro no reconocido", es esperado — solo logueamos errores reales
+    addLog("Identificacion HTTP error: " + String(httpCode));
   }
-  
   http.end();
-  return personaIdEncontrada;
+  return personaId;
 }
 String buscarPersonaPorHuella(int huellaID) {
   DynamicJsonDocument doc(2048);
@@ -938,32 +964,29 @@ void completarRegistroPersona() {
 }
 
 bool registrarRostroEnBackend(String personaId) {
-  if (!camaraIniciada || !isOnline) return false;
-  if (mqtt_client == NULL) mantenerConexionMQTT();
-  if (!mqttConnected || mqtt_client == NULL) return false;
+  if (!camaraIniciada || !isOnline || !mqttConnected || mqtt_client == NULL) return false;
 
-  // <-- OPTIMIZADO: Secuencia de Flash sin castigar el voltaje
-  digitalWrite(FLASH_PIN, HIGH);
-  delay(150); // Tiempo para iluminar el rostro
   String imgBase64 = capturarImagenBase64();
-  digitalWrite(FLASH_PIN, LOW); // Apagamos INMEDIATAMENTE para que el MQTT no sufra caídas de energía
-  
   if (imgBase64.length() == 0) return false;
 
-  esp_mqtt_client_publish(mqtt_client, "esp32/imagen/start", personaId.c_str(), 0, 1, 0);
-  delay(100); 
-  
-  int chunkSize = 1024; 
-  int longitudTotal = imgBase64.length();
-  for (int i = 0; i < longitudTotal; i += chunkSize) {
-    String chunk = imgBase64.substring(i, min(i + chunkSize, longitudTotal));
-    esp_mqtt_client_publish(mqtt_client, "esp32/imagen/part", chunk.c_str(), 0, 1, 0);
-    delay(200); 
-    yield(); 
+  // Un único mensaje JSON — sin fragmentación, sin delays artificiales
+  String payload = "{\"persona_id\":\"" + personaId + "\",\"imagen\":\"" + imgBase64 + "\"}";
+  addLog("Enviando rostro MQTT: " + String(payload.length()) + " bytes para ID " + personaId);
+
+  int ret = esp_mqtt_client_publish(
+    mqtt_client,
+    "esp32/imagen/registrar",
+    payload.c_str(),
+    payload.length(),
+    1,  // QoS 1: el broker confirma la entrega
+    0
+  );
+
+  if (ret < 0) {
+    addLog("Error publicando MQTT (ret=" + String(ret) + ")");
+    return false;
   }
-  
-  esp_mqtt_client_publish(mqtt_client, "esp32/imagen/end", "fin", 0, 1, 0);
-  return true; 
+  return true;
 }
 
 void sincronizarAsistencias() {
@@ -1158,7 +1181,7 @@ void sincronizarErpConfigDesdeBackend() {
     DynamicJsonDocument doc(4096);
     DeserializationError error = deserializeJson(doc, http.getStream());
     if (!error) {
-      File file = SPIFFS.open("/erp-config.json", "w");
+      File file = LittleFS.open("/erp-config.json", "w");
       serializeJson(doc, file);
       file.close();
     }
@@ -1167,10 +1190,10 @@ void sincronizarErpConfigDesdeBackend() {
 }
 
 void enviarAsistenciaAErp(const String& personaId, const String& nombre, const String& tipo, const String& metodo) {
-  if (!SPIFFS.exists("/erp-config.json")) return;
+  if (!LittleFS.exists("/erp-config.json")) return;
 
   DynamicJsonDocument doc(4096);
-  File file = SPIFFS.open("/erp-config.json", "r");
+  File file = LittleFS.open("/erp-config.json", "r");
   DeserializationError error = deserializeJson(doc, file);
   file.close();
   if (error || !doc.is<JsonArray>()) return;
@@ -1248,11 +1271,11 @@ void sincronizarPendientes() {
 }
 
 // ============================================================
-// SPIFFS — JSON
+// LittleFS — JSON
 // ============================================================
 JsonArray loadArray(const char* path, DynamicJsonDocument& doc) {
-  if (!SPIFFS.exists(path)) { doc.set(JsonArray()); return doc.as<JsonArray>(); }
-  File file = SPIFFS.open(path, "r");
+  if (!LittleFS.exists(path)) { doc.set(JsonArray()); return doc.as<JsonArray>(); }
+  File file = LittleFS.open(path, "r");
   if (!file) { doc.set(JsonArray()); return doc.as<JsonArray>(); }
   DeserializationError err = deserializeJson(doc, file);
   file.close();
@@ -1261,17 +1284,17 @@ JsonArray loadArray(const char* path, DynamicJsonDocument& doc) {
 }
 
 void saveArray(const char* path, DynamicJsonDocument& doc) {
-  File file = SPIFFS.open(path, "w");
+  File file = LittleFS.open(path, "w");
   serializeJson(doc, file);
   file.close();
 }
 
-void initSPIFFS() {
-  if (!SPIFFS.begin(true)) return;
+void initLittleFS() {
+  if (!LittleFS.begin(true)) return;
   const char* files[] = { "/personas.json", "/turnos.json", "/asignaciones.json", "/asistencias.json", "/wifi.json" };
   for (auto f : files) {
-    if (!SPIFFS.exists(f)) {
-      File file = SPIFFS.open(f, "w");
+    if (!LittleFS.exists(f)) {
+      File file = LittleFS.open(f, "w");
       file.println(String(f) == "/wifi.json" ? "{\"ssid\":\"\",\"pass\":\"\",\"backend\":\"http://172.20.10.3:5000\",\"mqtt\":\"\",\"pin\":\"\"}" : "[]");
       file.close();
     }
@@ -1279,7 +1302,7 @@ void initSPIFFS() {
 }
 
 void loadWiFiConfig() {
-  File file = SPIFFS.open("/wifi.json", "r");
+  File file = LittleFS.open("/wifi.json", "r");
   if (file) {
     DynamicJsonDocument doc(512);
     deserializeJson(doc, file);
@@ -1295,14 +1318,14 @@ void loadWiFiConfig() {
 void saveConfig(String ssid, String pass, String backend, String mqtt, String pin) {
   DynamicJsonDocument doc(512);
   doc["ssid"] = ssid; doc["pass"] = pass; doc["backend"] = backend; doc["mqtt"] = mqtt; doc["pin"] = pin;
-  File file = SPIFFS.open("/wifi.json", "w");
+  File file = LittleFS.open("/wifi.json", "w");
   serializeJson(doc, file); file.close();
   savedSSID = ssid; savedPASS = pass; backendURL = backend; mqttBroker = mqtt; pinEnrol = pin;
 }
 
 void servirArchivo(const char* path, const char* tipo) {
-  if (!SPIFFS.exists(path)) { server.send(404, "text/plain", "Archivo no encontrado"); return; }
-  File f = SPIFFS.open(path, "r");
+  if (!LittleFS.exists(path)) { server.send(404, "text/plain", "Archivo no encontrado"); return; }
+  File f = LittleFS.open(path, "r");
   server.streamFile(f, tipo);
   f.close();
   yield(); 
@@ -1438,7 +1461,7 @@ void handleLimpiarDatos() {
   }
   const char* files[] = {"/personas.json", "/turnos.json", "/asignaciones.json", "/asistencias.json"};
   for (auto f : files) {
-    File file = SPIFFS.open(f, "w");
+    File file = LittleFS.open(f, "w");
     file.println("[]");
     file.close();
   }
@@ -1834,7 +1857,7 @@ void setup() {
   if (digitalRead(13) == LOW) {
     delay(1000);
     if (digitalRead(13) == LOW) {
-      initSPIFFS(); saveConfig("", "", backendURL, mqttBroker, ""); Serial.println("RESET DETECTADO");
+      initLittleFS(); saveConfig("", "", backendURL, mqttBroker, ""); Serial.println("RESET DETECTADO");
     }
   }
   
@@ -1847,7 +1870,7 @@ void setup() {
   finger.begin(57600);
   if (finger.verifyPassword()) addLog("Sensor AS608 conectado");
 
-  initSPIFFS(); delay(500); loadWiFiConfig(); tryConnectWiFi();
+  initLittleFS(); delay(500); loadWiFiConfig(); tryConnectWiFi();
   
   if (isOnline) {
     sincronizarPendientes();
@@ -1855,8 +1878,13 @@ void setup() {
     sincronizarTurnosDesdeBackend();
     sincronizarAsignacionesDesdeBackend();
   } else {
-    WiFi.mode(WIFI_AP); WiFi.softAP(apSSID, apPASS, 1, 0, 4);
-    WiFi.softAPConfig(IPAddress(192, 168, 4, 1), IPAddress(192, 168, 4, 1), IPAddress(255, 255, 255, 0));
+      delay(500);
+      WiFi.mode(WIFI_AP);
+      delay(150);
+      WiFi.softAP(apSSID, apPASS, 6, 0, 4);
+      delay(150);
+      WiFi.softAPConfig(IPAddress(192, 168, 4, 1), IPAddress(192, 168, 4, 1), IPAddress(255, 255, 255, 0));
+      addLog("AP iniciado. IP=" + WiFi.softAPIP().toString() + " | PASS=" + String(apPASS));
   }
 
   // Rutas HTML
@@ -1978,6 +2006,7 @@ void setup() {
 void loop() {
   server.handleClient();
   yield();
+
 
   if (savedSSID.length() > 0) verificarConexionWiFi();
 

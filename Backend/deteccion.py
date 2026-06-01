@@ -99,11 +99,11 @@ def simular_asistencia_por_foto(ruta_imagen):
 # 3. MENÚ INTERACTIVO DE TERMINAL
 # =====================================================================
 def menu_interactivo():
-    # Detecta dónde está este archivo (src/tests/deteccion.py)
+    # Detecta dónde está este archivo (Backend/deteccion.py)
     directorio_actual = os.path.dirname(os.path.abspath(__file__))
     
-    # Sube un nivel al directorio 'src' y luego entra a 'static/capturas_prueba'
-    directorio_fotos = os.path.abspath(os.path.join(directorio_actual, "..", "static", "capturas_prueba"))
+    # Entra directo a static/capturas_prueba (misma carpeta Backend)
+    directorio_fotos = os.path.abspath(os.path.join(directorio_actual, "static", "capturas_prueba"))
     
     while True:
         print("\n" + "="*50)
@@ -123,7 +123,7 @@ def menu_interactivo():
             print("Coloca fotos en esa carpeta para probar.")
             break
             
-        print(f"📂 Ruta activa: .../src/static/capturas_prueba/\n")
+        print(f"📂 Ruta activa: .../Backend/static/capturas_prueba/\n")
         print("Fotos disponibles:")
         for i, archivo in enumerate(archivos, 1):
             print(f"  [{i}] {archivo}")
