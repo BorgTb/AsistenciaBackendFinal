@@ -9,6 +9,17 @@ from dotenv import load_dotenv
 
 load_dotenv()
 DATABASE_URL = os.getenv("DATABASE_URL")
+
+def extraer_embedding_sim(img_path):
+    resultado = DeepFace.represent(
+        img_path=img_path,
+        model_name="Facenet",
+        enforce_detection=True,
+        detector_backend="retinaface",
+        anti_spoofing=True
+    )
+    return resultado[0]['embedding']
+
 # =====================================================================
 # 1. CONFIGURACIÓN DE BASE DE DATOS (Ajusta según tu entorno de Coolify)
 # =====================================================================
@@ -25,19 +36,11 @@ def simular_asistencia_por_foto(ruta_imagen):
     
     try:
         print("🔍 Analizando rostro y verificando seguridad (Anti-Spoofing)...")
-        resultado = DeepFace.represent(
-            img_path=ruta_imagen,
-            model_name="Facenet",
-            enforce_detection=True,
-            detector_backend="retinaface", # o "opencv"
-            anti_spoofing=True       
-        )
-        nuevo_embedding = np.array(resultado[0]['embedding'])
+        nuevo_embedding = np.array(extraer_embedding_sim(ruta_imagen))
         print("✅ Rostro 3D válido detectado.")
 
     except ValueError as e:
         print(f"❌ Rechazado por DeepFace: {str(e)}")
-        print("💡 Causa: No hay rostro, está borroso o es una foto/pantalla falsa.")
         return
     except Exception as e:
         print(f"❌ Error procesando la imagen: {str(e)}")

@@ -46,6 +46,17 @@ def guardar_imagen_temporal(imagen_b64):
     return tmp.name
 
 
+def extraer_embedding(img_path, anti_spoofing=False):
+    resultado = DeepFace.represent(
+        img_path=img_path,
+        model_name="Facenet",
+        enforce_detection=True,
+        detector_backend="retinaface",
+        anti_spoofing=anti_spoofing
+    )
+    return resultado[0]['embedding']
+
+
 @facial_bp.route('/api/facial/registrar', methods=['POST'])
 def registrar_facial():
     data = request.json
@@ -56,13 +67,7 @@ def registrar_facial():
     file_path = guardar_imagen_de_registro(persona_id, imagen_b64) # Tu función actual
     
     try:
-        resultado = DeepFace.represent(
-            img_path=file_path,
-            model_name="Facenet",
-            enforce_detection=True, # Obligatorio para evitar fotos del techo
-            detector_backend="retinaface"
-        )
-        nuevo_embedding = np.array(resultado[0]['embedding'])
+        nuevo_embedding = np.array(extraer_embedding(file_path))
 
         # --- VALIDACIÓN DE DUPLICADOS ---
         conn = get_connection()
@@ -99,9 +104,9 @@ def registrar_facial():
 
         return jsonify({'ok': True, 'mensaje': 'Registro exitoso'}), 200
 
-    except ValueError:
+    except ValueError as ve:
         if os.path.exists(file_path): os.unlink(file_path)
-        return jsonify({'error': 'No se detectó un rostro claro'}), 400
+        return jsonify({'error': str(ve)}), 400
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
@@ -127,14 +132,7 @@ def actualizar_facial(persona_id):
         img = Image.open(io.BytesIO(img_bytes)).convert('RGB')
         img.save(file_path)
 
-        resultado = DeepFace.represent(
-            img_path=file_path,
-            model_name="Facenet",
-            enforce_detection=True,
-            detector_backend="retinaface",
-            anti_spoofing=True
-        )
-        embedding = resultado[0]['embedding']
+        embedding = extraer_embedding(file_path, anti_spoofing=True)
 
         cur.execute(
             "UPDATE personas SET encoding_facial = %s WHERE id::text = %s",
@@ -149,8 +147,8 @@ def actualizar_facial(persona_id):
             'preview_url': preview_url
         })
 
-    except ValueError:
-        return jsonify({'error': 'No se detecto rostro en la imagen'}), 400
+    except ValueError as ve:
+        return jsonify({'error': str(ve)}), 400
     except Exception as e:
         conn.rollback()
         return jsonify({'error': str(e)}), 500
@@ -195,15 +193,7 @@ def verificar_facial():
 
         embedding_db = np.array(json.loads(row[0]))
 
-        # Obtener embedding de la imagen capturada temporal
-        resultado = DeepFace.represent(
-            img_path=tmp_path,
-            model_name="Facenet",
-            enforce_detection=True,
-            detector_backend="retinaface",
-            anti_spoofing=True
-        )
-        embedding_captura = np.array(resultado[0]['embedding'])
+        embedding_captura = np.array(extraer_embedding(tmp_path, anti_spoofing=True))
 
         # Distancia euclidiana — Facenet umbral recomendado es 10
         distancia = np.linalg.norm(embedding_db - embedding_captura)
@@ -221,8 +211,8 @@ def verificar_facial():
             'distancia': round(float(distancia), 3)
         }), 404
 
-    except ValueError:
-        return jsonify({'error': 'No se detecto rostro en la imagen'}), 400
+    except ValueError as ve:
+        return jsonify({'error': str(ve)}), 400
     except Exception as e:
         return jsonify({'error': str(e)}), 500
     finally:
@@ -271,18 +261,8 @@ def identificar_facial():
         
         print(f"📸 [AUDITORÍA] Foto guardada para revisión en: {file_path}")
         
-        # 2. Extraer el mapa facial de la captura recién guardada
-        print("🧠 Extrayendo mapa facial...")
-        resultado = DeepFace.represent(
-            img_path=file_path,
-            model_name="Facenet",
-            enforce_detection=True, # Vital: no crashea si sale borrosa
-            detector_backend="retinaface",
-            anti_spoofing=True
-        )
-        
-        embedding_captura = np.array(resultado[0]['embedding'])
-        
+        embedding_captura = np.array(extraer_embedding(file_path, anti_spoofing=True))
+
         # 3. Traer TODOS los mapas faciales de la Base de Datos
         conn = get_connection()
         cur = conn.cursor()
@@ -318,9 +298,9 @@ def identificar_facial():
             print(f"🟡 Desconocido. Distancia: {round(mejor_distancia, 2)}")
             return jsonify({'error': 'Rostro no reconocido. Distancia muy alta.'}), 404
 
-    except ValueError:
-        print("🔴 DeepFace no encontró ningún rostro en la foto.")
-        return jsonify({'error': 'No se detectó ningún rostro humano'}), 400
+    except ValueError as ve:
+        print(f"🔴 DeepFace: {ve}")
+        return jsonify({'error': str(ve)}), 400
     except Exception as e:
         print(f"🔴 Error grave: {e}")
         return jsonify({'error': str(e)}), 500

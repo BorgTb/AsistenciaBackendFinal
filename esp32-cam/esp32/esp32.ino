@@ -334,8 +334,8 @@ void initCamera() {
   config.pin_reset     = -1;
   config.xclk_freq_hz  = 20000000;
   config.pixel_format  = PIXFORMAT_JPEG;
-  config.frame_size    = FRAMESIZE_QVGA;
-  config.jpeg_quality  = 6;
+  config.frame_size    = FRAMESIZE_VGA;
+  config.jpeg_quality  = 8;
   config.fb_count      = 1;
 
   if (esp_camera_init(&config) == ESP_OK) {
@@ -350,17 +350,18 @@ void initCamera() {
   s->set_brightness(s, 1);     
   s->set_contrast(s, 1);
   s->set_special_effect(s, 0);
-  s->set_vflip(s, 1);          
+  s->set_vflip(s, 0);
+  s->set_hmirror(s, 1);
 }
 
-// Nota: identificarPorRostro() captura el frame raw directamente con calidad 12
+// Nota: identificarPorRostro() captura el frame raw directamente con calidad 10
 // y lo envía como octet-stream sin Base64. Esta función queda disponible
 // si en algún flujo puntual se necesita Base64 con calidad reducida (ej: preview web).
 String capturarImagenBase64Identificacion() {
   sensor_t* s = esp_camera_sensor_get();
-  s->set_quality(s, 12);
+  s->set_quality(s, 10);
   String img = capturarImagenBase64();
-  s->set_quality(s, 6);
+  s->set_quality(s, 8);
   return img;
 }
 
@@ -652,7 +653,7 @@ String identificarPorRostro() {
 
   // Calidad reducida para identificación: más rápido de transmitir y procesar
   sensor_t* s = esp_camera_sensor_get();
-  s->set_quality(s, 12);
+  s->set_quality(s, 10);
 
   // Flash breve para iluminar el rostro
   digitalWrite(FLASH_PIN, HIGH);
@@ -661,7 +662,7 @@ String identificarPorRostro() {
   digitalWrite(FLASH_PIN, LOW);
 
   // Restaurar calidad original para registro
-  s->set_quality(s, 6);
+  s->set_quality(s, 8);
 
   if (!fb) {
     addLog("Error: No se pudo capturar frame para identificacion");

@@ -21,6 +21,15 @@ heartbeat_lock = threading.Lock()
 PREVIEWS_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), 'static', 'previews'))
 os.makedirs(PREVIEWS_DIR, exist_ok=True)
 
+def extraer_embedding_mqtt(img_path):
+    resultado = DeepFace.represent(
+        img_path=img_path,
+        model_name="Facenet",
+        enforce_detection=True,
+        detector_backend="retinaface"
+    )
+    return resultado[0]['embedding']
+
 def on_connect(client, userdata, flags, rc):
     if rc != 0:
         print(f"❌ MQTT fallo conexion. Codigo: {rc}", flush=True)
@@ -180,18 +189,13 @@ def procesar_imagen_facial(client, persona_id, imagen_b64):
         print(f"💾 Imagen guardada: {file_path}", flush=True)
 
         print("🧠 Analizando con DeepFace...", flush=True)
-        resultado = DeepFace.represent(
-            img_path=file_path,
-            model_name="Facenet",
-            enforce_detection=True,
-            detector_backend="retinaface"
-        )
+        embedding = extraer_embedding_mqtt(file_path)
 
         conn = get_connection()
         cur = conn.cursor()
         cur.execute(
             "UPDATE personas SET encoding_facial = %s WHERE id = %s",
-            (json.dumps(resultado[0]['embedding']), persona_id)
+            (json.dumps(embedding), persona_id)
         )
         conn.commit()
         cur.close()
@@ -202,10 +206,10 @@ def procesar_imagen_facial(client, persona_id, imagen_b64):
             "status": "ok", "file_name": file_name
         }))
 
-    except ValueError:
-        print("❌ DeepFace: No se detecto rostro.", flush=True)
+    except ValueError as ve:
+        print(f"❌ DeepFace: {ve}", flush=True)
         client.publish("esp32/respuesta/facial", json.dumps({
-            "status": "error", "mensaje": "No se detecto rostro"
+            "status": "error", "mensaje": str(ve)
         }))
     except Exception as e:
         print(f"❌ Error: {e}", flush=True)

@@ -313,8 +313,8 @@ void initCamera() {
   config.pin_reset     = -1;
   config.xclk_freq_hz  = 20000000;
   config.pixel_format  = PIXFORMAT_JPEG;
-  config.frame_size    = FRAMESIZE_QVGA;
-  config.jpeg_quality  = 6;
+  config.frame_size    = FRAMESIZE_VGA;
+  config.jpeg_quality  = 8;
   config.fb_count      = 1;
 
   if (esp_camera_init(&config) == ESP_OK) {
@@ -329,7 +329,8 @@ void initCamera() {
   s->set_brightness(s, 1);
   s->set_contrast(s, 1);
   s->set_special_effect(s, 0);
-  s->set_vflip(s, 1);
+  s->set_vflip(s, 0);
+  s->set_hmirror(s, 1);
 }
 
 
