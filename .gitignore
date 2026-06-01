@@ -13,3 +13,6 @@ static/*.*
 .next
 node_modules
 dist
+
+
+Backend/static/capturas_prueba/*
