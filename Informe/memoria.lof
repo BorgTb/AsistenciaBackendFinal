@@ -1,0 +1,41 @@
+\babel@toc {spanish}{}\relax 
+\babel@toc {nil}{}\relax 
+\addvspace {10\p@ }
+\addvspace {10\p@ }
+\contentsline {figure}{\numberline {2.1}{\ignorespaces Metodología prototipado evolutivo con enfoque incremental}}{21}{}%
+\addvspace {10\p@ }
+\addvspace {10\p@ }
+\contentsline {figure}{\numberline {4.1}{\ignorespaces Arquitectura física}}{37}{}%
+\contentsline {figure}{\numberline {4.2}{\ignorespaces Arquitectura lógica}}{38}{}%
+\contentsline {figure}{\numberline {4.3}{\ignorespaces Mockup menú principal en el ESP32-CAM}}{40}{}%
+\contentsline {figure}{\numberline {4.4}{\ignorespaces Mockup panel de configuración Wi-Fi}}{41}{}%
+\contentsline {figure}{\numberline {4.5}{\ignorespaces Mockup registro usuario en el ESP32-CAM}}{42}{}%
+\contentsline {figure}{\numberline {4.6}{\ignorespaces Mockup usuarios almacenados en el ESP32-CAM}}{43}{}%
+\contentsline {figure}{\numberline {4.7}{\ignorespaces Mockup usuarios almacenados en el ESP32-CAM}}{44}{}%
+\contentsline {figure}{\numberline {4.8}{\ignorespaces Mockup creación de turnos en el ESP32-CAM}}{45}{}%
+\contentsline {figure}{\numberline {4.9}{\ignorespaces Mockup asignacion de turnos en el ESP32-CAM}}{46}{}%
+\contentsline {figure}{\numberline {4.10}{\ignorespaces Flujo operacional para el registro de asistencia.}}{47}{}%
+\contentsline {figure}{\numberline {4.11}{\ignorespaces Conexiones entre el ESP32-CAM y el lector de huellas AS608.}}{49}{}%
+\contentsline {figure}{\numberline {4.12}{\ignorespaces Fragmento de código para inicializar el lector AS608 utilizando UART.}}{50}{}%
+\contentsline {figure}{\numberline {4.13}{\ignorespaces asignación de rutas para el servidor web embebido.}}{51}{}%
+\contentsline {figure}{\numberline {4.14}{\ignorespaces Menú principal del sistema web embebido.}}{52}{}%
+\contentsline {figure}{\numberline {4.15}{\ignorespaces Interfaz de configuración Wi-Fi.}}{53}{}%
+\contentsline {figure}{\numberline {4.16}{\ignorespaces Vista para el registro de personas en el dispositivo.}}{54}{}%
+\contentsline {figure}{\numberline {4.17}{\ignorespaces Vista de asistencias locales almacenadas en el dispositivo.}}{55}{}%
+\contentsline {figure}{\numberline {4.18}{\ignorespaces Vista de asistencias locales almacenadas en el dispositivo.}}{56}{}%
+\contentsline {figure}{\numberline {4.19}{\ignorespaces Vista de gestión de turnos locales almacenados en el dispositivo.}}{57}{}%
+\contentsline {figure}{\numberline {4.20}{\ignorespaces Vista de gestión de asignaciones locales almacenadas en el dispositivo.}}{58}{}%
+\contentsline {figure}{\numberline {4.21}{\ignorespaces Inicialización del sistema de archivos SPIFFS.}}{61}{}%
+\contentsline {figure}{\numberline {4.22}{\ignorespaces Búsqueda de slot libre en el lector de huellas AS608.}}{62}{}%
+\contentsline {figure}{\numberline {4.23}{\ignorespaces Procedimiento de enrolamiento biométrico en el AS608.}}{63}{}%
+\contentsline {figure}{\numberline {4.24}{\ignorespaces Registro de usuario y almacenamiento de datos en JSON.}}{64}{}%
+\contentsline {figure}{\numberline {4.25}{\ignorespaces Registro de asistencia en modo offline mediante huella digital.}}{65}{}%
+\contentsline {figure}{\numberline {4.26}{\ignorespaces Registro de asistencia en modo offline mediante huella digital.}}{66}{}%
+\contentsline {figure}{\numberline {4.27}{\ignorespaces Funciones para lectura y escritura de archivos JSON en SPIFFS.}}{67}{}%
+\contentsline {figure}{\numberline {4.28}{\ignorespaces Diagrama preliminar de bases de datos}}{71}{}%
+\contentsline {figure}{\numberline {4.29}{\ignorespaces Función de conexión WiFi en el ESP32-CAM}}{73}{}%
+\contentsline {figure}{\numberline {4.30}{\ignorespaces Inicialización de la camara del ESP32-CAM}}{74}{}%
+\contentsline {figure}{\numberline {4.31}{\ignorespaces Envío de imágenes por partes desde el ESP32-CAM}}{75}{}%
+\contentsline {figure}{\numberline {4.32}{\ignorespaces Método para la reconexión con el MQTT}}{76}{}%
+\contentsline {figure}{\numberline {4.33}{\ignorespaces Funcion para recibir imagenes en el backend.}}{77}{}%
+\contentsline {figure}{\numberline {4.34}{\ignorespaces Metodo generico para envio de peticiones HTTP.}}{79}{}%

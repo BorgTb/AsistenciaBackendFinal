@@ -1,9 +1,13 @@
 from flask import Blueprint, request, jsonify
 from database import get_connection
 from routes.auth import token_opcional, requiere_rol
+import os
 
 
 personas_bp = Blueprint('personas', __name__)
+
+
+PREVIEWS_DIR = os.path.join(os.getcwd(), 'static', 'previews')
 
 
 def _email_valido(email):
@@ -222,6 +226,44 @@ def update_huella_persona(persona_id):
         conn.close()
 
 
+@personas_bp.route('/api/personas/<persona_id>/consentimiento', methods=['POST'])
+@token_opcional
+def registrar_consentimiento(persona_id):
+    data = request.json or {}
+    version_politica = data.get('version_politica', '1.0')
+    metodo_aceptacion = data.get('metodo_aceptacion', 'web')
+    ip_dispositivo = request.headers.get('X-Forwarded-For', request.remote_addr)
+
+    conn = get_connection()
+    cur = conn.cursor()
+    try:
+        if request.empresa_id and request.user_rol != 'admin':
+            cur.execute(
+                "SELECT id FROM personas WHERE id::text = %s AND empresa_id = %s",
+                (str(persona_id), request.empresa_id)
+            )
+        elif request.user_rol == 'admin':
+            cur.execute("SELECT id FROM personas WHERE id::text = %s", (str(persona_id),))
+        else:
+            return jsonify({'error': 'No autorizado'}), 403
+
+        if not cur.fetchone():
+            return jsonify({'error': 'Persona no encontrada'}), 404
+
+        cur.execute(
+            "INSERT INTO consentimientos (persona_id, version_politica, ip_dispositivo, metodo_aceptacion) VALUES (%s, %s, %s, %s) ON CONFLICT (persona_id) DO UPDATE SET fecha_aceptacion = NOW(), version_politica = EXCLUDED.version_politica, metodo_aceptacion = EXCLUDED.metodo_aceptacion",
+            (persona_id, version_politica, ip_dispositivo, metodo_aceptacion)
+        )
+        conn.commit()
+        return jsonify({'ok': True, 'mensaje': 'Consentimiento biometrico registrado'})
+    except Exception as e:
+        conn.rollback()
+        return jsonify({'error': str(e)}), 500
+    finally:
+        cur.close()
+        conn.close()
+
+
 @personas_bp.route('/api/personas/<persona_id>', methods=['DELETE'])
 @token_opcional
 def delete_persona(persona_id):
@@ -239,6 +281,56 @@ def delete_persona(persona_id):
             return jsonify({'error': 'No autorizado'}), 403
         conn.commit()
         return jsonify({'ok': True})
+    except Exception as e:
+        conn.rollback()
+        return jsonify({'error': str(e)}), 500
+    finally:
+        cur.close()
+        conn.close()
+
+
+@personas_bp.route('/api/personas/<persona_id>/datos-biometricos', methods=['DELETE'])
+@token_opcional
+def eliminar_datos_biometricos(persona_id):
+    conn = get_connection()
+    cur = conn.cursor()
+    try:
+        if request.empresa_id and request.user_rol != 'admin':
+            cur.execute(
+                "SELECT id, encoding_facial, nombre FROM personas WHERE id::text = %s AND empresa_id = %s",
+                (str(persona_id), request.empresa_id)
+            )
+        elif request.user_rol == 'admin':
+            cur.execute(
+                "SELECT id, encoding_facial, nombre FROM personas WHERE id::text = %s",
+                (str(persona_id),)
+            )
+        else:
+            return jsonify({'error': 'No autorizado'}), 403
+
+        row = cur.fetchone()
+        if not row:
+            return jsonify({'error': 'Persona no encontrada'}), 404
+
+        persona_id_real, embedding_anterior, nombre = row
+
+        usuario_solicitante = getattr(request, 'user_id', 'anonimo')
+
+        cur.execute(
+            "INSERT INTO eliminaciones_biometricas (persona_id, embedding_anterior, foto_path, usuario_solicitante) VALUES (%s, %s, %s, %s)",
+            (persona_id_real, embedding_anterior, f"static/previews/{persona_id_real}.jpg", str(usuario_solicitante))
+        )
+
+        cur.execute("UPDATE personas SET encoding_facial = NULL, huella_id = NULL WHERE id = %s", (persona_id_real,))
+
+        foto_path = os.path.join(PREVIEWS_DIR, f"{persona_id_real}.jpg")
+        if os.path.exists(foto_path):
+            os.unlink(foto_path)
+
+        cur.execute("DELETE FROM consentimientos WHERE persona_id = %s", (persona_id_real,))
+
+        conn.commit()
+        return jsonify({'ok': True, 'mensaje': f'Datos biometricos de {nombre} eliminados. Registros de asistencia conservados.'})
     except Exception as e:
         conn.rollback()
         return jsonify({'error': str(e)}), 500

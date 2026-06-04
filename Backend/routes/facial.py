@@ -1,6 +1,7 @@
 from flask import Blueprint, request, jsonify
 from database import get_connection
 from deepface import DeepFace
+from encryption import cifrar_embedding, descifrar_embedding
 import numpy as np
 import base64
 import json
@@ -17,6 +18,35 @@ facial_bp = Blueprint('facial', __name__)
 # Aseguramos que exista la carpeta estática para las vistas previas
 PREVIEWS_DIR = os.path.join(os.getcwd(), 'static', 'previews')
 os.makedirs(PREVIEWS_DIR, exist_ok=True)
+
+
+def _ip_cliente():
+    return request.headers.get('X-Forwarded-For', request.remote_addr)
+
+
+def _log_biometrico(persona_id, dispositivo_id, tipo_operacion, resultado):
+    try:
+        conn = get_connection()
+        cur = conn.cursor()
+        cur.execute(
+            "INSERT INTO logs_biometricos (persona_id, dispositivo_id, tipo_operacion, resultado, ip_origen) VALUES (%s, %s, %s, %s, %s)",
+            (persona_id, dispositivo_id, tipo_operacion, resultado, _ip_cliente())
+        )
+        conn.commit()
+        cur.close()
+        conn.close()
+    except Exception:
+        pass
+
+
+def _verificar_consentimiento(persona_id):
+    conn = get_connection()
+    cur = conn.cursor()
+    cur.execute("SELECT id FROM consentimientos WHERE persona_id = %s", (persona_id,))
+    existe = cur.fetchone()
+    cur.close()
+    conn.close()
+    return existe is not None
 
 def decodificar_y_guardar_temporal(imagen_b64):
     """Usado solo para verificaciones rápidas, se borra al terminar"""
@@ -63,6 +93,9 @@ def registrar_facial():
     persona_id = data.get('persona_id')
     imagen_b64 = data.get('imagen')
 
+    if not _verificar_consentimiento(persona_id):
+        return jsonify({'error': 'Consentimiento biometrico requerido. Acepte la politica de privacidad antes de registrar datos biometricos.'}), 403
+
     # 1. Procesar la imagen y sacar el embedding
     file_path = guardar_imagen_de_registro(persona_id, imagen_b64) # Tu función actual
     
@@ -78,22 +111,22 @@ def registrar_facial():
         UMBRAL_DUPLICADO = 10.0 # Si la distancia es menor a 10, es la misma persona
 
         for ex_id, ex_nombre, ex_encoding in registros_existentes:
-            embedding_db = np.array(json.loads(ex_encoding))
+            embedding_db = np.array(descifrar_embedding(ex_encoding))
             distancia = np.linalg.norm(embedding_db - nuevo_embedding)
 
             if distancia < UMBRAL_DUPLICADO:
                 cur.close()
                 conn.close()
-                # Borramos la foto física que se acaba de crear porque no la usaremos
                 if os.path.exists(file_path):
                     os.unlink(file_path)
+                _log_biometrico(persona_id, None, 'registro', 'duplicado')
                 return jsonify({
                     'error': 'Rostro ya registrado',
                     'mensaje': f'Esta persona ya está registrada como "{ex_nombre}" (ID: {ex_id})'
                 }), 409 # Código 409: Conflicto
         
         # --- SI PASA LA VALIDACIÓN, GUARDAR ---
-        encoding_json = json.dumps(nuevo_embedding.tolist())
+        encoding_json = cifrar_embedding(nuevo_embedding.tolist())
         cur.execute(
             "UPDATE personas SET encoding_facial = %s WHERE id = %s",
             (encoding_json, persona_id)
@@ -102,12 +135,15 @@ def registrar_facial():
         cur.close()
         conn.close()
 
+        _log_biometrico(persona_id, None, 'registro', 'exito')
         return jsonify({'ok': True, 'mensaje': 'Registro exitoso'}), 200
 
     except ValueError as ve:
         if os.path.exists(file_path): os.unlink(file_path)
+        _log_biometrico(persona_id, None, 'registro', 'fallo')
         return jsonify({'error': str(ve)}), 400
     except Exception as e:
+        _log_biometrico(persona_id, None, 'registro', 'fallo')
         return jsonify({'error': str(e)}), 500
 
 @facial_bp.route('/api/facial/actualizar/<persona_id>', methods=['PUT'])
@@ -136,11 +172,12 @@ def actualizar_facial(persona_id):
 
         cur.execute(
             "UPDATE personas SET encoding_facial = %s WHERE id::text = %s",
-            (json.dumps(embedding), str(persona_id))
+            (cifrar_embedding(embedding), str(persona_id))
         )
         conn.commit()
 
         preview_url = f"{request.host_url.rstrip('/')}/static/previews/{file_name}"
+        _log_biometrico(persona_id, None, 'registro', 'exito')
         return jsonify({
             'ok': True,
             'mensaje': 'Rostro actualizado correctamente',
@@ -189,9 +226,10 @@ def verificar_facial():
         conn.close()
 
         if not row or not row[0]:
+            _log_biometrico(persona_id, None, 'verificacion', 'no_encontrado')
             return jsonify({'error': 'Persona sin rostro registrado'}), 404
 
-        embedding_db = np.array(json.loads(row[0]))
+        embedding_db = np.array(descifrar_embedding(row[0]))
 
         embedding_captura = np.array(extraer_embedding(tmp_path, anti_spoofing=True))
 
@@ -200,12 +238,14 @@ def verificar_facial():
 
         if distancia < 10:
             confianza = round(max(0, (1 - distancia / 20)) * 100, 1)
+            _log_biometrico(persona_id, None, 'verificacion', 'exito')
             return jsonify({
                 'ok': True,
                 'confianza': confianza,
                 'distancia': round(float(distancia), 3)
             })
 
+        _log_biometrico(persona_id, None, 'verificacion', 'fallo')
         return jsonify({
             'error': 'Rostro no coincide',
             'distancia': round(float(distancia), 3)
@@ -280,7 +320,7 @@ def identificar_facial():
         
         for row in personas_db:
             persona_id = row[0]
-            embedding_db = np.array(json.loads(row[1]))
+            embedding_db = np.array(descifrar_embedding(row[1]))
             distancia = np.linalg.norm(embedding_db - embedding_captura)
             
             if distancia < mejor_distancia:
@@ -292,10 +332,12 @@ def identificar_facial():
         
         if mejor_distancia < UMBRAL_FACENET:
             print(f"🟢 ID: {persona_identificada_id} (Distancia: {round(mejor_distancia, 2)})")
+            _log_biometrico(persona_identificada_id, None, 'identificacion', 'exito')
             # Opcional: Podrías renombrar la foto aquí si quieres saber de quién fue
             return jsonify({'ok': True, 'persona_id': str(persona_identificada_id)}), 200
         else:
             print(f"🟡 Desconocido. Distancia: {round(mejor_distancia, 2)}")
+            _log_biometrico(None, None, 'identificacion', 'fallo')
             return jsonify({'error': 'Rostro no reconocido. Distancia muy alta.'}), 404
 
     except ValueError as ve:

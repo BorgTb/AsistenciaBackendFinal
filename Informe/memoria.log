@@ -1,0 +1,1288 @@
+This is pdfTeX, Version 3.141592653-2.6-1.40.28 (MiKTeX 25.12) (preloaded format=pdflatex 2026.6.4)  4 JUN 2026 15:05
+entering extended mode
+ restricted \write18 enabled.
+ file:line:error style messages enabled.
+ %&-line parsing enabled.
+**"c:/Users/agu_e/OneDrive/Escritorio/Proyecto Titulo/AsistenciaBackendFinal/Informe/memoria.tex"
+(c:/Users/agu_e/OneDrive/Escritorio/Proyecto Titulo/AsistenciaBackendFinal/Informe/memoria.tex
+LaTeX2e <2025-11-01>
+L3 programming layer <2025-12-24>
+(iccmemoria.cls
+Document Class: iccmemoria 2025/11/10 v2.1 Estilo Memoria de TÃ­tulo - ICC - UTalca (actualizado con doble portada)
+(D:\Latex\tex/latex/base\report.cls
+Document Class: report 2025/01/22 v1.4n Standard LaTeX document class
+(D:\Latex\tex/latex/base\fleqn.clo
+File: fleqn.clo 2016/12/29 v1.2b Standard LaTeX option (flush left equations)
+\mathindent=\skip49
+Applying: [2015/01/01] Make \[ robust on input line 50.
+LaTeX Info: Redefining \[ on input line 51.
+Already applied: [0000/00/00] Make \[ robust on input line 62.
+Applying: [2015/01/01] Make \] robust on input line 74.
+LaTeX Info: Redefining \] on input line 75.
+Already applied: [0000/00/00] Make \] robust on input line 83.
+) (D:\Latex\tex/latex/base\size12.clo
+File: size12.clo 2025/01/22 v1.4n Standard LaTeX file (size option)
+)
+\c@part=\count275
+\c@chapter=\count276
+\c@section=\count277
+\c@subsection=\count278
+\c@subsubsection=\count279
+\c@paragraph=\count280
+\c@subparagraph=\count281
+\c@figure=\count282
+\c@table=\count283
+\abovecaptionskip=\skip50
+\belowcaptionskip=\skip51
+\bibindent=\dimen148
+) (D:\Latex\tex/latex/base\inputenc.sty
+Package: inputenc 2024/02/08 v1.3d Input encoding file
+\inpenc@prehook=\toks17
+\inpenc@posthook=\toks18
+) (D:\Latex\tex/latex/base\fontenc.sty
+Package: fontenc 2025/07/18 v2.1d Standard LaTeX package
+) (D:\Latex\tex/generic/babel\babel.sty
+Package: babel 2025/12/11 v25.17 The multilingual framework for LuaLaTeX, pdfLaTeX and XeLaTeX
+\babel@savecnt=\count284
+LaTeX Encoding Info:    Redeclaring text command \ij (encoding OT1) on input line 2068.
+LaTeX Encoding Info:    Redeclaring text command \IJ (encoding OT1) on input line 2070.
+LaTeX Encoding Info:    Redeclaring text command \ij (encoding T1) on input line 2072.
+LaTeX Encoding Info:    Redeclaring text command \IJ (encoding T1) on input line 2073.
+LaTeX Encoding Info:    Ignoring declaration for text command \ij (encoding ?) on input line 2074.
+LaTeX Encoding Info:    Ignoring declaration for text command \IJ (encoding ?) on input line 2076.
+LaTeX Encoding Info:    Ignoring declaration for text command \SS (encoding ?) on input line 2101.
+\U@D=\dimen149
+\l@unhyphenated=\language79
+ (D:\Latex\tex/generic/babel\txtbabel.def)
+\bbl@readstream=\read2
+\bbl@dirlevel=\count285
+Package babel Info: Configuration files are deprecated, as
+(babel)             they can break document portability.
+(babel)             Reported on input line 4196.
+
+*************************************
+* Local config file bblopts.cfg used
+*
+(D:\Latex\tex/latex/arabi\bblopts.cfg
+File: bblopts.cfg 2005/09/08 v0.1 add Arabic and Farsi to "declared" options of babel
+)
+Package babel Info: You haven't specified a language as a class or package
+(babel)             option. I'll load 'nil'. Reported on input line 4255.
+Package babel Info: Importing font and identification data for nil
+(babel)             from babel-und-x-nil.ini. Reported on input line 4320.
+ (D:\Latex\tex/generic/babel\nil.ldf
+Language: nil 2025/12/11 v25.17 Nil language
+\l@nil=\language80
+)) (D:\Latex\tex/latex/graphics\graphicx.sty
+Package: graphicx 2024/12/31 v1.2e Enhanced LaTeX Graphics (DPC,SPQR)
+ (D:\Latex\tex/latex/graphics\keyval.sty
+Package: keyval 2022/05/29 v1.15 key=value parser (DPC)
+\KV@toks@=\toks19
+) (D:\Latex\tex/latex/graphics\graphics.sty
+Package: graphics 2024/08/06 v1.4g Standard LaTeX Graphics (DPC,SPQR)
+ (D:\Latex\tex/latex/graphics\trig.sty
+Package: trig 2023/12/02 v1.11 sin cos tan (DPC)
+) (D:\Latex\tex/latex/graphics-cfg\graphics.cfg
+File: graphics.cfg 2016/06/04 v1.11 sample graphics configuration
+)
+Package graphics Info: Driver file: pdftex.def on input line 106.
+ (D:\Latex\tex/latex/graphics-def\pdftex.def
+File: pdftex.def 2025/09/29 v1.2d Graphics/color driver for pdftex
+))
+\Gin@req@height=\dimen150
+\Gin@req@width=\dimen151
+) (D:\Latex\tex/latex/setspace\setspace.sty
+Package: setspace 2022/12/04 v6.7b set line spacing
+) (D:\Latex\tex/latex/lm\lmodern.sty
+Package: lmodern 2015/05/01 v1.6.1 Latin Modern Fonts
+LaTeX Font Info:    Overwriting symbol font `operators' in version `normal'
+(Font)                  OT1/cmr/m/n --> OT1/lmr/m/n on input line 22.
+LaTeX Font Info:    Overwriting symbol font `letters' in version `normal'
+(Font)                  OML/cmm/m/it --> OML/lmm/m/it on input line 23.
+LaTeX Font Info:    Overwriting symbol font `symbols' in version `normal'
+(Font)                  OMS/cmsy/m/n --> OMS/lmsy/m/n on input line 24.
+LaTeX Font Info:    Overwriting symbol font `largesymbols' in version `normal'
+(Font)                  OMX/cmex/m/n --> OMX/lmex/m/n on input line 25.
+LaTeX Font Info:    Overwriting symbol font `operators' in version `bold'
+(Font)                  OT1/cmr/bx/n --> OT1/lmr/bx/n on input line 26.
+LaTeX Font Info:    Overwriting symbol font `letters' in version `bold'
+(Font)                  OML/cmm/b/it --> OML/lmm/b/it on input line 27.
+LaTeX Font Info:    Overwriting symbol font `symbols' in version `bold'
+(Font)                  OMS/cmsy/b/n --> OMS/lmsy/b/n on input line 28.
+LaTeX Font Info:    Overwriting symbol font `largesymbols' in version `bold'
+(Font)                  OMX/cmex/m/n --> OMX/lmex/m/n on input line 29.
+LaTeX Font Info:    Overwriting math alphabet `\mathbf' in version `normal'
+(Font)                  OT1/cmr/bx/n --> OT1/lmr/bx/n on input line 31.
+LaTeX Font Info:    Overwriting math alphabet `\mathsf' in version `normal'
+(Font)                  OT1/cmss/m/n --> OT1/lmss/m/n on input line 32.
+LaTeX Font Info:    Overwriting math alphabet `\mathit' in version `normal'
+(Font)                  OT1/cmr/m/it --> OT1/lmr/m/it on input line 33.
+LaTeX Font Info:    Overwriting math alphabet `\mathtt' in version `normal'
+(Font)                  OT1/cmtt/m/n --> OT1/lmtt/m/n on input line 34.
+LaTeX Font Info:    Overwriting math alphabet `\mathbf' in version `bold'
+(Font)                  OT1/cmr/bx/n --> OT1/lmr/bx/n on input line 35.
+LaTeX Font Info:    Overwriting math alphabet `\mathsf' in version `bold'
+(Font)                  OT1/cmss/bx/n --> OT1/lmss/bx/n on input line 36.
+LaTeX Font Info:    Overwriting math alphabet `\mathit' in version `bold'
+(Font)                  OT1/cmr/bx/it --> OT1/lmr/bx/it on input line 37.
+LaTeX Font Info:    Overwriting math alphabet `\mathtt' in version `bold'
+(Font)                  OT1/cmtt/m/n --> OT1/lmtt/m/n on input line 38.
+) (D:\Latex\tex/latex/microtype\microtype.sty
+Package: microtype 2026/03/01 v3.2d Micro-typographical refinements (RS)
+ (D:\Latex\tex/latex/etoolbox\etoolbox.sty
+Package: etoolbox 2025/10/02 v2.5m e-TeX tools for LaTeX (JAW)
+\etb@tempcnta=\count286
+)
+\MT@toks=\toks20
+\MT@tempbox=\box53
+\MT@count=\count287
+LaTeX Info: Redefining \noprotrusionifhmode on input line 1084.
+LaTeX Info: Redefining \leftprotrusion on input line 1085.
+\MT@prot@toks=\toks21
+LaTeX Info: Redefining \rightprotrusion on input line 1104.
+LaTeX Info: Redefining \textls on input line 1449.
+\MT@outer@kern=\dimen152
+LaTeX Info: Redefining \microtypecontext on input line 2053.
+LaTeX Info: Redefining \textmicrotypecontext on input line 2070.
+\MT@listname@count=\count288
+ (D:\Latex\tex/latex/microtype\microtype-pdftex.def
+File: microtype-pdftex.def 2026/03/01 v3.2d Definitions specific to pdftex (RS)
+LaTeX Info: Redefining \lsstyle on input line 944.
+LaTeX Info: Redefining \lslig on input line 944.
+\MT@outer@space=\skip52
+)
+Package microtype Info: Loading configuration file microtype.cfg.
+ (D:\Latex\tex/latex/microtype\microtype.cfg
+File: microtype.cfg 2026/03/01 v3.2d microtype main configuration file (RS)
+)
+LaTeX Info: Redefining \microtypesetup on input line 3065.
+) (D:\Latex\tex/latex/float\float.sty
+Package: float 2001/11/08 v1.3d Float enhancements (AL)
+\c@float@type=\count289
+\float@exts=\toks22
+\float@box=\box54
+\@float@everytoks=\toks23
+\@floatcapt=\box55
+) (D:\Latex\tex/generic/babel/locale/es\babel-spanish.tex)
+Package babel Info: Importing data for spanish
+(babel)             from babel-es.ini. Reported on input line 19.
+\realleftmargin=\dimen153
+\realrightmargin=\dimen154
+\realtopmargin=\dimen155
+\realbottommargin=\dimen156
+\realheadpos=\dimen157
+)
+LaTeX Font Info:    Trying to load font information for T1+lmr on input line 13.
+ (D:\Latex\tex/latex/lm\t1lmr.fd
+File: t1lmr.fd 2015/05/01 v1.6.1 Font defs for Latin Modern
+) (D:\Latex\tex/latex/l3backend\l3backend-pdftex.def
+File: l3backend-pdftex.def 2025-10-09 L3 backend support: PDF output (pdfTeX)
+\l__color_backend_stack_int=\count290
+)
+
+LaTeX Warning: Unused global option(s):
+    [spanish].
+
+(memoria.aux
+
+LaTeX Warning: Label `fig:asistencias' multiply defined.
+
+
+LaTeX Warning: Label `fig:asistencias' multiply defined.
+
+
+LaTeX Warning: Label `fig:asistencias' multiply defined.
+
+)
+\openout1 = `memoria.aux'.
+
+LaTeX Font Info:    Checking defaults for OML/cmm/m/it on input line 13.
+LaTeX Font Info:    ... okay on input line 13.
+LaTeX Font Info:    Checking defaults for OMS/cmsy/m/n on input line 13.
+LaTeX Font Info:    ... okay on input line 13.
+LaTeX Font Info:    Checking defaults for OT1/cmr/m/n on input line 13.
+LaTeX Font Info:    ... okay on input line 13.
+LaTeX Font Info:    Checking defaults for T1/cmr/m/n on input line 13.
+LaTeX Font Info:    ... okay on input line 13.
+LaTeX Font Info:    Checking defaults for TS1/cmr/m/n on input line 13.
+LaTeX Font Info:    ... okay on input line 13.
+LaTeX Font Info:    Checking defaults for OMX/cmex/m/n on input line 13.
+LaTeX Font Info:    ... okay on input line 13.
+LaTeX Font Info:    Checking defaults for U/cmr/m/n on input line 13.
+LaTeX Font Info:    ... okay on input line 13.
+ (D:\Latex\tex/context/base/mkii\supp-pdf.mkii
+[Loading MPS to PDF converter (version 2006.09.02).]
+\scratchcounter=\count291
+\scratchdimen=\dimen158
+\scratchbox=\box56
+\nofMPsegments=\count292
+\nofMParguments=\count293
+\everyMPshowfont=\toks24
+\MPscratchCnt=\count294
+\MPscratchDim=\dimen159
+\MPnumerator=\count295
+\makeMPintoPDFobject=\count296
+\everyMPtoPDFconversion=\toks25
+) (D:\Latex\tex/latex/epstopdf-pkg\epstopdf-base.sty
+Package: epstopdf-base 2020-01-24 v2.11 Base part for package epstopdf
+Package epstopdf-base Info: Redefining graphics rule for `.eps' on input line 485.
+ (D:\Latex\tex/latex/00miktex\epstopdf-sys.cfg
+File: epstopdf-sys.cfg 2021/03/18 v2.0 Configuration of epstopdf for MiKTeX
+))
+LaTeX Info: Redefining \microtypecontext on input line 13.
+Package microtype Info: Applying patch `item' on input line 13.
+Package microtype Info: Applying patch `toc' on input line 13.
+Package microtype Info: Applying patch `eqnum' on input line 13.
+Package microtype Info: Applying patch `footnote' on input line 13.
+Package microtype Info: Applying patch `verbatim' on input line 13.
+LaTeX Info: Redefining \microtypesetup on input line 13.
+Package microtype Info: Generating PDF output.
+Package microtype Info: Character protrusion enabled (level 2).
+Package microtype Info: Using default protrusion set `alltext'.
+Package microtype Info: Automatic font expansion enabled (level 2),
+(microtype)             stretch: 20, shrink: 20, step: 1, non-selected.
+Package microtype Info: Using default expansion set `alltext-nott'.
+Package microtype Info: Patching command `\showhyphens'.
+Package microtype Info: No adjustment of tracking.
+Package microtype Info: No adjustment of interword spacing.
+Package microtype Info: No adjustment of character kerning.
+ (D:\Latex\tex/latex/microtype\mt-cmr.cfg
+File: mt-cmr.cfg 2013/05/19 v2.2 microtype config. file: Computer Modern Roman (RS)
+)
+
+LaTeX Warning: File `Formato Memoria/utalca1.png' not found on input line 16.
+
+
+c:/Users/agu_e/OneDrive/Escritorio/Proyecto Titulo/AsistenciaBackendFinal/Informe/memoria.tex:16: Package pdftex.def Error: File `Formato Memoria/utalca1.png' not found: using draft setting.
+
+See the pdftex.def package documentation for explanation.
+Type  H <return>  for immediate help.
+ ...                                              
+                                                  
+l.16 \maketitle
+               
+Try typing  <return>  to proceed.
+If that doesn't work, type  X <return>  to quit.
+
+LaTeX Font Info:    Trying to load font information for T1+lmtt on input line 16.
+(D:\Latex\tex/latex/lm\t1lmtt.fd
+File: t1lmtt.fd 2015/05/01 v1.6.1 Font defs for Latin Modern
+)
+Package microtype Info: Loading generic protrusion settings for font family
+(microtype)             `lmtt' (encoding: T1).
+(microtype)             For optimal results, create family-specific settings.
+(microtype)             See the microtype manual for details.
+
+Underfull \hbox (badness 10000) in paragraph at lines 16--16
+
+ []
+
+LaTeX Font Info:    Trying to load font information for OT1+lmr on input line 16.
+(D:\Latex\tex/latex/lm\ot1lmr.fd
+File: ot1lmr.fd 2015/05/01 v1.6.1 Font defs for Latin Modern
+)
+LaTeX Font Info:    Trying to load font information for OML+lmm on input line 16.
+ (D:\Latex\tex/latex/lm\omllmm.fd
+File: omllmm.fd 2015/05/01 v1.6.1 Font defs for Latin Modern
+)
+LaTeX Font Info:    Trying to load font information for OMS+lmsy on input line 16.
+ (D:\Latex\tex/latex/lm\omslmsy.fd
+File: omslmsy.fd 2015/05/01 v1.6.1 Font defs for Latin Modern
+)
+LaTeX Font Info:    Trying to load font information for OMX+lmex on input line 16.
+ (D:\Latex\tex/latex/lm\omxlmex.fd
+File: omxlmex.fd 2015/05/01 v1.6.1 Font defs for Latin Modern
+)
+LaTeX Font Info:    External font `lmex10' loaded for size
+(Font)              <12> on input line 16.
+LaTeX Font Info:    External font `lmex10' loaded for size
+(Font)              <8> on input line 16.
+LaTeX Font Info:    External font `lmex10' loaded for size
+(Font)              <6> on input line 16.
+ [-1
+
+
+Non-PDF special ignored!
+<special> papersize=210mm,297mm
+{C:/Users/agu_e/AppData/Local/MiKTeX/fonts/map/pdftex/pdftex.map}{D:/Latex/fonts/enc/dvips/lm/lm-ec.enc}]
+
+LaTeX Warning: File `Formato Memoria/utalca1.png' not found on input line 16.
+
+
+c:/Users/agu_e/OneDrive/Escritorio/Proyecto Titulo/AsistenciaBackendFinal/Informe/memoria.tex:16: Package pdftex.def Error: File `Formato Memoria/utalca1.png' not found: using draft setting.
+
+See the pdftex.def package documentation for explanation.
+Type  H <return>  for immediate help.
+ ...                                              
+                                                  
+l.16 \maketitle
+               
+Try typing  <return>  to proceed.
+If that doesn't work, type  X <return>  to quit.
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 16--16
+
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 16--16
+
+ []
+
+[0] (memoria.toc [1] [2])
+\tf@toc=\write3
+\openout3 = `memoria.toc'.
+
+ [3] (memoria.lof)
+\tf@lof=\write4
+\openout4 = `memoria.lof'.
+
+ [4] (memoria.lot)
+\tf@lot=\write5
+\openout5 = `memoria.lot'.
+
+ [5]
+LaTeX Font Info:    Trying to load font information for TS1+lmr on input line 26.
+ (D:\Latex\tex/latex/lm\ts1lmr.fd
+File: ts1lmr.fd 2015/05/01 v1.6.1 Font defs for Latin Modern
+)
+Overfull \hbox (26.01497pt too wide) in paragraph at lines 28--29
+[]\T1/lmr/m/n/12 (-20) La solución desarrollada utiliza como dispositivo central un ESP32-CAM, microcontrolador
+ []
+
+[6{D:/Latex/fonts/enc/dvips/lm/lm-ts1.enc}] [7]
+\bbl@ensure@spanish {Cap\'\i tulo} 1.
+
+Overfull \hbox (13.09453pt too wide) in paragraph at lines 48--49
+[]\T1/lmr/m/n/12 (-20) El cumplimiento de estas normas no solo busca garantizar la trazabilidad y transparencia
+ []
+
+[8
+
+] [9]
+Overfull \hbox (3.92714pt too wide) in paragraph at lines 83--84
+\T1/lmr/m/n/12 (-20) laboral en pequeñas y medianas empresas mediante integración con ERP y funcionamiento
+ []
+
+[10]
+Overfull \hbox (1.88141pt too wide) in paragraph at lines 92--93
+\T1/lmr/m/n/12 (-20) Incorporar capacidad de funcionamiento offline con almacenamiento local y sincronización
+ []
+
+[11]
+Overfull \hbox (1.76286pt too wide) in paragraph at lines 110--111
+\T1/lmr/m/n/12 (-20) reconocimiento facial y huella digital, operando en modo offline con almacenamiento
+ []
+
+[12] [13]
+\bbl@ensure@spanish {Cap\'\i tulo} 2.
+[14
+
+]
+Overfull \hbox (1.31255pt too wide) in paragraph at lines 143--144
+\T1/lmr/m/n/12 (-20) conexión que permiten la conexión entre diferentes aplicaciones mediante protocolos
+ []
+
+
+Overfull \hbox (5.59192pt too wide) in paragraph at lines 146--147
+\T1/lmr/m/n/12 (-20) diseñado para intercambiar mensajes de manera eficiente, utilizado entre dispositivos
+ []
+
+
+Overfull \hbox (22.03925pt too wide) in paragraph at lines 148--149
+[]\T1/lmr/m/n/12 (-20) SPIFFS (SPI Flash File System): Sistema de archivos diseñado para microcontroladores
+ []
+
+
+Overfull \hbox (18.36948pt too wide) in paragraph at lines 151--152
+\T1/lmr/m/n/12 (-20) enviados por dispositivos IoT utilizando el protocolo MQTT. Actúa como intermediario
+ []
+
+
+Overfull \hbox (6.40356pt too wide) in paragraph at lines 151--152
+\T1/lmr/m/n/12 (-20) entre el publicador (el ESP32-CAM) y los suscriptores (backend u otros servicios)[40]. 
+ []
+
+[15] [16]
+Overfull \hbox (1.9233pt too wide) in paragraph at lines 174--175
+\T1/lmr/m/n/12 (-20) A continuación se revisaran los sistemas y tecnológicas existentes relacionados dispositivos
+ []
+
+[17] [18] [19] [20]
+
+LaTeX Warning: File `Formato Memoria/Imagenes/metodologia (1).png' not found on input line 220.
+
+
+c:/Users/agu_e/OneDrive/Escritorio/Proyecto Titulo/AsistenciaBackendFinal/Informe/memoria.tex:220: Package pdftex.def Error: File `Formato Memoria/Imagenes/metodologia (1).png' not found: using draft setting.
+
+See the pdftex.def package documentation for explanation.
+Type  H <return>  for immediate help.
+ ...                                              
+                                                  
+l.220 ...ato Memoria/Imagenes/metodologia (1).png}
+                                                  
+Try typing  <return>  to proceed.
+If that doesn't work, type  X <return>  to quit.
+
+[21] [22] [23]
+\bbl@ensure@spanish {Cap\'\i tulo} 3.
+[24
+
+]
+Overfull \hbox (2.15076pt too wide) in paragraph at lines 277--278
+[]\T1/lmr/m/n/12 (-20) Paralelamente, se realizan pruebas integradas para verificar que la nueva funcionalidad
+ []
+
+[25]
+Overfull \hbox (31.4217pt too wide) in paragraph at lines 289--290
+\T1/lmr/m/n/12 (-20) sobre el prototipo anterior, permitiendo evaluar, corregir y fortalecer el sistema progresivamente.
+ []
+
+[26] [27] [28] [29] [30] [31] [32] [33]
+Overfull \hbox (8.18605pt too wide) in paragraph at lines 574--575
+\T1/lmr/m/n/12 (-20) de los cuales consideramos escenarios de desconexión total, conectividad intermitente,
+ []
+
+
+Overfull \hbox (32.89418pt too wide) in paragraph at lines 587--589
+[]\T1/lmr/m/n/12 (-20) Objetivo especifico 3: Incorporar capacidad de funcionamiento offline con almacenamiento
+ []
+
+[34]
+Overfull \hbox (1.16055pt too wide) in paragraph at lines 607--608
+\T1/lmr/m/n/12 (-20) incorporando nuevas funcionalidades: configuración inicial del hardware, almacenamiento
+ []
+
+[35]
+\bbl@ensure@spanish {Cap\'\i tulo} 4.
+
+LaTeX Warning: File `Formato Memoria/Imagenes/arqui2.drawio.png' not found on input line 621.
+
+
+c:/Users/agu_e/OneDrive/Escritorio/Proyecto Titulo/AsistenciaBackendFinal/Informe/memoria.tex:621: Package pdftex.def Error: File `Formato Memoria/Imagenes/arqui2.drawio.png' not found: using draft setting.
+
+See the pdftex.def package documentation for explanation.
+Type  H <return>  for immediate help.
+ ...                                              
+                                                  
+l.621 ...rmato Memoria/Imagenes/arqui2.drawio.png}
+                                                  
+Try typing  <return>  to proceed.
+If that doesn't work, type  X <return>  to quit.
+
+
+LaTeX Warning: `h' float specifier changed to `ht'.
+
+[36
+
+]
+
+LaTeX Warning: File `Formato Memoria/Imagenes/arquilogica.png' not found on input line 634.
+
+
+c:/Users/agu_e/OneDrive/Escritorio/Proyecto Titulo/AsistenciaBackendFinal/Informe/memoria.tex:634: Package pdftex.def Error: File `Formato Memoria/Imagenes/arquilogica.png' not found: using draft setting.
+
+See the pdftex.def package documentation for explanation.
+Type  H <return>  for immediate help.
+ ...                                              
+                                                  
+l.634 ...Formato Memoria/Imagenes/arquilogica.png}
+                                                  
+Try typing  <return>  to proceed.
+If that doesn't work, type  X <return>  to quit.
+
+
+LaTeX Warning: `h' float specifier changed to `ht'.
+
+[37] [38]
+Overfull \hbox (11.09415pt too wide) in paragraph at lines 656--658
+[]\T1/lmr/bx/n/12 (-20) Definición de funcionalidades mínimas (MVP)\T1/lmr/m/n/12 (-20) : Se identificaron las capacidades
+ []
+
+
+Overfull \hbox (12.81958pt too wide) in paragraph at lines 659--661
+[]\T1/lmr/bx/n/12 (-20) Identificación de limitaciones técnicas\T1/lmr/m/n/12 (-20) : Se revisaron las restricciones tecnologicas
+ []
+
+
+LaTeX Warning: File `Formato Memoria/Imagenes/menu.drawio.png' not found on input line 684.
+
+
+c:/Users/agu_e/OneDrive/Escritorio/Proyecto Titulo/AsistenciaBackendFinal/Informe/memoria.tex:684: Package pdftex.def Error: File `Formato Memoria/Imagenes/menu.drawio.png' not found: using draft setting.
+
+See the pdftex.def package documentation for explanation.
+Type  H <return>  for immediate help.
+ ...                                              
+                                                  
+l.684 ...Formato Memoria/Imagenes/menu.drawio.png}
+                                                  
+Try typing  <return>  to proceed.
+If that doesn't work, type  X <return>  to quit.
+
+[39]
+
+LaTeX Warning: File `Formato Memoria/Imagenes/configwifi.drawio.png' not found on input line 693.
+
+
+c:/Users/agu_e/OneDrive/Escritorio/Proyecto Titulo/AsistenciaBackendFinal/Informe/memoria.tex:693: Package pdftex.def Error: File `Formato Memoria/Imagenes/configwifi.drawio.png' not found: using draft setting.
+
+See the pdftex.def package documentation for explanation.
+Type  H <return>  for immediate help.
+ ...                                              
+                                                  
+l.693 ...o Memoria/Imagenes/configwifi.drawio.png}
+                                                  
+Try typing  <return>  to proceed.
+If that doesn't work, type  X <return>  to quit.
+
+[40]
+
+LaTeX Warning: File `Formato Memoria/Imagenes/registeruser.jpg' not found on input line 702.
+
+
+c:/Users/agu_e/OneDrive/Escritorio/Proyecto Titulo/AsistenciaBackendFinal/Informe/memoria.tex:702: Package pdftex.def Error: File `Formato Memoria/Imagenes/registeruser.jpg' not found: using draft setting.
+
+See the pdftex.def package documentation for explanation.
+Type  H <return>  for immediate help.
+ ...                                              
+                                                  
+l.702 ...ormato Memoria/Imagenes/registeruser.jpg}
+                                                  
+Try typing  <return>  to proceed.
+If that doesn't work, type  X <return>  to quit.
+
+[41]
+
+LaTeX Warning: File `Formato Memoria/Imagenes/lista user.jpg' not found on input line 711.
+
+
+c:/Users/agu_e/OneDrive/Escritorio/Proyecto Titulo/AsistenciaBackendFinal/Informe/memoria.tex:711: Package pdftex.def Error: File `Formato Memoria/Imagenes/lista user.jpg' not found: using draft setting.
+
+See the pdftex.def package documentation for explanation.
+Type  H <return>  for immediate help.
+ ...                                              
+                                                  
+l.711 ...{Formato Memoria/Imagenes/lista user.jpg}
+                                                  
+Try typing  <return>  to proceed.
+If that doesn't work, type  X <return>  to quit.
+
+[42]
+
+LaTeX Warning: File `Formato Memoria/Imagenes/ver turnos.drawio.png' not found on input line 719.
+
+
+c:/Users/agu_e/OneDrive/Escritorio/Proyecto Titulo/AsistenciaBackendFinal/Informe/memoria.tex:719: Package pdftex.def Error: File `Formato Memoria/Imagenes/ver turnos.drawio.png' not found: using draft setting.
+
+See the pdftex.def package documentation for explanation.
+Type  H <return>  for immediate help.
+ ...                                              
+                                                  
+l.719 ...o Memoria/Imagenes/ver turnos.drawio.png}
+                                                  
+Try typing  <return>  to proceed.
+If that doesn't work, type  X <return>  to quit.
+
+[43]
+
+LaTeX Warning: File `Formato Memoria/Imagenes/crearturnosmockup.png' not found on input line 727.
+
+
+c:/Users/agu_e/OneDrive/Escritorio/Proyecto Titulo/AsistenciaBackendFinal/Informe/memoria.tex:727: Package pdftex.def Error: File `Formato Memoria/Imagenes/crearturnosmockup.png' not found: using draft setting.
+
+See the pdftex.def package documentation for explanation.
+Type  H <return>  for immediate help.
+ ...                                              
+                                                  
+l.727 ...o Memoria/Imagenes/crearturnosmockup.png}
+                                                  
+Try typing  <return>  to proceed.
+If that doesn't work, type  X <return>  to quit.
+
+[44]
+
+LaTeX Warning: File `Formato Memoria/Imagenes/asigncaiondeturnomockup2.png' not found on input line 735.
+
+
+c:/Users/agu_e/OneDrive/Escritorio/Proyecto Titulo/AsistenciaBackendFinal/Informe/memoria.tex:735: Package pdftex.def Error: File `Formato Memoria/Imagenes/asigncaiondeturnomockup2.png' not found: using draft setting.
+
+See the pdftex.def package documentation for explanation.
+Type  H <return>  for immediate help.
+ ...                                              
+                                                  
+l.735 ...ia/Imagenes/asigncaiondeturnomockup2.png}
+                                                  
+Try typing  <return>  to proceed.
+If that doesn't work, type  X <return>  to quit.
+
+[45]
+
+LaTeX Warning: File `Formato Memoria/Imagenes/diagramaflujo2 (1).png' not found on input line 745.
+
+
+c:/Users/agu_e/OneDrive/Escritorio/Proyecto Titulo/AsistenciaBackendFinal/Informe/memoria.tex:745: Package pdftex.def Error: File `Formato Memoria/Imagenes/diagramaflujo2 (1).png' not found: using draft setting.
+
+See the pdftex.def package documentation for explanation.
+Type  H <return>  for immediate help.
+ ...                                              
+                                                  
+l.745 ... Memoria/Imagenes/diagramaflujo2 (1).png}
+                                                  
+Try typing  <return>  to proceed.
+If that doesn't work, type  X <return>  to quit.
+
+[46] [47]
+
+LaTeX Warning: File `Formato Memoria/Imagenes/conexiones.png' not found on input line 774.
+
+
+c:/Users/agu_e/OneDrive/Escritorio/Proyecto Titulo/AsistenciaBackendFinal/Informe/memoria.tex:774: Package pdftex.def Error: File `Formato Memoria/Imagenes/conexiones.png' not found: using draft setting.
+
+See the pdftex.def package documentation for explanation.
+Type  H <return>  for immediate help.
+ ...                                              
+                                                  
+l.774 ...{Formato Memoria/Imagenes/conexiones.png}
+                                                  
+Try typing  <return>  to proceed.
+If that doesn't work, type  X <return>  to quit.
+
+[48]
+
+LaTeX Warning: File `Formato Memoria/Imagenes/codigo_inicializacion_huella.png' not found on input line 793.
+
+
+c:/Users/agu_e/OneDrive/Escritorio/Proyecto Titulo/AsistenciaBackendFinal/Informe/memoria.tex:793: Package pdftex.def Error: File `Formato Memoria/Imagenes/codigo_inicializacion_huella.png' not found: using draft setting.
+
+See the pdftex.def package documentation for explanation.
+Type  H <return>  for immediate help.
+ ...                                              
+                                                  
+l.793 ...magenes/codigo_inicializacion_huella.png}
+                                                  
+Try typing  <return>  to proceed.
+If that doesn't work, type  X <return>  to quit.
+
+[49] [50]
+
+LaTeX Warning: File `Formato Memoria/Imagenes/codigo_rutas_servidor.png' not found on input line 819.
+
+
+c:/Users/agu_e/OneDrive/Escritorio/Proyecto Titulo/AsistenciaBackendFinal/Informe/memoria.tex:819: Package pdftex.def Error: File `Formato Memoria/Imagenes/codigo_rutas_servidor.png' not found: using draft setting.
+
+See the pdftex.def package documentation for explanation.
+Type  H <return>  for immediate help.
+ ...                                              
+                                                  
+l.819 ...moria/Imagenes/codigo_rutas_servidor.png}
+                                                  
+Try typing  <return>  to proceed.
+If that doesn't work, type  X <return>  to quit.
+
+[51]
+
+LaTeX Warning: File `Formato Memoria/Imagenes/menuimplementado.png' not found on input line 836.
+
+
+c:/Users/agu_e/OneDrive/Escritorio/Proyecto Titulo/AsistenciaBackendFinal/Informe/memoria.tex:836: Package pdftex.def Error: File `Formato Memoria/Imagenes/menuimplementado.png' not found: using draft setting.
+
+See the pdftex.def package documentation for explanation.
+Type  H <return>  for immediate help.
+ ...                                              
+                                                  
+l.836 ...to Memoria/Imagenes/menuimplementado.png}
+                                                  
+Try typing  <return>  to proceed.
+If that doesn't work, type  X <return>  to quit.
+
+
+Overfull \hbox (1.83138pt too wide) in paragraph at lines 844--845
+\T1/lmr/m/n/12 (-20) Mediante la ruta \T1/lmtt/m/n/12 /wifi\T1/lmr/m/n/12 (-20) , el dispositivo ofrece un formulario para actualizar las credenciales
+ []
+
+[52]
+
+LaTeX Warning: File `Formato Memoria/Imagenes/menuwifiimplementado.png' not found on input line 849.
+
+
+c:/Users/agu_e/OneDrive/Escritorio/Proyecto Titulo/AsistenciaBackendFinal/Informe/memoria.tex:849: Package pdftex.def Error: File `Formato Memoria/Imagenes/menuwifiimplementado.png' not found: using draft setting.
+
+See the pdftex.def package documentation for explanation.
+Type  H <return>  for immediate help.
+ ...                                              
+                                                  
+l.849 ...emoria/Imagenes/menuwifiimplementado.png}
+                                                  
+Try typing  <return>  to proceed.
+If that doesn't work, type  X <return>  to quit.
+
+
+LaTeX Warning: File `Formato Memoria/Imagenes/registroimplementado.png' not found on input line 862.
+
+
+c:/Users/agu_e/OneDrive/Escritorio/Proyecto Titulo/AsistenciaBackendFinal/Informe/memoria.tex:862: Package pdftex.def Error: File `Formato Memoria/Imagenes/registroimplementado.png' not found: using draft setting.
+
+See the pdftex.def package documentation for explanation.
+Type  H <return>  for immediate help.
+ ...                                              
+                                                  
+l.862 ...emoria/Imagenes/registroimplementado.png}
+                                                  
+Try typing  <return>  to proceed.
+If that doesn't work, type  X <return>  to quit.
+
+[53]
+
+LaTeX Warning: File `Formato Memoria/Imagenes/vistaasitenciasimplementado.png' not found on input line 875.
+
+
+c:/Users/agu_e/OneDrive/Escritorio/Proyecto Titulo/AsistenciaBackendFinal/Informe/memoria.tex:875: Package pdftex.def Error: File `Formato Memoria/Imagenes/vistaasitenciasimplementado.png' not found: using draft setting.
+
+See the pdftex.def package documentation for explanation.
+Type  H <return>  for immediate help.
+ ...                                              
+                                                  
+l.875 ...Imagenes/vistaasitenciasimplementado.png}
+                                                  
+Try typing  <return>  to proceed.
+If that doesn't work, type  X <return>  to quit.
+
+[54]
+
+LaTeX Warning: File `Formato Memoria/Imagenes/personasregistradasimplementada.png' not found on input line 888.
+
+
+c:/Users/agu_e/OneDrive/Escritorio/Proyecto Titulo/AsistenciaBackendFinal/Informe/memoria.tex:888: Package pdftex.def Error: File `Formato Memoria/Imagenes/personasregistradasimplementada.png' not found: using draft setting.
+
+See the pdftex.def package documentation for explanation.
+Type  H <return>  for immediate help.
+ ...                                              
+                                                  
+l.888 ...enes/personasregistradasimplementada.png}
+                                                  
+Try typing  <return>  to proceed.
+If that doesn't work, type  X <return>  to quit.
+
+[55]
+
+LaTeX Warning: File `Formato Memoria/Imagenes/creacionturnos.png' not found on input line 901.
+
+
+c:/Users/agu_e/OneDrive/Escritorio/Proyecto Titulo/AsistenciaBackendFinal/Informe/memoria.tex:901: Package pdftex.def Error: File `Formato Memoria/Imagenes/creacionturnos.png' not found: using draft setting.
+
+See the pdftex.def package documentation for explanation.
+Type  H <return>  for immediate help.
+ ...                                              
+                                                  
+l.901 ...mato Memoria/Imagenes/creacionturnos.png}
+                                                  
+Try typing  <return>  to proceed.
+If that doesn't work, type  X <return>  to quit.
+
+[56]
+
+LaTeX Warning: File `Formato Memoria/Imagenes/asignacionturnoimplementacion.png' not found on input line 914.
+
+
+c:/Users/agu_e/OneDrive/Escritorio/Proyecto Titulo/AsistenciaBackendFinal/Informe/memoria.tex:914: Package pdftex.def Error: File `Formato Memoria/Imagenes/asignacionturnoimplementacion.png' not found: using draft setting.
+
+See the pdftex.def package documentation for explanation.
+Type  H <return>  for immediate help.
+ ...                                              
+                                                  
+l.914 ...agenes/asignacionturnoimplementacion.png}
+                                                  
+Try typing  <return>  to proceed.
+If that doesn't work, type  X <return>  to quit.
+
+[57] [58]
+Overfull \hbox (4.4617pt too wide) in paragraph at lines 942--942
+[]\T1/lmr/bx/n/17.28 (-20) Iteración 2: Almacenamiento local y modo offline 
+ []
+
+[59]
+Overfull \hbox (9.65402pt too wide) in paragraph at lines 972--973
+\T1/lmr/m/n/12 (-20) totalmente local, asegurando independencia de servicios externos y continuidad operacional. 
+ []
+
+
+Overfull \hbox (8.7915pt too wide) in paragraph at lines 982--983
+\T1/lmr/m/n/12 (-20) existencia de los archivos necesarios: \T1/lmtt/m/n/12 personas.json\T1/lmr/m/n/12 (-20) , \T1/lmtt/m/n/12 turnos.json\T1/lmr/m/n/12 (-20) , \T1/lmtt/m/n/12 asignaciones.json\T1/lmr/m/n/12 (-20) ,
+ []
+
+
+LaTeX Warning: File `Formato Memoria/Imagenes/codigo_initSPIFFS.png' not found on input line 988.
+
+
+c:/Users/agu_e/OneDrive/Escritorio/Proyecto Titulo/AsistenciaBackendFinal/Informe/memoria.tex:988: Package pdftex.def Error: File `Formato Memoria/Imagenes/codigo_initSPIFFS.png' not found: using draft setting.
+
+See the pdftex.def package documentation for explanation.
+Type  H <return>  for immediate help.
+ ...                                              
+                                                  
+l.988 ...o Memoria/Imagenes/codigo_initSPIFFS.png}
+                                                  
+Try typing  <return>  to proceed.
+If that doesn't work, type  X <return>  to quit.
+
+[60]
+
+LaTeX Warning: File `Formato Memoria/Imagenes/codigo_buscarSlot.png' not found on input line 1002.
+
+
+c:/Users/agu_e/OneDrive/Escritorio/Proyecto Titulo/AsistenciaBackendFinal/Informe/memoria.tex:1002: Package pdftex.def Error: File `Formato Memoria/Imagenes/codigo_buscarSlot.png' not found: using draft setting.
+
+See the pdftex.def package documentation for explanation.
+Type  H <return>  for immediate help.
+ ...                                              
+                                                  
+l.1002 ... Memoria/Imagenes/codigo_buscarSlot.png}
+                                                  
+Try typing  <return>  to proceed.
+If that doesn't work, type  X <return>  to quit.
+
+[61]
+
+LaTeX Warning: File `Formato Memoria/Imagenes/registrohuellaimple.png' not found on input line 1010.
+
+
+c:/Users/agu_e/OneDrive/Escritorio/Proyecto Titulo/AsistenciaBackendFinal/Informe/memoria.tex:1010: Package pdftex.def Error: File `Formato Memoria/Imagenes/registrohuellaimple.png' not found: using draft setting.
+
+See the pdftex.def package documentation for explanation.
+Type  H <return>  for immediate help.
+ ...                                              
+                                                  
+l.1010 ...emoria/Imagenes/registrohuellaimple.png}
+                                                  
+Try typing  <return>  to proceed.
+If that doesn't work, type  X <return>  to quit.
+
+[62]
+Overfull \hbox (8.83755pt too wide) in paragraph at lines 1014--1015
+[]\T1/lmr/m/n/12 (-20) Luego del enrolamiento exitoso, se almacena un nuevo objeto dentro de \T1/lmtt/m/n/12 personas.json\T1/lmr/m/n/12 (-20) ,
+ []
+
+
+Overfull \hbox (17.8506pt too wide) in paragraph at lines 1025--1026
+[]\T1/lmr/m/n/12 (-20) El flujo completo se encuentra encapsulado en el manejador web \T1/lmtt/m/n/12 handleRegisterUser()\T1/lmr/m/n/12 (-20) ,
+ []
+
+
+LaTeX Warning: File `Formato Memoria/Imagenes/handleregisteruserimple.png' not found on input line 1029.
+
+
+c:/Users/agu_e/OneDrive/Escritorio/Proyecto Titulo/AsistenciaBackendFinal/Informe/memoria.tex:1029: Package pdftex.def Error: File `Formato Memoria/Imagenes/handleregisteruserimple.png' not found: using draft setting.
+
+See the pdftex.def package documentation for explanation.
+Type  H <return>  for immediate help.
+ ...                                              
+                                                  
+l.1029 ...ia/Imagenes/handleregisteruserimple.png}
+                                                  
+Try typing  <return>  to proceed.
+If that doesn't work, type  X <return>  to quit.
+
+[63] [64]
+
+LaTeX Warning: File `Formato Memoria/Imagenes/marcarasistenciacode.png' not found on input line 1055.
+
+
+c:/Users/agu_e/OneDrive/Escritorio/Proyecto Titulo/AsistenciaBackendFinal/Informe/memoria.tex:1055: Package pdftex.def Error: File `Formato Memoria/Imagenes/marcarasistenciacode.png' not found: using draft setting.
+
+See the pdftex.def package documentation for explanation.
+Type  H <return>  for immediate help.
+ ...                                              
+                                                  
+l.1055 ...moria/Imagenes/marcarasistenciacode.png}
+                                                  
+Try typing  <return>  to proceed.
+If that doesn't work, type  X <return>  to quit.
+
+
+LaTeX Warning: File `Formato Memoria/Imagenes/registrarasitencia.png' not found on input line 1060.
+
+
+c:/Users/agu_e/OneDrive/Escritorio/Proyecto Titulo/AsistenciaBackendFinal/Informe/memoria.tex:1060: Package pdftex.def Error: File `Formato Memoria/Imagenes/registrarasitencia.png' not found: using draft setting.
+
+See the pdftex.def package documentation for explanation.
+Type  H <return>  for immediate help.
+ ...                                              
+                                                  
+l.1060 ...Memoria/Imagenes/registrarasitencia.png}
+                                                  
+Try typing  <return>  to proceed.
+If that doesn't work, type  X <return>  to quit.
+
+[65]
+Overfull \hbox (22.1847pt too wide) in paragraph at lines 1076--1077
+[]\T1/lmr/m/n/12 (-20) Estas funciones utilizan deserialización y serialización estándar de la librería \T1/lmtt/m/n/12 ArduinoJson\T1/lmr/m/n/12 (-20) ,
+ []
+
+
+LaTeX Warning: File `Formato Memoria/Imagenes/codigo_funcionesJSON.png' not found on input line 1080.
+
+
+c:/Users/agu_e/OneDrive/Escritorio/Proyecto Titulo/AsistenciaBackendFinal/Informe/memoria.tex:1080: Package pdftex.def Error: File `Formato Memoria/Imagenes/codigo_funcionesJSON.png' not found: using draft setting.
+
+See the pdftex.def package documentation for explanation.
+Type  H <return>  for immediate help.
+ ...                                              
+                                                  
+l.1080 ...moria/Imagenes/codigo_funcionesJSON.png}
+                                                  
+Try typing  <return>  to proceed.
+If that doesn't work, type  X <return>  to quit.
+
+[66] [67]
+Overfull \hbox (8.399pt too wide) in paragraph at lines 1130--1131
+\T1/lmr/m/n/12 (-20) permita procesar la información enviada por el ESP32-CAM, administrar el reconocimiento
+ []
+
+
+Overfull \hbox (10.1237pt too wide) in paragraph at lines 1130--1131
+\T1/lmr/m/n/12 (-20) facial, gestionar registros de trabajadores y turnos, y habilitar la comunicación bidireccional
+ []
+
+[68] [69]
+c:/Users/agu_e/OneDrive/Escritorio/Proyecto Titulo/AsistenciaBackendFinal/Informe/memoria.tex:1157: Missing $ inserted.
+<inserted text> 
+                $
+l.1157 ...exttt{GET /api/asignaciones/:persona_id}
+                                                  : obtiene solo las asignac...
+I've inserted a begin-math/end-math symbol since I think
+you left one out. Proceed, with fingers crossed.
+
+c:/Users/agu_e/OneDrive/Escritorio/Proyecto Titulo/AsistenciaBackendFinal/Informe/memoria.tex:1157: Extra }, or forgotten $.
+<recently read> \egroup 
+                        
+l.1157 ...exttt{GET /api/asignaciones/:persona_id}
+                                                  : obtiene solo las asignac...
+I've deleted a group-closing symbol because it seems to be
+spurious, as in `$x}$'. But perhaps the } is legitimate and
+you forgot something else, as in `\hbox{$x}'. In such cases
+the way to recover is to insert both the forgotten and the
+deleted material, e.g., by typing `I$}'.
+
+
+c:/Users/agu_e/OneDrive/Escritorio/Proyecto Titulo/AsistenciaBackendFinal/Informe/memoria.tex:1158: LaTeX Error: Command \item invalid in math mode.
+
+See the LaTeX manual or LaTeX Companion for explanation.
+Type  H <return>  for immediate help.
+ ...                                              
+                                                  
+l.1158     \item
+                 \texttt{POST /api/asignaciones}: permite asignar un turno a...
+Try typing  <return>  to proceed.
+If that doesn't work, type  X <return>  to quit.
+
+c:/Users/agu_e/OneDrive/Escritorio/Proyecto Titulo/AsistenciaBackendFinal/Informe/memoria.tex:1158: Missing $ inserted.
+<inserted text> 
+                $
+l.1158     \item \texttt
+                        {POST /api/asignaciones}: permite asignar un turno a...
+I've inserted a begin-math/end-math symbol since I think
+you left one out. Proceed, with fingers crossed.
+
+
+Overfull \hbox (93.40866pt too wide) in paragraph at lines 1157--1158
+[]\T1/lmtt/m/n/12 GET /api/asignaciones/:persona$[]\OML/lmm/m/it/12 d \OT1/lmr/m/n/12 (-20) : \OML/lmm/m/it/12 obtienesololasasignacionescorrespondientesaunapersona:
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 1157--1158
+
+ []
+
+
+Overfull \hbox (39.13219pt too wide) in paragraph at lines 1158--1159
+[]\T1/lmtt/m/n/12 POST /api/asignaciones: permite asignar un turno a una persona indicando
+ []
+
+
+Overfull \hbox (59.50969pt too wide) in paragraph at lines 1159--1160
+[]\T1/lmtt/m/n/12 POST /api/asistencias: registra una asistencia enviada desde el dispositivo. 
+ []
+
+
+Overfull \hbox (39.13219pt too wide) in paragraph at lines 1160--1161
+[]\T1/lmtt/m/n/12 POST /api/asistencias/sync: recibe un conjunto de asistencias acumuladas
+ []
+
+c:/Users/agu_e/OneDrive/Escritorio/Proyecto Titulo/AsistenciaBackendFinal/Informe/memoria.tex:1161: Missing } inserted.
+<inserted text> 
+                }
+l.1161 \end{itemize}
+                    
+I've inserted something that you may have forgotten.
+(See the <inserted text> above.)
+With luck, this will get me unwedged. But if you
+really didn't forget anything, try typing `2' now; then
+my insertion and my current dilemma will both disappear.
+
+[70{D:/Latex/fonts/enc/dvips/lm/lm-mathit.enc}{D:/Latex/fonts/enc/dvips/lm/lm-rm.enc}]
+
+LaTeX Warning: File `Formato Memoria/Imagenes/Untitled.png' not found on input line 1167.
+
+
+c:/Users/agu_e/OneDrive/Escritorio/Proyecto Titulo/AsistenciaBackendFinal/Informe/memoria.tex:1167: Package pdftex.def Error: File `Formato Memoria/Imagenes/Untitled.png' not found: using draft setting.
+
+See the pdftex.def package documentation for explanation.
+Type  H <return>  for immediate help.
+ ...                                              
+                                                  
+l.1167 ...]{Formato Memoria/Imagenes/Untitled.png}
+                                                  
+Try typing  <return>  to proceed.
+If that doesn't work, type  X <return>  to quit.
+
+[71]
+
+LaTeX Warning: File `Formato Memoria/Imagenes/conexionWIFI.png' not found on input line 1198.
+
+
+c:/Users/agu_e/OneDrive/Escritorio/Proyecto Titulo/AsistenciaBackendFinal/Informe/memoria.tex:1198: Package pdftex.def Error: File `Formato Memoria/Imagenes/conexionWIFI.png' not found: using draft setting.
+
+See the pdftex.def package documentation for explanation.
+Type  H <return>  for immediate help.
+ ...                                              
+                                                  
+l.1198 ...rmato Memoria/Imagenes/conexionWIFI.png}
+                                                  
+Try typing  <return>  to proceed.
+If that doesn't work, type  X <return>  to quit.
+
+[72]
+
+LaTeX Warning: File `Formato Memoria/Imagenes/camaraconeixoncode.png' not found on input line 1213.
+
+
+c:/Users/agu_e/OneDrive/Escritorio/Proyecto Titulo/AsistenciaBackendFinal/Informe/memoria.tex:1213: Package pdftex.def Error: File `Formato Memoria/Imagenes/camaraconeixoncode.png' not found: using draft setting.
+
+See the pdftex.def package documentation for explanation.
+Type  H <return>  for immediate help.
+ ...                                              
+                                                  
+l.1213 ...Memoria/Imagenes/camaraconeixoncode.png}
+                                                  
+Try typing  <return>  to proceed.
+If that doesn't work, type  X <return>  to quit.
+
+[73]
+
+LaTeX Warning: File `Formato Memoria/Imagenes/envioimagnesporpartes.png' not found on input line 1227.
+
+
+c:/Users/agu_e/OneDrive/Escritorio/Proyecto Titulo/AsistenciaBackendFinal/Informe/memoria.tex:1227: Package pdftex.def Error: File `Formato Memoria/Imagenes/envioimagnesporpartes.png' not found: using draft setting.
+
+See the pdftex.def package documentation for explanation.
+Type  H <return>  for immediate help.
+ ...                                              
+                                                  
+l.1227 ...oria/Imagenes/envioimagnesporpartes.png}
+                                                  
+Try typing  <return>  to proceed.
+If that doesn't work, type  X <return>  to quit.
+
+[74]
+
+LaTeX Warning: File `Formato Memoria/Imagenes/reconexion.png' not found on input line 1240.
+
+
+c:/Users/agu_e/OneDrive/Escritorio/Proyecto Titulo/AsistenciaBackendFinal/Informe/memoria.tex:1240: Package pdftex.def Error: File `Formato Memoria/Imagenes/reconexion.png' not found: using draft setting.
+
+See the pdftex.def package documentation for explanation.
+Type  H <return>  for immediate help.
+ ...                                              
+                                                  
+l.1240 ...Formato Memoria/Imagenes/reconexion.png}
+                                                  
+Try typing  <return>  to proceed.
+If that doesn't work, type  X <return>  to quit.
+
+[75]
+
+LaTeX Warning: File `Formato Memoria/Imagenes/mqttreciverpython.png' not found on input line 1253.
+
+
+c:/Users/agu_e/OneDrive/Escritorio/Proyecto Titulo/AsistenciaBackendFinal/Informe/memoria.tex:1253: Package pdftex.def Error: File `Formato Memoria/Imagenes/mqttreciverpython.png' not found: using draft setting.
+
+See the pdftex.def package documentation for explanation.
+Type  H <return>  for immediate help.
+ ...                                              
+                                                  
+l.1253 ... Memoria/Imagenes/mqttreciverpython.png}
+                                                  
+Try typing  <return>  to proceed.
+If that doesn't work, type  X <return>  to quit.
+
+[76] [77]
+Overfull \hbox (7.72984pt too wide) in paragraph at lines 1269--1270
+[]\T1/lmr/m/n/12 (-20) HTTPClient.h: Encargada de abrir conexiones HTTP, enviar peticiones GET/POST
+ []
+
+
+LaTeX Warning: File `Formato Memoria/Imagenes/envioHTPP.png' not found on input line 1278.
+
+
+c:/Users/agu_e/OneDrive/Escritorio/Proyecto Titulo/AsistenciaBackendFinal/Informe/memoria.tex:1278: Package pdftex.def Error: File `Formato Memoria/Imagenes/envioHTPP.png' not found: using draft setting.
+
+See the pdftex.def package documentation for explanation.
+Type  H <return>  for immediate help.
+ ...                                              
+                                                  
+l.1278 ...{Formato Memoria/Imagenes/envioHTPP.png}
+                                                  
+Try typing  <return>  to proceed.
+If that doesn't work, type  X <return>  to quit.
+
+[78] [79]
+No file memoria.bbl.
+
+Overfull \hbox (97.4343pt too wide) in paragraph at lines 1303--1304
+\T1/lmr/m/n/12 (-20) Chile. https://www.bcn.cl/leychile/navegar?idNorma=1203415&idParte=10499950&idVersion=2025-
+ []
+
+
+Overfull \hbox (0.59369pt too wide) in paragraph at lines 1305--1306
+\T1/lmr/m/n/12 (-20) Ventajas y desventajas. APD. https://www.apd.es/ventajas-y-desventajas-sistema-
+ []
+
+[80]
+Overfull \hbox (8.78482pt too wide) in paragraph at lines 1314--1315
+[]\T1/lmr/m/n/12 (-20) Last Minute Engineers. (s.f.). Empezando con ESP32-CAM: Guía para principiantes.
+ []
+
+
+Overfull \hbox (36.03314pt too wide) in paragraph at lines 1316--1317
+\T1/lmr/m/n/12 (-20) octubre de 2025, de https://developer.mozilla.org/es/docs/Web/HTTP/Guides/Overview 
+ []
+
+
+Overfull \hbox (12.1488pt too wide) in paragraph at lines 1321--1322
+\T1/lmr/m/n/12 (-20) de 2025, de https://zktecolatinoamerica.com/categoria-producto/tiempo-y-asistencia 
+ []
+
+[81]
+Overfull \hbox (11.39685pt too wide) in paragraph at lines 1326--1327
+\T1/lmr/m/n/12 (-20) Recuperado el 3 de noviembre de 2025, de https://www.atlassian.com/es/agile/scrum 
+ []
+
+c:/Users/agu_e/OneDrive/Escritorio/Proyecto Titulo/AsistenciaBackendFinal/Informe/memoria.tex:1327: Missing $ inserted.
+<inserted text> 
+                $
+l.1327 ...e 2025, de https://www.teach-ict.com/as_
+                                                  a2_ict_new/ocr/A2_G063/331...
+I've inserted a begin-math/end-math symbol since I think
+you left one out. Proceed, with fingers crossed.
+
+
+c:/Users/agu_e/OneDrive/Escritorio/Proyecto Titulo/AsistenciaBackendFinal/Informe/memoria.tex:1328: LaTeX Error: Command \item invalid in math mode.
+
+See the LaTeX manual or LaTeX Companion for explanation.
+Type  H <return>  for immediate help.
+ ...                                              
+                                                  
+l.1328     \item
+                 GeeksforGeeks. (2025, julio 11). Modelo de procesos increme...
+Try typing  <return>  to proceed.
+If that doesn't work, type  X <return>  to quit.
+
+c:/Users/agu_e/OneDrive/Escritorio/Proyecto Titulo/AsistenciaBackendFinal/Informe/memoria.tex:1328: Missing $ inserted.
+<inserted text> 
+                $
+l.1328     \item G
+                  eeksforGeeks. (2025, julio 11). Modelo de procesos increme...
+I've inserted a begin-math/end-math symbol since I think
+you left one out. Proceed, with fingers crossed.
+
+
+Overfull \hbox (129.34944pt too wide) in paragraph at lines 1327--1328
+\T1/lmr/m/n/12 (-20) https://www.teach-ict.com/as$[]\OT1/lmr/m/n/12 (-20) 2[]\OML/lmm/m/it/12 ct[]ew=ocr=A\OT1/lmr/m/n/12 (-20) 2[]063\OML/lmm/m/it/12 =\OT1/lmr/m/n/12 (-20) 331[]\OML/lmm/m/it/12 ystems[]ycle=prototyping[]AD=miniweb=pg\OT1/lmr/m/n/12 (-20) 3\OML/lmm/m/it/12 :htm
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 1327--1328
+
+ []
+
+
+Overfull \hbox (54.17564pt too wide) in paragraph at lines 1328--1329
+\T1/lmr/m/n/12 (-20) software. Recuperado el 20 de noviembre de 2025, de https://www.geeksforgeeks.org/software-
+ []
+
+c:/Users/agu_e/OneDrive/Escritorio/Proyecto Titulo/AsistenciaBackendFinal/Informe/memoria.tex:1329: Misplaced alignment tab character &.
+l.1329     \item Pressman, R. S., &
+                                    Maxim, B. R. (2021). IngenierÃ­a de soft...
+I can't figure out why you would want to use a tab mark
+here. If you just want an ampersand, the remedy is
+simple: Just type `I\&' now. But if some right brace
+up above has ended a previous alignment prematurely,
+you're probably due for more error messages, and you
+might try typing `S' now just to see what is salvageable.
+
+c:/Users/agu_e/OneDrive/Escritorio/Proyecto Titulo/AsistenciaBackendFinal/Informe/memoria.tex:1333: Misplaced alignment tab character &.
+l.1333 ...on in industry (pp. 189â€“194). Taylor &
+                                                   Francis.
+I can't figure out why you would want to use a tab mark
+here. If you just want an ampersand, the remedy is
+simple: Just type `I\&' now. But if some right brace
+up above has ended a previous alignment prematurely,
+you're probably due for more error messages, and you
+might try typing `S' now just to see what is salvageable.
+
+c:/Users/agu_e/OneDrive/Escritorio/Proyecto Titulo/AsistenciaBackendFinal/Informe/memoria.tex:1334: Misplaced alignment tab character &.
+l.1334     \item Bangor, A., Kortum, P. T., &
+                                              Miller, J. T. (2008). An empir...
+I can't figure out why you would want to use a tab mark
+here. If you just want an ampersand, the remedy is
+simple: Just type `I\&' now. But if some right brace
+up above has ended a previous alignment prematurely,
+you're probably due for more error messages, and you
+might try typing `S' now just to see what is salvageable.
+
+[82]
+Overfull \hbox (108.85608pt too wide) in paragraph at lines 1338--1339
+[]\T1/lmr/m/n/12 (-20) Kaspersky Lab. (2025). ¾Qué es la biometría? Definición y tipos. https://latam.kaspersky.com/resource-
+ []
+
+
+Overfull \hbox (97.57118pt too wide) in paragraph at lines 1339--1340
+[]\T1/lmr/m/n/12 (-20) Espressif Systems. (2025). SPIFFS ^^V SPI Flash File System. https://docs.espressif.com/projects/esp-
+ []
+
+
+Overfull \hbox (88.28545pt too wide) in paragraph at lines 1341--1342
+[]\T1/lmr/m/n/12 (-20) Red Hat Inc. (2025). ¾Qué son los microservicios? https://www.redhat.com/es/topics/microservices 
+ []
+
+
+Overfull \hbox (118.26082pt too wide) in paragraph at lines 1342--1343
+[]\T1/lmr/m/n/12 (-20) EMQX Technologies. (2025). The ultimate guide to MQTT brokers. https://www.emqx.com/en/blog/the-
+ []
+
+[83] (memoria.aux)
+ ***********
+LaTeX2e <2025-11-01>
+L3 programming layer <2025-12-24>
+ ***********
+
+
+LaTeX Warning: There were multiply-defined labels.
+
+ ) 
+Here is how much of TeX's memory you used:
+ 6732 strings out of 467871
+ 154770 string characters out of 5435693
+ 558541 words of memory out of 5000000
+ 35392 multiletter control sequences out of 15000+600000
+ 678887 words of font info for 140 fonts, out of 8000000 for 9000
+ 1141 hyphenation exceptions out of 8191
+ 72i,6n,79p,1576b,457s stack positions out of 10000i,1000n,20000p,200000b,200000s
+<D:/Latex/fonts/type1/public/lm/lmbx12.pfb><D:/Latex/fonts/type1/public/lm/lmmi12.pfb><D:/Latex/fonts/type1/public/lm/lmmi8.pfb><D:/Latex/fonts/type1/public/lm/lmr12.pfb><D:/Latex/fonts/type1/public/lm/lmri12.pfb><D:/Latex/fonts/type1/public/lm/lmro12.pfb><D:/Latex/fonts/type1/public/lm/lmtt12.pfb>
+Output written on memoria.pdf (85 pages, 311087 bytes).
+PDF statistics:
+ 321 PDF objects out of 1000 (max. 8388607)
+ 0 named destinations out of 1000 (max. 500000)
+ 29185 words of extra memory for PDF output out of 29859 (max. 10000000)
+

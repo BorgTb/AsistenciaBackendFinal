@@ -9,6 +9,7 @@ from datetime import datetime, timezone
 from PIL import Image
 from deepface import DeepFace
 from database import get_connection
+from encryption import cifrar_embedding
 
 buffer = []
 current_persona_id = None
@@ -175,6 +176,22 @@ def procesar_imagen_facial(client, persona_id, imagen_b64):
     file_path = os.path.join(PREVIEWS_DIR, file_name)
 
     try:
+        conn = get_connection()
+        cur = conn.cursor()
+        cur.execute("SELECT id FROM consentimientos WHERE persona_id = %s", (persona_id,))
+        tiene_consentimiento = cur.fetchone()
+        cur.close()
+        conn.close()
+
+        if not tiene_consentimiento:
+            print(f"⛔ Consentimiento biometrico faltante para persona {persona_id}", flush=True)
+            client.publish("esp32/respuesta/facial", json.dumps({
+                "status": "error", "mensaje": "Consentimiento biometrico requerido. Acepte la politica de privacidad antes del registro."
+            }))
+            if os.path.exists(file_path):
+                os.unlink(file_path)
+            return
+
         try:
             img_bytes = base64.b64decode(imagen_b64, validate=True)
         except Exception:
@@ -195,7 +212,7 @@ def procesar_imagen_facial(client, persona_id, imagen_b64):
         cur = conn.cursor()
         cur.execute(
             "UPDATE personas SET encoding_facial = %s WHERE id = %s",
-            (json.dumps(embedding), persona_id)
+            (cifrar_embedding(embedding), persona_id)
         )
         conn.commit()
         cur.close()

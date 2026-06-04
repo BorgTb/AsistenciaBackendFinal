@@ -22,6 +22,11 @@ bool mqttConnected = false;
 #define FLASH_PIN 4
 #define PIR_PIN 12
 
+// ===== Flash PWM (evita enceguecer a las personas) =====
+#define FLASH_PWM_FREQ     5000  // 5 kHz: sin flicker visible
+#define FLASH_PWM_RES      8     // 8 bits -> duty 0..255
+#define FLASH_PWM_DUTY_50  128   // 50% de 255
+
 // ===== Sensor de huellas (RX=GPIO14, TX=GPIO15) =====
 HardwareSerial FingerSerial(2);
 Adafruit_Fingerprint finger = Adafruit_Fingerprint(&FingerSerial);
@@ -220,16 +225,16 @@ void addLog(String msg) {
   }
 }
 
-void flashExito() {   
+void flashExito() {
   for (int i = 0; i < 2; i++) {
-    digitalWrite(FLASH_PIN, HIGH); delay(150);
-    digitalWrite(FLASH_PIN, LOW);  delay(150);
+    ledcWrite(FLASH_PIN, FLASH_PWM_DUTY_50); delay(150);
+    ledcWrite(FLASH_PIN, 0);                  delay(150);
   }
 }
 
-void flashError() {   
-  digitalWrite(FLASH_PIN, HIGH); delay(800);
-  digitalWrite(FLASH_PIN, LOW);
+void flashError() {
+  ledcWrite(FLASH_PIN, FLASH_PWM_DUTY_50); delay(800);
+  ledcWrite(FLASH_PIN, 0);
 }
 
 bool resultadoAsistenciaExitosa(const String& resultado) {
@@ -369,15 +374,15 @@ String capturarImagenBase64Identificacion() {
 String capturarImagenBase64() {
   if (!camaraIniciada) return "";
 
-  // 1. ILUMINACIÓN (Consumo alto: Flash ON)
-  digitalWrite(FLASH_PIN, HIGH);
+  // 1. ILUMINACIÓN (Consumo alto: Flash ON al 50%)
+  ledcWrite(FLASH_PIN, FLASH_PWM_DUTY_50);
   delay(200); // Damos tiempo al sensor OV2640 para ajustar brillo y enfoque
 
   // 2. CAPTURA DE HARDWARE (Guardamos la foto en la RAM)
   camera_fb_t* fb = esp_camera_fb_get();
 
   // 3. APAGADO INMEDIATO (Liberamos carga eléctrica de la fuente)
-  digitalWrite(FLASH_PIN, LOW);
+  ledcWrite(FLASH_PIN, 0);
   delay(150);
   if (!fb) {
     addLog("Error: Falla al capturar frame");
@@ -656,10 +661,10 @@ String identificarPorRostro() {
   s->set_quality(s, 10);
 
   // Flash breve para iluminar el rostro
-  digitalWrite(FLASH_PIN, HIGH);
+  ledcWrite(FLASH_PIN, FLASH_PWM_DUTY_50);
   delay(150);
   camera_fb_t* fb = esp_camera_fb_get();
-  digitalWrite(FLASH_PIN, LOW);
+  ledcWrite(FLASH_PIN, 0);
 
   // Restaurar calidad original para registro
   s->set_quality(s, 8);
@@ -1855,6 +1860,8 @@ void setup() {
   pinMode(13, INPUT_PULLUP);
   pinMode(FLASH_PIN, OUTPUT);
   digitalWrite(FLASH_PIN, LOW);
+  ledcAttach(FLASH_PIN, FLASH_PWM_FREQ, FLASH_PWM_RES);
+  ledcWrite(FLASH_PIN, 0);
   if (digitalRead(13) == LOW) {
     delay(1000);
     if (digitalRead(13) == LOW) {
@@ -2015,8 +2022,8 @@ void loop() {
   unsigned long ahora = millis();
   
   if (estadoActual != ESTADO_IDLE && estadoActual != ESTADO_PROCESANDO_ASISTENCIA && (ahora - tiempoUltimoEstado) > TIMEOUT_REGISTRO) {
-    addLog("Timeout de registro. Volviendo a inactivo."); 
-    digitalWrite(FLASH_PIN, LOW);
+    addLog("Timeout de registro. Volviendo a inactivo.");
+    ledcWrite(FLASH_PIN, 0);
     estadoActual = ESTADO_IDLE;
   }
 
@@ -2147,8 +2154,8 @@ void loop() {
       ultimoIntentoFoto = ahora;
       intentosFacial++;
       if (intentosFacial > 6) {
-        digitalWrite(FLASH_PIN, LOW); 
-        flashError();                 
+        ledcWrite(FLASH_PIN, 0);
+        flashError();
         addLog("Se alcanzó el límite de intentos faciales. Volviendo a menú.");
         ultimoErrorRegistro = "No se pudo registrar rostro tras multiples intentos";
         estadoActual = ESTADO_IDLE;

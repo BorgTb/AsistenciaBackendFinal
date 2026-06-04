@@ -167,6 +167,46 @@ def init_db():
         cur.execute("ALTER TABLE integraciones_erp ADD COLUMN IF NOT EXISTS ultimo_envio TIMESTAMP")
         cur.execute("ALTER TABLE integraciones_erp ADD COLUMN IF NOT EXISTS ultimo_estado VARCHAR(200)")
 
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS consentimientos (
+                id SERIAL PRIMARY KEY,
+                persona_id INTEGER NOT NULL REFERENCES personas(id) ON DELETE CASCADE,
+                fecha_aceptacion TIMESTAMP DEFAULT NOW(),
+                version_politica VARCHAR(20) DEFAULT '1.0',
+                ip_dispositivo VARCHAR(45),
+                metodo_aceptacion VARCHAR(30) DEFAULT 'web',
+                UNIQUE(persona_id)
+            )
+        """)
+
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS logs_biometricos (
+                id SERIAL PRIMARY KEY,
+                persona_id INTEGER REFERENCES personas(id) ON DELETE SET NULL,
+                dispositivo_id INTEGER REFERENCES dispositivos(id) ON DELETE SET NULL,
+                timestamp TIMESTAMP DEFAULT NOW(),
+                tipo_operacion VARCHAR(30) NOT NULL,
+                resultado VARCHAR(20) NOT NULL,
+                ip_origen VARCHAR(45)
+            )
+        """)
+
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS eliminaciones_biometricas (
+                id SERIAL PRIMARY KEY,
+                persona_id INTEGER NOT NULL,
+                embedding_anterior TEXT,
+                foto_path VARCHAR(500),
+                usuario_solicitante VARCHAR(100),
+                timestamp TIMESTAMP DEFAULT NOW()
+            )
+        """)
+
+        cur.execute("CREATE INDEX IF NOT EXISTS idx_consentimientos_persona ON consentimientos(persona_id)")
+        cur.execute("CREATE INDEX IF NOT EXISTS idx_logs_biometricos_persona ON logs_biometricos(persona_id)")
+        cur.execute("CREATE INDEX IF NOT EXISTS idx_logs_biometricos_timestamp ON logs_biometricos(timestamp)")
+        cur.execute("CREATE INDEX IF NOT EXISTS idx_eliminaciones_biometricas_persona ON eliminaciones_biometricas(persona_id)")
+
         cur.execute("CREATE INDEX IF NOT EXISTS idx_asistencias_persona ON asistencias(persona_id)")
         cur.execute("CREATE INDEX IF NOT EXISTS idx_asistencias_dispositivo ON asistencias(dispositivo_id)")
         cur.execute("CREATE INDEX IF NOT EXISTS idx_asistencias_fecha ON asistencias(fecha_hora)")
