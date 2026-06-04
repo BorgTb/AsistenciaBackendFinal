@@ -38,103 +38,103 @@
 \contentsline {section}{\numberline {2.4}Metodologias}{20}{}%
 \contentsline {subsection}{\numberline {2.4.1}Metodologia de desarrollo}{20}{}%
 \contentsline {subsection}{\numberline {2.4.2}Metodología de evaluación}{21}{}%
-\contentsline {subsubsection}{Pruebas de integración}{22}{}%
-\contentsline {subsubsection}{Pruebas de usabilidad}{22}{}%
+\contentsline {subsubsection}{Pruebas de integración}{21}{}%
+\contentsline {subsubsection}{Pruebas de usabilidad}{21}{}%
 \contentsline {subsubsection}{Pruebas de confiabilidad y disponibilidad}{22}{}%
-\contentsline {section}{\numberline {2.5}Resumen del capítulo}{23}{}%
-\contentsline {chapter}{\numberline {3}Metodologías}{24}{}%
-\contentsline {section}{\numberline {3.1}Metodologia de desarrollo}{24}{}%
-\contentsline {subsection}{\numberline {3.1.1}Protipado Evolutivo Incremental}{24}{}%
-\contentsline {section}{\numberline {3.2}Planificación}{26}{}%
-\contentsline {subsection}{\numberline {3.2.1}Iteración 1: Diseño y configuración inicial}{26}{}%
+\contentsline {section}{\numberline {2.5}Resumen del capítulo}{22}{}%
+\contentsline {chapter}{\numberline {3}Metodologías}{23}{}%
+\contentsline {section}{\numberline {3.1}Metodologia de desarrollo}{23}{}%
+\contentsline {subsection}{\numberline {3.1.1}Protipado Evolutivo Incremental}{23}{}%
+\contentsline {section}{\numberline {3.2}Planificación}{25}{}%
+\contentsline {subsection}{\numberline {3.2.1}Iteración 1: Diseño y configuración inicial}{25}{}%
+\contentsline {subsubsection}{Análisis}{25}{}%
+\contentsline {subsubsection}{Diseño}{25}{}%
+\contentsline {subsubsection}{Implementación}{25}{}%
+\contentsline {subsubsection}{Pruebas}{26}{}%
+\contentsline {subsection}{\numberline {3.2.2}Iteración 2: Almacenamiento local y modo offline}{26}{}%
 \contentsline {subsubsection}{Análisis}{26}{}%
 \contentsline {subsubsection}{Diseño}{26}{}%
 \contentsline {subsubsection}{Implementación}{26}{}%
+\contentsline {subsubsection}{Pruebas}{26}{}%
+\contentsline {subsection}{\numberline {3.2.3}Iteración 3: Comunicación y conectividad}{26}{}%
+\contentsline {subsubsection}{Análisis}{26}{}%
+\contentsline {subsubsection}{Diseño}{26}{}%
+\contentsline {subsubsection}{Implementación}{27}{}%
 \contentsline {subsubsection}{Pruebas}{27}{}%
-\contentsline {subsection}{\numberline {3.2.2}Iteración 2: Almacenamiento local y modo offline}{27}{}%
+\contentsline {subsection}{\numberline {3.2.4}Iteración 4: Detección de rostro y validación biométrica}{27}{}%
 \contentsline {subsubsection}{Análisis}{27}{}%
 \contentsline {subsubsection}{Diseño}{27}{}%
 \contentsline {subsubsection}{Implementación}{27}{}%
 \contentsline {subsubsection}{Pruebas}{27}{}%
-\contentsline {subsection}{\numberline {3.2.3}Iteración 3: Comunicación y conectividad}{27}{}%
-\contentsline {subsubsection}{Análisis}{27}{}%
-\contentsline {subsubsection}{Diseño}{27}{}%
-\contentsline {subsubsection}{Implementación}{28}{}%
-\contentsline {subsubsection}{Pruebas}{28}{}%
-\contentsline {subsection}{\numberline {3.2.4}Iteración 4: Detección de rostro y validación biométrica}{28}{}%
+\contentsline {subsection}{\numberline {3.2.5}Iteración 5: Módulo antifraude mediante sensor IR}{28}{}%
 \contentsline {subsubsection}{Análisis}{28}{}%
 \contentsline {subsubsection}{Diseño}{28}{}%
 \contentsline {subsubsection}{Implementación}{28}{}%
 \contentsline {subsubsection}{Pruebas}{28}{}%
-\contentsline {subsection}{\numberline {3.2.5}Iteración 5: Módulo antifraude mediante sensor IR}{29}{}%
+\contentsline {subsection}{\numberline {3.2.6}Iteración 6: Página web backend e integración con ERP}{28}{}%
+\contentsline {subsubsection}{Análisis}{28}{}%
+\contentsline {subsubsection}{Diseño}{28}{}%
+\contentsline {subsubsection}{Implementación}{28}{}%
+\contentsline {subsubsection}{Pruebas}{29}{}%
+\contentsline {subsection}{\numberline {3.2.7}Iteración 7: Validación final del prototipo}{29}{}%
 \contentsline {subsubsection}{Análisis}{29}{}%
 \contentsline {subsubsection}{Diseño}{29}{}%
 \contentsline {subsubsection}{Implementación}{29}{}%
 \contentsline {subsubsection}{Pruebas}{29}{}%
-\contentsline {subsection}{\numberline {3.2.6}Iteración 6: Página web backend e integración con ERP}{29}{}%
+\contentsline {subsection}{\numberline {3.2.8}Iteración 8: Integración total y cierre del proyecto}{29}{}%
 \contentsline {subsubsection}{Análisis}{29}{}%
 \contentsline {subsubsection}{Diseño}{29}{}%
-\contentsline {subsubsection}{Implementación}{29}{}%
-\contentsline {subsubsection}{Pruebas}{30}{}%
-\contentsline {subsection}{\numberline {3.2.7}Iteración 7: Validación final del prototipo}{30}{}%
-\contentsline {subsubsection}{Análisis}{30}{}%
-\contentsline {subsubsection}{Diseño}{30}{}%
 \contentsline {subsubsection}{Implementación}{30}{}%
 \contentsline {subsubsection}{Pruebas}{30}{}%
-\contentsline {subsection}{\numberline {3.2.8}Iteración 8: Integración total y cierre del proyecto}{30}{}%
-\contentsline {subsubsection}{Análisis}{30}{}%
-\contentsline {subsubsection}{Diseño}{30}{}%
-\contentsline {subsubsection}{Implementación}{31}{}%
-\contentsline {subsubsection}{Pruebas}{31}{}%
-\contentsline {section}{\numberline {3.3}Metodología de evaluación}{31}{}%
-\contentsline {subsection}{\numberline {3.3.1}Pruebas de integración}{31}{}%
-\contentsline {subsection}{\numberline {3.3.2}Pruebas de usabilidad}{32}{}%
-\contentsline {subsubsection}{Preguntas para usuarios no técnicos}{32}{}%
-\contentsline {subsubsection}{Preguntas para usuarios técnicos}{33}{}%
-\contentsline {subsection}{\numberline {3.3.3}Pruebas de confiabilidad y disponibilidad}{34}{}%
-\contentsline {section}{\numberline {3.4}Resultados Esperados}{34}{}%
-\contentsline {section}{\numberline {3.5}Resumen del capítulo}{35}{}%
-\contentsline {chapter}{\numberline {4}Desarrollo}{36}{}%
-\contentsline {section}{\numberline {4.1}Diseño de software}{36}{}%
-\contentsline {subsection}{\numberline {4.1.1}Arquitectura física}{36}{}%
+\contentsline {section}{\numberline {3.3}Metodología de evaluación}{30}{}%
+\contentsline {subsection}{\numberline {3.3.1}Pruebas de integración}{30}{}%
+\contentsline {subsection}{\numberline {3.3.2}Pruebas de usabilidad}{31}{}%
+\contentsline {subsubsection}{Preguntas para usuarios no técnicos}{31}{}%
+\contentsline {subsubsection}{Preguntas para usuarios técnicos}{32}{}%
+\contentsline {subsection}{\numberline {3.3.3}Pruebas de confiabilidad y disponibilidad}{33}{}%
+\contentsline {section}{\numberline {3.4}Resultados Esperados}{33}{}%
+\contentsline {section}{\numberline {3.5}Resumen del capítulo}{34}{}%
+\contentsline {chapter}{\numberline {4}Desarrollo}{35}{}%
+\contentsline {section}{\numberline {4.1}Diseño de software}{35}{}%
+\contentsline {subsection}{\numberline {4.1.1}Arquitectura física}{35}{}%
 \contentsline {subsection}{\numberline {4.1.2}Arquitectura lógica}{36}{}%
-\contentsline {section}{\numberline {4.2}Implementación}{37}{}%
-\contentsline {section}{\numberline {4.3}Iteración 1: Diseño y planificación inicial}{38}{}%
-\contentsline {subsection}{\numberline {4.3.1}Análisis}{38}{}%
-\contentsline {subsection}{\numberline {4.3.2}Diseño}{39}{}%
-\contentsline {subsection}{\numberline {4.3.3}Implementación}{47}{}%
-\contentsline {subsubsection}{Integración del lector de huellas AS608}{48}{}%
-\contentsline {subsubsection}{Montaje del servidor web embebido}{50}{}%
-\contentsline {subsubsection}{Creación de vistas HTML embebidas}{52}{}%
-\contentsline {subsubsection}{Menú principal}{52}{}%
-\contentsline {subsubsection}{Vista de configuración Wi-Fi}{53}{}%
-\contentsline {subsubsection}{Vista de registro de personas}{53}{}%
-\contentsline {subsubsection}{Vista de asistencias}{54}{}%
-\contentsline {subsubsection}{Vista de Personas registradas}{55}{}%
-\contentsline {subsubsection}{Vista de Crear Turnos}{56}{}%
-\contentsline {subsubsection}{Vista de asignación de turnos}{57}{}%
-\contentsline {subsection}{\numberline {4.3.4}Pruebas}{58}{}%
-\contentsline {section}{\numberline {4.4}Iteración 2: Almacenamiento local y modo offline}{59}{}%
-\contentsline {subsection}{\numberline {4.4.1}Análisis}{59}{}%
-\contentsline {subsection}{\numberline {4.4.2}Diseño}{60}{}%
-\contentsline {subsection}{\numberline {4.4.3}Implementación}{60}{}%
-\contentsline {subsubsection}{Inicialización del sistema de archivos y persistencia}{60}{}%
-\contentsline {subsubsection}{Registro de usuarios con huella digital}{61}{}%
-\contentsline {subsubsection}{Registro de asistencia en modo offline}{64}{}%
-\contentsline {subsubsection}{Gestión de datos y actualización de archivos}{66}{}%
-\contentsline {subsubsection}{Operación offline del dispositivo}{67}{}%
-\contentsline {subsection}{\numberline {4.4.4}Pruebas}{68}{}%
-\contentsline {section}{\numberline {4.5}Iteración 3: Comunicación y conectividad }{69}{}%
-\contentsline {subsection}{\numberline {4.5.1}Análisis}{69}{}%
-\contentsline {subsection}{\numberline {4.5.2}Diseño}{70}{}%
-\contentsline {subsection}{\numberline {4.5.3}Implementación}{72}{}%
-\contentsline {subsubsection}{Implementación inicial de la base de datos}{72}{}%
-\contentsline {subsubsection}{Conexión Wi-Fi del ESP32-CAM}{72}{}%
-\contentsline {subsubsection}{Captura de imágenes desde la cámara}{73}{}%
-\contentsline {subsubsection}{Envío de imágenes mediante MQTT}{74}{}%
-\contentsline {subsubsection}{Reintento automático de conexión MQTT}{75}{}%
-\contentsline {subsubsection}{Recepción de imágenes en el backend}{76}{}%
-\contentsline {subsubsection}{Implementación de la API REST del backend}{77}{}%
-\contentsline {subsubsection}{Envío de datos mediante HTTP desde el ESP32-CAM hacia la API backend}{77}{}%
-\contentsline {subsection}{\numberline {4.5.4}Pruebas}{79}{}%
-\contentsline {section}{\numberline {4.6}Resumen del capítulo}{80}{}%
+\contentsline {section}{\numberline {4.2}Implementación}{36}{}%
+\contentsline {section}{\numberline {4.3}Iteración 1: Diseño y planificación inicial}{37}{}%
+\contentsline {subsection}{\numberline {4.3.1}Análisis}{37}{}%
+\contentsline {subsection}{\numberline {4.3.2}Diseño}{38}{}%
+\contentsline {subsection}{\numberline {4.3.3}Implementación}{42}{}%
+\contentsline {subsubsection}{Integración del lector de huellas AS608}{43}{}%
+\contentsline {subsubsection}{Montaje del servidor web embebido}{44}{}%
+\contentsline {subsubsection}{Creación de vistas HTML embebidas}{45}{}%
+\contentsline {subsubsection}{Menú principal}{45}{}%
+\contentsline {subsubsection}{Vista de configuración Wi-Fi}{46}{}%
+\contentsline {subsubsection}{Vista de registro de personas}{47}{}%
+\contentsline {subsubsection}{Vista de asistencias}{47}{}%
+\contentsline {subsubsection}{Vista de Personas registradas}{48}{}%
+\contentsline {subsubsection}{Vista de Crear Turnos}{49}{}%
+\contentsline {subsubsection}{Vista de asignación de turnos}{49}{}%
+\contentsline {subsection}{\numberline {4.3.4}Pruebas}{50}{}%
+\contentsline {section}{\numberline {4.4}Iteración 2: Almacenamiento local y modo offline}{51}{}%
+\contentsline {subsection}{\numberline {4.4.1}Análisis}{51}{}%
+\contentsline {subsection}{\numberline {4.4.2}Diseño}{51}{}%
+\contentsline {subsection}{\numberline {4.4.3}Implementación}{52}{}%
+\contentsline {subsubsection}{Inicialización del sistema de archivos y persistencia}{52}{}%
+\contentsline {subsubsection}{Registro de usuarios con huella digital}{53}{}%
+\contentsline {subsubsection}{Registro de asistencia en modo offline}{57}{}%
+\contentsline {subsubsection}{Gestión de datos y actualización de archivos}{59}{}%
+\contentsline {subsubsection}{Operación offline del dispositivo}{60}{}%
+\contentsline {subsection}{\numberline {4.4.4}Pruebas}{61}{}%
+\contentsline {section}{\numberline {4.5}Iteración 3: Comunicación y conectividad }{61}{}%
+\contentsline {subsection}{\numberline {4.5.1}Análisis}{62}{}%
+\contentsline {subsection}{\numberline {4.5.2}Diseño}{62}{}%
+\contentsline {subsection}{\numberline {4.5.3}Implementación}{64}{}%
+\contentsline {subsubsection}{Implementación inicial de la base de datos}{64}{}%
+\contentsline {subsubsection}{Conexión Wi-Fi del ESP32-CAM}{65}{}%
+\contentsline {subsubsection}{Captura de imágenes desde la cámara}{65}{}%
+\contentsline {subsubsection}{Envío de imágenes mediante MQTT}{66}{}%
+\contentsline {subsubsection}{Reintento automático de conexión MQTT}{66}{}%
+\contentsline {subsubsection}{Recepción de imágenes en el backend}{67}{}%
+\contentsline {subsubsection}{Implementación de la API REST del backend}{68}{}%
+\contentsline {subsubsection}{Envío de datos mediante HTTP desde el ESP32-CAM hacia la API backend}{68}{}%
+\contentsline {subsection}{\numberline {4.5.4}Pruebas}{69}{}%
+\contentsline {section}{\numberline {4.6}Resumen del capítulo}{69}{}%

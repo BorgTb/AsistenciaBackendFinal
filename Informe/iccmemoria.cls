@@ -88,7 +88,7 @@
 
 \def\logo{
 \begin{center}
-\includegraphics[width=3cm]{Formato Memoria/utalca1.png}
+\includegraphics[width=3cm]{utalca1.png}
 \end{center}
 }
 
