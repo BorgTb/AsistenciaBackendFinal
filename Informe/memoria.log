@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.141592653-2.6-1.40.28 (MiKTeX 25.12) (preloaded format=pdflatex 2026.6.4)  4 JUN 2026 17:31
+This is pdfTeX, Version 3.141592653-2.6-1.40.28 (MiKTeX 25.12) (preloaded format=pdflatex 2026.6.4)  4 JUN 2026 21:26
 entering extended mode
  restricted \write18 enabled.
  file:line:error style messages enabled.
@@ -500,67 +500,67 @@ Overfull \hbox (24.5048pt too wide) in paragraph at lines 527--528
  []
 
 [35]
-Overfull \hbox (30.88403pt too wide) in paragraph at lines 564--565
+Overfull \hbox (30.88403pt too wide) in paragraph at lines 565--566
 []\T1/lmr/m/n/12 (-20) Implementación de \T1/lmtt/m/n/12 _transformar_datos() \T1/lmr/m/n/12 (-20) para field mapping y \T1/lmtt/m/n/12 _enviar_a_webhook()
  []
 
 [36]
-Overfull \hbox (3.1234pt too wide) in paragraph at lines 587--588
+Overfull \hbox (3.1234pt too wide) in paragraph at lines 588--589
 []\T1/lmr/m/n/12 (-20) Definición de métricas de sincronización: cero pérdida de datos offline, idempotencia
  []
 
 
-Overfull \hbox (77.53024pt too wide) in paragraph at lines 588--589
+Overfull \hbox (77.53024pt too wide) in paragraph at lines 589--590
 \T1/lmr/m/n/12 (-20) logs biométricos (\T1/lmtt/m/n/12 logs_biometricos\T1/lmr/m/n/12 (-20) ) y registro de eliminaciones (\T1/lmtt/m/n/12 eliminaciones_biometricas\T1/lmr/m/n/12 (-20) ). 
  []
 
 
-Overfull \hbox (13.13869pt too wide) in paragraph at lines 590--591
+Overfull \hbox (13.13869pt too wide) in paragraph at lines 591--592
 []\T1/lmr/m/n/12 (-20) Identificación de herramientas de diagnóstico: script \T1/lmtt/m/n/12 deteccion.py \T1/lmr/m/n/12 (-20) para simulaciones
  []
 
 
-Overfull \hbox (12.04607pt too wide) in paragraph at lines 595--596
+Overfull \hbox (12.04607pt too wide) in paragraph at lines 596--597
 []\T1/lmr/m/n/12 (-20) Diseño del proceso de sincronización en 2 momentos: al iniciar (sincronizarPendientes)
  []
 
 
-Overfull \hbox (14.70055pt too wide) in paragraph at lines 596--597
+Overfull \hbox (14.70055pt too wide) in paragraph at lines 597--598
 []\T1/lmr/m/n/12 (-20) Diseño del orden de sincronización: turnos $\OMS/lmsy/m/n/12 !$ \T1/lmr/m/n/12 (-20) asignaciones $\OMS/lmsy/m/n/12 !$ \T1/lmr/m/n/12 (-20) asistencias (dependencia
  []
 
 [37]
-Overfull \hbox (85.08556pt too wide) in paragraph at lines 604--605
+Overfull \hbox (85.08556pt too wide) in paragraph at lines 605--606
 []\T1/lmr/m/n/12 (-20) Implementación de \T1/lmtt/m/n/12 sincronizarTurnosPendientes()\T1/lmr/m/n/12 (-20) , \T1/lmtt/m/n/12 sincronizarAsignacionesPendientes()
  []
 
 
-Overfull \hbox (15.72812pt too wide) in paragraph at lines 606--607
+Overfull \hbox (15.72812pt too wide) in paragraph at lines 607--608
 []\T1/lmr/m/n/12 (-20) Implementación de \T1/lmtt/m/n/12 POST /api/asistencias/sync \T1/lmr/m/n/12 (-20) con deduplicación por persona_id
  []
 
 
-Overfull \hbox (16.97697pt too wide) in paragraph at lines 608--609
+Overfull \hbox (16.97697pt too wide) in paragraph at lines 609--610
 []\T1/lmr/m/n/12 (-20) Implementación de endpoints de consulta y limpieza de logs (\T1/lmtt/m/n/12 GET/DELETE /api/logs\T1/lmr/m/n/12 (-20) ). 
  []
 
 
-Overfull \hbox (13.21886pt too wide) in paragraph at lines 615--616
+Overfull \hbox (13.21886pt too wide) in paragraph at lines 616--617
 []\T1/lmr/m/n/12 (-20) Prueba de sincronización de 5 asistencias offline $\OMS/lmsy/m/n/12 !$ \T1/lmr/m/n/12 (-20) verificación en BD $\OMS/lmsy/m/n/12 !$ \T1/lmr/m/n/12 (-20) idempotencia
  []
 
-[38] [39] [40]
-Overfull \hbox (8.18605pt too wide) in paragraph at lines 679--680
+[38] [39] [40] [41]
+Overfull \hbox (8.18605pt too wide) in paragraph at lines 680--681
 \T1/lmr/m/n/12 (-20) de los cuales consideramos escenarios de desconexión total, conectividad intermitente,
  []
 
-[41]
-Overfull \hbox (32.89418pt too wide) in paragraph at lines 692--694
+
+Overfull \hbox (32.89418pt too wide) in paragraph at lines 693--695
 []\T1/lmr/m/n/12 (-20) Objetivo especifico 3: Incorporar capacidad de funcionamiento offline con almacenamiento
  []
 
 [42]
-Overfull \hbox (1.16055pt too wide) in paragraph at lines 712--713
+Overfull \hbox (1.16055pt too wide) in paragraph at lines 713--714
 \T1/lmr/m/n/12 (-20) incorporando nuevas funcionalidades: configuración inicial del hardware, almacenamiento
  []
 
@@ -931,114 +931,120 @@ Overfull \hbox (40.6325pt too wide) in paragraph at lines 1068--1068
  []
 
 [90]
-Overfull \hbox (35.30502pt too wide) in paragraph at lines 1074--1075
-\T1/lmr/m/n/12 (-20) prueba y las fotos de registro se almacenan en \T1/lmtt/m/n/12 static/previews/ \T1/lmr/m/n/12 (-20) y \T1/lmtt/m/n/12 static/capturas_prueba/
+Overfull \hbox (26.748pt too wide) in paragraph at lines 1079--1080
+\T1/lmtt/m/n/12 /estado \T1/lmr/m/n/12 (-20) (variable \T1/lmtt/m/n/12 NEXT_PUBLIC_DEVICE_BASE_URL\T1/lmr/m/n/12 (-20) , por defecto \T1/lmtt/m/n/12 http://192.168.4.1\T1/lmr/m/n/12 (-20) ). 
  []
 
-LaTeX Font Info:    Font shape `T1/lmtt/bx/n' in size <12> not available
-(Font)              Font shape `T1/lmtt/b/n' tried instead on input line 1085.
+
+Overfull \hbox (52.9637pt too wide) in paragraph at lines 1085--1086
+[]\T1/lmr/m/n/12 (-20) El panel web se comunica con el backend Flask mediante un proxy interno (\T1/lmtt/m/n/12 app/api/_proxy.ts\T1/lmr/m/n/12 (-20) )
+ []
+
 [91]
-Overfull \hbox (45.66475pt too wide) in paragraph at lines 1109--1110
+LaTeX Font Info:    Font shape `T1/lmtt/bx/n' in size <12> not available
+(Font)              Font shape `T1/lmtt/b/n' tried instead on input line 1096.
+ [92]
+Overfull \hbox (45.66475pt too wide) in paragraph at lines 1120--1121
 []\T1/lmr/bx/n/12 (-20) Prueba de envío automático\T1/lmr/m/n/12 (-20) : Registrar una asistencia real (POST a \T1/lmtt/m/n/12 /api/asistencias\T1/lmr/m/n/12 (-20) )
  []
 
 
-Overfull \hbox (6.1994pt too wide) in paragraph at lines 1111--1112
+Overfull \hbox (6.1994pt too wide) in paragraph at lines 1122--1123
 []\T1/lmr/bx/n/12 (-20) Prueba de field mapping\T1/lmr/m/n/12 (-20) : Configurar un ERP con field mapping \T1/lmtt/m/n/12 {"persona_id":
  []
 
-[92] [93]
-Overfull \hbox (32.16951pt too wide) in paragraph at lines 1154--1155
+[93] [94]
+Overfull \hbox (32.16951pt too wide) in paragraph at lines 1165--1166
 []\T1/lmtt/m/n/12 sincronizarAsignacionesPendientes()\T1/lmr/m/n/12 (-20) : Similar para asignaciones, dependiendo
  []
 
 
-Overfull \hbox (1.7207pt too wide) in paragraph at lines 1155--1156
+Overfull \hbox (1.7207pt too wide) in paragraph at lines 1166--1167
 []\T1/lmtt/m/n/12 sincronizarAsistencias()\T1/lmr/m/n/12 (-20) : Envía un lote de asistencias con \T1/lmtt/m/n/12 sincronizado
  []
 
 
-Overfull \hbox (26.14981pt too wide) in paragraph at lines 1157--1158
+Overfull \hbox (26.14981pt too wide) in paragraph at lines 1168--1169
 []\T1/lmr/bx/n/12 (-20) Periódicamente\T1/lmr/m/n/12 (-20) : Cada 5 minutos (300,000 ms), se ejecuta \T1/lmtt/m/n/12 sincronizarPendientes()
  []
 
-[94] [95] [96]
-Overfull \hbox (3.168pt too wide) in paragraph at lines 1234--1235
+[95] [96]
+Overfull \hbox (3.168pt too wide) in paragraph at lines 1245--1246
 []\T1/lmr/m/n/12 (-20) Función \T1/lmtt/m/n/12 simular_asistencia_por_foto() \T1/lmr/m/n/12 (-20) que busca coincidencias del embedding
  []
 
 
-Overfull \hbox (72.41199pt too wide) in paragraph at lines 1235--1236
+Overfull \hbox (72.41199pt too wide) in paragraph at lines 1246--1247
 []\T1/lmr/m/n/12 (-20) Menú interactivo en terminal para seleccionar imágenes de la carpeta \T1/lmtt/m/n/12 static/capturas_prueba/\T1/lmr/m/n/12 (-20) . 
  []
 
-
-Overfull \hbox (7.39166pt too wide) in paragraph at lines 1249--1250
+[97]
+Overfull \hbox (7.39166pt too wide) in paragraph at lines 1260--1261
 []\T1/lmr/bx/n/12 (-20) Prueba de sincronización de turnos y asignaciones\T1/lmr/m/n/12 (-20) : Desconectar el dispositivo,
  []
 
-[97]
-Overfull \hbox (6.53877pt too wide) in paragraph at lines 1255--1256
+
+Overfull \hbox (6.53877pt too wide) in paragraph at lines 1266--1267
 []\T1/lmr/bx/n/12 (-20) Prueba de logs biométricos\T1/lmr/m/n/12 (-20) : Realizar operaciones de registro facial, identificación
  []
 
 [98])
-Overfull \hbox (97.4343pt too wide) in paragraph at lines 720--721
+Overfull \hbox (97.4343pt too wide) in paragraph at lines 721--722
 \T1/lmr/m/n/12 (-20) Chile. https://www.bcn.cl/leychile/navegar?idNorma=1203415&idParte=10499950&idVersion=2025-
  []
 
-
-Overfull \hbox (0.59369pt too wide) in paragraph at lines 722--723
+[99]
+Overfull \hbox (0.59369pt too wide) in paragraph at lines 723--724
 \T1/lmr/m/n/12 (-20) Ventajas y desventajas. APD. https://www.apd.es/ventajas-y-desventajas-sistema-
  []
 
-[99]
-Overfull \hbox (8.78482pt too wide) in paragraph at lines 731--732
+
+Overfull \hbox (8.78482pt too wide) in paragraph at lines 732--733
 []\T1/lmr/m/n/12 (-20) Last Minute Engineers. (s.f.). Empezando con ESP32-CAM: Guía para principiantes.
  []
 
 
-Overfull \hbox (36.03314pt too wide) in paragraph at lines 733--734
+Overfull \hbox (36.03314pt too wide) in paragraph at lines 734--735
 \T1/lmr/m/n/12 (-20) octubre de 2025, de https://developer.mozilla.org/es/docs/Web/HTTP/Guides/Overview 
  []
 
-
-Overfull \hbox (12.1488pt too wide) in paragraph at lines 738--739
+[100]
+Overfull \hbox (12.1488pt too wide) in paragraph at lines 739--740
 \T1/lmr/m/n/12 (-20) de 2025, de https://zktecolatinoamerica.com/categoria-producto/tiempo-y-asistencia 
  []
 
-[100]
-Overfull \hbox (11.39685pt too wide) in paragraph at lines 743--744
+
+Overfull \hbox (11.39685pt too wide) in paragraph at lines 744--745
 \T1/lmr/m/n/12 (-20) Recuperado el 3 de noviembre de 2025, de https://www.atlassian.com/es/agile/scrum 
  []
 
 
-Overfull \hbox (184.26674pt too wide) in paragraph at lines 744--745
+Overfull \hbox (184.26674pt too wide) in paragraph at lines 745--746
 \T1/lmr/m/n/12 (-20) https://www.teach-ict.com/as_a2_ict_new/ocr/A2_G063/331_systems_cycle/prototyping_RAD/miniweb/pg3.htm 
  []
 
 
-Overfull \hbox (54.17564pt too wide) in paragraph at lines 745--746
+Overfull \hbox (54.17564pt too wide) in paragraph at lines 746--747
 \T1/lmr/m/n/12 (-20) software. Recuperado el 20 de noviembre de 2025, de https://www.geeksforgeeks.org/software-
  []
 
-
-Overfull \hbox (108.85608pt too wide) in paragraph at lines 755--756
+[101]
+Overfull \hbox (108.85608pt too wide) in paragraph at lines 756--757
 []\T1/lmr/m/n/12 (-20) Kaspersky Lab. (2025). ¾Qué es la biometría? Definición y tipos. https://latam.kaspersky.com/resource-
  []
 
-[101]
-Overfull \hbox (97.57118pt too wide) in paragraph at lines 756--757
+
+Overfull \hbox (97.57118pt too wide) in paragraph at lines 757--758
 []\T1/lmr/m/n/12 (-20) Espressif Systems. (2025). SPIFFS ^^V SPI Flash File System. https://docs.espressif.com/projects/esp-
  []
 
 
-Overfull \hbox (88.28545pt too wide) in paragraph at lines 758--759
+Overfull \hbox (88.28545pt too wide) in paragraph at lines 759--760
 []\T1/lmr/m/n/12 (-20) Red Hat Inc. (2025). ¾Qué son los microservicios? https://www.redhat.com/es/topics/microservices 
  []
 
 
-Overfull \hbox (118.26082pt too wide) in paragraph at lines 759--760
+Overfull \hbox (118.26082pt too wide) in paragraph at lines 760--761
 []\T1/lmr/m/n/12 (-20) EMQX Technologies. (2025). The ultimate guide to MQTT brokers. https://www.emqx.com/en/blog/the-
  []
 
@@ -1057,7 +1063,7 @@ Here is how much of TeX's memory you used:
  1141 hyphenation exceptions out of 8191
  72i,7n,79p,1576b,483s stack positions out of 10000i,1000n,20000p,200000b,200000s
 <D:/Latex/fonts/type1/public/lm/lmbx12.pfb><D:/Latex/fonts/type1/public/lm/lmmi12.pfb><D:/Latex/fonts/type1/public/lm/lmr12.pfb><D:/Latex/fonts/type1/public/lm/lmri12.pfb><D:/Latex/fonts/type1/public/lm/lmro12.pfb><D:/Latex/fonts/type1/public/lm/lmsy10.pfb><D:/Latex/fonts/type1/public/lm/lmtk10.pfb><D:/Latex/fonts/type1/public/lm/lmtt12.pfb>
-Output written on memoria.pdf (104 pages, 1654693 bytes).
+Output written on memoria.pdf (104 pages, 1656091 bytes).
 PDF statistics:
  423 PDF objects out of 1000 (max. 8388607)
  0 named destinations out of 1000 (max. 500000)

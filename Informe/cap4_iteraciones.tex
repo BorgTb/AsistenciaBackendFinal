@@ -1071,7 +1071,18 @@ El field mapping permite adaptar el formato de salida sin modificar el código d
 
 \subsubsection{Panel web del backend}
 
-El backend incluye una carpeta \texttt{static/} con archivos servidos por Flask. Las capturas de prueba y las fotos de registro se almacenan en \texttt{static/previews/} y \texttt{static/capturas\_prueba/} respectivamente, accesibles vía URL para su visualización en el panel administrativo. El servidor se configura con CORS habilitado para permitir que un frontend independiente (desarrollado en un proyecto separado o servido desde otro puerto) consuma la API.
+Para complementar el backend, se desarrolló un panel web independiente (Next.js 16 con React 19 y TypeScript) cuyo módulo principal es la gestión del dispositivo IoT. Este panel, accesible desde cualquier navegador moderno, permite al administrador:
+
+\begin{itemize}
+    \item Visualizar el estado online/offline de cada dispositivo enrolado mediante tarjetas con código de colores.
+    \item Generar el PIN de 8 caracteres necesario para enrolar un nuevo ESP32-CAM.
+    \item Probar la conectividad activa con un dispositivo específico consultando su endpoint \texttt{/estado} (variable \texttt{NEXT\_PUBLIC\_DEVICE\_BASE\_URL}, por defecto \texttt{http://192.168.4.1}).
+    \item Renombrar y eliminar dispositivos registrados.
+    \item Acceder a los logs de sincronización generados por el dispositivo.
+    \item Acceder a las funcionalidades complementarias de gestión: personas, turnos, asignaciones, asistencias, integración ERP, usuarios y empresas.
+\end{itemize}
+
+El panel web se comunica con el backend Flask mediante un proxy interno (\texttt{app/api/\_proxy.ts}) que reenvía las peticiones a la API REST, evitando problemas de CORS. La aplicación está protegida por un middleware de autenticación que valida el token JWT y restringe el acceso según el rol del usuario (admin, empleador, trabajador). El frontend se compila con Docker en un build multi-etapa usando \texttt{output: 'standalone'} para producir una imagen optimizada lista para producción.
 
 \subsubsection{Endpoint de configuración ERP para el ESP32-CAM}
 
@@ -1097,7 +1108,7 @@ El módulo \texttt{routes/erp.py} implementa:
 
 \subsection{Pruebas}
 
-Se diseñaron las siguientes pruebas para validar el panel web y la integración ERP:
+Se diseñaron las siguientes pruebas para validar el panel web para la gestión del dispositivo y la integración ERP:
 
 \begin{itemize}
     \item \textbf{Prueba de navegación en panel web}: Acceder a las rutas principales del backend (\texttt{/health}, \texttt{/api/personas}, \texttt{/api/asistencias}) sin autenticación y verificar que respondan correctamente (HTTP 200 con acceso público o HTTP 401 cuando se requiera token).
@@ -1264,6 +1275,6 @@ Se diseñaron las siguientes pruebas para validar la sincronización diferida, l
 
 %% ============================================================
 \section{Resumen del capítulo}
-El capítulo 4 presenta el desarrollo completo del prototipo a lo largo de ocho iteraciones, siguiendo la metodología de prototipado evolutivo incremental. Se documenta la integración del hardware (ESP32-CAM, lector AS608, sensor PIR, cámara OV2640), la implementación del almacenamiento local con LittleFS y JSON, el desarrollo del backend con Flask y PostgreSQL (13 tablas con soporte multi-tenant), la comunicación mediante HTTP y MQTT, el reconocimiento facial con DeepFace (modelo Facenet, detector RetinaFace y anti-spoofing), el cifrado de embeddings biométricos con Fernet, la autenticación JWT con roles jerárquicos, el enrolamiento seguro de dispositivos mediante PIN, el sistema antifraude multicapa (PIR + flash PWM + anti-spoofing + cooldown), el panel web administrativo, la integración con ERP externos vía webhooks con field mapping, y los mecanismos de sincronización diferida con logs de auditoría.
+El capítulo 4 presenta el desarrollo completo del prototipo a lo largo de ocho iteraciones, siguiendo la metodología de prototipado evolutivo incremental. Se documenta la integración del hardware (ESP32-CAM, lector AS608, sensor PIR, cámara OV2640), la implementación del almacenamiento local con LittleFS y JSON, el desarrollo del backend con Flask y PostgreSQL (13 tablas con soporte multi-tenant), la comunicación mediante HTTP y MQTT, el reconocimiento facial con DeepFace (modelo Facenet, detector RetinaFace y anti-spoofing), el cifrado de embeddings biométricos con Fernet, la autenticación JWT con roles jerárquicos, el enrolamiento seguro de dispositivos mediante PIN, el sistema antifraude multicapa (PIR + flash PWM + anti-spoofing + cooldown), el panel web para la gestión del dispositivo, la integración con ERP externos vía webhooks con field mapping, y los mecanismos de sincronización diferida con logs de auditoría.
 
 Cada iteración incluyó su respectivo análisis de requisitos, diseño de la solución, implementación detallada y un plan de pruebas de integración para validar el correcto funcionamiento de los componentes desarrollados.

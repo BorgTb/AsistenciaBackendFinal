@@ -79,11 +79,11 @@
 \contentsline {subsubsection}{Diseño}{34}{}%
 \contentsline {subsubsection}{Implementación}{35}{}%
 \contentsline {subsubsection}{Pruebas}{35}{}%
-\contentsline {subsection}{\numberline {3.2.7}Iteración 7: Panel web backend e integración con ERP}{35}{}%
+\contentsline {subsection}{\numberline {3.2.7}Iteración 7: Panel web para la gestión del dispositivo e integración con ERP}{35}{}%
 \contentsline {subsubsection}{Análisis}{35}{}%
 \contentsline {subsubsection}{Diseño}{36}{}%
 \contentsline {subsubsection}{Implementación}{36}{}%
-\contentsline {subsubsection}{Pruebas}{36}{}%
+\contentsline {subsubsection}{Pruebas}{37}{}%
 \contentsline {subsection}{\numberline {3.2.8}Iteración 8: Sincronización diferida, logs y cierre del proyecto}{37}{}%
 \contentsline {subsubsection}{Análisis}{37}{}%
 \contentsline {subsubsection}{Diseño}{37}{}%
@@ -94,7 +94,7 @@
 \contentsline {subsection}{\numberline {3.3.2}Pruebas de usabilidad}{40}{}%
 \contentsline {subsubsection}{Preguntas para usuarios no técnicos}{40}{}%
 \contentsline {subsubsection}{Preguntas para usuarios técnicos}{41}{}%
-\contentsline {subsection}{\numberline {3.3.3}Pruebas de confiabilidad y disponibilidad}{41}{}%
+\contentsline {subsection}{\numberline {3.3.3}Pruebas de confiabilidad y disponibilidad}{42}{}%
 \contentsline {section}{\numberline {3.4}Resultados Esperados}{42}{}%
 \contentsline {section}{\numberline {3.5}Resumen del capítulo}{43}{}%
 \contentsline {chapter}{\numberline {4}Desarrollo}{44}{}%
@@ -183,21 +183,21 @@
 \contentsline {subsection}{\numberline {4.9.3}Implementación}{91}{}%
 \contentsline {subsubsection}{Panel web del backend}{91}{}%
 \contentsline {subsubsection}{Endpoint de configuración ERP para el ESP32-CAM}{91}{}%
-\contentsline {subsubsection}{Módulo de integración ERP}{91}{}%
+\contentsline {subsubsection}{Módulo de integración ERP}{92}{}%
 \contentsline {subsection}{\numberline {4.9.4}Pruebas}{92}{}%
 \contentsline {section}{\numberline {4.10}Iteración 8: Sincronización diferida, logs y cierre del proyecto}{93}{}%
-\contentsline {subsection}{\numberline {4.10.1}Análisis}{93}{}%
+\contentsline {subsection}{\numberline {4.10.1}Análisis}{94}{}%
 \contentsline {subsection}{\numberline {4.10.2}Diseño}{94}{}%
 \contentsline {subsubsection}{Proceso de sincronización diferida}{94}{}%
-\contentsline {subsubsection}{Deduplicación en el backend}{94}{}%
+\contentsline {subsubsection}{Deduplicación en el backend}{95}{}%
 \contentsline {subsubsection}{Tablas de auditoría}{95}{}%
 \contentsline {subsubsection}{Panel de visualización de logs}{95}{}%
-\contentsline {subsubsection}{Script de simulación de asistencia facial}{95}{}%
-\contentsline {subsection}{\numberline {4.10.3}Implementación}{95}{}%
-\contentsline {subsubsection}{Sincronización en el ESP32-CAM}{95}{}%
+\contentsline {subsubsection}{Script de simulación de asistencia facial}{96}{}%
+\contentsline {subsection}{\numberline {4.10.3}Implementación}{96}{}%
+\contentsline {subsubsection}{Sincronización en el ESP32-CAM}{96}{}%
 \contentsline {subsubsection}{Sincronización de asistencias por lote}{96}{}%
-\contentsline {subsubsection}{Sincronización en el backend}{96}{}%
-\contentsline {subsubsection}{Watchdog de dispositivos}{96}{}%
+\contentsline {subsubsection}{Sincronización en el backend}{97}{}%
+\contentsline {subsubsection}{Watchdog de dispositivos}{97}{}%
 \contentsline {subsubsection}{Herramienta de simulación (deteccion.py)}{97}{}%
-\contentsline {subsection}{\numberline {4.10.4}Pruebas}{97}{}%
-\contentsline {section}{\numberline {4.11}Resumen del capítulo}{98}{}%
+\contentsline {subsection}{\numberline {4.10.4}Pruebas}{98}{}%
+\contentsline {section}{\numberline {4.11}Resumen del capítulo}{99}{}%

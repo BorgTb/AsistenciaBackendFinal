@@ -540,11 +540,12 @@ Con el fin de poder contrarrestar el avance del desarrollo del proyecto cada ite
 
 % -------------------------------------------------------------
 
-\subsection{Iteración 7: Panel web backend e integración con ERP}
+\subsection{Iteración 7: Panel web para la gestión del dispositivo e integración con ERP}
 
 \subsubsection{Análisis}
 \begin{itemize}
-    \item Definición del público objetivo: administradores y empleadores (gestión de personas, turnos, dispositivos, ERP); trabajadores (consulta de asistencias propias).
+    \item Necesidad de un panel web que centralice, en primer lugar, la gestión del dispositivo IoT (enrolamiento, estado de conexión, generación de PIN, verificación de conectividad, logs de sincronización) y, en segundo lugar, la administración de personas, turnos, asignaciones, ERP, usuarios y empresas.
+    \item Público objetivo: administradores y empleadores (gestión de personas, turnos, dispositivos, ERP); trabajadores (consulta de asistencias propias).
     \item Definición de modelo de integración ERP vía webhooks salientes: cada asistencia se notifica automáticamente a los ERP configurados en un hilo separado.
     \item Requisito de field mapping configurable para adaptar el formato JSON de salida al esquema de cada ERP.
     \item Requisito de test de conectividad manual antes de activar el envío automático.
