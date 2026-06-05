@@ -135,7 +135,7 @@ A continuación se presentan los fundamentos teóricos y tecnológico que facili
     \item Internet de las cosas (IoT): Paradigma tecnologico que permite la conexión entre dispositivos físico a través de redes de comunicación.
     \item Resolucion exenta n°38: Norma promulgada por la dirección del trabajo (DT) en 2024 (actualizada en 2025), que establece los requisitos obligatorios para los sistemas electrónicos de registro y control de asistencia.
     \item Biometria: La biometría corresponde al conjunto de técnicas utilizadas para identificar personas mediante características físicas o conductuales únicas, tales como el rostro o la huella digital. Este tipo de autenticación es ampliamente utilizada en sistemas de control de asistencia por su alta precisión y dificultad de suplantación [36].
-    \item Sincronización offline–online: Proceso mediante el cual un dispositivo opera sin conexión utilizando almacenamiento local y, una vez restablecida la conectividad, transmite los datos acumulados hacia un servidor o ERP. Resulta esencial en entornos con conectividad inestable.
+    \item Sincronización offline-online: Proceso mediante el cual un dispositivo opera sin conexión utilizando almacenamiento local y, una vez restablecida la conectividad, transmite los datos acumulados hacia un servidor o ERP. Resulta esencial en entornos con conectividad inestable.
 \end{itemize}
 \subsection{Conceptos de software}
 \begin{itemize}
@@ -186,7 +186,7 @@ DeepFace es un framework de reconocimiento facial para Python desarrollado por S
 DeepFace incluye además un módulo de anti-spoofing capaz de distinguir entre rostros reales y fotografías o pantallas, analizando micro-texturas y reflectancia. Esta funcionalidad, combinada con el sensor PIR, constituye la estrategia antifraude del prototipo sin requerir hardware especializado adicional.
 
 \subsection{Broker Mosquitto en contenedor Docker}
-Eclipse Mosquitto es un broker MQTT de código abierto, ligero y adecuado para dispositivos de bajo consumo. En este proyecto se despliega mediante Docker Compose, utilizando la imagen oficial \texttt{eclipse-mosquitto:latest}, exponiendo el puerto 1883 para conexiones MQTT nativas y el puerto 9001 para WebSockets. Esta configuración permite que el ESP32-CAM pueda conectarse al broker tanto mediante MQTT sobre TCP como mediante WebSockets seguros (wss://), facilitando la comunicación en entornos con firewalls o proxies que bloquean puertos no estándar [16][41].
+Eclipse Mosquitto es un broker MQTT de código abierto, ligero y adecuado para dispositivos de bajo consumo. En este proyecto se despliega mediante Docker Compose, utilizando la imagen oficial \texttt{eclipse-mosquitto:latest}, exponiendo el puerto \textbf{1884} (externo, mapeado al 1883 interno del contenedor) para conexiones MQTT nativas y el puerto 9001 para WebSockets. El ESP32-CAM se conecta exclusivamente al broker mediante WebSockets seguros (\texttt{wss://}) sobre el puerto 9001, ya que el cliente MQTT de ESP-IDF (\texttt{mqtt\_client}) solo soporta este modo de transporte en su versión utilizada en el firmware. La elección de WebSockets responde a la facilidad de atravesar firewalls y proxies corporativos en comparación con conexiones MQTT sobre TCP puro [16][41].
 
 
 \section{Estado del arte}
@@ -303,325 +303,31 @@ Finalizada la implementación, cada incremento es sometido a una fase de evaluac
 
 Cuando corresponde, se realizan ajustes al diseño, se corrigen fallas detectadas y se optimiza el desempeño de los componentes integrados. Esta fase también permite preparar la entrada para la siguiente iteración, asegurando que el prototipo evolucione de manera controlada y mantenga coherencia con los objetivos del proyecto.
 
-\section{Planificación}
+\section{Plan de trabajo}
 
-La planificación del proyecto se estructura mediante la metodología de prototipado evolutivo con enfoque incremental. Cada iteración incorpora nuevas funcionalidades sobre el prototipo anterior, permitiendo evaluar, corregir y fortalecer el sistema progresivamente. A continuación, se detalla cada iteración, incluyendo sus fases de análisis, diseño, implementación y pruebas.
+La planificación del proyecto se estructura mediante la metodología de prototipado evolutivo con enfoque incremental descrita en la sección 3.1. Cada iteración incorpora nuevas funcionalidades sobre el prototipo anterior, permitiendo evaluar, corregir y fortalecer el sistema progresivamente. A continuación se presenta la carta Gantt con las 8 iteraciones planificadas, sus objetivos generales, duración estimada y avance acumulado.
 
-Con el fin de poder contrarrestar el avance del desarrollo del proyecto cada iteración corresponde a un 12,5\% del total del proyecto, donde además cada porcentaje de tarea corresponde a la división de 12,5\% entre la cantidad de tareas a realizar.
+\begin{table}[H]
+\centering
+\small
+\begin{tabular}{|c|l|c|c|}
+\hline
+\textbf{Iter.} & \textbf{Objetivo} & \textbf{Duración} & \textbf{Avance} \\
+\hline
+1 & Integración HW + servidor embebido & 3 semanas & 12,5\% \\
+2 & Almacenamiento local + modo offline & 3 semanas & 25\% \\
+3 & Backend + BD + comunicación HTTP/MQTT & 3 semanas & 37,5\% \\
+4 & Reconocimiento facial + anti-spoofing + cifrado & 3 semanas & 50\% \\
+5 & Módulo antifraude (PIR + flash + firma) & 3 semanas & 62,5\% \\
+6 & Autenticación JWT + multi-tenant + enrolamiento & 3 semanas & 75\% \\
+7 & Panel web gestión dispositivo + integración ERP & 3 semanas & 87,5\% \\
+8 & Sincronización diferida + logs + cierre & 3 semanas & 100\% \\
+\hline
+\end{tabular}
+\caption{Plan de trabajo del proyecto: 8 iteraciones de 3 semanas cada una (24 semanas total)}
+\end{table}
 
-\subsection{Iteración 1: Integración de hardware y servidor embebido}
-
-\subsubsection{Análisis}
-\begin{itemize}
-    \item Identificación de requisitos base: captura facial mediante cámara OV2640, lectura de huella con sensor AS608 y servidor web local.
-    \item Definición de restricciones del proyecto: memoria RAM del ESP32 (~520 KB), escasez de GPIO tras asignación del bus de cámara (uso forzado de GPIO14/15 para UART), consumo del flash LED (~250 mA).
-    \item Selección preliminar de arquitectura del sistema IoT con soporte para operación autónoma vía Access Point (SSID: ESP32-ASISTENCIA, pass: Asistencia2026).
-\end{itemize}
-
-\subsubsection{Diseño}
-\begin{itemize}
-    \item Diseño de la arquitectura física (microservicios con broker MQTT) y lógica (módulos de firmware del ESP32-CAM).
-    \item Diseño de mockups base para la interfaz del dispositivo: menú principal, configuración Wi-Fi, registro de usuario, lista de usuarios, turnos, asignaciones.
-    \item Diseño del flujo operacional inicial de marcación con y sin conectividad.
-\end{itemize}
-
-\subsubsection{Implementación}
-\begin{itemize}
-    \item Configuración inicial del ESP32-CAM: cámara OV2640 en VGA JPEG (calidad 8), flash LED controlado por PWM (5 kHz, 50\% duty en GPIO4) para evitar caídas de tensión.
-    \item Programación del lector AS608 mediante UART secundaria (GPIO14=RX, GPIO15=TX, 57600 baudios), inicialización con verificación de contraseña.
-    \item Calibración del sensor PIR (GPIO12, pull-down) como detector de presencia con tiempo de estabilización de 3 segundos.
-    \item Implementación de servidor HTTP en puerto 80 con 9 rutas web y 14 endpoints de acción (handlers), más AP fallback automático (192.168.4.1).
-    \item Construcción de vistas HTML embebidas con literales \texttt{R"rawliteral(...)"} sin dependencias CDN externas.
-\end{itemize}
-
-\subsubsection{Pruebas}
-\begin{itemize}
-    \item Prueba de captura de imagen JPEG continua desde la cámara OV2640.
-    \item Prueba de comunicación UART y verificación de contraseña del AS608.
-    \item Prueba de enrolamiento de huella (detección, conversión a plantilla, almacenamiento en slot).
-    \item Prueba de carga de vistas HTML desde el AP (192.168.4.1) y desde Wi-Fi externa.
-\end{itemize}
-
-% -------------------------------------------------------------
-
- \subsection{Iteración 2: Almacenamiento local y modo offline}
-
-\subsubsection{Análisis}
-\begin{itemize}
-    \item Selección del formato de almacenamiento: archivos JSON mediante LittleFS (sucesor de SPIFFS para ESP32).
-    \item Identificación de parámetros configurables por el usuario: Wi-Fi (SSID, pass), backend URL, broker MQTT, PIN de enrolamiento, ERP config.
-    \item Requisito de persistencia tras reinicios y de compatibilidad con futura sincronización (campo \texttt{sincronizado} booleano en cada entidad).
-\end{itemize}
-
-\subsubsection{Diseño}
-\begin{itemize}
-    \item Diseño de 6 estructuras JSON: \texttt{personas.json}, \texttt{turnos.json}, \texttt{asignaciones.json}, \texttt{asistencias.json}, \texttt{wifi.json}, \texttt{erp-config.json}.
-    \item Diseño de la lógica de alternancia automática entrada/salida y validación de turno activo (\texttt{turnoActivo()}).
-\end{itemize}
-
-\subsubsection{Implementación}
-\begin{itemize}
-    \item Implementación de funciones genéricas \texttt{loadArray()} y \texttt{saveArray()} para lectura/escritura de archivos JSON en LittleFS.
-    \item Implementación del flujo de registro de huella en 3 estados (captura inicial, espera de retiro, segunda captura y verificación), con búsqueda de slot libre (1–127).
-    \item Implementación de marcación offline: lectura de huella $\rightarrow$ identificación $\rightarrow$ validación de turno $\rightarrow$ alternancia entrada/salida $\rightarrow$ persistencia con \texttt{sincronizado = false}.
-    \item Implementación de gestión completa offline: CRUD de turnos, asignaciones, consulta de asistencias, todo desde la interfaz web embebida.
-\end{itemize}
-
-\subsubsection{Pruebas}
-\begin{itemize}
-    \item Prueba de persistencia de datos tras reinicios del ESP32-CAM.
-    \item Prueba de lectura y deserialización correcta de los 5 archivos JSON.
-    \item Prueba de escritura concurrente sin corrupción de archivos.
-    \item Prueba de marcación offline por huella con validación de turno y alternancia entrada/salida.
-    \item Prueba de funcionamiento del AP sin conectividad externa.
-\end{itemize}
-
-% -------------------------------------------------------------
-
-\subsection{Iteración 3: Backend, base de datos y comunicación}
-
-\subsubsection{Análisis}
-\begin{itemize}
-    \item Evaluación del uso de HTTP (para API REST y sincronización) y MQTT (para transmisión de imágenes faciales en tiempo real).
-    \item Análisis de la conectividad vía Wi-Fi con mecanismo de reconexión progresiva (backoff 3–15 segundos, 5 intentos máximos) y watchdog periódico.
-    \item Evaluación de PostgreSQL como base de datos relacional, con Docker Compose para el broker Mosquitto y red bridge dedicada.
-\end{itemize}
-
-\subsubsection{Diseño}
-\begin{itemize}
-    \item Diseño del diagrama de base de datos con 13 tablas: \texttt{empresas}, \texttt{dispositivos}, \texttt{usuarios\_web}, \texttt{usuario\_empresa}, \texttt{personas}, \texttt{turnos}, \texttt{asignaciones}, \texttt{asistencias}, \texttt{sincronizacion\_log}, \texttt{integraciones\_erp}, \texttt{consentimientos}, \texttt{logs\_biometricos}, \texttt{eliminaciones\_biometricas}.
-    \item Diseño de la API REST con 9 blueprints de Flask: auth, personas, turnos, asignaciones, asistencias, facial, dispositivos, logs, erp.
-    \item Diseño del flujo MQTT: tópico único \texttt{esp32/imagen/registrar} con payload JSON (persona\_id + imagen Base64), respuesta en \texttt{esp32/respuesta/facial}, heartbeats en \texttt{esp32/heartbeat/<MAC>}, LWT en \texttt{esp32/lwt/<MAC>}.
-    \item Diseño de endpoints de sincronización y comunicación HTTP con header \texttt{X-Device-MAC}.
-\end{itemize}
-
-\subsubsection{Implementación}
-\begin{itemize}
-    \item Implementación de la base de datos con \texttt{init\_db()} idempotente (CREATE IF NOT EXISTS + ALTER ADD COLUMN), índices y datos semilla.
-    \item Implementación del cliente MQTT en ESP32-CAM (soporte wss:// con TLS) y en backend Python (paho-mqtt) con suscripciones a tópicos de registro facial, heartbeat y LWT.
-    \item Implementación de envío de imagen facial en un único mensaje JSON (sin fragmentación) por MQTT con QoS 1.
-    \item Implementación de \texttt{HTTPClient} en ESP32 para comunicación con la API REST (fetch personas/turnos/asignaciones, post asistencias, sync lotes).
-    \item Despliegue Docker Compose con Mosquitto (puertos 1883 y 9001), volúmenes persistentes y red \texttt{teleasist\_network}.
-\end{itemize}
-
-\subsubsection{Pruebas}
-\begin{itemize}
-    \item Prueba de conexión Wi-Fi con reconexión automática y modo AP como fallback.
-    \item Prueba de envío MQTT de imagen y recepción de respuesta de confirmación.
-    \item Prueba de heartbeat (30s) y LWT (marca como inactivo en <10s).
-    \item Prueba de recepción HTTP de datos en backend para las 4 entidades.
-    \item Prueba de sincronización por lotes de asistencias offline (POST /api/asistencias/sync).
-    \item Prueba de inicialización de base de datos desde cero.
-    \item Prueba de latencia de transmisión MQTT extremo a extremo.
-\end{itemize}
-
-% -------------------------------------------------------------
-
-\subsection{Iteración 4: Reconocimiento facial, anti-spoofing y cifrado biométrico}
-
-\subsubsection{Análisis}
-\begin{itemize}
-    \item Evaluación de librerías de reconocimiento facial: selección de DeepFace por su soporte multi-modelo y anti-spoofing integrado.
-    \item Selección del modelo Facenet (embeddings de 128 dimensiones, umbral de distancia euclidiana 10.0) y detector RetinaFace (robusto a variaciones de pose e iluminación).
-    \item Identificación de requisitos de seguridad: cifrado de embeddings con Fernet (AES-128 CBC + HMAC-SHA256), consentimiento biométrico obligatorio, detección de registros duplicados.
-\end{itemize}
-
-\subsubsection{Diseño}
-\begin{itemize}
-    \item Diseño del flujo de registro facial: recepción de imagen $\rightarrow$ verificación de consentimiento $\rightarrow$ extracción de embedding (sin anti-spoofing) $\rightarrow$ comparación contra todos los embeddings existentes (umbral 10.0) $\rightarrow$ cifrado Fernet $\rightarrow$ persistencia.
-    \item Diseño del flujo de identificación 1:N: recepción de JPEG crudo $\rightarrow$ guardado de auditoría $\rightarrow$ extracción de embedding (con anti-spoofing) $\rightarrow$ comparación contra toda la base $\rightarrow$ retorno del mejor match.
-    \item Diseño del flujo de verificación 1:1: descifrado de embedding almacenado $\rightarrow$ comparación con embedding de imagen capturada (anti-spoofing activado) $\rightarrow$ cálculo de confianza.
-    \item Diseño del flujo de eliminación segura de datos biométricos con conservación de asistencias históricas.
-\end{itemize}
-
-\subsubsection{Implementación}
-\begin{itemize}
-    \item Implementación de 3 endpoints faciales REST (\texttt{registrar}, \texttt{identificar}, \texttt{verificar}) con logging biométrico en cada operación.
-    \item Implementación de procesamiento facial vía MQTT en hilo del backend con verificación de consentimiento y respuesta al ESP32-CAM.
-    \item Implementación de cifrado/descifrado de embeddings con Fernet usando clave derivada de SHA-256 sobre variable de entorno.
-    \item Implementación de detección de identidades duplicadas (HTTP 409) y de endpoint de actualización de rostro.
-    \item Implementación de script CLI \texttt{deteccion.py} para simulación de asistencia facial desde fotos almacenadas.
-\end{itemize}
-
-\subsubsection{Pruebas}
-\begin{itemize}
-    \item Prueba de registro facial exitoso con consentimiento y sin duplicados.
-    \item Prueba de detección de rostro duplicado con distancia < 10.0.
-    \item Prueba de rechazo por falta de consentimiento biométrico (HTTP 403).
-    \item Prueba de identificación 1:N (match correcto entre 3 personas) y de rostro desconocido (HTTP 404).
-    \item Prueba de anti-spoofing con fotografía impresa y pantalla de teléfono.
-    \item Prueba de resistencia a 3 condiciones de iluminación distintas.
-    \item Prueba de cifrado/descifrado de embeddings (ida y vuelta sin pérdida).
-    \item Prueba de eliminación segura de datos biométricos con trazabilidad.
-\end{itemize}
-
-% -------------------------------------------------------------
-
-\subsection{Iteración 5: Módulo antifraude y validación previa a la captura}
-
-\subsubsection{Análisis}
-\begin{itemize}
-    \item Identificación de escenarios de suplantación: fotografía impresa, pantalla de dispositivo, ausencia de presencia real.
-    \item \textbf{Cambio tecnológico justificado}: El plan original contemplaba un sensor IR dedicado. Sin embargo, la extrema limitación de pines GPIO en el ESP32-CAM —tras la asignación del bus de cámara y el sensor de huellas— forzó la adopción de una estrategia alternativa. Se determinó que el detector anti-spoofing de DeepFace (basado en redes convolucionales) ofrece una precisión comparable o superior a la de sensores IR de bajo costo, y que el sensor PIR (ya presente para detección de presencia) podía asumir la función de ``portero'' físico del sistema. Esta decisión permitió liberar el GPIO que habría ocupado el IR y fortalecer la capa de seguridad mediante software.
-    \item Enfoque adoptado: estrategia antifraude de 3 capas combinando PIR (detección física de calor corporal), flash PWM controlado (respuesta diferencial del rostro real a fuente de luz puntual) y anti-spoofing por software (DeepFace).
-\end{itemize}
-
-\subsubsection{Diseño}
-\begin{itemize}
-    \item Diseño del PIR como portero: reposo absoluto hasta detección de movimiento $\rightarrow$ ventana de 15 segundos de actividad $\rightarrow$ retorno a reposo si no hay más detección.
-    \item Diseño de 3 mecanismos de control: cooldown entre marcaciones (8 s), debounce de huella (4 s) y bloqueo por uso del menú web (30 s).
-    \item Diseño de firma de movimiento: muestreo de 128 bytes del buffer JPEG para detectar cambios entre capturas consecutivas (umbral 1800).
-    \item Diseño de la secuencia de captura con flash PWM: encendido al 50\% duty durante 150 ms $\rightarrow$ captura $\rightarrow$ apagado inmediato.
-    \item Diseño de señalización visual mediante flash: 2 destellos para éxito, 1 destello largo para error.
-\end{itemize}
-
-\subsubsection{Implementación}
-\begin{itemize}
-    \item Integración del sensor PIR al GPIO12 del ESP32-CAM con pull-down y calibración de 3 segundos en el setup.
-    \item Programación de la máquina de estados de presencia con timer de 15 segundos y delay de estabilización de 800 ms tras detección.
-    \item Programación del control de cooldown, debounce de huella (compara fingerID y timestamp de última lectura) y bloqueo por menú.
-    \item Implementación de la firma de movimiento y la secuencia de flash PWM con apagado post-captura.
-    \item Programación de las funciones \texttt{flashExito()} y \texttt{flashError()} para retroalimentación sin pantalla.
-    \item Configuración de anti-spoofing en backend para endpoints de identificación y verificación.
-\end{itemize}
-
-\subsubsection{Pruebas}
-\begin{itemize}
-    \item Prueba de detección PIR a 50 cm y retorno a reposo tras 15 s sin presencia.
-    \item Prueba de falsos positivos del PIR en habitación vacía durante 10 minutos.
-    \item Prueba de cooldown entre marcaciones (8 s) y debounce de huella (4 s).
-    \item Prueba de bloqueo por menú durante operaciones administrativas.
-    \item Prueba de anti-spoofing con fotografía impresa y pantalla de teléfono.
-    \item Prueba de flash PWM: duración, duty cycle y calidad de imagen resultante.
-    \item Prueba de señalización por flash (éxito 2 destellos, error 1 destello).
-\end{itemize}
-
-% -------------------------------------------------------------
-
-\subsection{Iteración 6: Autenticación, multi-tenant y enrolamiento de dispositivos}
-
-\subsubsection{Análisis}
-\begin{itemize}
-    \item Definición del modelo multi-tenant: múltiples empresas operando sobre una misma instancia del backend con datos aislados mediante columna \texttt{empresa\_id}.
-    \item Definición de 3 roles jerárquicos: admin (global), empleador (su empresa), trabajador (sus propios datos).
-    \item Requisito de autenticación JWT (HS256, 24h de expiración) para proteger los endpoints del panel web.
-    \item Requisito de enrolamiento seguro de dispositivos ESP32-CAM mediante PIN de 8 caracteres de un solo uso.
-    \item Requisito de monitorización de dispositivos vía heartbeat MQTT (30s) y watchdog (90s timeout).
-\end{itemize}
-
-\subsubsection{Diseño}
-\begin{itemize}
-    \item Diseño del esquema multi-tenant: tabla \texttt{empresas} como raíz, \texttt{usuario\_empresa} como relación muchos-a-muchos con rol.
-    \item Diseño del flujo de autenticación: login $\rightarrow$ bcrypt $\rightarrow$ selección de empresa $\rightarrow$ JWT con user\_id, empresa\_id, rol, persona\_id.
-    \item Diseño de 3 decoradores de protección: \texttt{@token\_required}, \texttt{@token\_opcional} (infiere empresa desde X-Device-MAC), \texttt{@requiere\_rol}.
-    \item Diseño del flujo de enrolamiento: generación de PIN en panel web $\rightarrow$ ingreso en ESP32-CAM $\rightarrow$ POST con PIN+MAC+IP $\rightarrow$ activación.
-\end{itemize}
-
-\subsubsection{Implementación}
-\begin{itemize}
-    \item Implementación del módulo \texttt{auth.py} con login, register, me, change-password, CRUD de empresas y usuarios.
-    \item Implementación de validación de contraseñas con bcrypt y generación de tokens JWT con PyJWT.
-    \item Implementación de control de acceso multi-tenant en todos los blueprints del backend.
-    \item Implementación de enrolamiento de dispositivos con PIN (8 caracteres alfanuméricos, secrets.choice) y endpoint \texttt{/api/dispositivos/enrolar}.
-    \item Implementación de heartbeat MQTT + LWT + watchdog en \texttt{mqtt\_handler.py} (hilo daemon cada 60s).
-    \item Implementación de endpoint \texttt{/api/dispositivos/verificar} para test de conectividad con el ESP32-CAM.
-\end{itemize}
-
-\subsubsection{Pruebas}
-\begin{itemize}
-    \item Prueba de login exitoso y rechazo de credenciales inválidas.
-    \item Prueba de login con múltiples empresas y selección.
-    \item Prueba de acceso denegado por rol insuficiente (HTTP 403).
-    \item Prueba de aislamiento multi-tenant entre 2 empresas.
-    \item Prueba de generación de PIN y enrolamiento exitoso.
-    \item Prueba de heartbeat (marca activo) y LWT (marca inactivo).
-    \item Prueba de watchdog (inactivo tras 90s sin heartbeat).
-\end{itemize}
-
-% -------------------------------------------------------------
-
-\subsection{Iteración 7: Panel web para la gestión del dispositivo e integración con ERP}
-
-\subsubsection{Análisis}
-\begin{itemize}
-    \item Necesidad de un panel web que centralice, en primer lugar, la gestión del dispositivo IoT (enrolamiento, estado de conexión, generación de PIN, verificación de conectividad, logs de sincronización) y, en segundo lugar, la administración de personas, turnos, asignaciones, ERP, usuarios y empresas.
-    \item Público objetivo: administradores y empleadores (gestión de personas, turnos, dispositivos, ERP); trabajadores (consulta de asistencias propias).
-    \item Definición de modelo de integración ERP vía webhooks salientes: cada asistencia se notifica automáticamente a los ERP configurados en un hilo separado.
-    \item Requisito de field mapping configurable para adaptar el formato JSON de salida al esquema de cada ERP.
-    \item Requisito de test de conectividad manual antes de activar el envío automático.
-\end{itemize}
-
-\subsubsection{Diseño}
-\begin{itemize}
-    \item Diseño del panel web backend con 9 blueprints REST sirviendo datos a un frontend independiente vía CORS.
-    \item Diseño de la tabla \texttt{integraciones\_erp} con campos: nombre, tipo, webhook\_url, headers, field\_map, envio\_auto, activo.
-    \item Diseño del flujo de notificación ERP: create\_asistencia $\rightarrow$ hilo daemon $\rightarrow$ enviar\_asistencia\_a\_erps() $\rightarrow$ field mapping $\rightarrow$ POST al webhook $\rightarrow$ registro de estado.
-    \item Diseño del endpoint \texttt{GET /api/dispositivos/erp-config} para que el ESP32-CAM descargue su configuración ERP local.
-\end{itemize}
-
-\subsubsection{Implementación}
-\begin{itemize}
-    \item Implementación del módulo \texttt{erp.py} con CRUD de integraciones, envío automático asíncrono, test de webhook y envío manual por lotes.
-    \item Implementación de \texttt{\_transformar\_datos()} para field mapping y \texttt{\_enviar\_a\_webhook()} con timeout de 10s.
-    \item Implementación de registro de estado de envío (\texttt{ultimo\_envio}, \texttt{ultimo\_estado}) en la tabla de integraciones.
-    \item Implementación de sincronización de ERP config hacia el ESP32-CAM (cada hora).
-    \item Configuración de CORS en Flask para permitir frontend externo.
-\end{itemize}
-
-\subsubsection{Pruebas}
-\begin{itemize}
-    \item Prueba de navegación en panel web (endpoints REST respondiendo correctamente con y sin autenticación).
-    \item Prueba de creación de integración ERP y test de webhook con servidor de prueba (webhook.site).
-    \item Prueba de field mapping con campos renombrados.
-    \item Prueba de envío asíncrono (respuesta HTTP al cliente < 200ms independiente de latencia del ERP).
-    \item Prueba de tolerancia a fallos del ERP (HTTP 500 no interrumpe el sistema).
-    \item Prueba de sincronización de ERP config hacia el ESP32-CAM.
-    \item Prueba de envío manual por lote de asistencias históricas.
-\end{itemize}
-
-% -------------------------------------------------------------
-
-\subsection{Iteración 8: Sincronización diferida, logs y cierre del proyecto}
-
-\subsubsection{Análisis}
-\begin{itemize}
-    \item Definición de métricas de sincronización: cero pérdida de datos offline, idempotencia ante reenvíos, resolución de conflictos de IDs locales vs. remotos.
-    \item Requisito de auditoría completa: logs de sincronización (\texttt{sincronizacion\_log}), logs biométricos (\texttt{logs\_biometricos}) y registro de eliminaciones (\texttt{eliminaciones\_biometricas}).
-    \item Requisito de watchdog de dispositivos para detectar desconexiones incluso sin LWT.
-    \item Identificación de herramientas de diagnóstico: script \texttt{deteccion.py} para simulaciones sin hardware.
-\end{itemize}
-
-\subsubsection{Diseño}
-\begin{itemize}
-    \item Diseño del proceso de sincronización en 2 momentos: al iniciar (sincronizarPendientes) y cada 5 minutos en el loop.
-    \item Diseño del orden de sincronización: turnos $\rightarrow$ asignaciones $\rightarrow$ asistencias (dependencia de backend\_id).
-    \item Diseño de deduplicación en backend: verificación de existencia previa en ventana de 60s antes de insertar.
-    \item Diseño de las 3 tablas de auditoría con índices para consultas por persona, dispositivo y fecha.
-    \item Diseño del watchdog: barrido inicial (todos inactivos) + verificación cada 60s con timeout de 90s.
-\end{itemize}
-
-\subsubsection{Implementación}
-\begin{itemize}
-    \item Implementación de \texttt{sincronizarTurnosPendientes()}, \texttt{sincronizarAsignacionesPendientes()} y \texttt{sincronizarAsistencias()} en ESP32-CAM.
-    \item Implementación de sincronización bidireccional de personas: descarga desde backend si no hay pendientes locales.
-    \item Implementación de \texttt{POST /api/asistencias/sync} con deduplicación por persona\_id + tipo + ventana temporal.
-    \item Implementación de \texttt{device\_watchdog()} en hilo daemon con barrido inicial y verificación periódica.
-    \item Implementación de endpoints de consulta y limpieza de logs (\texttt{GET/DELETE /api/logs}).
-    \item Implementación de script \texttt{deteccion.py} con menú interactivo de simulación facial.
-    \item Integración final de todos los módulos y verificación de flujo punta a punta.
-\end{itemize}
-
-\subsubsection{Pruebas}
-\begin{itemize}
-    \item Prueba de sincronización de 5 asistencias offline $\rightarrow$ verificación en BD $\rightarrow$ idempotencia en segundo envío.
-    \item Prueba de sincronización de persona, turno y asignación creados localmente (resolución de IDs locales).
-    \item Prueba de persistencia tras corte de energía durante sincronización.
-    \item Prueba de logs de sincronización (3 ciclos con conteos correctos).
-    \item Prueba de logs biométricos (registro, identificación exitosa, fallida, verificación).
-    \item Prueba del watchdog: barrido inicial $\rightarrow$ heartbeat $\rightarrow$ inactividad $\rightarrow$ marcado inactivo.
-    \item Prueba de simulación facial con \texttt{deteccion.py} (match y no-match).
-    \item Prueba de flujo completo punta a punta: registro persona + huella + rostro $\rightarrow$ sincronización $\rightarrow$ marcación offline $\rightarrow$ reconexión $\rightarrow$ verificación en panel web $\rightarrow$ envío a ERP de prueba.
-\end{itemize}
+El avance de cada iteración se evalúa mediante la superación de las pruebas funcionales definidas en la fase de implementación de cada ciclo. La metodología de evaluación detallada (pruebas de integración, usabilidad SUS, confiabilidad y disponibilidad) se describe en la sección 3.3. El desarrollo detallado de cada iteración, incluyendo análisis, diseño, implementación y resultados de pruebas, se presenta en el capítulo 4.
 
 \section{Metodología de evaluación}
 En esta sección se explica de qué manera se aplicaron, dentro del desarrollo del prototipo, las metodologías de evaluación descritas en el apartado 2.4.2 del marco teórico. Cada técnica de evaluación fue seleccionada en función de los objetivos del proyecto y del enfoque metodológico utilizado prototipado evolutivo con incrementos funcionales, lo que permitió validar el funcionamiento conjunto del hardware, software, backend y mecanismos de autenticación biométrica en entornos reales o simulados. Las evaluaciones se aplicaron de manera iterativa al finalizar cada incremento del prototipo, garantizando que las funcionalidades incorporadas funcionaran correctamente antes de avanzar al siguiente nivel de complejidad.
@@ -710,11 +416,166 @@ reales.
 
 
 \section{Resumen del capítulo}
-El capítulo 3 describe cómo se aplica la metodología de prototipado evolutivo incremental para el desarrollo del sistema. Se detallan las iteraciones planificadas, cada una incorporando nuevas funcionalidades: configuración inicial del hardware, almacenamiento local y modo offline, comunicación con backend, reconocimiento facial, módulo antifraude con PIR y anti-spoofing, autenticación JWT y multi-tenant, panel web backend, integración con ERP, sincronización diferida y validación final del prototipo.
+El capítulo 3 presenta la metodología de prototipado evolutivo incremental adoptada para el desarrollo del sistema, describiendo sus tres fases (diseño y planificación, implementación y prueba, evaluación y mejora) aplicadas al contexto del proyecto. Se incluye el plan de trabajo con la carta Gantt de las 8 iteraciones, detallando los objetivos, duración estimada y avance acumulado de cada una.
 
 Asimismo, se explica la metodología de evaluación, que incluye pruebas de integración, usabilidad mediante el método SUS, y pruebas de confiabilidad y disponibilidad para medir el desempeño del sistema en escenarios reales. El capítulo concluye presentando los resultados esperados asociados a los objetivos específicos del proyecto.
 
 \input{cap4_iteraciones.tex}
+
+\chapter{Análisis de resultados}
+En el siguiente capítulo se presentan los resultados obtenidos tras la implementación y evaluación del prototipo, organizados según las dimensiones definidas en la metodología de evaluación del capítulo 3. Se analiza el costo final del prototipo, los puntajes de usabilidad SUS obtenidos de usuarios técnicos y no técnicos, las métricas de desempeño del reconocimiento facial y los resultados de las pruebas de estrés offline, con el objetivo de determinar la viabilidad técnica y operativa del sistema propuesto.
+
+\section{Costo total del prototipo}
+La siguiente tabla desglosa los costos de los componentes utilizados en el prototipo final, considerando precios de mercado local e importación según corresponda.
+
+\begin{table}[H]
+\centering
+\begin{tabular}{|l|c|c|}
+\hline
+\textbf{Componente} & \textbf{Cantidad} & \textbf{Costo (USD)} \\
+\hline
+ESP32-CAM (cámara OV2640 + microcontrolador) & 1 & \\
+Lector de huellas AS608 & 1 & \\
+Sensor PIR HC-SR501 & 1 & \\
+Fuente de alimentación 5V / 2A & 1 & \\
+Cables y conectores Dupont & 1 kit & \\
+Placa de pruebas (protoboard) & 1 & \\
+Carcasa / soporte impreso en 3D & 1 & \\
+\hline
+\textbf{Total} & & \\
+\hline
+\end{tabular}
+\caption{Desglose de costos del prototipo}
+\end{table}
+
+\section{Resultados de encuestas SUS}
+Se aplicó el cuestionario System Usability Scale a dos grupos de usuarios: \textit{no técnicos} (trabajadores y empleadores) y \textit{técnicos} (desarrolladores e integradores ERP). Cada encuesta consta de 10 preguntas en escala Likert de 5 puntos. La puntuación SUS se calcula según el método estándar descrito por Brooke [31].
+
+\subsection{Usuarios no técnicos}
+\begin{table}[H]
+\centering
+\begin{tabular}{|c|l|c|}
+\hline
+\textbf{N.º} & \textbf{Pregunta} & \textbf{Puntaje promedio} \\
+\hline
+1 & ¿Qué tan fácil fue encontrar la opción para configurar la red WiFi? & \\
+2 & ¿Lograste modificar los parámetros del dispositivo sin asistencia? & \\
+3 & ¿Te resultó clara la estructura del panel web al buscar registros? & \\
+4 & ¿Pudiste identificar rápidamente las imágenes de cada marcación? & \\
+5 & ¿Encontraste intuitivo el uso de los filtros? & \\
+6 & ¿La interfaz indicaba si el dispositivo estaba online u offline? & \\
+7 & ¿Sentiste confusión respecto a qué botón usar? & \\
+8 & ¿Te pareció clara la información en la tabla de registros? & \\
+9 & ¿Podrías usar la interfaz sin instrucción adicional? & \\
+10 & ¿Tuviste dificultades para interpretar algún dato? & \\
+\hline
+\multicolumn{2}{|l|}{\textbf{Puntuación SUS total}} & \\
+\hline
+\end{tabular}
+\caption{Resultados de encuesta SUS - usuarios no técnicos}
+\end{table}
+
+\subsection{Usuarios técnicos}
+\begin{table}[H]
+\centering
+\begin{tabular}{|c|l|c|}
+\hline
+\textbf{N.º} & \textbf{Pregunta} & \textbf{Puntaje promedio} \\
+\hline
+1 & ¿La documentación del backend tenía suficiente información? & \\
+2 & ¿Pudiste consumir los endpoints sin complicaciones? & \\
+3 & ¿La estructura JSON te pareció clara y consistente? & \\
+4 & ¿Identificaste rápidamente los campos esenciales del registro? & \\
+5 & ¿Fue sencillo modificar el endpoint del dispositivo? & \\
+6 & ¿Los mensajes de error fueron comprensibles? & \\
+7 & ¿Hay coherencia entre los endpoints (nombres, métodos, formato)? & \\
+8 & ¿Fue simple reutilizar las imágenes del ESP32-CAM? & \\
+9 & ¿La API se integraría fácilmente a un ERP real? & \\
+10 & ¿Tuviste dificultades técnicas significativas? & \\
+\hline
+\multicolumn{2}{|l|}{\textbf{Puntuación SUS total}} & \\
+\hline
+\end{tabular}
+\caption{Resultados de encuesta SUS - usuarios técnicos}
+\end{table}
+
+\subsection{Análisis comparativo}
+Se presentará aquí la comparación entre ambos grupos, el promedio general y la interpretación según la escala de Bangor et al. [32] (no aceptable < 50, marginal 50-70, aceptable > 70).
+
+\section{Métricas de reconocimiento facial}
+\subsection{Tiempo de respuesta del ESP32-CAM}
+Se midió el tiempo total del ciclo de marcación facial: captura de imagen, codificación JPEG, transmisión HTTP (octet-stream) al endpoint \texttt{/api/facial/identificar}, procesamiento DeepFace en backend y respuesta al dispositivo. Las mediciones se realizaron sobre 20 ciclos en condiciones de laboratorio.
+
+\begin{table}[H]
+\centering
+\begin{tabular}{|l|c|}
+\hline
+\textbf{Métrica} & \textbf{Valor} \\
+\hline
+Tiempo promedio de captura + codificación & \\
+Tiempo promedio de transmisión HTTP (POST octet-stream) & \\
+Tiempo promedio de procesamiento DeepFace (identificación 1:N) & \\
+Tiempo total promedio del ciclo & \\
+Desviación estándar & \\
+\hline
+\end{tabular}
+\caption{Tiempos de respuesta del ciclo de marcación facial}
+\end{table}
+
+\subsection{Precisión del reconocimiento}
+Se evaluó la precisión del sistema con un conjunto de pruebas de registro e identificación facial bajo distintas condiciones.
+
+\begin{table}[H]
+\centering
+\begin{tabular}{|l|c|}
+\hline
+\textbf{Métrica} & \textbf{Valor} \\
+\hline
+Tasa de reconocimiento exitoso (True Positive Rate) & \\
+Tasa de falsos positivos & \\
+Tasa de falsos negativos & \\
+Efectividad del anti-spoofing (fotografías / pantallas rechazadas) & \\
+Precisión con iluminación favorable & \\
+Precisión con iluminación desfavorable & \\
+\hline
+\end{tabular}
+\caption{Métricas de precisión del reconocimiento facial}
+\end{table}
+
+\section{Resultados de pruebas de estrés offline}
+Se sometió el dispositivo a tres escenarios de conectividad para evaluar la confiabilidad del almacenamiento local y la sincronización diferida.
+
+\subsection{Escenario 1: Desconexión total}
+El dispositivo operó sin conexión a internet durante \_\_ horas consecutivas, registrando \_\_ marcaciones. Al restablecer la conectividad, se verificó la sincronización del 100\% de los registros.
+
+\subsection{Escenario 2: Conectividad intermitente}
+Se simularon \_\_ ciclos de conexión/desconexión con intervalos aleatorios. Se midió la cantidad de reintentos automáticos y la consistencia del log de eventos.
+
+\subsection{Escenario 3: Reconexión prolongada}
+Tras \_\_ días de operación offline, se reconectó el dispositivo y se midió el tiempo total de sincronización y la integridad de los datos transferidos.
+
+\begin{table}[H]
+\centering
+\small
+\begin{tabular}{|l|c|c|c|}
+\hline
+\textbf{Métrica} & \textbf{Sin conexión} & \textbf{Intermitente} & \textbf{Reconexión} \\
+\hline
+Registros generados offline & & & \\
+Registros sincronizados correctamente & & & \\
+Porcentaje de sincronización & & & \\
+Tiempo de sincronización & & & \\
+Reintentos automáticos & N/A & & \\
+\hline
+\end{tabular}
+\caption{Resultados de pruebas de estrés offline}
+\end{table}
+
+\section{Resumen del capítulo}
+El capítulo 5 presentó los resultados obtenidos en las cuatro dimensiones de evaluación definidas en la metodología. El análisis de costos, usabilidad, desempeño biométrico y confiabilidad offline permite validar el cumplimiento de los objetivos específicos planteados en el capítulo 1 y determinar la viabilidad técnica y operativa del prototipo propuesto.
+
+
+\chapter{Bibliografía}
 
 %% genera las referencias
 \begin{enumerate}
@@ -725,14 +586,14 @@ Asimismo, se explica la metodología de evaluación, que incluye pruebas de inte
     \item Fernández, A. (2025, abril). Reloj control: Qué es, para qué sirve y qué debes tener en cuenta. Nubox Blog. https://blog.nubox.com/empresas/reloj-control
     \item Pachon Robayo, S. (s.f.). Monitoreo de transmisión de video en vivo utilizando ESP32-CAM y Ubidots. Ubidots Centro de Ayuda. Recuperado el 17 de octubre de 2025, de https://help.ubidots.com/es/articles/7156830-monitoreo-de-transmision-de-video-en-vivo-utilizando-ESP32-CAM-y-ubidots
     \item Amazon Web Services. (s.f.). ¿Qué es una API? Explicación de qué es una interfaz de programación de aplicaciones. Recuperado el 9 de noviembre de 2025, de https://aws.amazon.com/es/what-is/api
-    \item Ken, A. (2023, abril 10). Backend: ¿Qué es y para qué sirve? (Falta URL — agregar cuando la tengas)
+    \item Ken, A. (2023, abril 10). Backend: ¿Qué es y para qué sirve? (Falta URL - agregar cuando la tengas)
     \item IONOS. (s.f.). ¿Qué es un frontend? Definición y explicación. Recuperado el 28 de octubre de 2025, de https://www.ionos.com/es-us/digitalguide/paginas-web/creacion-de-paginas-web/que-es-el-frontend
     \item Amazon Web Services. (s.f.). ¿Qué es MQTT? Explicación del protocolo MQTT. Recuperado el 6 de octubre de 2025, de https://aws.amazon.com/es/what-is/mqtt
     \item Erickson, J. (2024, abril 4). ¿Qué es JSON? Oracle América Latina. Recuperado el 14 de noviembre de 2025, de https://www.oracle.com/latam/database/what-is-json
     \item Last Minute Engineers. (s.f.). Empezando con ESP32-CAM: Guía para principiantes. Recuperado el 19 de octubre de 2025, de https://lastminuteengineers.com/getting-started-with-ESP32-CAM
     \item UNIT Electronics. (s.f.). Cómo utilizar el lector de huella dactilar AS608. Recuperado el 22 de noviembre de 2025, de https://blog.uelectronics.com/tarjetas-desarrollo/como-utilizar-el-lector-de-huella-dactilar-AS608
     \item MDN Web Docs. (s.f.). Generalidades del protocolo HTTP. Recuperado el 30 de octubre de 2025, de https://developer.mozilla.org/es/docs/Web/HTTP/Guides/Overview
-    \item Paessler GmbH. (s.f.). ¿Qué es MQTT? – IT Explained. Recuperado el 2 de noviembre de 2025, de https://www.paessler.com/es/it-explained/mqtt
+    \item Paessler GmbH. (s.f.). ¿Qué es MQTT? - IT Explained. Recuperado el 2 de noviembre de 2025, de https://www.paessler.com/es/it-explained/mqtt
     \item Docker Inc. (s.f.). ¿Qué es un contenedor? Recuperado el 21 de octubre de 2025, de https://www.docker.com/resources/what-container
     \item Sunny Valley Cyber Security Inc. (2025, febrero 3). Definición, tipos y ejemplos de servidor de base de datos. Zenarmor. Recuperado el 10 de noviembre de 2025, de https://www.zenarmor.com/docs/network-basics/what-is-database-server
     \item GeoVictoria. (s.f.). Dispositivos GeoVictoria. Recuperado el 12 de octubre de 2025, de https://info.geovictoria.com/es-co/dispositivos
@@ -743,18 +604,18 @@ Asimismo, se explica la metodología de evaluación, que incluye pruebas de inte
     \item Softland Inversiones S.L. (s.f.). Softland Chile: Sistema ERP, contable y de administración. Recuperado el 9 de octubre de 2025, de https://www.softland.cl
     \item Drumond, C. (s.f.). Scrum: Qué es, cómo funciona y cómo empezar. Atlassian. Recuperado el 3 de noviembre de 2025, de https://www.atlassian.com/es/agile/scrum
     \item Teach-ICT. (s.f.). Prototipado evolutivo. Recuperado el 22 de octubre de 2025, de https://www.teach-ict.com/as\_a2\_ict\_new/ocr/A2\_G063/331\_systems\_cycle/prototyping\_RAD/miniweb/pg3.htm
-    \item GeeksforGeeks. (2025, julio 11). Modelo de procesos incrementales – Ingeniería de software. Recuperado el 20 de noviembre de 2025, de https://www.geeksforgeeks.org/software-engineering/software-engineering-incremental-process-model
+    \item GeeksforGeeks. (2025, julio 11). Modelo de procesos incrementales - Ingeniería de software. Recuperado el 20 de noviembre de 2025, de https://www.geeksforgeeks.org/software-engineering/software-engineering-incremental-process-model
     \item Pressman, R. S., \& Maxim, B. R. (2021). Ingeniería de software: Un enfoque práctico (9.ª ed.). McGraw-Hill Interamericana.
     \item IBM Corporation. (2025). ¿Qué son las pruebas de integración? IBM Think. https://www.ibm.com/es-es/think/topics/integration-testing
-    \item International Organization for Standardization. (2018). ISO 9241-11: Ergonomics of human-system interaction — Part 11: Usability: Definitions and concepts.
+    \item International Organization for Standardization. (2018). ISO 9241-11: Ergonomics of human-system interaction - Part 11: Usability: Definitions and concepts.
     \item Nielsen, J. (1993). Usability engineering. Morgan Kaufmann.
-    \item Brooke, J. (1996). SUS: A “quick and dirty” usability scale. En P. W. Jordan et al. (Eds.), Usability evaluation in industry (pp. 189–194). Taylor \& Francis.
-    \item Bangor, A., Kortum, P. T., \& Miller, J. T. (2008). An empirical evaluation of the System Usability Scale. International Journal of Human-Computer Interaction, 24(6), 574–594.
+    \item Brooke, J. (1996). SUS: A “quick and dirty” usability scale. En P. W. Jordan et al. (Eds.), Usability evaluation in industry (pp. 189-194). Taylor \& Francis.
+    \item Bangor, A., Kortum, P. T., \& Miller, J. T. (2008). An empirical evaluation of the System Usability Scale. International Journal of Human-Computer Interaction, 24(6), 574-594.
     \item Microsoft. (2025, julio 10). Introducción a Internet de las cosas (IoT) de Azure. Microsoft Learn. https://learn.microsoft.com/es-es/azure/iot/iot-introduction
     \item Atlassian. (s.f.). Reliability vs. availability: Key metrics for system performance. Recuperado el 11 de noviembre de 2025, de https://www.atlassian.com/incident-management/kpis/reliability-vs-availability
     \item Perry, W. E. (2006). Effective methods for software testing (3.ª ed.). Wiley.
     \item Kaspersky Lab. (2025). ¿Qué es la biometría? Definición y tipos. https://latam.kaspersky.com/resource-center/definitions/biometrics
-    \item Espressif Systems. (2025). SPIFFS — SPI Flash File System. https://docs.espressif.com/projects/esp-idf/en/stable/esp32/api-reference/storage/spiffs.html
+    \item Espressif Systems. (2025). SPIFFS - SPI Flash File System. https://docs.espressif.com/projects/esp-idf/en/stable/esp32/api-reference/storage/spiffs.html
     \item Amazon Inc. (2025). What is a RESTful API? https://aws.amazon.com/what-is/restful-api
     \item Red Hat Inc. (2025). ¿Qué son los microservicios? https://www.redhat.com/es/topics/microservices
     \item EMQX Technologies. (2025). The ultimate guide to MQTT brokers. https://www.emqx.com/en/blog/the-ultimate-guide-to-mqtt-broker-comparison

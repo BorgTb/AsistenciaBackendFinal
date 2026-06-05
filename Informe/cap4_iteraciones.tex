@@ -1,11 +1,11 @@
 %% ============================================================
-%% Capítulo 4 – Desarrollo (Iteraciones 1 a 8)
+%% Capítulo 4 - Desarrollo (Iteraciones 1 a 8)
 %% Versión alineada con el código real construido
 %% Se incluye con \input{Informe/cap4_iteraciones.tex} en memoria.tex
 %% ============================================================
 
-\chapter{Desarrollo}
-En el siguiente capítulo se enfocará en presentar la implementación realizada en base a la metodología de desarrollo.
+\chapter{Desarrollo e implementación}
+En el siguiente capítulo se presentan en detalle las 8 iteraciones del proyecto, desarrolladas según la metodología de prototipado evolutivo incremental descrita en el capítulo 3. Para cada iteración se describen las fases de análisis, diseño, implementación y pruebas, reflejando la construcción progresiva del prototipo desde la integración inicial de hardware hasta la sincronización diferida y el cierre del proyecto.
 
 \section{Diseño de software}
 Esta sección está destinada a presentar las arquitecturas desarrolladas para este proyecto como así diagramas y mockups que permitan dar entender la lógica del proyecto como así futuras vistas.
@@ -55,7 +55,7 @@ El análisis se centró en tres ejes principales:
     Se identificaron las capacidades básicas que el dispositivo debía cumplir desde el inicio: capturar imágenes desde la cámara integrada, leer huellas dactilares mediante el sensor AS608, montar un servidor HTTP local con páginas HTML embebidas y operar de forma autónoma mediante Wi-Fi. Estas funciones representan la base operativa sobre la cual se desarrollarán características más avanzadas como turnos, sincronización y gestión de usuarios.
 
     \item \textbf{Identificación de limitaciones técnicas}:  
-    Se revisaron las restricciones tecnológicas del ESP32-CAM, como la limitada memoria RAM disponible (~520 KB), el uso compartido del bus de cámara con los pines GPIO, la ausencia de pines GPIO libres —lo que forzó el uso de los pines GPIO14 (RX) y GPIO15 (TX) para la comunicación UART con el lector de huellas— y la necesidad de un manejo eficiente de cadenas HTML grandes en memoria. También se identificó que el flash LED integrado consume corriente significativa (~250 mA), requiriendo protección mediante PWM para evitar caídas de tensión durante la captura.
+    Se revisaron las restricciones tecnológicas del ESP32-CAM, como la limitada memoria RAM disponible (~520 KB), el uso compartido del bus de cámara con los pines GPIO, la ausencia de pines GPIO libres -lo que forzó el uso de los pines GPIO14 (RX) y GPIO15 (TX) para la comunicación UART con el lector de huellas- y la necesidad de un manejo eficiente de cadenas HTML grandes en memoria. También se identificó que el flash LED integrado consume corriente significativa (~250 mA), requiriendo protección mediante PWM para evitar caídas de tensión durante la captura.
 
     \item \textbf{Estrategia de operación autónoma}:  
     Dado que uno de los requisitos fundamentales del sistema es la autonomía, se analizó la necesidad de montar un servidor web local. En caso de no contar con Wi-Fi configurada, el dispositivo debe activar automáticamente un modo Access Point (AP) con SSID \texttt{ESP32-ASISTENCIA}, permitiendo al administrador conectarse directamente para configurar la red y registrar usuarios sin dependencia de internet. Esto reduce riesgos y asegura la continuidad operacional del dispositivo.
@@ -180,7 +180,7 @@ Una vez establecida la comunicación, el firmware puede ejecutar operaciones com
 \begin{itemize}
     \item Captura de imagen dactilar.
     \item Conversión de la imagen en una plantilla biométrica.
-    \item Almacenamiento del template en un slot interno del sensor (1–127).
+    \item Almacenamiento del template en un slot interno del sensor (1-127).
     \item Identificación mediante búsqueda de coincidencias en memoria.
 \end{itemize}
 
@@ -195,7 +195,7 @@ El fragmento de código que se ve en la Figura 4.12 es un ejemplo que se constru
 
 \subsubsection{Configuración de la cámara y el flash PWM}
 
-La cámara OV2640 se configuró con resolución VGA (640×480) y compresión JPEG con calidad 8 (escala 0–63, donde valores bajos indican mayor calidad). La frecuencia del reloj externo (XCLK) se fijó en 20 MHz. Para evitar el parpadeo visible y las caídas de tensión provocadas por el flash LED durante la captura, se implementó un control PWM a 5 kHz con resolución de 8 bits, aplicando un ciclo de trabajo del 50\% (duty 128 de 255) durante la iluminación. Esto permite encender el flash con brillo suficiente sin sobrecargar la fuente de alimentación del ESP32-CAM.
+La cámara OV2640 se configuró con resolución VGA (640×480) y compresión JPEG con calidad 8 (escala 0-63, donde valores bajos indican mayor calidad). La frecuencia del reloj externo (XCLK) se fijó en 20 MHz. Para evitar el parpadeo visible y las caídas de tensión provocadas por el flash LED durante la captura, se implementó un control PWM a 5 kHz con resolución de 8 bits, aplicando un ciclo de trabajo del 50\% (duty 128 de 255) durante la iluminación. Esto permite encender el flash con brillo suficiente sin sobrecargar la fuente de alimentación del ESP32-CAM.
 
 \subsubsection{Calibración del sensor PIR}
 
@@ -448,7 +448,7 @@ Se diseñaron las siguientes pruebas para validar el correcto funcionamiento del
 \begin{itemize}
     \item \textbf{Prueba de persistencia tras reinicio}: Registrar usuarios, turnos, asignaciones y asistencias, luego reiniciar el ESP32-CAM (por corte de energía o comando software). Verificar que todos los archivos JSON conserven su contenido íntegro y que el sistema pueda leerlos correctamente tras el reinicio.
 
-    \item \textbf{Prueba de lectura y deserialización}: Abrir cada archivo JSON generado y verificar que \texttt{ArduinoJson} pueda deserializar su contenido sin errores ni pérdida de campos. Se espera que el tamaño de cada documento no exceda los límites del \texttt{DynamicJsonDocument} configurado (2048–8192 bytes según el archivo).
+    \item \textbf{Prueba de lectura y deserialización}: Abrir cada archivo JSON generado y verificar que \texttt{ArduinoJson} pueda deserializar su contenido sin errores ni pérdida de campos. Se espera que el tamaño de cada documento no exceda los límites del \texttt{DynamicJsonDocument} configurado (2048-8192 bytes según el archivo).
 
     \item \textbf{Prueba de escritura concurrente}: Realizar múltiples operaciones de escritura (registro de persona + asignación de turno + marcación de asistencia) en rápida sucesión sin reiniciar el sistema. Verificar que no se produzcan corrupciones de archivos ni pérdida de datos.
 
@@ -474,7 +474,14 @@ El propósito de esta iteración consiste en implementar un backend centralizado
 
 En esta iteración se realiza el estudio de los mecanismos de comunicación necesarios para establecer el flujo de datos entre el dispositivo ESP32-CAM y el backend del sistema, considerando tanto la operación en línea como escenarios donde la conectividad es limitada o intermitente.
 
-En primer lugar, se evaluaron los protocolos \textbf{HTTP} y \textbf{MQTT} como alternativas principales para el envío de datos. MQTT fue seleccionado como el canal preferente para la transmisión de imágenes faciales debido a su naturaleza ligera, eficiencia en dispositivos IoT y capacidad de mantener sesiones persistentes con bajo consumo energético, utilizando WebSockets (\texttt{wss://}) como transporte cuando el broker lo soporta. HTTP se mantiene como protocolo complementario para la exposición de servicios REST, operaciones CRUD sobre las entidades del sistema (personas, turnos, asignaciones, asistencias) y procesos de sincronización. Esta combinación permite equilibrar confiabilidad, rendimiento y compatibilidad con otras plataformas.
+En primer lugar, se evaluaron los protocolos \textbf{HTTP} y \textbf{MQTT} como alternativas principales para el envío de datos. La decisión final fue asignar a cada protocolo el rol donde ofrece mayores ventajas:
+
+\begin{itemize}
+    \item \textbf{MQTT} (con transporte WebSockets seguros \texttt{wss://}) se utiliza exclusivamente para el \textbf{registro facial durante el enrolamiento}. En este flujo, la imagen Base64 se publica una sola vez en el tópico \texttt{esp32/imagen/registrar} con QoS 1, lo que entrega confirmación de recepción por parte del broker y permite desacoplar la captura de la espera del procesamiento (el backend responde luego por el tópico \texttt{esp32/respuesta/facial}).
+    \item \textbf{HTTP} se utiliza para la \textbf{identificación facial durante la marcación}, enviando el JPEG crudo como \texttt{application/octet-stream} (33\% más eficiente que Base64) al endpoint \texttt{POST /api/facial/identificar}, así como para todas las operaciones REST (CRUD de personas, turnos, asignaciones, asistencias), sincronización diferida, consulta de configuración ERP y enrolamiento del dispositivo.
+\end{itemize}
+
+Esta combinación permite equilibrar la naturaleza asíncrona de MQTT (idónea para el registro, que puede tardar segundos en procesarse) con la simplicidad síncrona de HTTP (idónea para la marcación, que requiere respuesta inmediata).
 
 Asimismo, se analizó la \textbf{conectividad Wi-Fi} como medio de enlace principal del dispositivo. En escenarios con conexión estable, el ESP32-CAM transmite imágenes al broker MQTT y consultas HTTP al backend; mientras que, en situaciones de baja o nula conectividad, el dispositivo almacena registros localmente (Iteración 2) y los reenvía cuando la red se restablece. Se definieron mecanismos de reconexión progresiva con backoff exponencial (3, 6, 9, 12 y 15 segundos entre intentos), manejo de desconexiones mediante el evento \texttt{ARDUINO\_EVENT\_WIFI\_STA\_DISCONNECTED} y un watchdog que intenta restaurar la conectividad periódicamente.
 
@@ -527,11 +534,11 @@ El diagrama de la base de datos se presenta en la Figura 4.28.
     \caption{Diagrama de la base de datos relacional.}
 \end{figure}
 
-La comunicación MQTT se diseña para transmitir imágenes faciales desde el ESP32-CAM hacia el backend en un único mensaje JSON por el tópico \texttt{esp32/imagen/registrar}, conteniendo el \texttt{persona\_id} y la imagen codificada en Base64. El backend, mediante un cliente MQTT (librería \texttt{paho-mqtt} de Python), se suscribe a este tópico, decodifica la imagen y procesa el enrolamiento facial.
+La comunicación MQTT se diseña para transmitir imágenes faciales de \textbf{registro} desde el ESP32-CAM hacia el backend en un único mensaje JSON por el tópico \texttt{esp32/imagen/registrar}, conteniendo el \texttt{persona\_id} y la imagen codificada en Base64. El backend, mediante un cliente MQTT (librería \texttt{paho-mqtt} de Python), se suscribe a este tópico, decodifica la imagen y procesa el enrolamiento facial. Es importante destacar que las imágenes de \textbf{identificación} (consulta 1:N durante la marcación) \textbf{no viajan por MQTT}, sino por HTTP al endpoint \texttt{POST /api/facial/identificar} como JPEG crudo en formato \texttt{application/octet-stream}.
 
 Adicionalmente, se definen los tópicos \texttt{esp32/heartbeat/<MAC>} para monitorizar la actividad de los dispositivos y \texttt{esp32/lwt/<MAC>} para detectar desconexiones mediante el mecanismo de Last Will Testament (LWT). El backend recibe las respuestas del procesamiento facial por el tópico \texttt{esp32/respuesta/facial}, que el ESP32-CAM escucha para confirmar el éxito o fallo del registro.
 
-La infraestructura se complementa con \textbf{Docker Compose}, que levanta el broker Mosquitto en un contenedor independiente, exponiendo el puerto 1883 para MQTT nativo y el puerto 9001 para WebSockets.
+La infraestructura se complementa con \textbf{Docker Compose}, que levanta el broker Mosquitto en un contenedor independiente, exponiendo el puerto \textbf{1884} (externo, mapeado al 1883 interno del contenedor) para MQTT nativo y el puerto 9001 para WebSockets.
 
 \subsection{Implementación}
 
@@ -547,11 +554,13 @@ Para permitir la operación en red, el dispositivo implementa un mecanismo de co
 
 El evento \texttt{ARDUINO\_EVENT\_WIFI\_STA\_DISCONNECTED} queda registrado con su código de razón y un contador de desconexiones, información expuesta a través del endpoint \texttt{/wifi-diag} para diagnóstico remoto.
 
-\subsubsection{Envío de imágenes mediante MQTT}
+\subsubsection{Envío de imágenes faciales: MQTT para registro, HTTP para identificación}
 
-Siguiendo el diseño establecido, la imagen es capturada, codificada en Base64 mediante una implementación optimizada que evita el uso de buffers intermedios, y enviada como un único mensaje JSON al tópico \texttt{esp32/imagen/registrar} con QoS 1 (entrega garantizada). El payload contiene dos campos: \texttt{persona\_id} y \texttt{imagen} (string Base64). Este enfoque evita la complejidad de la fragmentación en múltiples mensajes y es factible porque el ESP32-CAM puede manejar cadenas de hasta ~80 KB en memoria con calidad JPEG reducida (q=10 para registro).
+Siguiendo el diseño establecido, durante el \textbf{registro facial} la imagen es capturada, codificada en Base64 mediante una implementación optimizada que evita el uso de buffers intermedios, y enviada como un único mensaje JSON al tópico \texttt{esp32/imagen/registrar} con QoS 1 (entrega garantizada). El payload contiene dos campos: \texttt{persona\_id} y \texttt{imagen} (string Base64). Este enfoque evita la complejidad de la fragmentación en múltiples mensajes y es factible porque el ESP32-CAM puede manejar cadenas de hasta ~80 KB en memoria con calidad JPEG reducida (q=10 para registro).
 
-La función \texttt{registrarRostroEnBackend()} encapsula este flujo y retorna \texttt{true} si la publicación MQTT fue exitosa.
+La función \texttt{registrarRostroEnBackend()} encapsula este flujo y retorna \texttt{true} si la publicación MQTT fue exitosa. La respuesta del backend llega luego al tópico \texttt{esp32/respuesta/facial}, donde el firmware confirma visualmente el éxito (\texttt{flashExito()}) o el error (\texttt{flashError()}).
+
+En contraste, durante la \textbf{identificación facial} (consulta 1:N al momento de marcar asistencia), el flujo es diferente: la imagen se envía por \textbf{HTTP} y no por MQTT. La función \texttt{identificarPorRostro()} reduce la calidad JPEG a 10, captura el frame directamente del buffer de la cámara (\texttt{camera\_fb\_t}) y lo transmite como \texttt{application/octet-stream} mediante un \texttt{HTTPClient.POST(fb->buf, fb->len)} al endpoint \texttt{POST /api/facial/identificar}, evitando la sobrecarga de codificación Base64. El backend responde sincrónicamente con el \texttt{persona\_id} identificado (o HTTP 404 si el rostro no coincide). Esta decisión se tomó porque la marcación requiere respuesta inmediata para validar la identidad y proceder con el registro de asistencia en el mismo flujo.
 
 \subsubsection{Recepción de imágenes en el backend vía MQTT}
 
@@ -595,7 +604,7 @@ Cada blueprint se registra en la aplicación Flask principal (\texttt{app.py}), 
 
 \subsubsection{Infraestructura con Docker Compose}
 
-Para garantizar un entorno reproducible, se definió un archivo \texttt{docker-compose.yml} que levanta el broker Mosquitto (imagen \texttt{eclipse-mosquitto:latest}) con los puertos 1883 (MQTT) y 9001 (WebSockets) expuestos, volúmenes para configuración, datos y logs persistentes, y una red bridge dedicada llamada \texttt{teleasist\_network}. El backend Flask y la base de datos PostgreSQL pueden ejecutarse en el host o en contenedores adicionales según la configuración de despliegue.
+Para garantizar un entorno reproducible, se definió un archivo \texttt{docker-compose.yml} que levanta el broker Mosquitto (imagen \texttt{eclipse-mosquitto:latest}) con el puerto \textbf{1884} (externo, mapeado al 1883 interno) para MQTT nativo y el puerto 9001 para WebSockets expuestos, volúmenes para configuración, datos y logs persistentes, y una red bridge dedicada llamada \texttt{teleasist\_network}. El backend Flask y la base de datos PostgreSQL pueden ejecutarse en el host o en contenedores adicionales según la configuración de despliegue.
 
 \subsection{Pruebas}
 
@@ -955,7 +964,7 @@ En el \texttt{loop()}, la lógica de detección sigue el siguiente flujo:
 
 \subsubsection{Flash PWM para iluminación facial}
 
-El flash LED integrado del ESP32-CAM se controla mediante PWM en el GPIO4, configurado como salida LED PWM con frecuencia de 5 kHz y resolución de 8 bits. Durante la captura de una imagen (tanto para registro como para identificación), el flash se activa con un duty cycle del 50\% (\texttt{FLASH\_PWM\_DUTY\_50 = 128}) durante 150–200 milisegundos, tiempo suficiente para que el sensor OV2640 ajuste su exposición.
+El flash LED integrado del ESP32-CAM se controla mediante PWM en el GPIO4, configurado como salida LED PWM con frecuencia de 5 kHz y resolución de 8 bits. Durante la captura de una imagen (tanto para registro como para identificación), el flash se activa con un duty cycle del 50\% (\texttt{FLASH\_PWM\_DUTY\_50 = 128}) durante 150-200 milisegundos, tiempo suficiente para que el sensor OV2640 ajuste su exposición.
 
 La secuencia de captura es la siguiente:
 \begin{enumerate}

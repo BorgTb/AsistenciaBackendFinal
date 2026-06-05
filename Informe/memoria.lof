@@ -5,25 +5,27 @@
 \contentsline {figure}{\numberline {2.1}{\ignorespaces Metodología prototipado evolutivo con enfoque incremental}}{23}{}%
 \addvspace {10\p@ }
 \addvspace {10\p@ }
-\contentsline {figure}{\numberline {4.1}{\ignorespaces Arquitectura física}}{44}{}%
-\contentsline {figure}{\numberline {4.2}{\ignorespaces Arquitectura lógica}}{45}{}%
-\contentsline {figure}{\numberline {4.3}{\ignorespaces Mockup menú principal en el ESP32-CAM}}{47}{}%
-\contentsline {figure}{\numberline {4.4}{\ignorespaces Mockup panel de configuración Wi-Fi}}{48}{}%
-\contentsline {figure}{\numberline {4.5}{\ignorespaces Mockup registro usuario en el ESP32-CAM}}{48}{}%
-\contentsline {figure}{\numberline {4.6}{\ignorespaces Mockup usuarios almacenados en el ESP32-CAM}}{49}{}%
-\contentsline {figure}{\numberline {4.7}{\ignorespaces Mockup visualización de turnos en el ESP32-CAM}}{49}{}%
-\contentsline {figure}{\numberline {4.8}{\ignorespaces Mockup creación de turnos en el ESP32-CAM}}{50}{}%
-\contentsline {figure}{\numberline {4.9}{\ignorespaces Mockup asignación de turnos en el ESP32-CAM}}{50}{}%
-\contentsline {figure}{\numberline {4.10}{\ignorespaces Flujo operacional para el registro de asistencia.}}{51}{}%
-\contentsline {figure}{\numberline {4.11}{\ignorespaces Conexiones entre el ESP32-CAM y el lector de huellas AS608.}}{52}{}%
-\contentsline {figure}{\numberline {4.12}{\ignorespaces Fragmento de código para inicializar el lector AS608 utilizando UART.}}{53}{}%
-\contentsline {figure}{\numberline {4.13}{\ignorespaces Asignación de rutas para el servidor web embebido.}}{55}{}%
-\contentsline {figure}{\numberline {4.14}{\ignorespaces Menú principal del sistema web embebido.}}{56}{}%
-\contentsline {figure}{\numberline {4.15}{\ignorespaces Interfaz de configuración Wi-Fi.}}{56}{}%
-\contentsline {figure}{\numberline {4.16}{\ignorespaces Vista para el registro de personas en el dispositivo.}}{57}{}%
-\contentsline {figure}{\numberline {4.17}{\ignorespaces Vista de asistencias locales almacenadas en el dispositivo.}}{58}{}%
-\contentsline {figure}{\numberline {4.18}{\ignorespaces Vista de personas registradas en el dispositivo.}}{58}{}%
-\contentsline {figure}{\numberline {4.19}{\ignorespaces Vista de gestión de turnos en el dispositivo.}}{59}{}%
-\contentsline {figure}{\numberline {4.20}{\ignorespaces Vista de gestión de asignaciones en el dispositivo.}}{60}{}%
-\contentsline {figure}{\numberline {4.21}{\ignorespaces Funciones para lectura y escritura de archivos JSON en LittleFS.}}{63}{}%
-\contentsline {figure}{\numberline {4.22}{\ignorespaces Diagrama de la base de datos relacional.}}{69}{}%
+\contentsline {figure}{\numberline {4.1}{\ignorespaces Arquitectura física}}{35}{}%
+\contentsline {figure}{\numberline {4.2}{\ignorespaces Arquitectura lógica}}{36}{}%
+\contentsline {figure}{\numberline {4.3}{\ignorespaces Mockup menú principal en el ESP32-CAM}}{38}{}%
+\contentsline {figure}{\numberline {4.4}{\ignorespaces Mockup panel de configuración Wi-Fi}}{38}{}%
+\contentsline {figure}{\numberline {4.5}{\ignorespaces Mockup registro usuario en el ESP32-CAM}}{39}{}%
+\contentsline {figure}{\numberline {4.6}{\ignorespaces Mockup usuarios almacenados en el ESP32-CAM}}{39}{}%
+\contentsline {figure}{\numberline {4.7}{\ignorespaces Mockup visualización de turnos en el ESP32-CAM}}{40}{}%
+\contentsline {figure}{\numberline {4.8}{\ignorespaces Mockup creación de turnos en el ESP32-CAM}}{40}{}%
+\contentsline {figure}{\numberline {4.9}{\ignorespaces Mockup asignación de turnos en el ESP32-CAM}}{41}{}%
+\contentsline {figure}{\numberline {4.10}{\ignorespaces Flujo operacional para el registro de asistencia.}}{42}{}%
+\contentsline {figure}{\numberline {4.11}{\ignorespaces Conexiones entre el ESP32-CAM y el lector de huellas AS608.}}{43}{}%
+\contentsline {figure}{\numberline {4.12}{\ignorespaces Fragmento de código para inicializar el lector AS608 utilizando UART.}}{44}{}%
+\contentsline {figure}{\numberline {4.13}{\ignorespaces Asignación de rutas para el servidor web embebido.}}{46}{}%
+\contentsline {figure}{\numberline {4.14}{\ignorespaces Menú principal del sistema web embebido.}}{47}{}%
+\contentsline {figure}{\numberline {4.15}{\ignorespaces Interfaz de configuración Wi-Fi.}}{47}{}%
+\contentsline {figure}{\numberline {4.16}{\ignorespaces Vista para el registro de personas en el dispositivo.}}{48}{}%
+\contentsline {figure}{\numberline {4.17}{\ignorespaces Vista de asistencias locales almacenadas en el dispositivo.}}{49}{}%
+\contentsline {figure}{\numberline {4.18}{\ignorespaces Vista de personas registradas en el dispositivo.}}{49}{}%
+\contentsline {figure}{\numberline {4.19}{\ignorespaces Vista de gestión de turnos en el dispositivo.}}{50}{}%
+\contentsline {figure}{\numberline {4.20}{\ignorespaces Vista de gestión de asignaciones en el dispositivo.}}{51}{}%
+\contentsline {figure}{\numberline {4.21}{\ignorespaces Funciones para lectura y escritura de archivos JSON en LittleFS.}}{54}{}%
+\contentsline {figure}{\numberline {4.22}{\ignorespaces Diagrama de la base de datos relacional.}}{60}{}%
+\addvspace {10\p@ }
+\addvspace {10\p@ }

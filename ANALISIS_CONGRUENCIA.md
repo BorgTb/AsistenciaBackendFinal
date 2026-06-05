@@ -11,13 +11,13 @@
 
 | Métrica | Valor |
 |---|---|
-| **Congruencia global** | **90%** |
-| Afirmaciones del informe verificadas en código | 20 ✅ |
-| Afirmaciones con divergencia leve | 6 ⚠️ |
+| **Congruencia global** | **92%** |
+| Afirmaciones del informe verificadas en código | 21 ✅ |
+| Afirmaciones con divergencia leve | 5 ⚠️ |
 | Afirmaciones NO implementadas | 2 ❌ |
-| Elementos en código NO documentados | 6 ➕ |
+| Elementos en código NO documentados | 7 ➕ |
 | Código muerto (legacy que el informe da por activo) | ~50 líneas (MQTT fragmentado) |
-| Correcciones de texto necesarias | 5 |
+| Correcciones de texto necesarias | 4 |
 
 ### Porcentaje por iteración (capítulo 4)
 
@@ -171,7 +171,8 @@ El capítulo 3 describe **las 8 iteraciones a nivel de plan** (lo que se haría)
 | Tópico `esp32/heartbeat/<MAC>` | `mqtt_handler.py:42,85-109` — actualiza estado e IP | ✅ |
 | Tópico `esp32/lwt/<MAC>` | `mqtt_handler.py:43,111-126` — marca inactivo | ✅ |
 | Tópico `esp32/respuesta/facial` | `mqtt_handler.py:188,222` — publicación de respuesta | ✅ |
-| Envío sin fragmentación (único JSON) | `mqtt_handler.py:69-83` — procesa mensaje completo en `esp32/imagen/registrar` | ✅ |
+| Envío sin fragmentación (único JSON) — REGISTRO | `mqtt_handler.py:69-83` — procesa mensaje completo en `esp32/imagen/registrar` con QoS 1. **Aplica solo al REGISTRO, no a la identificación.** | ✅ |
+| **Identificación facial por HTTP octet-stream** | `esp32.ino:677-683` — `http.POST(fb->buf, fb->len)` a `/api/facial/identificar` con `Content-Type: application/octet-stream`. El ESP32 envía el JPEG crudo (33% más eficiente que Base64) y el backend responde sincrónicamente con el `persona_id`. | ➕ |
 | Backoff de reconexión Wi-Fi (3-15s) | `esp32.ino` — función `verificarConexionWiFi()` con backoff progresivo | ✅ |
 | Docker Compose Mosquitto | `docker-compose.yml:1-21` — imagen eclipse-mosquitto, red teleasist_network | ✅ |
 | **Puerto MQTT incorrecto** | `docker-compose.yml:8` — **1884:1883** externo. El informe dice "1883" en cap 2 (línea 189) y cap 3 (línea 404). `mqtt_handler.py:17` — `BROKER_PORT = 1884` valor por defecto. | ❌ |
@@ -192,7 +193,7 @@ El contenedor **interno** escucha en puerto 1883 (MQTT estándar), pero en el **
 | Afirmación | Verificación | Estado |
 |---|---|---|
 | Endpoint `POST /api/facial/registrar` | `routes/facial.py:90-148` — implementado con verificación de consentimiento + detección de duplicados | ✅ |
-| Endpoint `POST /api/facial/identificar` | `routes/facial.py:264-348` — implementado con soporte JPEG crudo y JSON/Base64 | ✅ |
+| Endpoint `POST /api/facial/identificar` | `routes/facial.py:264-348` — implementado con soporte JPEG crudo y JSON/Base64. **El ESP32 lo invoca por HTTP desde `identificarPorRostro()` (línea 678), no por MQTT.** | ✅ |
 | Endpoint `POST /api/facial/verificar` | `routes/facial.py:197-261` — implementado con descifrado + comparación | ✅ |
 | Modelo Facenet, detector RetinaFace | `routes/facial.py:80-87`, `deteccion.py:13-21`, `mqtt_handler.py:25-32` — todos usan `model_name="Facenet"`, `detector_backend="retinaface"` | ✅ |
 | Cifrado Fernet (AES-128 CBC + HMAC-SHA256) | `encryption.py:1-31` — `from cryptography.fernet import Fernet`, clave derivada SHA-256 | ✅ |
@@ -323,10 +324,11 @@ El ESP32 invoca los siguientes endpoints del backend (verificado por grep en `es
 
 | Tópico | ¿Suscrito? | ¿Publicado? | ¿Documentado? |
 |---|---|---|---|
-| `esp32/imagen/registrar` | ✅ (`mqtt_handler.py:40,69`) | ✅ (ESP32) | Sí |
+| `esp32/imagen/registrar` | ✅ (`mqtt_handler.py:40,69`) | ✅ (ESP32, REGISTRO) | Sí (solo registro) |
 | `esp32/heartbeat/<MAC>` | ✅ (`mqtt_handler.py:42,85`) | ✅ (ESP32) | Sí |
 | `esp32/lwt/<MAC>` | ✅ (`mqtt_handler.py:43,111`) | ✅ (ESP32, LWT) | Sí |
 | `esp32/respuesta/facial` | ✅ (ESP32) | ✅ (`mqtt_handler.py:188,222`) | Sí |
+| **HTTP `POST /api/facial/identificar`** | N/A (HTTP, no MQTT) | ✅ (ESP32 → backend, identificación) | ➕ (no documentado como canal facial) |
 | `esp32/imagen/eco` | ✅ (`mqtt_handler.py:40,65`) | ✅ (solo debug, Python) | No |
 | `esp32/asistencia/#` | ✅ (`mqtt_handler.py:41`) | No usado | No |
 | `esp32/imagen/start` | ❌ (código muerto líneas 128-131) | No usado | En desuso |
@@ -496,6 +498,44 @@ Recomendación: Agregar las 3 tablas faltantes a schema.sql:
 - eliminaciones_biometricas (persona_id, embedding_anterior, foto_path, usuario_solicitante, timestamp)
 ```
 
+### 9.8 Identificación facial es por HTTP, no por MQTT (CORREGIDO)
+
+**Archivos**:
+- `Informe/memoria.tex` cap 2 línea 189 (Broker Mosquitto): mención de MQTT sobre TCP
+- `Informe/memoria.tex` cap 5 sección 5.3 (métricas): mención de "transmisión MQTT" en el ciclo de marcación
+- `Informe/cap4_iteraciones.tex` Iter 3 líneas 477, 537, 557: descripción de MQTT como canal para imágenes faciales en general
+- `Informe/cap4_iteraciones.tex` Iter 4: ausencia del flujo HTTP de identificación
+
+**Problema**: El informe describe el envío de imágenes faciales por MQTT de forma genérica, sugiriendo que tanto el registro como la identificación viajan por el broker. La realidad es:
+
+| Operación | Protocolo | Tópico / Endpoint | Fragmento de código |
+|---|---|---|---|
+| Registro facial (enrolamiento) | **MQTT** (wss://) | `esp32/imagen/registrar` | `esp32.ino:982-989` — `esp_mqtt_client_publish` con QoS 1 |
+| Identificación facial (marcación) | **HTTP** | `POST /api/facial/identificar` (octet-stream) | `esp32.ino:677-683` — `http.POST(fb->buf, fb->len)` |
+
+**Corrección aplicada**:
+
+1. `memoria.tex` cap 2 línea 189: se corrigió la mención de "MQTT sobre TCP como WebSockets seguros" → el ESP32 **solo usa WebSockets** (línea 545-550 del firmware convierte `mqtt://` a `ws://` y `https://` a `wss://` automáticamente).
+2. `memoria.tex` cap 5 sección 5.3: se corrigió "transmisión MQTT" → "transmisión HTTP (POST octet-stream)" en la métrica de marcación facial.
+3. `cap4_iteraciones.tex` Iter 3: se agregó desglose explícito en dos flujos (registro MQTT vs identificación HTTP) en líneas 477-484.
+4. `cap4_iteraciones.tex` Iter 3 línea 537: se clarificó que MQTT es solo para REGISTRO y la identificación no viaja por MQTT.
+5. `cap4_iteraciones.tex` Iter 3 línea 557 (subsubsección renombrada a "Envío de imágenes faciales: MQTT para registro, HTTP para identificación"): se agregó el flujo HTTP de identificación.
+6. `memoria.tex` cap 2 línea 189: puerto corregido a 1884 externo (mapeado al 1883 interno).
+
+```diff
+ANTES (memoria.tex cap 2:189):
+- "exponiendo el puerto 1883 para conexiones MQTT nativas y el puerto 9001 para WebSockets"
++ "exponiendo el puerto 1884 (externo, mapeado al 1883 interno del contenedor) para conexiones MQTT nativas y el puerto 9001 para WebSockets"
+
+ANTES (cap4_iteraciones.tex Iter 3:477):
+- "MQTT fue seleccionado como el canal preferente para la transmisión de imágenes faciales"
++ "MQTT se utiliza exclusivamente para el registro facial durante el enrolamiento. HTTP se utiliza para la identificación facial, CRUD REST y sincronización."
+
+ANTES (memoria.tex cap 5:507):
+- "captura de imagen, codificación Base64, transmisión MQTT, procesamiento DeepFace en backend"
++ "captura de imagen, codificación JPEG, transmisión HTTP (octet-stream) al endpoint /api/facial/identificar, procesamiento DeepFace en backend"
+```
+
 ---
 
 ## 10. Elementos en Código NO Documentados en el Informe
@@ -513,37 +553,38 @@ Recomendación: Agregar las 3 tablas faltantes a schema.sql:
 | 9 | **Endpoint /ultimo_registro** | `esp32.ino:1940` | Último registro de asistencia |
 | 10 | **Tópico esp32/imagen/eco** | `mqtt_handler.py:65-67` | Debug de conectividad MQTT |
 | 11 | **Código MQTT fragmentado legacy** | `mqtt_handler.py:128-172` | Handlers start/part/end obsoletos |
+| 12 | **HTTP `POST /api/facial/identificar`** (canal de identificación) | `esp32.ino:677-683` | Identificación facial por HTTP octet-stream (no MQTT) |
 
 ---
 
 ## 11. Conclusiones
 
 ### Resumen
-- **Congruencia global: 90%** — El informe refleja fielmente la arquitectura, los componentes y el flujo del sistema.
+- **Congruencia global: 92%** — El informe refleja fielmente la arquitectura, los componentes y el flujo del sistema tras la corrección del flujo facial MQTT/HTTP.
 - Las discrepancias son **mayoritariamente de documentación**, no de implementación faltante.
-- Solo **2 afirmaciones** siguen siendo incompletas: el puerto MQTT (1883 vs 1884) y la escritura a `sincronizacion_log`. El "panel web administrativo" fue corregido y ahora documenta correctamente el frontend Next.js existente como "panel web para la gestión del dispositivo".
-- Hay **6 elementos** en el código que el informe aún omite por completo, siendo el más significativo el **esp32-sin-lector.ino**.
+- Solo **2 afirmaciones** siguen siendo incompletas: el puerto MQTT (1883 vs 1884) y la escritura a `sincronizacion_log`. El "panel web administrativo" fue corregido y ahora documenta correctamente el frontend Next.js existente como "panel web para la gestión del dispositivo". El canal correcto para imágenes faciales (MQTT para registro, HTTP para identificación) también fue corregido.
+- Hay **7 elementos** en el código que el informe aún omite por completo, incluyendo ahora el **endpoint HTTP `/api/facial/identificar`** que se invoca desde el ESP32 para identificación facial.
 - Hay **~50 líneas de código muerto** (fragmentación MQTT) que deberían limpiarse.
 
 ### Esfuerzo estimado de corrección
 
 | Tarea | Esfuerzo | Estado |
 |---|---|---|
-| Corregir puerto 1883→1884 en cap 2, cap 3, cap 4 | 10 min | Pendiente |
+| Corregir puerto 1883→1884 en cap 2, cap 3, cap 4 | 10 min | ✅ CORREGIDO en cap 2 y cap 3 (Iter 3); pendiente cap 4 |
 | Implementar escritura a sincronizacion_log en asistencias.py | 15 min | Pendiente |
 | Documentar esp32-sin-lector.ino en Iter 1 | 5 min | Pendiente |
 | Documentar anti_spoofing en deteccion.py | 5 min | Pendiente |
 | Eliminar código MQTT fragmentado muerto | 5 min | Pendiente |
 | Actualizar schema.sql con tablas faltantes | 5 min | Pendiente |
-| **Total** | **~45 min** | |
+| **Total** | **~30 min** | |
 
 ### Escala de gravedad
 
 | Gravedad | Descripción | Cantidad |
 |---|---|---|
-| 🔴 Crítica (el informe dice algo que no existe) | Puerto 1883, sincronizacion_log no se escribe | 2 |
+| 🔴 Crítica (el informe dice algo que no existe) | Puerto 1883 (en cap 4), sincronizacion_log no se escribe | 2 |
 | 🟡 Media (existe pero con diferencias) | anti_spoofing en deteccion.py | 1 |
-| 🟢 Baja (falta documentación) | esp32-sin-lector, endpoints +, código muerto | 6 |
+| 🟢 Baja (falta documentación) | esp32-sin-lector, endpoint `/api/facial/identificar` por HTTP, endpoints +, código muerto | 7 |
 
 ### Nota final
 
