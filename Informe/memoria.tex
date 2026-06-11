@@ -337,11 +337,11 @@ Las pruebas de integración, como por su nombre dice son pruebas que permiten in
 Con el objetivo de asegurar que todos los componentes mencionados anteriormente interactuen correctamente entre si se realizaran pruebas de integración de manera ascendente. El procedimiento que irá realizando el siguiente procedimiento.
 
 \begin{enumerate}
-    \item integración del hardware: Se evaluara la comunicación entre el ESP32-CAM y el modulo de huella digital, Además de comprobar la lectura y envio de datos de sensores IR.
-    \item integración Almacenamiento: Se realizaran pruebas entorno al almacenamiento de los identificadores de huella, imágenes capturadas además de los registro de asistencia, donde se verificara la consistencia del almacenamiento.
-    \item integración con el backend: Se enviaran distintos tipos de datos al backend, imágenes en base64, registros de logs, entre otros para verificar la comunicación entre el ESP32 y el backend.
-    \item integración Backend con la base de datos: Se realizaran inserciones y búsqueda de elementos para verificar la conectividad constante con la base de datos.
-    \item integración backend con interfaz web: Se comprobara si se rescatan los registros enviados por el prototipo y actualización en tiempo real con los datos.
+    \item Integración del hardware: Se evaluara la comunicación entre el ESP32-CAM y el modulo de huella digital. Además de comprobar la lectura y envio de datos de sensores IR.
+    \item Integración Almacenamiento: Se realizaran pruebas entorno al almacenamiento de los identificadores de huella, imágenes capturadas además de los registro de asistencia, donde se verificara la consistencia del almacenamiento.
+    \item Integración con el backend: Se enviaran distintos tipos de datos al backend, imágenes en base64, registros de logs, entre otros para verificar la comunicación entre el ESP32 y el backend.
+    \item Integración Backend con la base de datos: Se realizaran inserciones y búsqueda de elementos para verificar la conectividad constante con la base de datos.
+    \item Integración backend con interfaz web: Se comprobara si se rescatan los registros enviados por el prototipo y actualización en tiempo real con los datos.
 \end{enumerate}
 
 Estas pruebas permiten evaluar el sistema propuesto de manera sistematica, de manera que cada elemento más pequeño se va integrando a medida que se avanza en el proyecto.
@@ -412,13 +412,87 @@ reales.
     \end{itemize}
 \end{itemize}
 
+\subsection{Resultados esperados de las pruebas}
+A diferencia de los resultados esperados asociados a los objetivos del proyecto, este apartado define los valores objetivos y criterios de aceptación que se esperan alcanzar al ejecutar el conjunto de pruebas descritas en la sección 3.3 (Metodología de evaluación). Estos valores sirven como referencia para comparar los resultados reales que se presentarán en el capítulo 5.
+
+\subsubsection{Pruebas de integración}
+Las pruebas de integración ascendente definidas en la sección 3.3.1 apuntan a verificar la correcta comunicación entre los módulos del sistema. Se espera alcanzar los siguientes resultados:
+
+\begin{table}[H]
+\centering
+\small
+\begin{tabular}{|p{8cm}|c|}
+\hline
+\textbf{Criterio} & \textbf{Valor esperado} \\
+\hline
+Comunicación ESP32-CAM $\leftrightarrow$ AS608 (UART, 57600 baud) & 100\% \\
+Captura de imagen facial (OV2640) $\rightarrow$ envío al backend & 100\% \\
+Persistencia de marcaciones en LittleFS tras 50 marcaciones & 100\% \\
+Sincronización diferida con backend (reintento tras reconexión) & 100\% \\
+Inserción/consulta en PostgreSQL sin errores & 100\% \\
+Renderizado de vistas web con datos actualizados & 100\% \\
+\hline
+\end{tabular}
+\caption{Resultados esperados de las pruebas de integración}
+\end{table}
+
+\textbf{Justificación}: según Pressman [27] e IBM [28], una prueba de integración ascendente debe garantizar el 100\% de interoperabilidad entre los módulos verificados; un valor inferior indicaría una falla crítica de acoplamiento que invalidaría el incremento.
+
+\subsubsection{Pruebas de usabilidad (SUS)}
+La encuesta System Usability Scale (SUS) descrita en la sección 3.3.2 se aplicará a dos grupos de usuarios. Se esperan los siguientes puntajes:
+
+\begin{table}[H]
+\centering
+\small
+\begin{tabular}{|p{8cm}|c|}
+\hline
+\textbf{Métrica} & \textbf{Valor esperado} \\
+\hline
+Puntuación SUS — usuarios no técnicos & $\geq$ 68 \\
+Puntuación SUS — usuarios técnicos & $\geq$ 70 \\
+Puntuación SUS global del sistema & $\geq$ 70 \\
+Tasa de completitud de tareas (no técnicos) & $\geq$ 85\% \\
+Tasa de completitud de tareas (técnicos) & $\geq$ 90\% \\
+Tiempo medio de configuración inicial (no técnicos) & $\leq$ 10 min \\
+Tiempo medio de configuración inicial (técnicos) & $\leq$ 5 min \\
+\hline
+\end{tabular}
+\caption{Resultados esperados de las pruebas de usabilidad (SUS)}
+\end{table}
+
+\textbf{Justificación}: según Bangor et al. [32], un puntaje SUS $\geq$ 70 se considera ``aceptable'', entre 50 y 70 ``marginal'' y $<$ 50 ``no aceptable''. Sistemas con flujos de embedding facial y configuración de red suelen situarse en el rango 65--75, por lo que se fija como objetivo mínimo un 70 global.
+
+\subsubsection{Pruebas de confiabilidad y disponibilidad}
+Las pruebas de confiabilidad y disponibilidad descritas en la sección 3.3.3 someten al sistema a tres escenarios de conectividad. Se esperan los siguientes resultados:
+
+\begin{table}[H]
+\centering
+\small
+\begin{tabular}{|p{6cm}|p{5cm}|c|}
+\hline
+\textbf{Escenario} & \textbf{Métrica} & \textbf{Valor esperado} \\
+\hline
+Desconexión total & Registros almacenados sin error & 100\% \\
+Desconexión total & Reintentos automáticos de reconexión Wi-Fi & 5 antes de AP \\
+Conectividad intermitente & Reintentos exitosos de sincronización & $\geq$ 95\% \\
+Conectividad intermitente & Consistencia del log de eventos & 0 inconsistencias \\
+Reconexión prolongada & Tiempo de sincronización de 50 marcaciones & $<$ 60 s \\
+Operación continua & Disponibilidad acumulada (uptime) & $\geq$ 90\% \\
+Persistencia & Datos conservados tras corte de energía & 100\% \\
+\hline
+\end{tabular}
+\caption{Resultados esperados de las pruebas de confiabilidad y disponibilidad}
+\end{table}
+
+\textbf{Justificación}: según Perry [35] y Atlassian [34], un sistema IoT con operación offline debe garantizar cero pérdida de datos (criterio no negociable) y una disponibilidad acumulada $\geq$ 90\% en escenarios reales de uso para ser considerado operacionalmente viable.
+
 
 
 
 \section{Resumen del capítulo}
 El capítulo 3 presenta la metodología de prototipado evolutivo incremental adoptada para el desarrollo del sistema, describiendo sus tres fases (diseño y planificación, implementación y prueba, evaluación y mejora) aplicadas al contexto del proyecto. Se incluye el plan de trabajo con la carta Gantt de las 8 iteraciones, detallando los objetivos, duración estimada y avance acumulado de cada una.
 
-Asimismo, se explica la metodología de evaluación, que incluye pruebas de integración, usabilidad mediante el método SUS, y pruebas de confiabilidad y disponibilidad para medir el desempeño del sistema en escenarios reales. El capítulo concluye presentando los resultados esperados asociados a los objetivos específicos del proyecto.
+Asimismo, se explica la metodología de evaluación, que incluye pruebas de integración, usabilidad mediante el método SUS, y pruebas de confiabilidad y disponibilidad para medir el desempeño del sistema en escenarios reales. El capítulo concluye con los resultados esperados, tanto de los objetivos específicos del proyecto como de las pruebas a realizar, los cuales serán contrastados con los resultados reales en el capítulo 5.
 
 \input{cap4_iteraciones.tex}
 

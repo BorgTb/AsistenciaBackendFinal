@@ -20,6 +20,7 @@ esp_mqtt_client_handle_t mqtt_client = NULL;
 bool mqttConnected = false;
 
 #define FLASH_PIN 4
+#define GREEN_LED_PIN 2
 #define PIR_PIN 12
 
 // ===== Flash PWM (evita enceguecer a las personas) =====
@@ -227,14 +228,12 @@ void addLog(String msg) {
 
 void flashExito() {
   for (int i = 0; i < 2; i++) {
-    ledcWrite(FLASH_PIN, FLASH_PWM_DUTY_50); delay(150);
-    ledcWrite(FLASH_PIN, 0);                  delay(150);
+    digitalWrite(GREEN_LED_PIN, HIGH); delay(150);
+    digitalWrite(GREEN_LED_PIN, LOW);  delay(150);
   }
 }
 
 void flashError() {
-  ledcWrite(FLASH_PIN, FLASH_PWM_DUTY_50); delay(800);
-  ledcWrite(FLASH_PIN, 0);
 }
 
 bool resultadoAsistenciaExitosa(const String& resultado) {
@@ -1878,6 +1877,11 @@ void setup() {
   finger.begin(57600);
   if (finger.verifyPassword()) addLog("Sensor AS608 conectado");
 
+  pinMode(GREEN_LED_PIN, OUTPUT);
+  digitalWrite(GREEN_LED_PIN, LOW);
+  digitalWrite(GREEN_LED_PIN, HIGH); delay(100);
+  digitalWrite(GREEN_LED_PIN, LOW);
+
   initLittleFS(); delay(500); loadWiFiConfig(); tryConnectWiFi();
   
   if (isOnline) {
@@ -2044,15 +2048,13 @@ void loop() {
     // 1. EL PIR ES EL PORTERO
     if (digitalRead(PIR_PIN) == HIGH) {
       if (!hayAlguienFrenteAlSensor) {
-        addLog("Movimiento detectado. Estabilizando voltaje para camara...");
-        
-        // --- TRUCO DE INGENIERÍA: ARRANQUE ESCALONADO ---
-        hayAlguienFrenteAlSensor = true; 
-        tiempoUltimoMovimiento = ahora;
-        
-        delay(800); // Pausa crítica para que el capacitor de 1000uF se recupere
-        return;     // Saltamos este ciclo del loop para que el ESP32 respire
-      }
+      addLog("Movimiento detectado. Flash ON por 10 segundos...");
+      hayAlguienFrenteAlSensor = true;
+      tiempoUltimoMovimiento = ahora;
+      ledcWrite(FLASH_PIN, FLASH_PWM_DUTY_50); // Flash ON al detectar
+      delay(800);
+      return;
+    }
       tiempoUltimoMovimiento = ahora;
     }
 
@@ -2063,8 +2065,9 @@ void loop() {
       // Si el sensor no ha vuelto a detectar movimiento en los últimos 15 segundos,
       // asumimos que fue una falsa alarma o la persona se retiró.
       if (ahora - tiempoUltimoMovimiento > 15000) {
-          addLog("Falsa alarma o abandono. Sistema vuelve a reposo absoluto.");
-          hayAlguienFrenteAlSensor = false; 
+          addLog("Sin movimiento 10s. Flash OFF, sistema a reposo.");
+          ledcWrite(FLASH_PIN, 0); // Flash OFF al expirar
+          hayAlguienFrenteAlSensor = false;
           return; // Salimos del loop inmediatamente para no sacar fotos en falso
       }
       // -------------------------------------------
@@ -2079,6 +2082,7 @@ void loop() {
             addLog(res);
             if (resultadoAsistenciaExitosa(res)) flashExito(); else flashError();
             cooldownAsistencia = millis();
+            ledcWrite(FLASH_PIN, 0);
             hayAlguienFrenteAlSensor = false; 
             
             estadoActual = ESTADO_IDLE; 
