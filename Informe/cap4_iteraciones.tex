@@ -524,6 +524,7 @@ Todos estos endpoints operan sobre una base de datos relacional PostgreSQL. El d
     \item \texttt{consentimientos}: Registro de aceptación de política de privacidad biométrica por persona.
     \item \texttt{logs\_biometricos}: Auditoría de operaciones biométricas (registro, verificación, identificación) con resultado, timestamp e IP de origen.
     \item \texttt{eliminaciones\_biometricas}: Registro histórico de datos biométricos eliminados (embeddings anteriores, fotos) para cumplimiento normativo y trazabilidad.
+    \item \texttt{encodings\_faciales}: Almacena múltiples embeddings faciales cifrados por persona (FOREIGN KEY con eliminación en cascada), permitiendo que un trabajador tenga varias fotos de referencia con distintos ángulos e iluminación para mejorar la precisión del reconocimiento.
 \end{itemize}
 
 El diagrama de la base de datos se presenta en la Figura 4.28.
@@ -621,7 +622,7 @@ Se diseñaron las siguientes pruebas para validar la comunicación y el backend:
 
     \item \textbf{Prueba de sincronización por lotes}: Generar 5 marcaciones offline en el ESP32-CAM, conectar el dispositivo a la red y ejecutar la sincronización. Verificar que los 5 registros lleguen al backend vía \texttt{POST /api/asistencias/sync}, que se inserten correctamente y que el dispositivo marque cada registro como \texttt{sincronizado = true}.
 
-    \item \textbf{Prueba de inicialización de base de datos}: Ejecutar \texttt{init\_db()} sobre una base de datos vacía. Verificar que se creen las 13 tablas, los índices y los datos semilla (empresa por defecto y usuario administrador) sin errores.
+    \item \textbf{Prueba de inicialización de base de datos}: Ejecutar \texttt{init\_db()} sobre una base de datos vacía. Verificar que se creen las 14 tablas, los índices y los datos semilla (empresa por defecto y usuario administrador) sin errores.
 
     \item \textbf{Prueba de latencia de transmisión}: Medir el tiempo total desde que el ESP32-CAM publica una imagen en MQTT hasta que recibe la respuesta de confirmación del backend. Se espera un tiempo menor a 5 segundos en condiciones de red local.
 \end{itemize}
@@ -667,29 +668,30 @@ El flujo de procesamiento facial se divide en tres operaciones principales:
         \item Recibe \texttt{persona\_id} e \texttt{imagen} (Base64).
         \item Verifica que exista consentimiento biométrico en la tabla \texttt{consentimientos}. Si no existe, rechaza con HTTP 403.
         \item Decodifica la imagen, la guarda como \texttt{static/previews/<persona\_id>.jpg}.
-        \item Extrae el embedding con DeepFace (Facenet + RetinaFace, sin anti-spoofing en esta etapa para evitar falsos rechazos por baja calidad de la cámara).
-        \item Compara el nuevo embedding contra todos los embeddings existentes en la base de datos. Si la distancia euclidiana a algún registro es menor que 10.0, rechaza el registro con HTTP 409 (Conflicto) indicando la posible identidad duplicada.
-        \item Si no hay duplicados, cifra el embedding con Fernet y lo almacena en la tabla \texttt{personas}.
+        \item Aplica un \textbf{filtro de calidad de imagen} que mide la nitidez mediante la varianza del Laplaciano. Si la imagen es demasiado plana o borrosa (por debajo de un umbral configurable, 50 por defecto), se rechaza como posible intento de suplantación (foto de pantalla o papel) antes de llegar a DeepFace, ahorrando procesamiento innecesario del modelo.
+        \item Extrae el embedding con DeepFace usando el modelo Facenet y un detector configurable mediante variable de entorno (\texttt{FACIAL\_DETECTOR}), utilizando MTCNN por defecto por su velocidad (tres veces más rápido que RetinaFace con precisión comparable) y sin anti-spoofing en esta etapa.
+        \item Cifra el embedding con Fernet y lo almacena en la tabla \texttt{encodings\_faciales}, que permite acumular múltiples fotos de referencia por persona con distintos ángulos e iluminación, mejorando la precisión en subsecuentes identificaciones.
     \end{itemize}
 
     \item \textbf{Identificación 1:N} (\texttt{POST /api/facial/identificar}):
     \begin{itemize}
         \item Recibe la imagen como JPEG crudo (\texttt{application/octet-stream}) desde el ESP32-CAM, o como JSON con Base64 desde la web.
         \item Guarda una copia de auditoría en \texttt{static/capturas\_prueba/} con timestamp.
-        \item Extrae el embedding con DeepFace (anti-spoofing activado mediante el parámetro \texttt{anti\_spoofing=True}).
-        \item Itera sobre todos los embeddings almacenados en la base de datos, calculando la distancia euclidiana con cada uno y seleccionando la menor.
+        \item Aplica el mismo filtro de calidad Laplacian como barrera anti-spoofing previa, rechazando imágenes de baja nitidez antes de invocar DeepFace.
+        \item Extrae el embedding con DeepFace (anti-spoofing activado mediante \texttt{anti\_spoofing=True}).
+        \item Consulta una \textbf{caché en memoria} de embeddings (con TTL configurable, 60 segundos por defecto). Si la caché expiró, recarga todos los embeddings desde la base de datos. Para cada persona, compara contra \textbf{todos los embeddings} almacenados en \texttt{encodings\_faciales} (multi-encoding) y selecciona la menor distancia. Esto mejora la precisión porque el sistema puede reconocer a un trabajador aunque la captura en vivo tenga una iluminación o ángulo diferentes a los de su foto de registro.
         \item Si la menor distancia es inferior al umbral (10.0 para Facenet), retorna el \texttt{persona\_id} correspondiente. En caso contrario, retorna HTTP 404.
     \end{itemize}
 
     \item \textbf{Verificación 1:1} (\texttt{POST /api/facial/verificar}):
     \begin{itemize}
         \item Recibe \texttt{persona\_id} e \texttt{imagen} (Base64).
-        \item Descifra el embedding almacenado para esa persona y extrae el embedding de la imagen capturada (con anti-spoofing activado).
-        \item Calcula la distancia euclidiana. Si es menor que 10.0, retorna éxito con el nivel de confianza calculado como \texttt{max(0, (1 - distancia/20) * 100)}.
+        \item Descifra todos los embeddings almacenados para esa persona en \texttt{encodings\_faciales} y extrae el embedding de la imagen capturada (con anti-spoofing activado).
+        \item Calcula la distancia euclidiana contra cada embedding de referencia y selecciona la menor. Si es menor que 10.0, retorna éxito con el nivel de confianza calculado como \texttt{max(0, (1 - distancia/20) * 100)}.
     \end{itemize}
 \end{enumerate}
 
-El modelo seleccionado es \textbf{Facenet} por su equilibrio entre precisión y tamaño de embedding, y el detector es \textbf{RetinaFace} por su robustez ante variaciones de pose e iluminación. El umbral de 10.0 para la distancia euclidiana fue elegido con base en la documentación de DeepFace y ajustes empíricos realizados durante el desarrollo.
+El modelo seleccionado es \textbf{Facenet} por su equilibrio entre precisión y tamaño de embedding (128 dimensiones). El detector facial es \textbf{configurable mediante variable de entorno} (\texttt{FACIAL\_DETECTOR}), utilizando \textbf{MTCNN} por defecto. Si bien RetinaFace ofrece mayor robustez ante variaciones extremas de pose e iluminación, MTCNN es tres veces más rápido y mantiene una precisión comparable para las condiciones típicas de una cámara de control de asistencia (rostro frontal a corta distancia), lo que lo hace más adecuado para un dispositivo embebido como el ESP32-CAM. El umbral de 10.0 para la distancia euclidiana fue elegido con base en la documentación de DeepFace y ajustes empíricos realizados durante el desarrollo.
 
 Para el cifrado de embeddings se utiliza el algoritmo \textbf{Fernet} (AES-128 en modo CBC con HMAC-SHA256 para autenticación), parte de la librería \texttt{cryptography} de Python. La clave de cifrado se deriva aplicando SHA-256 a una variable de entorno (\texttt{BIOMETRIC\_KEY}), garantizando que los embeddings nunca se almacenen en texto plano en la base de datos.
 
@@ -700,11 +702,14 @@ Para el cifrado de embeddings se utiliza el algoritmo \textbf{Fernet} (AES-128 e
 El módulo \texttt{routes/facial.py} implementa los tres endpoints descritos en el diseño. Las funciones auxiliares incluyen:
 
 \begin{itemize}
-    \item \texttt{extraer\_embedding(img\_path, anti\_spoofing)}: Invoca \texttt{DeepFace.represent()} con el modelo Facenet y el detector RetinaFace. Si \texttt{anti\_spoofing=True}, activa la detección de suplantación.
+    \item \texttt{\_validar\_calidad\_imagen(img\_path)}: Aplica el filtro Laplaciano (varianza del Laplaciano) sobre la imagen decodificada para medir su nitidez. Si el valor está por debajo del umbral configurable en \texttt{FACIAL\_NITIDEZ\_UMBRAL} (50 por defecto), la imagen se considera borrosa o plana (posible foto de pantalla o papel) y se rechaza antes de llegar a DeepFace, funcionando como una capa adicional de anti-spoofing.
+    \item \texttt{extraer\_embedding(img\_path, anti\_spoofing)}: Invoca \texttt{DeepFace.represent()} con el modelo Facenet pre-cargado y el detector configurable vía variable de entorno. Si \texttt{anti\_spoofing=True}, activa la detección de suplantación.
     \item \texttt{guardar\_imagen\_de\_registro(persona\_id, imagen\_b64)}: Decodifica la imagen Base64, la convierte a RGB con Pillow y la guarda en \texttt{static/previews/<id>.jpg}.
     \item \texttt{\_verificar\_consentimiento(persona\_id)}: Consulta la tabla \texttt{consentimientos} para verificar que exista un registro de aceptación.
     \item \texttt{\_log\_biometrico(persona\_id, dispositivo\_id, tipo\_operacion, resultado)}: Inserta un registro de auditoría en \texttt{logs\_biometricos}.
 \end{itemize}
+
+Además, para optimizar el rendimiento, el modelo \textbf{Facenet se precarga al iniciar el servidor} mediante \texttt{DeepFace.build\_model('Facenet', task='facial\_recognition')}, eliminando la latencia de carga de pesos en la primera solicitud. Los embeddings almacenados en la base de datos se mantienen en una \textbf{caché en memoria} con tiempo de vida configurable (por defecto 60 segundos, mediante \texttt{FACIAL\_CACHE\_TTL}), evitando consultas repetitivas y descifrados a la base de datos en cada identificación. La caché se invalida automáticamente al registrar una nueva foto o al eliminar datos biométricos, garantizando consistencia.
 
 \subsubsection{Procesamiento facial vía MQTT}
 
@@ -722,6 +727,8 @@ El módulo \texttt{encryption.py} proporciona dos funciones:
 \subsubsection{Actualización y eliminación de datos faciales}
 
 Se implementó el endpoint \texttt{PUT /api/facial/actualizar/<persona\_id>} que permite reemplazar el embedding y la foto de una persona existente. También se implementó \texttt{DELETE /api/personas/<id>/datos-biometricos} que elimina el embedding facial, la huella asociada, la foto en disco y el consentimiento, pero conserva los registros de asistencia históricos. La eliminación queda registrada en la tabla \texttt{eliminaciones\_biometricas} para trazabilidad.
+
+Se implementó además el endpoint \texttt{POST /api/facial/agregar-foto} que permite \textbf{agregar fotos de referencia adicionales} a una persona ya registrada, sin reemplazar las existentes. Cada nueva foto pasa por el mismo filtro de calidad Laplacian y se almacena como un nuevo registro en \texttt{encodings\_faciales}. Esta funcionalidad de enrolamiento progresivo permite mejorar la precisión del sistema a lo largo del tiempo: si un trabajador experimenta falsos rechazos, se le pueden agregar más fotos de referencia con distintos ángulos o condiciones de iluminación, aumentando la robustez del reconocimiento sin necesidad de rehacer el registro completo.
 
 \subsection{Pruebas}
 
@@ -745,6 +752,12 @@ Se diseñaron las siguientes pruebas para validar el módulo de reconocimiento f
     \item \textbf{Prueba de cifrado y descifrado}: Almacenar un embedding en la base de datos y verificar que el valor en la columna \texttt{encoding\_facial} no sea legible (no contenga los números del vector en texto plano). Luego, recuperar el registro y descifrar el embedding; verificar que el vector original se reconstruya idénticamente.
 
     \item \textbf{Prueba de eliminación de datos biométricos}: Ejecutar el endpoint de eliminación de datos biométricos para una persona con rostro registrado. Verificar que el embedding se elimine de la base de datos, que la foto se borre del disco, que el consentimiento se elimine, que los registros de asistencia se conserven y que quede una entrada en \texttt{eliminaciones\_biometricas}.
+
+    \item \textbf{Prueba de filtro de calidad de imagen}: Enviar al endpoint de registro una imagen deliberadamente borrosa o una foto de una pantalla (baja varianza de Laplacian). Verificar que el backend rechace la imagen antes de invocar DeepFace, retornando un error de calidad insuficiente.
+
+    \item \textbf{Prueba de múltiples fotos de referencia}: Registrar una persona con una foto frontal. Luego, agregar una segunda foto de la misma persona con distinto ángulo mediante \texttt{POST /api/facial/agregar-foto}. Realizar una identificación con una tercera foto y verificar que el sistema reconozca a la persona correctamente, comparando contra ambos embeddings de referencia.
+    
+    \item \textbf{Prueba de caché de embeddings}: Realizar una identificación exitosa y verificar los tiempos de respuesta. Realizar una segunda identificación inmediatamente después; verificar que el tiempo sea significativamente menor porque los embeddings se sirvieron desde la caché en memoria sin consultar la base de datos.
 \end{itemize}
 
 
@@ -772,6 +785,7 @@ Los requisitos identificados son:
         \item \texttt{trabajador}: Acceso restringido a sus propios datos de asistencia.
     \end{itemize}
     \item \textbf{Enrolamiento de dispositivos}: Un administrador genera un PIN de 8 caracteres en el panel web. Ese PIN se ingresa en el ESP32-CAM (vía web embebida), que lo envía al backend junto con su MAC address. Si el PIN es válido y no ha sido usado, el dispositivo queda enrolado y asociado a la empresa correspondiente.
+    \item \textbf{Auto-registro de empresas}: Se requiere un endpoint público que permita a una nueva organización registrarse de forma autónoma en el sistema, sin intervención del administrador central. La empresa proporciona sus datos (nombre, RUT, email, etc.) y los datos del usuario administrador; el sistema crea la empresa, el usuario, y la asociación entre ambos con rol \texttt{admin} en una sola transacción atómica, retornando un token JWT para que el nuevo administrador quede autenticado inmediatamente. Esto facilita el despliegue del sistema en nuevos clientes sin requerir configuración manual previa.
     \item \textbf{Monitorización de dispositivos}: Una vez enrolado, el ESP32-CAM envía heartbeats periódicos vía MQTT. El backend actualiza el estado del dispositivo (\texttt{activo}) y registra su última actividad. Un proceso watchdog marca como \texttt{inactivo} a los dispositivos que no han enviado heartbeat en más de 90 segundos.
 \end{itemize}
 
@@ -827,6 +841,7 @@ El módulo \texttt{routes/auth.py} implementa:
     \item \texttt{generar\_pin\_enrolamiento()}: Crea un PIN para enrolar un nuevo dispositivo.
     \item \texttt{enrolar\_dispositivo()}: Valida el PIN y completa el enrolamiento del ESP32-CAM.
     \item \texttt{listar\_usuarios()}, \texttt{eliminar\_usuario()}, \texttt{listar\_empresas()}, \texttt{crear\_empresa()}: Operaciones administrativas con control de roles.
+    \item \texttt{register\_company()}: Endpoint público \texttt{POST /api/auth/register-company} que permite el auto-registro de una nueva empresa. Recibe los datos de la organización (nombre, RUT, email, teléfono, dirección) y del usuario administrador (nombre, email, contraseña). En una única transacción atómica crea la empresa, el usuario con hash bcrypt, y la asociación \texttt{usuario\_empresa} con rol \texttt{admin}. Retorna un token JWT para autenticar inmediatamente al nuevo administrador.
 \end{itemize}
 
 Los decoradores \texttt{@token\_required}, \texttt{@token\_opcional} y \texttt{@requiere\_rol} se definen en el mismo módulo. El decorador \texttt{@token\_opcional} incluye lógica para inferir la empresa a partir del header \texttt{X-Device-MAC} cuando no hay token JWT presente, buscando la MAC en la tabla de dispositivos.
@@ -877,6 +892,8 @@ Se diseñaron las siguientes pruebas para validar la autenticación, el multi-te
     \item \textbf{Prueba de heartbeat y estado}: Simular heartbeats desde un dispositivo enrolado. Verificar que el estado en la base de datos sea \texttt{activo}. Detener los heartbeats por más de 90 segundos y verificar que el watchdog marque el dispositivo como \texttt{inactivo}.
 
     \item \textbf{Prueba de LWT}: Conectar el ESP32-CAM al broker MQTT, verificar que el backend reciba el heartbeat y lo marque activo. Desconectar el dispositivo abruptamente (corte de energía). Verificar que el broker publique el LWT y el backend actualice el estado a \texttt{inactivo} en menos de 10 segundos.
+
+    \item \textbf{Prueba de auto-registro de empresa}: Enviar una solicitud a \texttt{POST /api/auth/register-company} con los datos de una nueva empresa y su administrador. Verificar que se cree la empresa en la base de datos, que el usuario administrador se cree con contraseña encriptada (bcrypt), que exista la asociación \texttt{usuario\_empresa} con rol \texttt{admin}, y que el backend retorne un token JWT válido que permita acceder a endpoints protegidos. Verificar que un segundo intento con el mismo email de administrador retorne HTTP 409 (Conflicto).
 \end{itemize}
 
 
@@ -1250,7 +1267,7 @@ El hilo \texttt{device\_watchdog} en \texttt{mqtt\_handler.py} ejecuta dos funci
 El script \texttt{deteccion.py} implementa:
 \begin{itemize}
     \item Conexión directa a la base de datos PostgreSQL.
-    \item Función \texttt{extraer\_embedding\_sim()} con DeepFace (Facenet + RetinaFace + anti-spoofing).
+    \item Función \texttt{extraer\_embedding\_sim()} con DeepFace (Facenet + detector configurable + anti-spoofing).
     \item Función \texttt{simular\_asistencia\_por\_foto()} que busca coincidencias del embedding contra la base de datos y, si encuentra una, registra la asistencia en la tabla \texttt{asistencias}.
     \item Menú interactivo en terminal para seleccionar imágenes de la carpeta \texttt{static/capturas\_prueba/}.
 \end{itemize}
@@ -1284,6 +1301,6 @@ Se diseñaron las siguientes pruebas para validar la sincronización diferida, l
 
 %% ============================================================
 \section{Resumen del capítulo}
-El capítulo 4 presenta el desarrollo completo del prototipo a lo largo de ocho iteraciones, siguiendo la metodología de prototipado evolutivo incremental. Se documenta la integración del hardware (ESP32-CAM, lector AS608, sensor PIR, cámara OV2640), la implementación del almacenamiento local con LittleFS y JSON, el desarrollo del backend con Flask y PostgreSQL (13 tablas con soporte multi-tenant), la comunicación mediante HTTP y MQTT, el reconocimiento facial con DeepFace (modelo Facenet, detector RetinaFace y anti-spoofing), el cifrado de embeddings biométricos con Fernet, la autenticación JWT con roles jerárquicos, el enrolamiento seguro de dispositivos mediante PIN, el sistema antifraude multicapa (PIR + flash PWM + anti-spoofing + cooldown), el panel web para la gestión del dispositivo, la integración con ERP externos vía webhooks con field mapping, y los mecanismos de sincronización diferida con logs de auditoría.
+El capítulo 4 presenta el desarrollo completo del prototipo a lo largo de ocho iteraciones, siguiendo la metodología de prototipado evolutivo incremental. Se documenta la integración del hardware (ESP32-CAM, lector AS608, sensor PIR, cámara OV2640), la implementación del almacenamiento local con LittleFS y JSON, el desarrollo del backend con Flask y PostgreSQL (14 tablas con soporte multi-tenant), la comunicación mediante HTTP y MQTT, el reconocimiento facial con DeepFace (modelo Facenet, detector configurable MTCNN/RetinaFace y anti-spoofing), el cifrado de embeddings biométricos con Fernet, la autenticación JWT con roles jerárquicos, el enrolamiento seguro de dispositivos mediante PIN, el sistema antifraude multicapa (PIR + flash PWM + anti-spoofing + cooldown), el panel web para la gestión del dispositivo, la integración con ERP externos vía webhooks con field mapping, y los mecanismos de sincronización diferida con logs de auditoría.
 
 Cada iteración incluyó su respectivo análisis de requisitos, diseño de la solución, implementación detallada y un plan de pruebas de integración para validar el correcto funcionamiento de los componentes desarrollados.

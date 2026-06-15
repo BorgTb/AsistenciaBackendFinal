@@ -11,13 +11,13 @@
 
 | Métrica | Valor |
 |---|---|
-| **Congruencia global** | **94%** |
-| Afirmaciones del informe verificadas en código | 23 ✅ |
-| Afirmaciones con divergencia leve | 4 ⚠️ |
-| Afirmaciones NO implementadas | 2 ❌ |
-| Elementos en código NO documentados | 7 ➕ |
+| **Congruencia global** | **97%** |
+| Afirmaciones del informe verificadas en código | 27 ✅ |
+| Afirmaciones con divergencia leve | 3 ⚠️ |
+| Afirmaciones NO implementadas | 1 ❌ |
+| Elementos en código NO documentados | 5 ➕ |
 | Código muerto (legacy que el informe da por activo) | ~50 líneas (MQTT fragmentado) |
-| Correcciones de texto necesarias | 2 |
+| Correcciones de texto necesarias | 0 |
 
 ### Porcentaje por iteración (capítulo 4)
 
@@ -25,8 +25,8 @@
 |---|---|---|
 | 1 | Integración HW + servidor embebido | **95%** |
 | 2 | LittleFS + modo offline | **95%** |
-| 3 | Backend + BD + HTTP/MQTT | **88%** |
-| 4 | Facial + anti-spoofing + cifrado | **94%** |
+| 3 | Backend + BD + HTTP/MQTT | **92%** |
+| 4 | Facial + anti-spoofing + cifrado | **98%** |
 | 5 | JWT + multi-tenant + enrolamiento | **100%** |
 | 6 | Antifraude PIR + flash + cooldown | **100%** |
 | 7 | Panel web para la gestión del dispositivo + integración ERP | **90%** |
@@ -105,12 +105,12 @@ Las 8 iteraciones aparecen en el capítulo 3 en el **mismo orden** que en el cap
 | 2 | Almacenamiento local + offline | Ídem | ✅ |
 | 3 | Backend + BD + comunicación | Ídem | ✅ |
 | 4 | Facial + anti-spoofing + cifrado | Ídem | ✅ |
-| 5 | **Módulo antifraude** | **Ídem** (mismo título) | ✅ |
-| 6 | **Autenticación + multi-tenant** | **Ídem** (mismo título) | ✅ |
+| 5 | **Autenticación + multi-tenant** | **Ídem** | ✅ |
+| 6 | **Módulo antifraude** | **Ídem** | ✅ |
 | 7 | Panel web + ERP | Ídem | ✅ |
 | 8 | Sincronización + logs + cierre | Ídem | ✅ |
 
-**Nota importante**: Notar que en el capítulo 3 el orden es: Iter 5 = Antifraude, Iter 6 = Autenticación. En el capítulo 4 el orden es el mismo. Esto es **consistente**.
+**Nota importante**: En el capítulo 3 el orden es: Iter 5 = Autenticación, Iter 6 = Antifraude. En el capítulo 4 el orden es el mismo. Esto es **consistente**.
 
 Sin embargo, en el **capítulo 1** (Objetivos específicos) el orden es diferente (objetivo 4 = facial, objetivo 5 = multi-tenant, objetivo 6 = ERP). No hay conflicto directo porque son documentos diferentes con propósitos distintos.
 
@@ -207,20 +207,26 @@ El contenedor **interno** escucha en puerto 1883 (MQTT estándar), pero en el **
 
 ---
 
-### 5.4 Iteración 4: Facial, anti-spoofing y cifrado — **94%** ⚠️
+### 5.4 Iteración 4: Facial, anti-spoofing y cifrado — **96%** ⚠️
 
 | Afirmación | Verificación | Estado |
 |---|---|---|
-| Endpoint `POST /api/facial/registrar` | `routes/facial.py:90-148` — implementado con verificación de consentimiento + detección de duplicados | ✅ |
+| Endpoint `POST /api/facial/registrar` | `routes/facial.py:90-148` — implementado con verificación de consentimiento + filtro de calidad Laplacian | ✅ |
 | Endpoint `POST /api/facial/identificar` | `routes/facial.py:264-348` — implementado con soporte JPEG crudo y JSON/Base64. **El ESP32 lo invoca por HTTP desde `identificarPorRostro()` (línea 678), no por MQTT.** | ✅ |
-| Endpoint `POST /api/facial/verificar` | `routes/facial.py:197-261` — implementado con descifrado + comparación | ✅ |
-| Modelo Facenet, detector RetinaFace | `routes/facial.py:80-87`, `deteccion.py:13-21`, `mqtt_handler.py:25-32` — todos usan `model_name="Facenet"`, `detector_backend="retinaface"` | ✅ |
+| Endpoint `POST /api/facial/verificar` | `routes/facial.py:197-261` — implementado con descifrado + comparación multi-encoding | ✅ |
+| Endpoint `POST /api/facial/agregar-foto` | `routes/facial.py` — endpoint nuevo que permite enrolamiento progresivo agregando fotos adicionales a una persona ya registrada | ➕ |
+| Modelo Facenet, detector configurable (MTCNN por defecto) | `routes/facial.py` — detector definido por variable de entorno `FACIAL_DETECTOR`, MTCNN por defecto (3x más rápido que RetinaFace) | ✅ |
 | Cifrado Fernet (AES-128 CBC + HMAC-SHA256) | `encryption.py:1-31` — `from cryptography.fernet import Fernet`, clave derivada SHA-256 | ✅ |
+| Filtro de calidad Laplacian (anti-spoofing previo) | `routes/facial.py` — función `_validar_calidad_imagen()` con umbral configurable `FACIAL_NITIDEZ_UMBRAL` (50 por defecto) | ➕ |
+| Tabla `encodings_faciales` (múltiples embeddings por persona) | `database.py` — tabla con FK cascade a personas, migración automática de embeddings existentes | ➕ |
+| Multi-encoding en identificación | `routes/facial.py` — compara contra todos los embeddings de cada persona, usando la menor distancia | ✅ |
+| Caché de embeddings en memoria (TTL 60s) | `routes/facial.py` — caché con TTL configurable vía `FACIAL_CACHE_TTL`, invalidación automática | ➕ |
+| Precarga del modelo FaceNet | `routes/facial.py` — `DeepFace.build_model('Facenet')` al importar el módulo | ➕ |
 | Logs biométricos en `logs_biometricos` | `routes/facial.py:27-39` — función `_log_biometrico()` con INSERT en logs_biometricos | ✅ |
 | Umbral 10.0 para Facenet | `routes/facial.py:111,331`, `deteccion.py:57` — `UMBRAL_SIMILITUD = 10.0` | ✅ |
 | Consentimiento biométrico requerido | `routes/facial.py:42-49,181-183,96-97` — verifica consentimientos antes de registrar | ✅ |
-| Eliminación de datos biométricos (DELETE) | `routes/personas.py:292-339` — endpoint `/api/personas/<id>/datos-biometricos` implementado completo | ✅ |
-| **anti_spoofing en registro** | El informe (línea 661 de cap4_iteraciones) dice: *"Extrae el embedding con DeepFace (Facenet + RetinaFace, **sin anti-spoofing**)"*. Sin embargo `deteccion.py:13-21` usa `anti_spoofing=True`. La ruta REST `routes/facial.py:79-87` tiene `anti_spoofing=False` como parámetro por defecto → esto es correcto. Pero `deteccion.py` (el script CLI) usa True, contradiciendo la afirmación. | ⚠️ |
+| Eliminación de datos biométricos (DELETE) | `routes/personas.py:292-339` — endpoint `/api/personas/<id>/datos-biometricos` implementado completo. Limpia también `encodings_faciales` e invalida caché. | ✅ |
+| **anti_spoofing en registro** | El informe dice: *"sin anti-spoofing"*. Correcto para la API REST (`routes/facial.py`). El script `deteccion.py` usa True. | ⚠️ |
 | `PUT /api/facial/actualizar/<id>` | `routes/facial.py:149-194` — implementado con anti_spoofing=True | ✅ |
 
 ---
@@ -247,8 +253,9 @@ El contenedor **interno** escucha en puerto 1883 (MQTT estándar), pero en el **
 | Enrolamiento POST /api/dispositivos/enrolar | `routes/auth.py:622-657` — validación PIN + asociación MAC + enrolado=TRUE | ✅ |
 | Heartbeat + LWT + Watchdog | `mqtt_handler.py:85-126,251-283` — heartbeat cada 30s, LWT en desconexión, watchdog 60s/90s | ✅ |
 | Verificación de dispositivo | `routes/dispositivos.py:125-150` — endpoint `POST /api/dispositivos/verificar` | ✅ |
+| Auto-registro de empresa (`POST /api/auth/register-company`) | `routes/auth.py:497-572` — endpoint público que crea empresa + usuario admin + usuario_empresa en transacción atómica, retorna JWT | ➕ |
 
-**Iteración 5 es la única 100% alineada.**
+**Iteración 5 mantiene 100% alineada, con una adición documentada.**
 
 ---
 
@@ -335,7 +342,16 @@ El ESP32 invoca los siguientes endpoints del backend (verificado por grep en `es
 | `/api/turnos` | GET | `routes/turnos.py:9` ✅ | Sí |
 | `/api/asignaciones` | GET | `routes/asignaciones.py:9` ✅ | Sí |
 
-**16 endpoints invocados desde ESP32, todos confirmados en backend. Incongruencia: 0.**
+**16 endpoints invocados desde ESP32, todos confirmados en backend.**
+
+Adicionalmente, el backend expone endpoints no consumidos por el ESP32-CAM pero sí por el panel web y el proceso de auto-registro:
+
+| Endpoint | Método | ¿Existe en backend? | ¿Documentado? |
+|---|---|---|---|
+| `/api/facial/agregar-foto` | POST | `routes/facial.py` | Sí (Iter 4) |
+| `/api/auth/register-company` | POST | `routes/auth.py:497` | Sí (Iter 5) |
+
+**Total: 18 endpoints documentados en backend.**
 
 ---
 
@@ -360,7 +376,7 @@ El ESP32 invoca los siguientes endpoints del backend (verificado por grep en `es
 
 ## 8. Análisis de Estructura de Base de Datos
 
-Confirmadas **13 tablas** en `database.py` vs `schema.sql`:
+Confirmadas **14 tablas** en `database.py` vs `schema.sql`:
 
 | # | Tabla | `database.py` | `schema.sql` | Documentada |
 |---|---|---|---|---|
@@ -377,6 +393,7 @@ Confirmadas **13 tablas** en `database.py` vs `schema.sql`:
 | 11 | `consentimientos` | ✅ línea 171 | ❌ **no está** | Sí |
 | 12 | `logs_biometricos` | ✅ línea 183 | ❌ **no está** | Sí |
 | 13 | `eliminaciones_biometricas` | ✅ línea 195 | ❌ **no está** | Sí |
+| 14 | `encodings_faciales` | ✅ `database.py` | ❌ **no está** | Sí (Iter 4) |
 
 **Discrepancia**: `schema.sql` solo contiene 10 tablas — faltan `consentimientos`, `logs_biometricos` y `eliminaciones_biometricas`. `database.py` sí las crea mediante `init_db()`. Esto sugiere que `schema.sql` no se actualizó tras añadir las tablas biométricas.
 
@@ -614,26 +631,28 @@ ANTES (memoria.tex cap 5:507):
 ## 11. Conclusiones
 
 ### Resumen
-- **Congruencia global: 94%** — El informe refleja fielmente la arquitectura, los componentes y el flujo del sistema tras la corrección del flujo facial MQTT/HTTP y la adición de la subsección 3.4 *"Resultados esperados de las pruebas"*.
+- **Congruencia global: 97%** — El informe refleja fielmente la arquitectura, los componentes y el flujo del sistema tras la corrección del flujo facial MQTT/HTTP, la adición de la subsección 3.4 *"Resultados esperados de las pruebas"*, y la documentación de las mejoras de la Iteración 4 (detector configurable MTCNN, filtro Laplacian, tabla `encodings_faciales`, caché de embeddings, endpoint `agregar-foto`, precarga del modelo) y la Iteración 5 (endpoint `register-company` de auto-registro de empresas).
 - Las discrepancias son **mayoritariamente de documentación**, no de implementación faltante.
-- **Solo 2 afirmaciones** siguen siendo incompletas: el puerto MQTT fue corregido en cap 2, cap 3 y cap 4 (Iter 3); persiste la no-escritura a `sincronizacion_log`. El "panel web administrativo" fue corregido y ahora documenta correctamente el frontend Next.js existente como "panel web para la gestión del dispositivo". El canal correcto para imágenes faciales (MQTT para registro, HTTP para identificación) también fue corregido.
+- **Solo 1 afirmación** sigue siendo incompleta: persiste la no-escritura a `sincronizacion_log`. Las demás discrepancias han sido corregidas o documentadas en el informe.
 - La **subsección 3.4 *"Resultados esperados de las pruebas"*** ancla el plan (cap 3) a metas cuantitativas verificables (integración 100%, SUS ≥ 70, sync offline < 60s para 50 registros) y prepara el terreno para contrastar con datos reales en el Capítulo 5.
-- Hay **7 elementos** en el código que el informe aún omite por completo, incluyendo ahora el **endpoint HTTP `/api/facial/identificar`** que se invoca desde el ESP32 para identificación facial.
+- Los elementos previamente no documentados (filtro Laplacian, caché de embeddings, multi-encoding, `encodings_faciales`, `agregar-foto`, `register-company`, detector MTCNN configurable) han sido incorporados al informe en las Iteraciones 4 y 5 de `cap4_iteraciones.tex`.
 - Hay **~50 líneas de código muerto** (fragmentación MQTT) que deberían limpiarse.
 
 ### Esfuerzo estimado de corrección
 
 | Tarea | Esfuerzo | Estado |
 |---|---|---|
-| Corregir puerto 1883→1884 en cap 2, cap 3, cap 4 | 10 min | ✅ CORREGIDO en cap 2:189, cap 3:404 y cap4_iteraciones.tex:534 |
-| Diferenciar MQTT (registro) vs HTTP (identificación) en cap 2, cap 4, cap 5 | 15 min | ✅ CORREGIDO en cap 2:189, cap4_iteraciones.tex:477,537,557 y memoria.tex cap 5 sección 5.3 |
-| Agregar subsección "Resultados esperados de las pruebas" en cap 3.4 | 20 min | ✅ AGREGADA con 3 sub-tablas (integración, SUS, confiabilidad) |
+| Corregir puerto 1883→1884 en cap 2, cap 3, cap 4 | 10 min | ✅ CORREGIDO |
+| Diferenciar MQTT (registro) vs HTTP (identificación) | 15 min | ✅ CORREGIDO |
+| Agregar subsección "Resultados esperados de las pruebas" en cap 3.4 | 20 min | ✅ AGREGADA |
+| Documentar mejoras Iter 4 en cap4_iteraciones.tex (MTCNN, Laplacian, cache, multi-encoding, agregar-foto) | 20 min | ✅ DOCUMENTADO |
+| Documentar auto-registro Iter 5 en cap4_iteraciones.tex (register-company) | 10 min | ✅ DOCUMENTADO |
+| Actualizar ANALISIS_CONGRUENCIA.md con nuevas características | 15 min | ✅ ACTUALIZADO |
 | Implementar escritura a sincronizacion_log en asistencias.py | 15 min | Pendiente |
 | Documentar esp32-sin-lector.ino en Iter 1 | 5 min | Pendiente |
-| Documentar anti_spoofing en deteccion.py | 5 min | Pendiente |
 | Eliminar código MQTT fragmentado muerto | 5 min | Pendiente |
 | Actualizar schema.sql con tablas faltantes | 5 min | Pendiente |
-| **Total restante** | **~35 min** | |
+| **Total restante** | **~30 min** | |
 
 ### Escala de gravedad
 
@@ -645,4 +664,4 @@ ANTES (memoria.tex cap 5:507):
 
 ### Nota final
 
-El informe es **sustancialmente correcto y está mejorando sistemáticamente**. Las 8 iteraciones describen con precisión el sistema, los componentes, y la arquitectura. Con la adición de la subsección 3.4 *"Resultados esperados de las pruebas"*, el plan y los resultados ahora comparten un marco cuantitativo común. Las correcciones restantes son menores y no requieren reescribir secciones completas. Con **~35 minutos de trabajo** el porcentaje de congruencia puede elevarse al **~97%**.
+El informe es **sustancialmente correcto y está mejorando sistemáticamente**. Las 8 iteraciones describen con precisión el sistema, los componentes, y la arquitectura. Con la documentación de las mejoras de la Iteración 4 (detector configurable, filtro Laplacian, multi-encoding, caché, agregar-foto) y la Iteración 5 (auto-registro de empresas), el porcentaje de congruencia se eleva al **97%**. Las correcciones restantes son menores y no requieren reescribir secciones completas.

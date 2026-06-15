@@ -27,6 +27,10 @@ bool mqttConnected = false;
 #define FLASH_PWM_FREQ     5000  // 5 kHz: sin flicker visible
 #define FLASH_PWM_RES      8     // 8 bits -> duty 0..255
 #define FLASH_PWM_DUTY_50  128   // 50% de 255
+#define FLASH_DUTY_LOW    64   // 25%
+#define FLASH_DUTY_MED    128  // 50%
+#define FLASH_DUTY_HIGH   191  // 75%
+#define FLASH_DUTY_FULL   255  // 100%
 
 // ===== Sensor de huellas (RX=GPIO14, TX=GPIO15) =====
 HardwareSerial FingerSerial(2);
@@ -77,6 +81,9 @@ const uint32_t UMBRAL_MOVIMIENTO = 1800;
 bool rostroRegistroExitoso = false;
 String ultimoErrorRegistro = "";
 
+#define FOTOS_REQUERIDAS 3
+int fotosTomadas = 0;
+
 // ===== Maquina de estados =====
 enum EstadoSistema {
   ESTADO_IDLE = 0,
@@ -114,6 +121,7 @@ JsonArray loadArray(const char* path, DynamicJsonDocument& doc);
 void saveArray(const char* path, DynamicJsonDocument& doc);
 String identificarPorRostro();
 bool registrarRostroEnBackend(String personaId);
+bool agregarFotoEnBackend(String personaId);
 void completarRegistroPersona();
 void sincronizarAsistencias();
 void sincronizarPersonasDesdeBackend();
@@ -157,6 +165,7 @@ void handleSetBackend();
 void handleEditarPersona();
 void handleActualizarHuellaPersona();
 void handleActualizarRostroPersona();
+void handleAgregarFotosPersona();
 void handleBorrarPersona();
 void handleBorrarTurno();
 void handleBorrarAsignacion();
@@ -190,21 +199,29 @@ static void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_
         deserializeJson(doc, mensaje);
         if (doc["status"] == "ok") {
           addLog("Rostro guardado OK en Backend");
-          flashExito();                 
+          flashExito();
+          fotosTomadas++;
           String fileName = doc["file_name"].as<String>();
           String urlBase = backendURL;
           if (urlBase.endsWith("/")) urlBase = urlBase.substring(0, urlBase.length() - 1);
           lastCapturedImageUrl = urlBase + "/static/previews/" + fileName;
           rostroRegistroExitoso = true;
           ultimoErrorRegistro = "";
-          estadoActual = ESTADO_IDLE;
-          nombreRegistrando = "";
-          rutRegistrando = "";
-          emailRegistrando = "";
-          slotRegistrando = -1;
-          idParaRostro = "";
-          modoEdicionRostro = false;
-          personaEditandoId = "";
+          
+          if (fotosTomadas >= FOTOS_REQUERIDAS) {
+            addLog("Registro completo: " + String(fotosTomadas) + " fotos de referencia guardadas");
+            estadoActual = ESTADO_IDLE;
+            nombreRegistrando = "";
+            rutRegistrando = "";
+            emailRegistrando = "";
+            slotRegistrando = -1;
+            idParaRostro = "";
+            modoEdicionRostro = false;
+            personaEditandoId = "";
+            fotosTomadas = 0;
+          } else {
+            addLog("Foto de registro #" + String(fotosTomadas) + " aceptada. Esperando siguiente captura en " + String(FOTOS_REQUERIDAS - fotosTomadas) + " foto(s)...");
+          }
         } else {
           String detalle = doc["mensaje"].as<String>();
           addLog("Rostro rechazado: " + detalle);
@@ -374,7 +391,7 @@ String capturarImagenBase64() {
   if (!camaraIniciada) return "";
 
   // 1. ILUMINACIÓN (Consumo alto: Flash ON al 50%)
-  ledcWrite(FLASH_PIN, FLASH_PWM_DUTY_50);
+  ledcWrite(FLASH_PIN, FLASH_DUTY_LOW);
   delay(200); // Damos tiempo al sensor OV2640 para ajustar brillo y enfoque
 
   // 2. CAPTURA DE HARDWARE (Guardamos la foto en la RAM)
@@ -660,7 +677,7 @@ String identificarPorRostro() {
   s->set_quality(s, 10);
 
   // Flash breve para iluminar el rostro
-  ledcWrite(FLASH_PIN, FLASH_PWM_DUTY_50);
+  ledcWrite(FLASH_PIN, FLASH_DUTY_LOW);
   delay(150);
   camera_fb_t* fb = esp_camera_fb_get();
   ledcWrite(FLASH_PIN, 0);
@@ -954,7 +971,8 @@ void completarRegistroPersona() {
   if (personaCreadaEnBackend && camaraIniciada) {
     addLog("Mire a la cámara para la foto...");
     idParaRostro = idReal;   
-    intentosFacial = 0;      
+    intentosFacial = 0;
+    fotosTomadas = 0;
     actualizarBloqueoAsistencia(60000); // 1 minuto de bloqueo para la foto es suficiente
     estadoActual = ESTADO_REGISTRO_FACIAL;
     tiempoUltimoEstado = millis();
@@ -993,6 +1011,29 @@ bool registrarRostroEnBackend(String personaId) {
   }
   return true;
 }
+
+bool agregarFotoEnBackend(String personaId) {
+  if (!camaraIniciada || !isOnline || WiFi.status() != WL_CONNECTED) return false;
+
+  String imgBase64 = capturarImagenBase64();
+  if (imgBase64.length() == 0) return false;
+
+  HTTPClient http;
+  beginHttp(http, backendURL + "/api/facial/agregar-foto");
+  http.addHeader("Content-Type", "application/json");
+
+  String payload = "{\"persona_id\":\"" + personaId + "\",\"imagen\":\"" + imgBase64 + "\"}";
+  int code = http.POST(payload);
+  http.end();
+
+  if (code == 200) {
+    addLog("Foto adicional guardada en backend para ID " + personaId);
+    return true;
+  }
+  addLog("Error agregando foto extra: HTTP " + String(code));
+  return false;
+}
+
 
 void sincronizarAsistencias() {
   if (!isOnline) return;
@@ -1643,12 +1684,47 @@ void handleActualizarRostroPersona() {
   personaEditandoId = id;
   idParaRostro = id;
   intentosFacial = 0;
+  fotosTomadas = 0;
   rostroRegistroExitoso = false;
   ultimoErrorRegistro = "";
   estadoActual = ESTADO_REGISTRO_FACIAL;
   tiempoUltimoEstado = millis();
 
   server.send(200, "text/plain", "Mire a la camara para actualizar rostro");
+}
+
+void handleAgregarFotosPersona() {
+  actualizarBloqueoAsistencia(60000);
+  if (!server.hasArg("id")) {
+    server.send(400, "text/plain", "Falta id");
+    return;
+  }
+  if (estadoActual != ESTADO_IDLE) {
+    server.send(409, "text/plain", "Sistema ocupado, intente de nuevo");
+    return;
+  }
+
+  String id = server.arg("id");
+  if (id.startsWith("local-")) {
+    server.send(409, "text/plain", "Persona local sin ID remoto, sincronice primero");
+    return;
+  }
+  if (!isOnline || WiFi.status() != WL_CONNECTED) {
+    server.send(503, "text/plain", "Sin conexion para agregar fotos");
+    return;
+  }
+
+  modoEdicionRostro = false;
+  personaEditandoId = "";
+  idParaRostro = id;
+  intentosFacial = 0;
+  fotosTomadas = 1;  // Ya existe al menos una foto, saltamos a fotos adicionales
+  rostroRegistroExitoso = false;
+  ultimoErrorRegistro = "";
+  estadoActual = ESTADO_REGISTRO_FACIAL;
+  tiempoUltimoEstado = millis();
+
+  server.send(200, "text/plain", "Mire a la camara para capturar " + String(FOTOS_REQUERIDAS - 1) + " foto(s) adicional(es)");
 }
 
 void completarEdicionHuellaExistente() {
@@ -1923,6 +1999,7 @@ void setup() {
   server.on("/editar_persona", handleEditarPersona);
   server.on("/actualizar_huella", handleActualizarHuellaPersona);
   server.on("/actualizar_rostro", handleActualizarRostroPersona);
+  server.on("/agregar_fotos", handleAgregarFotosPersona);
   server.on("/borrar_persona", handleBorrarPersona);
   server.on("/borrar_turno", handleBorrarTurno);
   server.on("/borrar_asignacion", handleBorrarAsignacion);
@@ -2051,7 +2128,7 @@ void loop() {
       addLog("Movimiento detectado. Flash ON por 10 segundos...");
       hayAlguienFrenteAlSensor = true;
       tiempoUltimoMovimiento = ahora;
-      ledcWrite(FLASH_PIN, FLASH_PWM_DUTY_50); // Flash ON al detectar
+      ledcWrite(FLASH_PIN, FLASH_DUTY_LOW); // Flash ON al detectar
       delay(800);
       return;
     }
@@ -2157,21 +2234,60 @@ void loop() {
     if (ahora - ultimoIntentoFoto > 4000) { 
       ultimoIntentoFoto = ahora;
       intentosFacial++;
-      if (intentosFacial > 6) {
+      
+      bool excedido = (fotosTomadas >= FOTOS_REQUERIDAS) || (intentosFacial > 15);
+      
+      if (excedido && fotosTomadas == 0) {
         ledcWrite(FLASH_PIN, 0);
         flashError();
-        addLog("Se alcanzó el límite de intentos faciales. Volviendo a menú.");
+        addLog("No se pudo registrar rostro tras multiples intentos");
         ultimoErrorRegistro = "No se pudo registrar rostro tras multiples intentos";
         estadoActual = ESTADO_IDLE;
         nombreRegistrando = ""; rutRegistrando = ""; emailRegistrando = ""; slotRegistrando = -1;
         idParaRostro = "";
         modoEdicionRostro = false;
         personaEditandoId = "";
-      } else {
-        addLog("Enviando fotografía #" + String(intentosFacial) + " para registro...");
+        fotosTomadas = 0;
+      } else if (excedido && fotosTomadas > 0) {
+        ledcWrite(FLASH_PIN, 0);
+        flashExito();
+        addLog("Registro completo: " + String(fotosTomadas) + " foto(s) de referencia guardada(s)");
+        rostroRegistroExitoso = true;
+        ultimoErrorRegistro = "";
+        estadoActual = ESTADO_IDLE;
+        nombreRegistrando = ""; rutRegistrando = ""; emailRegistrando = ""; slotRegistrando = -1;
+        idParaRostro = "";
+        modoEdicionRostro = false;
+        personaEditandoId = "";
+        fotosTomadas = 0;
+      } else if (fotosTomadas == 0) {
+        addLog("Enviando fotografia #" + String(intentosFacial) + " para registro inicial...");
         if (!registrarRostroEnBackend(idParaRostro)) {
           addLog("No se pudo enviar foto por MQTT. Reintentando...");
           if (mqtt_client == NULL && mqttBroker != "") mantenerConexionMQTT();
+        }
+      } else {
+        addLog("Tomando fotografia adicional #" + String(fotosTomadas + 1) + "/" + String(FOTOS_REQUERIDAS) + "...");
+        delay(1500);
+        if (agregarFotoEnBackend(idParaRostro)) {
+          fotosTomadas++;
+          if (fotosTomadas >= FOTOS_REQUERIDAS) {
+            ledcWrite(FLASH_PIN, 0);
+            flashExito();
+            addLog("Registro completo: " + String(fotosTomadas) + " fotos de referencia guardadas");
+            rostroRegistroExitoso = true;
+            ultimoErrorRegistro = "";
+            estadoActual = ESTADO_IDLE;
+            nombreRegistrando = ""; rutRegistrando = ""; emailRegistrando = ""; slotRegistrando = -1;
+            idParaRostro = "";
+            modoEdicionRostro = false;
+            personaEditandoId = "";
+            fotosTomadas = 0;
+          } else {
+            addLog("Foto adicional OK. Siguiente en 4 segundos...");
+          }
+        } else {
+          addLog("Error en foto adicional. Reintentando...");
         }
       }
     }

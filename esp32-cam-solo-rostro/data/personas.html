@@ -72,7 +72,7 @@ function mostrarPanel(titulo,texto){
   document.getElementById('panelProceso').classList.add('on');
 }
 function ocultarPanel(){document.getElementById('panelProceso').classList.remove('on');}
-function textoEstado(c){return c===1?'Coloque el dedo (1ra vez).':c===4?'Retire el dedo.':c===2?'Coloque el dedo (2da vez).':c===3?'Mire a la cámara.':'Procesando...';}
+function textoEstado(c){return c===3?'Mire a la cámara.':'Procesando...';}
 function detenerSeguimiento(){if(timerProceso){clearInterval(timerProceso);timerProceso=null;}procesoActivo='';ocultarPanel();}
 
 function iniciarSeguimiento(tipo,nombre){
@@ -81,10 +81,7 @@ function iniciarSeguimiento(tipo,nombre){
   timerProceso=setInterval(async()=>{
     try{
       const e=await fetch('/estado').then(r=>r.json());
-      if(procesoActivo==='huella'){
-        if(e.codigo_paso===0){detenerSeguimiento();mostrarToast('Huella actualizada','ok');cargar();return;}
-        mostrarPanel('Actualizando huella',textoEstado(e.codigo_paso));
-      }else if(procesoActivo==='rostro'){
+      if(procesoActivo==='rostro'){
         if(e.codigo_paso===0){detenerSeguimiento();mostrarToast(e.rostro_ok?'Rostro actualizado':e.error_registro||'Error facial',e.rostro_ok?'ok':'err');cargar();return;}
         mostrarPanel('Actualizando rostro',textoEstado(e.codigo_paso));
       }else if(procesoActivo==='fotos'){
@@ -105,19 +102,18 @@ async function cargar(){
     lista.innerHTML=personas.map((p,idx)=>`
       <div class="card">
         <div class="card-name">${p.nombre}</div>
-        <div class="card-info">RUT: ${p.rut||'N/A'} &nbsp;|&nbsp; Email: ${p.email||'N/A'}<br>Huella ID: ${p.huella_id} &nbsp;|&nbsp; SYS ID: ${p.id}</div>
+        <div class="card-info">RUT: ${p.rut||'N/A'} &nbsp;|&nbsp; Email: ${p.email||'N/A'}<br>SYS ID: ${p.id}</div>
         <div class="actions">
           <button class="abtn a-ed" onclick="editarPersona(${idx})">Editar</button>
-          <button class="abtn a-h" onclick="actualizarHuella(${idx})">Huella</button>
           <button class="abtn a-r" onclick="actualizarRostro(${idx})">Rostro</button>
-          <button class="abtn a-p" onclick="agregarFotos(${idx})">+Fotos</button>
+          <button class="abtn a-h" onclick="agregarFotos(${idx})">+Fotos</button>
           <button class="abtn a-del" onclick="borrarPersona('${p.id}')">Borrar</button>
         </div>
       </div>`).join('');
   }catch(e){document.getElementById('lista').innerHTML='<div class="empty">Error cargando datos</div>';}
 }
 async function borrarPersona(id){
-  if(!confirm('¿Borrar registro y huella del reloj?'))return;
+  if(!confirm('¿Borrar registro del reloj?'))return;
   try{const r=await fetch('/borrar_persona?id='+encodeURIComponent(id));mostrarToast(await r.text(),r.ok?'ok':'err');cargar();}catch(e){mostrarToast('Error al borrar','err');}
 }
 async function editarPersona(idx){
@@ -125,11 +121,6 @@ async function editarPersona(idx){
   const nombre=(prompt('Nuevo nombre:',p.nombre||'')||'').trim();if(!nombre)return;
   const email=(prompt('Nuevo email:',p.email||'')||'').trim();
   try{const r=await fetch(`/editar_persona?id=${encodeURIComponent(p.id)}&name=${encodeURIComponent(nombre)}&email=${encodeURIComponent(email)}`);mostrarToast(await r.text(),r.ok?'ok':'err');cargar();}catch(e){mostrarToast('Error al editar','err');}
-}
-async function actualizarHuella(idx){
-  const p=window.cachePersonas[idx];if(!p)return;
-  if(!confirm('Actualizar huella de '+p.nombre+'?'))return;
-  try{const r=await fetch('/actualizar_huella?id='+encodeURIComponent(p.id));const msg=await r.text();if(!r.ok){mostrarToast(msg,'err');return;}mostrarToast(msg,'ok');iniciarSeguimiento('huella',p.nombre);}catch(e){mostrarToast('Error','err');}
 }
 async function actualizarRostro(idx){
   const p=window.cachePersonas[idx];if(!p)return;

@@ -86,6 +86,13 @@ export async function deleteUsuario(userId: number, empresaId?: number) {
   });
 }
 
+export async function updateUsuario(userId: number, payload: { nombre?: string; email?: string; password?: string; rol?: string; empresa_id?: number; activo?: boolean }) {
+  return request<{ ok: boolean; mensaje: string }>(`/api/auth/usuarios/${userId}`, {
+    method: 'PUT',
+    body: JSON.stringify(payload)
+  });
+}
+
 export async function changePassword(passwordActual: string, passwordNueva: string) {
   return request<{ ok: boolean; mensaje: string }>('/api/auth/change-password', {
     method: 'PUT',
@@ -141,6 +148,20 @@ export async function actualizarRostro(personaId: string, imagenBase64: string) 
   return request<{ ok: boolean; mensaje: string; preview_url?: string }>(`/api/facial/actualizar/${personaId}`, {
     method: 'PUT',
     body: JSON.stringify({ imagen: imagenBase64 })
+  });
+}
+
+export interface RegisterCompanyPayload {
+  empresa_nombre: string;
+  admin_nombre: string;
+  admin_email: string;
+  admin_password: string;
+}
+
+export async function registerCompany(payload: RegisterCompanyPayload) {
+  return request<{ ok: boolean; token: string; user: AuthUser; mensaje?: string }>('/api/auth/register-company', {
+    method: 'POST',
+    body: JSON.stringify(payload)
   });
 }
 

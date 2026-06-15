@@ -329,7 +329,16 @@ def eliminar_datos_biometricos(persona_id):
 
         cur.execute("DELETE FROM consentimientos WHERE persona_id = %s", (persona_id_real,))
 
+        cur.execute("DELETE FROM encodings_faciales WHERE persona_id = %s", (persona_id_real,))
+
         conn.commit()
+
+        try:
+            from routes.facial import _invalidar_cache
+            _invalidar_cache()
+        except Exception:
+            pass
+
         return jsonify({'ok': True, 'mensaje': f'Datos biometricos de {nombre} eliminados. Registros de asistencia conservados.'})
     except Exception as e:
         conn.rollback()

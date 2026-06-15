@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Logs del Sistema</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{--bg:#0f172a;--s:#1e293b;--s2:#334155;--b:#475569;--a:#3b82f6;--g:#22c55e;--w:#f59e0b;--d:#ef4444;--t:#f1f5f9;--dim:#94a3b8;--r:8px}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:var(--bg);color:var(--t);height:100vh;display:flex;flex-direction:column;font-size:14px}
+.wrap{max-width:700px;margin:0 auto;width:100%;padding:16px 12px;flex:1;display:flex;flex-direction:column;overflow:hidden}
+header{display:flex;align-items:center;gap:10px;margin-bottom:10px;flex-shrink:0}
+.back{background:var(--s);border:1px solid var(--b);color:var(--t);padding:7px 14px;border-radius:6px;font-family:inherit;font-size:12px;font-weight:500;cursor:pointer;white-space:nowrap}
+.back:hover{background:var(--s2)}
+h1{font-size:15px;font-weight:600;flex:1;text-align:center}
+.toolbar{display:flex;gap:6px;margin-bottom:8px;flex-shrink:0}
+.tbtn{flex:1;padding:8px;border:1px solid var(--b);border-radius:6px;font-family:inherit;font-size:11px;font-weight:600;cursor:pointer;background:var(--s);color:var(--dim);transition:.15s}
+.tbtn:hover{color:var(--t)}
+.tbtn-r:hover{border-color:var(--d);color:var(--d)}
+.tbtn-a:hover{border-color:var(--a);color:var(--a)}
+.logbox{flex:1;overflow-y:auto;background:var(--s);border:1px solid var(--b);border-radius:var(--r);padding:12px 14px;font-family:'SF Mono','Cascadia Code','Consolas',monospace;font-size:12px;line-height:1.6;white-space:pre-wrap;word-break:break-all;color:#cbd5e1;min-height:0}
+.logbox::-webkit-scrollbar{width:5px}.logbox::-webkit-scrollbar-track{background:var(--s)}.logbox::-webkit-scrollbar-thumb{background:var(--b);border-radius:3px}
+.statusbar{font-size:10px;color:var(--dim);padding:6px 0 0;flex-shrink:0;display:flex;align-items:center;gap:6px}
+.dot{width:6px;height:6px;border-radius:50%;background:var(--g);animation:blink 1.5s ease infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.2}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <button class="back" onclick="location.href='/'">← Volver</button>
+    <h1>Logs del Sistema</h1>
+  </header>
+  <div class="toolbar">
+    <button class="tbtn tbtn-a" onclick="cargarLogs()">Actualizar</button>
+    <button class="tbtn tbtn-r" onclick="limpiarLogs()">Limpiar Buffer</button>
+  </div>
+  <div id="logs" class="logbox">Cargando logs...</div>
+  <div id="status" class="statusbar"><span class="dot"></span>Auto-refresh cada 2 s</div>
+</div>
+
+<script>
+async function cargarLogs(){
+  try{
+    const html=await fetch('/api/logs').then(r=>r.text());
+    const box=document.getElementById('logs');
+    box.textContent=html||'Sin logs disponibles';
+    box.scrollTop=box.scrollHeight;
+    document.getElementById('status').innerHTML='<span class="dot"></span>Actualizado: '+new Date().toLocaleTimeString();
+  }catch(e){document.getElementById('status').textContent='Error: '+e.message;}
+}
+async function limpiarLogs(){
+  if(!confirm('¿Limpiar buffer de logs?'))return;
+  try{
+    const msg=await fetch('/api/logs/clear').then(r=>r.text());
+    document.getElementById('status').textContent=msg;
+    cargarLogs();
+  }catch(e){document.getElementById('status').textContent='Error: '+e.message;}
+}
+cargarLogs();setInterval(cargarLogs,2000);
+</script>
+</body>
+</html>

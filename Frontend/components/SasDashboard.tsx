@@ -9,6 +9,7 @@ import {
   createEmpresa,
   deleteEmpresa,
   deleteUsuario,
+  updateUsuario,
   deleteDispositivo,
   updateDispositivo,
   verificarDispositivo,
@@ -179,6 +180,7 @@ export function SasDashboard({ initialSection = 'dashboard' }: { initialSection?
   const [usuarios, setUsuarios] = useState<UsuarioWeb[]>([]);
   const [empresas, setEmpresas] = useState<Empresa[]>([]);
   const [registerForm, setRegisterForm] = useState({ nombre: '', email: '', password: '', rol: 'trabajador', empresa_id: undefined as number | undefined });
+  const [editingUsuario, setEditingUsuario] = useState<UsuarioWeb | null>(null);
   const [empresaForm, setEmpresaForm] = useState({ nombre: '', rut_empresa: '', email_contacto: '', telefono: '', direccion: '' });
   const [passwordForm, setPasswordForm] = useState({ passwordActual: '', passwordNueva: '', confirmacion: '' });
   const [generatedPin, setGeneratedPin] = useState('');
@@ -189,6 +191,9 @@ export function SasDashboard({ initialSection = 'dashboard' }: { initialSection?
   const [editDeviceName, setEditDeviceName] = useState('');
   const [rostroPersonaId, setRostroPersonaId] = useState<string | null>(null);
   const [uploadingRostro, setUploadingRostro] = useState(false);
+  const [webcamActive, setWebcamActive] = useState(false);
+  const [capturedImage, setCapturedImage] = useState<string | null>(null);
+  const [captureStream, setCaptureStream] = useState<MediaStream | null>(null);
 
   const [personaForm, setPersonaForm] = useState({ nombre: '', rut: '', email: '' });
   const [turnoForm, setTurnoForm] = useState({ nombre: '', inicio: '08:00', fin: '17:00' });
@@ -337,6 +342,8 @@ export function SasDashboard({ initialSection = 'dashboard' }: { initialSection?
     setDeviceForm({ nombre: '', ip: '' });
     setDeviceVerify('idle');
     setDeviceVerifyMsg('');
+    setEditingUsuario(null);
+    setRegisterForm({ nombre: '', email: '', password: '', rol: 'trabajador', empresa_id: undefined });
   }
 
   async function refreshData() {
@@ -659,32 +666,59 @@ export function SasDashboard({ initialSection = 'dashboard' }: { initialSection?
     showToast('success', `El dispositivo ${ip} se gestiona desde su backend`);
   }
 
-  function handleRostroUpload(personaId: string) {
+  async function handleRostroUpload(personaId: string) {
     setRostroPersonaId(personaId);
-    const input = document.createElement('input');
-    input.type = 'file';
-    input.accept = 'image/*';
-    input.onchange = async (e) => {
-      const file = (e.target as HTMLInputElement).files?.[0];
-      if (!file) return;
-      setUploadingRostro(true);
-      const reader = new FileReader();
-      reader.onload = async (ev) => {
-        const base64 = (ev.target?.result as string).split(',')[1];
-        if (!base64) { setUploadingRostro(false); return; }
-        const result = await registrarRostro(personaId, base64);
-        if (result && 'ok' in result && result.ok) {
-          pushLog('ok', `Rostro registrado para persona ${personaId}`);
-          showToast('success', 'Rostro registrado correctamente');
-        } else {
-          const msg = result && 'error' in result ? String(result.error) : 'No se pudo registrar el rostro';
-          showToast('error', msg);
-        }
-        setUploadingRostro(false);
-      };
-      reader.readAsDataURL(file);
-    };
-    input.click();
+    setCapturedImage(null);
+    setWebcamActive(true);
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: { width: 640, height: 480, facingMode: 'user' } });
+      setCaptureStream(stream);
+    } catch {
+      showToast('error', 'No se pudo acceder a la cámara. Verifica los permisos.');
+      setWebcamActive(false);
+    }
+  }
+
+  function handleWebcamCapture() {
+    const video = document.getElementById('webcam-video') as HTMLVideoElement | null;
+    if (!video) return;
+    const canvas = document.createElement('canvas');
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    ctx.drawImage(video, 0, 0);
+    setCapturedImage(canvas.toDataURL('image/jpeg', 0.85));
+  }
+
+  function handleWebcamRetake() {
+    setCapturedImage(null);
+  }
+
+  function handleWebcamCancel() {
+    if (captureStream) {
+      captureStream.getTracks().forEach((track) => track.stop());
+    }
+    setWebcamActive(false);
+    setCapturedImage(null);
+    setCaptureStream(null);
+    setRostroPersonaId(null);
+  }
+
+  async function handleWebcamConfirm() {
+    if (!capturedImage || !rostroPersonaId) return;
+    setUploadingRostro(true);
+    const base64 = capturedImage.split(',')[1];
+    const result = await registrarRostro(rostroPersonaId, base64);
+    if (result && 'ok' in result && result.ok) {
+      pushLog('ok', `Rostro registrado para persona ${rostroPersonaId}`);
+      showToast('success', 'Rostro registrado correctamente');
+    } else {
+      const msg = result && 'error' in result ? String(result.error) : 'No se pudo registrar el rostro';
+      showToast('error', msg);
+    }
+    setUploadingRostro(false);
+    handleWebcamCancel();
   }
 
   function handleQuickEntry() {
@@ -832,6 +866,57 @@ export function SasDashboard({ initialSection = 'dashboard' }: { initialSection?
     }
 
     const msg = result && 'error' in result ? String(result.error) : 'Error al eliminar usuario';
+    showToast('error', msg);
+  }
+
+  function handleEditUsuario(usuario: UsuarioWeb) {
+    setEditingUsuario(usuario);
+    setRegisterForm({
+      nombre: usuario.nombre,
+      email: usuario.email,
+      password: '',
+      rol: usuario.rol,
+      empresa_id: usuario.empresa_id
+    });
+    setFormError('');
+    setModal('usuario');
+  }
+
+  async function handleUpdateUsuario() {
+    if (!editingUsuario) return;
+    const { nombre, email, password, rol, empresa_id } = registerForm;
+
+    if (!nombre.trim() || !email.trim()) {
+      setFormError('Nombre y email son obligatorios');
+      return;
+    }
+
+    if (password && password.length < 4) {
+      setFormError('La contraseña debe tener al menos 4 caracteres');
+      return;
+    }
+
+    const payload: { nombre?: string; email?: string; password?: string; rol?: string; empresa_id?: number; activo?: boolean } = {
+      nombre: nombre.trim(),
+      email: email.trim().toLowerCase()
+    };
+
+    if (password) payload.password = password;
+    if (user?.rol === 'admin' && empresa_id) payload.empresa_id = empresa_id;
+    if (user?.rol === 'admin' && rol) payload.rol = rol;
+
+    const result = await updateUsuario(editingUsuario.id, payload);
+
+    if (result && 'ok' in result && result.ok) {
+      showToast('success', 'Usuario actualizado correctamente');
+      setEditingUsuario(null);
+      setRegisterForm({ nombre: '', email: '', password: '', rol: 'trabajador', empresa_id: undefined });
+      closeModal();
+      await refreshData();
+      return;
+    }
+
+    const msg = result && 'error' in result ? String(result.error) : 'Error al actualizar usuario';
     showToast('error', msg);
   }
 
@@ -1630,6 +1715,9 @@ export function SasDashboard({ initialSection = 'dashboard' }: { initialSection?
                         <td>{item.activo ? 'Sí' : 'No'}</td>
                         <td className="mono muted">{item.created_at ? formatDate(item.created_at) : '—'}</td>
                         <td>
+                          <button className="btn btn-ghost" type="button" onClick={() => handleEditUsuario(item)} style={{ marginRight: 8 }}>
+                            Editar
+                          </button>
                           {(user?.rol === 'admin' || (user?.rol === 'empleador' && item.rol === 'trabajador')) && item.id !== user?.id && (
                             <button className="btn btn-danger" type="button" onClick={() => handleDeleteUsuario(item.id, item.empresa_id, item.nombre)}>
                               Eliminar
@@ -1751,8 +1839,8 @@ export function SasDashboard({ initialSection = 'dashboard' }: { initialSection?
         <div className="overlay" onClick={closeModal} role="presentation">
           <div className="modal" onClick={(e) => e.stopPropagation()} role="presentation">
             <div className="modal-head">
-              <h3 className="modal-title">Nuevo usuario</h3>
-              <p className="modal-subtitle">{user?.rol === 'admin' ? 'Crea una cuenta y asígnala a una empresa.' : 'Crea una cuenta de acceso. Se le asigna a tu misma empresa.'}</p>
+              <h3 className="modal-title">{editingUsuario ? 'Editar usuario' : 'Nuevo usuario'}</h3>
+              <p className="modal-subtitle">{editingUsuario ? `Editando a ${editingUsuario.nombre}` : (user?.rol === 'admin' ? 'Crea una cuenta y asígnala a una empresa.' : 'Crea una cuenta de acceso. Se le asigna a tu misma empresa.')}</p>
             </div>
             <div className="modal-body">
               {formError && <div className="login-error" style={{ marginBottom: 12 }}>{formError}</div>}
@@ -1775,10 +1863,10 @@ export function SasDashboard({ initialSection = 'dashboard' }: { initialSection?
                 />
               </div>
               <div className="field">
-                <label>Contraseña provisional</label>
+                <label>{editingUsuario ? 'Nueva contraseña (opcional)' : 'Contraseña provisional'}</label>
                 <input
                   type="password"
-                  placeholder="Mínimo 4 caracteres"
+                  placeholder={editingUsuario ? 'Dejar vacío para mantener actual' : 'Mínimo 4 caracteres'}
                   value={registerForm.password}
                   onChange={(e) => setRegisterForm((c) => ({ ...c, password: e.target.value }))}
                 />
@@ -1802,6 +1890,7 @@ export function SasDashboard({ initialSection = 'dashboard' }: { initialSection?
                 <select
                   value={registerForm.rol}
                   onChange={(e) => setRegisterForm((c) => ({ ...c, rol: e.target.value }))}
+                  disabled={!user?.rol?.includes('admin') && editingUsuario !== null}
                 >
                   {user?.rol === 'admin' && <option value="admin">Administrador</option>}
                   {user?.rol === 'admin' && <option value="empleador">Empleador</option>}
@@ -1811,7 +1900,9 @@ export function SasDashboard({ initialSection = 'dashboard' }: { initialSection?
             </div>
             <div className="modal-footer">
               <button className="btn btn-secondary" type="button" onClick={closeModal}>Cancelar</button>
-              <button className="btn btn-primary" type="button" onClick={handleRegisterUser}>Guardar</button>
+              <button className="btn btn-primary" type="button" onClick={editingUsuario ? handleUpdateUsuario : handleRegisterUser}>
+                {editingUsuario ? 'Actualizar' : 'Guardar'}
+              </button>
             </div>
           </div>
         </div>
@@ -2094,6 +2185,62 @@ export function SasDashboard({ initialSection = 'dashboard' }: { initialSection?
             <div className="modal-footer">
               <button className="btn btn-secondary" type="button" onClick={closeModal}>Cancelar</button>
               <button className="btn btn-primary" type="button" onClick={handleSaveErp}>Guardar</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {webcamActive && (
+        <div className="overlay" onClick={handleWebcamCancel} role="presentation">
+          <div className="modal" style={{ maxWidth: 560 }} onClick={(e) => e.stopPropagation()} role="presentation">
+            <div className="modal-head">
+              <h3 className="modal-title">Capturar rostro</h3>
+              <p className="modal-subtitle">{capturedImage ? 'Confirma o vuelve a capturar.' : 'Centra tu rostro frente a la cámara y presiona Capturar.'}</p>
+            </div>
+            <div className="modal-body" style={{ textAlign: 'center' }}>
+              {!capturedImage ? (
+                <div style={{ position: 'relative', background: '#000', borderRadius: 8, overflow: 'hidden' }}>
+                  <video
+                    id="webcam-video"
+                    autoPlay
+                    playsInline
+                    muted
+                    style={{ width: '100%', display: 'block' }}
+                    ref={(el) => {
+                      if (el && captureStream) {
+                        el.srcObject = captureStream;
+                        el.play().catch(() => {});
+                      }
+                    }}
+                  />
+                </div>
+              ) : (
+                <div style={{ position: 'relative', background: '#000', borderRadius: 8, overflow: 'hidden' }}>
+                  <img src={capturedImage} alt="Captura" style={{ width: '100%', display: 'block' }} />
+                </div>
+              )}
+              {uploadingRostro && (
+                <div style={{ marginTop: 12, color: '#6b7280' }}>Procesando rostro...</div>
+              )}
+            </div>
+            <div className="modal-footer">
+              <button className="btn btn-secondary" type="button" onClick={handleWebcamCancel} disabled={uploadingRostro}>
+                Cancelar
+              </button>
+              {!capturedImage ? (
+                <button className="btn btn-primary" type="button" onClick={handleWebcamCapture}>
+                  Capturar
+                </button>
+              ) : (
+                <>
+                  <button className="btn btn-secondary" type="button" onClick={handleWebcamRetake} disabled={uploadingRostro}>
+                    Volver a capturar
+                  </button>
+                  <button className="btn btn-primary" type="button" onClick={handleWebcamConfirm} disabled={uploadingRostro}>
+                    Confirmar
+                  </button>
+                </>
+              )}
             </div>
           </div>
         </div>

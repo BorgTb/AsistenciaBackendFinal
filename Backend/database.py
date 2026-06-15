@@ -202,6 +202,18 @@ def init_db():
             )
         """)
 
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS encodings_faciales (
+                id SERIAL PRIMARY KEY,
+                persona_id INTEGER NOT NULL REFERENCES personas(id) ON DELETE CASCADE,
+                encoding TEXT NOT NULL,
+                foto_path VARCHAR(500),
+                quality_score FLOAT DEFAULT 0,
+                created_at TIMESTAMP DEFAULT NOW()
+            )
+        """)
+        cur.execute("CREATE INDEX IF NOT EXISTS idx_ef_persona ON encodings_faciales(persona_id)")
+
         cur.execute("CREATE INDEX IF NOT EXISTS idx_consentimientos_persona ON consentimientos(persona_id)")
         cur.execute("CREATE INDEX IF NOT EXISTS idx_logs_biometricos_persona ON logs_biometricos(persona_id)")
         cur.execute("CREATE INDEX IF NOT EXISTS idx_logs_biometricos_timestamp ON logs_biometricos(timestamp)")
@@ -212,6 +224,16 @@ def init_db():
         cur.execute("CREATE INDEX IF NOT EXISTS idx_asistencias_fecha ON asistencias(fecha_hora)")
         cur.execute("CREATE INDEX IF NOT EXISTS idx_personas_empresa ON personas(empresa_id)")
         cur.execute("CREATE INDEX IF NOT EXISTS idx_erp_activo ON integraciones_erp(activo)")
+
+        cur.execute("""
+            INSERT INTO encodings_faciales (persona_id, encoding, foto_path)
+            SELECT p.id, p.encoding_facial, 'static/previews/' || p.id || '.jpg'
+            FROM personas p
+            WHERE p.encoding_facial IS NOT NULL
+              AND NOT EXISTS (
+                  SELECT 1 FROM encodings_faciales ef WHERE ef.persona_id = p.id
+              )
+        """)
 
         # ── SEED ─────────────────────────────────────────────────────
         cur.execute("""

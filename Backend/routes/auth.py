@@ -393,6 +393,91 @@ def eliminar_usuario(user_id):
         conn.close()
 
 
+@auth_bp.route('/api/auth/usuarios/<user_id>', methods=['PUT'])
+@requiere_rol('admin', 'empleador')
+def editar_usuario(user_id):
+    data = request.json or {}
+    nombre = (data.get('nombre') or '').strip()
+    email = (data.get('email') or '').strip().lower()
+    password = (data.get('password') or '')
+    rol = (data.get('rol') or '').strip().lower()
+    activo = data.get('activo')
+
+    conn = get_connection()
+    cur = conn.cursor()
+    try:
+        if request.user_rol == 'admin':
+            empresa_id = data.get('empresa_id')
+            cur.execute(
+                "SELECT u.id, u.nombre, u.email, u.activo, ue.rol, ue.empresa_id "
+                "FROM usuarios_web u JOIN usuario_empresa ue ON ue.usuario_id = u.id "
+                "WHERE u.id = %s AND ue.empresa_id = %s",
+                (user_id, empresa_id)
+            )
+        else:
+            cur.execute(
+                "SELECT u.id, u.nombre, u.email, u.activo, ue.rol, ue.empresa_id "
+                "FROM usuarios_web u JOIN usuario_empresa ue ON ue.usuario_id = u.id "
+                "WHERE u.id = %s AND ue.empresa_id = %s",
+                (user_id, request.empresa_id)
+            )
+
+        row = cur.fetchone()
+        if not row:
+            return jsonify({'error': 'Usuario no encontrado en esta empresa'}), 404
+
+        target_rol = row[4]
+        target_empresa_id = row[5]
+
+        if not _puede_gestionar(request.user_rol, target_rol):
+            return jsonify({'error': 'No tienes permisos para editar este usuario'}), 403
+
+        es_self_edit = int(user_id) == request.user_id
+
+        updates_web = []
+        params_web = []
+
+        if nombre:
+            updates_web.append("nombre = %s")
+            params_web.append(nombre)
+        if email:
+            updates_web.append("email = %s")
+            params_web.append(email)
+        if password:
+            nuevo_hash = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+            updates_web.append("password_hash = %s")
+            params_web.append(nuevo_hash)
+        if activo is not None and not es_self_edit:
+            updates_web.append("activo = %s")
+            params_web.append(bool(activo))
+
+        if updates_web:
+            params_web.append(user_id)
+            cur.execute(
+                f"UPDATE usuarios_web SET {', '.join(updates_web)} WHERE id = %s",
+                params_web
+            )
+
+        nuevo_rol = rol if rol in ('admin', 'empleador', 'trabajador') and not es_self_edit else None
+        if nuevo_rol and request.user_rol == 'empleador':
+            nuevo_rol = 'trabajador'
+
+        if nuevo_rol or (request.user_rol == 'admin' and empresa_id is not None and not es_self_edit):
+            cur.execute(
+                "UPDATE usuario_empresa SET rol = %s WHERE usuario_id = %s AND empresa_id = %s",
+                (nuevo_rol or target_rol, user_id, target_empresa_id)
+            )
+
+        conn.commit()
+        return jsonify({'ok': True, 'mensaje': 'Usuario actualizado correctamente'})
+    except Exception as e:
+        conn.rollback()
+        return jsonify({'error': str(e)}), 500
+    finally:
+        cur.close()
+        conn.close()
+
+
 @auth_bp.route('/api/auth/empresas', methods=['GET'])
 @requiere_rol('admin')
 def listar_empresas():
@@ -486,6 +571,84 @@ def asignar_usuario_empresa():
         )
         conn.commit()
         return jsonify({'ok': True, 'mensaje': 'Usuario asignado a la empresa'})
+    except Exception as e:
+        conn.rollback()
+        return jsonify({'error': str(e)}), 500
+    finally:
+        cur.close()
+        conn.close()
+
+
+@auth_bp.route('/api/auth/register-company', methods=['POST'])
+def registrar_empresa():
+    data = request.json or {}
+    empresa_nombre = (data.get('empresa_nombre') or '').strip()
+    admin_nombre = (data.get('admin_nombre') or '').strip()
+    admin_email = (data.get('admin_email') or '').strip().lower()
+    admin_password = (data.get('admin_password') or '')
+
+    if not empresa_nombre or not admin_nombre or not admin_email or not admin_password:
+        return jsonify({'error': 'Nombre de empresa, nombre, email y contraseña del administrador requeridos'}), 400
+
+    if len(admin_password) < 4:
+        return jsonify({'error': 'La contraseña debe tener al menos 4 caracteres'}), 400
+
+    if '@' not in admin_email:
+        return jsonify({'error': 'Email invalido'}), 400
+
+    conn = get_connection()
+    cur = conn.cursor()
+    try:
+        cur.execute("SELECT id FROM usuarios_web WHERE email = %s", (admin_email,))
+        if cur.fetchone():
+            return jsonify({'error': 'Ya existe un usuario con ese email'}), 409
+
+        cur.execute(
+            "INSERT INTO empresas (nombre) VALUES (%s) RETURNING id",
+            (empresa_nombre,)
+        )
+        empresa_id = cur.fetchone()[0]
+
+        pw_hash = bcrypt.hashpw(admin_password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+        cur.execute(
+            "INSERT INTO usuarios_web (nombre, email, password_hash) VALUES (%s, %s, %s) RETURNING id",
+            (admin_nombre, admin_email, pw_hash)
+        )
+        user_id = cur.fetchone()[0]
+
+        cur.execute(
+            "INSERT INTO usuario_empresa (usuario_id, empresa_id, rol) VALUES (%s, %s, %s)",
+            (user_id, empresa_id, 'admin')
+        )
+
+        conn.commit()
+
+        payload = {
+            'user_id': user_id,
+            'empresa_id': empresa_id,
+            'rol': 'admin',
+            'exp': datetime.datetime.utcnow() + datetime.timedelta(hours=JWT_EXP_HOURS)
+        }
+        token = jwt.encode(payload, JWT_SECRET, algorithm='HS256')
+
+        return jsonify({
+            'ok': True,
+            'token': token,
+            'user': {
+                'id': user_id,
+                'nombre': admin_nombre,
+                'email': admin_email,
+                'rol': 'admin',
+                'empresa_id': empresa_id,
+                'empresa_nombre': empresa_nombre,
+                'persona_id': None,
+                'empresas': [{
+                    'empresa_id': empresa_id,
+                    'rol': 'admin',
+                    'empresa_nombre': empresa_nombre
+                }]
+            }
+        })
     except Exception as e:
         conn.rollback()
         return jsonify({'error': str(e)}), 500
