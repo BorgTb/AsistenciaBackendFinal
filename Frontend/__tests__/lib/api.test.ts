@@ -86,4 +86,19 @@ describe('lib/auth-api.ts', () => {
     expect(result).not.toBeNull();
     expect(Array.isArray(result)).toBe(true);
   });
+
+  it('generarPasswordDispositivo returns password', async () => {
+    const { generarPasswordDispositivo } = await import('@/lib/auth-api');
+    const result = await generarPasswordDispositivo('1');
+    expect(result.ok).toBe(true);
+    expect(result.password).toBe('Ab3Xyz9KmL2p');
+    expect(result.password.length).toBe(12);
+  });
+
+  it('eliminarPasswordDispositivo returns ok', async () => {
+    const { eliminarPasswordDispositivo } = await import('@/lib/auth-api');
+    const result = await eliminarPasswordDispositivo('1');
+    expect(result.ok).toBe(true);
+    expect(result.mensaje).toBe('Contrasena eliminada');
+  });
 });

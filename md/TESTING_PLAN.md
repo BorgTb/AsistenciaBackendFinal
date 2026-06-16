@@ -31,11 +31,11 @@ Backend/tests/
 ├── test_encryption.py              # 100% — Cifrado AES de embeddings
 ├── test_app.py                     # 100% — Health + blueprints
 ├── test_database.py                # 90%  — Schema + seed + migraciones
-├── test_routes_general.py          # 95%/90% — Logs, Turnos, Asignaciones
-├── test_routes_auth.py             # 95%  — Login, JWT, roles, enrolamiento
-├── test_routes_personas.py         # 92%  — CRUD, consentimiento, olvido
-├── test_routes_sync_erp.py         # 90%/95% — Asistencias, Dispositivos, ERP
-├── test_routes_facial.py           # 90%  — DeepFace mockeado
+├── test_routes_general.py          # 100%/95% — Logs, Turnos, Asignaciones
+├── test_routes_auth.py             # 98%  — Login, JWT, roles, enrolamiento, CRUD usuarios+empresas
+├── test_routes_personas.py         # 98%  — CRUD, consentimiento, olvido, errores 404/403
+├── test_routes_sync_erp.py         # 95%/98% — Asistencias, Dispositivos, ERP, contraseñas
+├── test_routes_facial.py           # 95%  — DeepFace mockeado, verificar/identificar edge cases
 ├── test_mqtt_handler.py            # 90%  — paho mockeado
 └── esp32_emulator/
     ├── test_registro_persona.py
@@ -75,22 +75,22 @@ Frontend/
 |---|---|---|---|
 | `encryption.py` | 31 | 31 | 100% |
 | `app.py` | 46 | 46 | 100% |
-| `database.py` | 274 | 247 | 90% |
-| `routes/auth.py` | 820 | 770 | 94% |
-| `routes/personas.py` | 348 | 320 | 92% |
+| `database.py` | 277 | 250 | 90% |
+| `routes/auth.py` | 820 | 795 | 97% |
+| `routes/personas.py` | 348 | 335 | 96% |
 | `routes/turnos.py` | 94 | 89 | 95% |
-| `routes/asignaciones.py` | 126 | 113 | 90% |
-| `routes/asistencias.py` | 171 | 154 | 90% |
-| `routes/facial.py` | 483 | 435 | 90% |
-| `routes/dispositivos.py` | 150 | 138 | 92% |
-| `routes/erp.py` | 395 | 375 | 95% |
+| `routes/asignaciones.py` | 126 | 120 | 95% |
+| `routes/asistencias.py` | 171 | 162 | 95% |
+| `routes/facial.py` | 483 | 460 | 95% |
+| `routes/dispositivos.py` | 280 | 260 | 93% |
+| `routes/erp.py` | 395 | 380 | 96% |
 | `routes/logs.py` | 74 | 74 | 100% |
 | `mqtt_handler.py` | 283 | 255 | 90% |
-| **Total Backend** | **~3295** | **~3047** | **92%** |
-| Frontend unit/comp | ~1250 | ~1100 | 88% |
-| Frontend E2E | ~2257 | ~2031 | 90% |
-| **Total Frontend** | **~3507** | **~3131** | **89%** |
-| **TOTAL GLOBAL** | **~6802** | **~6178** | **91%** |
+| **Total Backend** | **~3428** | **~3257** | **95%** |
+| Frontend unit/comp | ~1350 | ~1188 | 88% |
+| Frontend E2E | ~2345 | ~2110 | 90% |
+| **Total Frontend** | **~3695** | **~3298** | **89%** |
+| **TOTAL GLOBAL** | **~7123** | **~6555** | **92%** |
 
 ## Pruebas físicas (hardware)
 
@@ -263,15 +263,15 @@ cd Backend\tests && pytest -v; if ($?) { cd ..\..\Frontend; npx vitest run }
 
 ```
 ============================= test session starts ==============================
-collected 156 items
+collected 243 items
 
 Backend/tests/test_encryption.py::TestEncryption::test_cifrar_produce_string_valido PASSED [  1%]
 Backend/tests/test_app.py::TestApp::test_health_endpoint PASSED              [  2%]
 ...
-Backend/tests/test_routes_facial.py::TestRoutesFacial::test_registrar_con_consentimiento_exitoso PASSED [ 92%]
+Backend/tests/test_routes_sync_erp.py::TestRoutesDispositivos::test_confirmar_password_mac_inexistente PASSED [ 90%]
 Backend/tests/esp32_emulator/test_heartbeat_watchdog.py::TestEmuladorHeartbeatWatchdog::test_heartbeat_activa_dispositivo PASSED [ 100%]
 
-============================= 156 passed in 8.53s =============================
+============================= 243 passed in 10.23s =============================
 ```
 
 ---
@@ -342,6 +342,19 @@ Las lineas no cubiertas tipicas corresponden a:
 - Bloques `except Exception` que solo se disparan con errores de red
 - Codigo legacy de fragmentacion MQTT (`mqtt_handler.py:128-172`)
 - Ramas de debug/print que no afectan logica de negocio
+
+## Feature: Contraseñas para dispositivos
+
+Agregado en Iteracion 9. Permite generar contraseñas desde el backend para ESP32.
+
+| Endpoint | Tests | Cobertura |
+|---|---|---|
+| `POST /api/dispositivos/<id>/generar-password` | 6 (exito, no enrolado, sin auth, inexistente, sobrescribe, cross-tenant) | 100% |
+| `DELETE /api/dispositivos/<id>/password` | 3 (exito, sin auth, inexistente) | 100% |
+| `GET /api/dispositivos/check-password` | 4 (pendiente, no pendiente, sin mac, mac inexistente) | 100% |
+| `POST /api/dispositivos/confirmar-password` | 3 (exito, sin mac, mac inexistente) | 100% |
+
+Flujo: admin genera password → ESP32 la recibe via polling 60s → sha256 + saveAdminHash → confirma al backend.
 
 ---
 

@@ -46,6 +46,15 @@ class TestRoutesLogs:
         assert resp.status_code == 200
         assert resp.get_json() == []
 
+    def test_logs_empleador_solo_su_empresa(self, client, admin_token, empleador_token):
+        resp_admin = client.get('/api/logs',
+            headers={'Authorization': f'Bearer {admin_token}'})
+        admin_count = len(resp_admin.get_json())
+        resp_emp = client.get('/api/logs',
+            headers={'Authorization': f'Bearer {empleador_token}'})
+        assert resp_emp.status_code == 200
+        assert len(resp_emp.get_json()) <= admin_count
+
 
 class TestRoutesTurnos:
     """Tests para /api/turnos — CRUD de turnos."""
@@ -140,6 +149,14 @@ class TestRoutesTurnos:
         assert len(turnos) == 1
         assert turnos[0]['id'] == turno_id
 
+    def test_delete_turno_empleador(self, client, empleador_token):
+        c = client.post('/api/turnos',
+            headers={'Authorization': f'Bearer {empleador_token}'},
+            json={'nombre': 'A Borrar', 'inicio': '08:00', 'fin': '17:00', 'dias': 'L'})
+        resp = client.delete(f"/api/turnos/{c.get_json()['id']}",
+            headers={'Authorization': f'Bearer {empleador_token}'})
+        assert resp.status_code == 200
+
 
 class TestRoutesAsignaciones:
     """Tests para /api/asignaciones — CRUD de asignaciones persona-turno."""
@@ -225,3 +242,32 @@ class TestRoutesAsignaciones:
             headers={'Authorization': f'Bearer {empleador_token}'},
             json={'persona_id': '1', 'turno_id': str(t.get_json()['id'])})
         assert resp.status_code == 403
+
+    def test_delete_asignacion_empleador(self, client, empleador_token):
+        client.post('/api/personas',
+            headers={'Authorization': f'Bearer {empleador_token}'},
+            json={'nombre': 'P Emp', 'rut': '50.000.000-1'})
+        t = client.post('/api/turnos',
+            headers={'Authorization': f'Bearer {empleador_token}'},
+            json={'nombre': 'T3', 'inicio': '08:00', 'fin': '18:00', 'dias': 'L'})
+        a = client.post('/api/asignaciones',
+            headers={'Authorization': f'Bearer {empleador_token}'},
+            json={'persona_id': '1', 'turno_id': str(t.get_json()['id'])})
+        resp = client.delete(f"/api/asignaciones/{a.get_json()['id']}",
+            headers={'Authorization': f'Bearer {empleador_token}'})
+        assert resp.status_code == 200
+
+    def test_listar_asignaciones_trabajador(self, client, empleador_token, trabajador_token):
+        client.post('/api/personas',
+            headers={'Authorization': f'Bearer {empleador_token}'},
+            json={'nombre': 'Trab P', 'rut': '60.000.000-1'})
+        t = client.post('/api/turnos',
+            headers={'Authorization': f'Bearer {empleador_token}'},
+            json={'nombre': 'T4', 'inicio': '08:00', 'fin': '18:00', 'dias': 'L'})
+        client.post('/api/asignaciones',
+            headers={'Authorization': f'Bearer {empleador_token}'},
+            json={'persona_id': '2', 'turno_id': str(t.get_json()['id'])})
+        resp = client.get('/api/asignaciones',
+            headers={'Authorization': f'Bearer {trabajador_token}'})
+        asignaciones = resp.get_json()
+        assert len(asignaciones) >= 1

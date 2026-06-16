@@ -1,6 +1,6 @@
 # Pruebas del Prototipo — Automaticas vs Fisicas
 
-> **Actualizado**: 2026-06-15 — Suite de tests pytest + Vitest + Playwright implementada.
+> **Actualizado**: 2026-06-16 — Suite de tests pytest (243 tests) + contraseñas dispositivos + Vitest (32 tests) + Playwright (9 tests).
 
 Corresponden a las pruebas descritas en `Informe/cap4_iteraciones.tex`. Las pruebas se dividen en tres categorias:
 
@@ -43,7 +43,7 @@ Corresponden a las pruebas descritas en `Informe/cap4_iteraciones.tex`. Las prue
 | 3.1 | Conexion y reconexion WiFi | **H** | Configurar credenciales → apagar/encender router | Reconexion <30s tras recuperar senal |
 | 3.2 | Envio MQTT (registro facial) | **A** | Capturar imagen → publicar `esp32/imagen/registrar` | Test: `test_routes_facial.py` + `test_registro_facial_mqtt.py` |
 | 3.3 | Heartbeat y LWT | **A/E** | Heartbeat via MQTT mock + LWT | Test: `test_heartbeat_watchdog.py` + `test_mqtt_handler.py`. LWT real requiere broker fisico |
-| 3.4 | Sincronizacion por lotes | **E** | Simular 5 marcaciones offline → POST `/api/asistencias/sync` | Test: `test_sync_offline.py` |
+| 3.4 | Sincronizacion por lotes | **E** | Simular 5 marcaciones offline → POST `/api/asistencias/sync` que  | Test: `test_sync_offline.py` |
 | 3.5 | Latencia MQTT | **H** | Medir publish→respuesta en `esp32/respuesta/facial` | <5s en red local. Cronometro manual |
 
 ---
@@ -78,6 +78,11 @@ Corresponden a las pruebas descritas en `Informe/cap4_iteraciones.tex`. Las prue
 | 5.8 | Enrolamiento exitoso | **E** | `POST /api/dispositivos/enrolar` con PIN+MAC+IP | Test: `test_enrolamiento.py` (PIN consumido, no reutilizable) |
 | 5.9 | Heartbeat y estado | **A** | Dispositivo enrolado envia heartbeat → detener >90s | Test: `test_mqtt_handler.py::test_device_watchdog_sweep_inicial` |
 | 5.10 | LWT | **H** | Conectar ESP32 → cortar energia abruptamente | Broker publica LWT real, backend marca `inactivo` |
+| 5.11 | Generacion de contraseña desde backend | **A** | `POST /api/dispositivos/<id>/generar-password` | Test: `test_generar_password_exito` (HTTP 200, password 12 chars) |
+| 5.12 | Sincronizacion de contraseña al ESP32 | **E** | ESP32 consulta `GET /api/dispositivos/check-password` c/60s | Test: `test_check_password_pendiente_true` + `test_confirmar_password_exito` |
+| 5.13 | Confirmacion de contraseña aplicada | **A** | `POST /api/dispositivos/confirmar-password` limpia flag pendiente | Test: `test_confirmar_password_exito` verifica `pendiente: False` |
+| 5.14 | Eliminacion de contraseña | **A** | `DELETE /api/dispositivos/<id>/password` libera dispositivo | Test: `test_eliminar_password_exito` |
+| 5.15 | Contraseña pendiente offline | **H** | Generar contraseña con ESP32 desconectado → reconectar | ESP32 aplica contraseña al conectar. Test manual con hardware |
 
 ---
 
@@ -140,11 +145,11 @@ Corresponden a las pruebas descritas en `Informe/cap4_iteraciones.tex`. Las prue
 | 2 | 7 | 1 | 0 | 6 |
 | 3 | 5 | 2 | 2 | 1 |
 | 4 | 9 | 6 | 1 | 2 |
-| 5 | 10 | 8 | 1 | 1 |
+| 5 | 15 | 13 | 1 | 1 |
 | 6 | 9 | 0 | 0 | 9 |
 | 7 | 9 | 9 | 0 | 0 |
 | 8 | 10 | 4 | 3 | 3 |
-| **Total** | **64** | **30** | **7** | **27** |
+| **Total** | **69** | **35** | **7** | **27** |
 
 ### Suite automatizada
 

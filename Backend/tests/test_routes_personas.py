@@ -175,3 +175,39 @@ class TestRoutesPersonas:
         nombres = [p['nombre'] for p in personas]
         assert 'EmpP' in nombres
         assert 'AdminP' not in nombres
+
+    def test_update_persona_not_found(self, client, admin_token):
+        resp = client.put('/api/personas/99999',
+            headers={'Authorization': f'Bearer {admin_token}'},
+            json={'nombre': 'No existe'})
+        assert resp.status_code == 404
+
+    def test_delete_persona_not_found(self, client, admin_token):
+        resp = client.delete('/api/personas/99999',
+            headers={'Authorization': f'Bearer {admin_token}'})
+        assert resp.status_code == 404
+
+    def test_consentimiento_sin_auth(self, client):
+        resp = client.post('/api/personas/1/consentimiento', json={})
+        assert resp.status_code in (401, 403)
+
+    def test_consentimiento_persona_not_found(self, client, admin_token):
+        resp = client.post('/api/personas/99999/consentimiento',
+            headers={'Authorization': f'Bearer {admin_token}'},
+            json={})
+        assert resp.status_code == 404
+
+    def test_huella_persona_not_found(self, client, admin_token):
+        resp = client.put('/api/personas/99999/huella',
+            headers={'Authorization': f'Bearer {admin_token}'},
+            json={'huella_id': 5})
+        assert resp.status_code == 404
+
+    def test_eliminar_biometricos_not_found(self, client, admin_token):
+        resp = client.delete('/api/personas/99999/datos-biometricos',
+            headers={'Authorization': f'Bearer {admin_token}'})
+        assert resp.status_code == 404
+
+    def test_eliminar_biometricos_sin_auth(self, client):
+        resp = client.delete('/api/personas/1/datos-biometricos')
+        assert resp.status_code in (401, 403)

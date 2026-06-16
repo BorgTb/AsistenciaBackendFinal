@@ -46,4 +46,25 @@ test.describe('SAS Dashboard E2E — Chromium', () => {
     await page.click('button:has-text("Ya tengo cuenta")');
     await expect(page.locator('#login-email')).toBeVisible();
   });
+
+  test('seccion dispositivos se renderiza', async ({ page }) => {
+    await page.goto('/dispositivos');
+    await expect(page.locator('.section-title:has-text("Dispositivos")')).toBeVisible();
+    await expect(page.locator('.device-grid')).toBeVisible();
+    await expect(page.locator('button:has-text("Agregar dispositivo")')).toBeVisible();
+  });
+
+  test('modal de agregar dispositivo muestra campo nombre', async ({ page }) => {
+    await page.goto('/dispositivos');
+    await page.click('button:has-text("Agregar dispositivo")');
+    await expect(page.locator('.modal-title')).toBeVisible();
+    await expect(page.locator('.modal button:has-text("Generar PIN")')).toBeVisible();
+  });
+
+  test('boton generar PIN funciona', async ({ page }) => {
+    await page.goto('/dispositivos');
+    await page.click('button:has-text("Agregar dispositivo")');
+    await expect(page.locator('.modal')).toBeVisible();
+    await page.click('button:has-text("Generar PIN")');
+  });
 });

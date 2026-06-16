@@ -271,6 +271,8 @@ def confirmar_password_aplicada():
             (mac,)
         )
         conn.commit()
+        if cur.rowcount == 0:
+            return jsonify({'error': 'Dispositivo no encontrado'}), 404
         return jsonify({'ok': True})
     except Exception as e:
         conn.rollback()

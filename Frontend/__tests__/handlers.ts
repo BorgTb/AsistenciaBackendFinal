@@ -65,5 +65,11 @@ export const server = setupServer(
       { id: 1, nombre: 'Empresa por defecto', rut_empresa: '00000000-0',
         email_contacto: '', telefono: '', direccion: '', created_at: '2026-01-01' }
     ])
+  ),
+  http.post('/api/dispositivos/:id/generar-password', ({ params }) =>
+    HttpResponse.json({ ok: true, password: 'Ab3Xyz9KmL2p' })
+  ),
+  http.delete('/api/dispositivos/:id/password', () =>
+    HttpResponse.json({ ok: true, mensaje: 'Contrasena eliminada' })
   )
 );

@@ -1,3 +1,14 @@
+def _enrolar_dispositivo(client, token, nombre='Test', mac='AA:BB:CC:DD:EE:01', ip='192.168.1.10'):
+    pin_resp = client.post('/api/auth/dispositivos/generar-pin',
+        headers={'Authorization': f'Bearer {token}'},
+        json={'nombre': nombre})
+    pin = pin_resp.get_json()['pin']
+    enrol_resp = client.post('/api/auth/dispositivos/enrolar', json={
+        'codigo': pin, 'mac': mac, 'ip': ip
+    })
+    return enrol_resp.get_json()['dispositivo_id']
+
+
 class TestRoutesAsistencias:
     """Tests para /api/asistencias — marcajes, sync, ERP push."""
 
@@ -120,6 +131,22 @@ class TestRoutesAsistencias:
         assert resp.status_code == 200
         mock_thread.assert_called()
 
+    def test_listar_asistencias_trabajador(self, client, trabajador_token):
+        resp = client.get('/api/asistencias',
+            headers={'Authorization': f'Bearer {trabajador_token}'})
+        assert resp.status_code == 200
+        assert isinstance(resp.get_json(), list)
+
+    def test_sync_con_duplicados(self, client, admin_token):
+        client.post('/api/personas',
+            headers={'Authorization': f'Bearer {admin_token}'},
+            json={'nombre': 'P', 'rut': '99.999.999-1'})
+        payload = {'persona_id': '1', 'nombre': 'P', 'tipo': 'entrada', 'metodo': 'huella'}
+        r1 = client.post('/api/asistencias', json=payload)
+        r2 = client.post('/api/asistencias/sync', json={'registros': [payload]})
+        assert r1.status_code == 200
+        assert r2.status_code == 200
+
 
 class TestRoutesDispositivos:
     """Tests para /api/dispositivos — CRUD, verificacion, ERP config."""
@@ -193,6 +220,160 @@ class TestRoutesDispositivos:
         resp = client.get('/api/dispositivos/erp-config',
             headers={'Authorization': f'Bearer {admin_token}'})
         assert resp.status_code == 200
+
+    def test_listar_incluye_password_flags(self, client, admin_token):
+        dev_id = _enrolar_dispositivo(client, admin_token)
+        resp = client.get('/api/dispositivos',
+            headers={'Authorization': f'Bearer {admin_token}'})
+        data = resp.get_json()
+        dev = next(d for d in data if d['id'] == str(dev_id))
+        assert 'tiene_password' in dev
+        assert 'password_pendiente' in dev
+        assert dev['tiene_password'] is False
+        assert dev['password_pendiente'] is False
+
+    def test_listar_password_flags_cambian(self, client, admin_token):
+        dev_id = _enrolar_dispositivo(client, admin_token)
+        client.post(f'/api/dispositivos/{dev_id}/generar-password',
+            headers={'Authorization': f'Bearer {admin_token}'})
+        resp = client.get('/api/dispositivos',
+            headers={'Authorization': f'Bearer {admin_token}'})
+        data = resp.get_json()
+        dev = next(d for d in data if d['id'] == str(dev_id))
+        assert dev['tiene_password'] is True
+        assert dev['password_pendiente'] is True
+
+    def test_generar_password_exito(self, client, admin_token):
+        dev_id = _enrolar_dispositivo(client, admin_token)
+        resp = client.post(f'/api/dispositivos/{dev_id}/generar-password',
+            headers={'Authorization': f'Bearer {admin_token}'})
+        assert resp.status_code == 200
+        data = resp.get_json()
+        assert data['ok'] is True
+        assert 'password' in data
+        assert len(data['password']) == 12
+
+    def test_generar_password_no_enrolado(self, client, admin_token):
+        pin_resp = client.post('/api/auth/dispositivos/generar-pin',
+            headers={'Authorization': f'Bearer {admin_token}'},
+            json={'nombre': 'No enrol'})
+        dev_id = pin_resp.get_json()['dispositivo_id']
+        resp = client.post(f'/api/dispositivos/{dev_id}/generar-password',
+            headers={'Authorization': f'Bearer {admin_token}'})
+        assert resp.status_code == 400
+        assert 'Solo disponible' in resp.get_json()['error']
+
+    def test_generar_password_sin_auth(self, client, admin_token):
+        dev_id = _enrolar_dispositivo(client, admin_token)
+        resp = client.post(f'/api/dispositivos/{dev_id}/generar-password')
+        assert resp.status_code == 401
+
+    def test_generar_password_inexistente(self, client, admin_token):
+        resp = client.post('/api/dispositivos/99999/generar-password',
+            headers={'Authorization': f'Bearer {admin_token}'})
+        assert resp.status_code == 404
+
+    def test_generar_password_sobrescribe(self, client, admin_token):
+        dev_id = _enrolar_dispositivo(client, admin_token)
+        r1 = client.post(f'/api/dispositivos/{dev_id}/generar-password',
+            headers={'Authorization': f'Bearer {admin_token}'})
+        p1 = r1.get_json()['password']
+        r2 = client.post(f'/api/dispositivos/{dev_id}/generar-password',
+            headers={'Authorization': f'Bearer {admin_token}'})
+        p2 = r2.get_json()['password']
+        assert p1 != p2
+
+    def test_generar_password_empleador_otra_empresa(self, client, admin_token, empleador_token):
+        dev_id = _enrolar_dispositivo(client, admin_token, mac='AA:BB:CC:DD:EE:99')
+        resp = client.post(f'/api/dispositivos/{dev_id}/generar-password',
+            headers={'Authorization': f'Bearer {empleador_token}'})
+        assert resp.status_code == 404
+
+    def test_eliminar_password_exito(self, client, admin_token):
+        dev_id = _enrolar_dispositivo(client, admin_token)
+        client.post(f'/api/dispositivos/{dev_id}/generar-password',
+            headers={'Authorization': f'Bearer {admin_token}'})
+        resp = client.delete(f'/api/dispositivos/{dev_id}/password',
+            headers={'Authorization': f'Bearer {admin_token}'})
+        assert resp.status_code == 200
+        assert resp.get_json()['ok'] is True
+
+    def test_eliminar_password_sin_auth(self, client, admin_token):
+        dev_id = _enrolar_dispositivo(client, admin_token)
+        resp = client.delete(f'/api/dispositivos/{dev_id}/password')
+        assert resp.status_code == 401
+
+    def test_eliminar_password_inexistente(self, client, admin_token):
+        resp = client.delete('/api/dispositivos/99999/password',
+            headers={'Authorization': f'Bearer {admin_token}'})
+        assert resp.status_code == 404
+
+    def test_check_password_pendiente_true(self, client, admin_token):
+        dev_id = _enrolar_dispositivo(client, admin_token, mac='AA:BB:CC:DD:EE:10')
+        client.post(f'/api/dispositivos/{dev_id}/generar-password',
+            headers={'Authorization': f'Bearer {admin_token}'})
+        resp = client.get('/api/dispositivos/check-password',
+            headers={'X-Device-MAC': 'AA:BB:CC:DD:EE:10'})
+        assert resp.status_code == 200
+        data = resp.get_json()
+        assert data['pendiente'] is True
+        assert 'password' in data
+        assert len(data['password']) == 12
+
+    def test_check_password_no_pendiente(self, client, admin_token):
+        _enrolar_dispositivo(client, admin_token, mac='AA:BB:CC:DD:EE:11')
+        resp = client.get('/api/dispositivos/check-password',
+            headers={'X-Device-MAC': 'AA:BB:CC:DD:EE:11'})
+        assert resp.status_code == 200
+        assert resp.get_json()['pendiente'] is False
+
+    def test_check_password_sin_mac(self, client):
+        resp = client.get('/api/dispositivos/check-password')
+        assert resp.status_code == 400
+
+    def test_check_password_mac_inexistente(self, client):
+        resp = client.get('/api/dispositivos/check-password',
+            headers={'X-Device-MAC': 'ZZ:ZZ:ZZ:ZZ:ZZ:ZZ'})
+        assert resp.status_code == 404
+
+    def test_confirmar_password_exito(self, client, admin_token):
+        dev_id = _enrolar_dispositivo(client, admin_token, mac='AA:BB:CC:DD:EE:20')
+        client.post(f'/api/dispositivos/{dev_id}/generar-password',
+            headers={'Authorization': f'Bearer {admin_token}'})
+        resp = client.post('/api/dispositivos/confirmar-password',
+            headers={'X-Device-MAC': 'AA:BB:CC:DD:EE:20'})
+        assert resp.status_code == 200
+        assert resp.get_json()['ok'] is True
+        check = client.get('/api/dispositivos/check-password',
+            headers={'X-Device-MAC': 'AA:BB:CC:DD:EE:20'})
+        assert check.get_json()['pendiente'] is False
+
+    def test_confirmar_password_sin_mac(self, client):
+        resp = client.post('/api/dispositivos/confirmar-password')
+        assert resp.status_code == 400
+
+    def test_confirmar_password_mac_inexistente(self, client):
+        resp = client.post('/api/dispositivos/confirmar-password',
+            headers={'X-Device-MAC': 'ZZ:ZZ:ZZ:ZZ:ZZ:ZZ'})
+        assert resp.status_code == 404
+
+    def test_delete_dispositivo_exito_admin(self, client, admin_token):
+        dev_id = _enrolar_dispositivo(client, admin_token)
+        resp = client.delete(f'/api/dispositivos/{dev_id}',
+            headers={'Authorization': f'Bearer {admin_token}'})
+        assert resp.status_code == 200
+        assert resp.get_json()['ok'] is True
+
+    def test_put_dispositivo_not_found(self, client, admin_token):
+        resp = client.put('/api/dispositivos/99999',
+            headers={'Authorization': f'Bearer {admin_token}'},
+            json={'nombre': 'No existe'})
+        assert resp.status_code == 404
+
+    def test_listar_dispositivos_sin_token(self, client):
+        resp = client.get('/api/dispositivos')
+        assert resp.status_code == 200
+        assert isinstance(resp.get_json(), list)
 
 
 class TestRoutesErp:
@@ -301,3 +482,50 @@ class TestRoutesErp:
         result = _enviar_a_webhook('http://offline.test', '{}', {'test': True})
         assert result['ok'] is False
         assert 'error' in result
+
+    def test_crear_erp_sin_nombre(self, client, admin_token):
+        resp = client.post('/api/erp',
+            headers={'Authorization': f'Bearer {admin_token}'},
+            json={
+                'tipo': 'generic',
+                'webhook_url': 'http://test.com',
+                'envio_auto': True
+            })
+        assert resp.status_code == 400
+
+    def test_test_webhook_inactivo(self, client, admin_token):
+        c = client.post('/api/erp',
+            headers={'Authorization': f'Bearer {admin_token}'},
+            json={
+                'nombre': 'Inactivo', 'tipo': 'generic',
+                'webhook_url': 'http://fake.test',
+                'envio_auto': True, 'activo': False
+            })
+        resp = client.post(f"/api/erp/{c.get_json()['id']}/test",
+            headers={'Authorization': f'Bearer {admin_token}'})
+        assert resp.status_code == 400
+
+    def test_enviar_erp_inactivo(self, client, admin_token):
+        c = client.post('/api/erp',
+            headers={'Authorization': f'Bearer {admin_token}'},
+            json={
+                'nombre': 'Inactivo2', 'tipo': 'generic',
+                'webhook_url': 'http://fake.test',
+                'envio_auto': True, 'activo': False
+            })
+        resp = client.post(f"/api/erp/{c.get_json()['id']}/enviar",
+            headers={'Authorization': f'Bearer {admin_token}'})
+        assert resp.status_code == 400
+
+    def test_enviar_erp_sin_asistencias(self, client, admin_token):
+        c = client.post('/api/erp',
+            headers={'Authorization': f'Bearer {admin_token}'},
+            json={
+                'nombre': 'Sin data', 'tipo': 'generic',
+                'webhook_url': 'http://fake.test',
+                'envio_auto': True, 'activo': True
+            })
+        resp = client.post(f"/api/erp/{c.get_json()['id']}/enviar",
+            headers={'Authorization': f'Bearer {admin_token}'})
+        assert resp.status_code == 200
+        assert resp.get_json()['enviados'] == 0

@@ -185,3 +185,123 @@ class TestRoutesAuth:
             headers={'Authorization': f'Bearer {admin_token}'},
             json={'usuario_id': 1, 'empresa_id': 1, 'rol': 'admin'})
         assert resp.status_code == 200
+
+    # ── Eliminar usuario de empresa ──────────────────────
+    def test_admin_elimina_usuario_de_empresa(self, client, admin_token):
+        client.post('/api/auth/register',
+            headers={'Authorization': f'Bearer {admin_token}'},
+            json={'nombre': 'A Borrar', 'email': 'borrar@test.cl',
+                  'password': 'test1234', 'rol': 'empleador', 'empresa_id': 1})
+        resp = client.delete('/api/auth/usuarios/2',
+            headers={'Authorization': f'Bearer {admin_token}'},
+            json={'empresa_id': 1})
+        assert resp.status_code == 200
+        assert resp.get_json()['ok'] is True
+
+    def test_admin_elimina_usuario_inexistente(self, client, admin_token):
+        resp = client.delete('/api/auth/usuarios/99999',
+            headers={'Authorization': f'Bearer {admin_token}'},
+            json={'empresa_id': 1})
+        assert resp.status_code == 404
+
+    def test_eliminar_usuario_sin_auth(self, client):
+        resp = client.delete('/api/auth/usuarios/1')
+        assert resp.status_code == 401
+
+    def test_empleador_elimina_usuario_de_su_empresa(self, client, empleador_token):
+        client.post('/api/auth/register',
+            headers={'Authorization': f'Bearer {empleador_token}'},
+            json={'nombre': 'Trab Borrar', 'email': 'trab_borrar@test.cl',
+                  'password': 'test1234', 'rol': 'trabajador', 'empresa_id': 2})
+        resp = client.delete('/api/auth/usuarios/2',
+            headers={'Authorization': f'Bearer {empleador_token}'},
+            json={'empresa_id': 2})
+        assert resp.status_code == 200
+
+    # ── Actualizar usuario ───────────────────────────────
+    def test_admin_actualiza_usuario(self, client, admin_token):
+        client.post('/api/auth/register',
+            headers={'Authorization': f'Bearer {admin_token}'},
+            json={'nombre': 'Edit Me', 'email': 'editar_me@test.cl',
+                  'password': 'test1234', 'rol': 'empleador', 'empresa_id': 1})
+        resp = client.put('/api/auth/usuarios/2',
+            headers={'Authorization': f'Bearer {admin_token}'},
+            json={'nombre': 'Actualizado', 'empresa_id': 1})
+        assert resp.status_code == 200
+        assert resp.get_json()['ok'] is True
+
+    def test_actualizar_usuario_no_encontrado(self, client, admin_token):
+        resp = client.put('/api/auth/usuarios/99999',
+            headers={'Authorization': f'Bearer {admin_token}'},
+            json={'nombre': 'Nope', 'empresa_id': 1})
+        assert resp.status_code == 404
+
+    def test_actualizar_usuario_sin_auth(self, client):
+        resp = client.put('/api/auth/usuarios/1', json={'nombre': 'X'})
+        assert resp.status_code == 401
+
+    def test_empleador_actualiza_solo_trabajador(self, client, empleador_token):
+        client.post('/api/auth/register',
+            headers={'Authorization': f'Bearer {empleador_token}'},
+            json={'nombre': 'Trab Edit', 'email': 'trab_edit@test.cl',
+                  'password': 'test1234', 'rol': 'trabajador', 'empresa_id': 2})
+        resp = client.put('/api/auth/usuarios/2',
+            headers={'Authorization': f'Bearer {empleador_token}'},
+            json={'nombre': 'Editado', 'empresa_id': 2})
+        assert resp.status_code == 200
+
+    # ── Eliminar empresa ─────────────────────────────────
+    def test_admin_elimina_empresa(self, client, admin_token):
+        r = client.post('/api/auth/empresas',
+            headers={'Authorization': f'Bearer {admin_token}'},
+            json={'nombre': 'A Eliminar'})
+        emp_id = r.get_json()['id']
+        resp = client.delete(f'/api/auth/empresas/{emp_id}',
+            headers={'Authorization': f'Bearer {admin_token}'})
+        assert resp.status_code == 200
+
+    def test_eliminar_empresa_sin_auth(self, client):
+        resp = client.delete('/api/auth/empresas/1')
+        assert resp.status_code == 401
+
+    def test_generar_pin_empleador_su_empresa(self, client, empleador_token):
+        resp = client.post('/api/auth/dispositivos/generar-pin',
+            headers={'Authorization': f'Bearer {empleador_token}'},
+            json={'nombre': 'Reloj Emp'})
+        assert resp.status_code == 200
+
+    # ── Register company edge cases ──────────────────────
+    def test_register_company_campos_faltantes(self, client):
+        resp = client.post('/api/auth/register-company', json={'empresa_nombre': 'X'})
+        assert resp.status_code == 400
+
+    def test_register_company_password_corta(self, client):
+        resp = client.post('/api/auth/register-company', json={
+            'empresa_nombre': 'X', 'admin_nombre': 'A', 'admin_email': 'a@b.cl', 'admin_password': 'ab'
+        })
+        assert resp.status_code == 400
+
+    def test_register_company_email_invalido(self, client):
+        resp = client.post('/api/auth/register-company', json={
+            'empresa_nombre': 'X', 'admin_nombre': 'A', 'admin_email': 'no-arroba', 'admin_password': 'test1234'
+        })
+        assert resp.status_code == 400
+
+    # ── Change password edge cases ───────────────────────
+    def test_change_password_wrong_actual(self, client, admin_token):
+        resp = client.put('/api/auth/change-password',
+            headers={'Authorization': f'Bearer {admin_token}'},
+            json={'password_actual': 'wrongpass', 'password_nueva': 'newpass123'})
+        assert resp.status_code == 401
+
+    def test_change_password_campos_faltantes(self, client, admin_token):
+        resp = client.put('/api/auth/change-password',
+            headers={'Authorization': f'Bearer {admin_token}'},
+            json={'password_actual': 'admin123'})
+        assert resp.status_code == 400
+
+    def test_change_password_corta(self, client, admin_token):
+        resp = client.put('/api/auth/change-password',
+            headers={'Authorization': f'Bearer {admin_token}'},
+            json={'password_actual': 'admin123', 'password_nueva': 'ab'})
+        assert resp.status_code == 400

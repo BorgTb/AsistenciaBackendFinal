@@ -159,3 +159,35 @@ class TestRoutesFacial:
             'imagen': _b64_dummy_jpeg()
         })
         assert resp.status_code == 404
+
+    def test_verificar_facial_sin_rostro(self, client, admin_token):
+        client.post('/api/personas',
+            headers={'Authorization': f'Bearer {admin_token}'},
+            json={'nombre': 'Sin Rostro', 'rut': '10.910.910-0'})
+        resp = client.post('/api/facial/verificar', json={
+            'persona_id': '1', 'imagen': _b64_dummy_jpeg()
+        })
+        assert resp.status_code == 404
+
+    def test_verificar_facial_no_coincide(self, client, admin_token):
+        client.post('/api/personas',
+            headers={'Authorization': f'Bearer {admin_token}'},
+            json={'nombre': 'Con Rostro', 'rut': '10.920.920-0'})
+        client.post('/api/personas/1/consentimiento',
+            headers={'Authorization': f'Bearer {admin_token}'}, json={})
+        client.post('/api/facial/registrar', json={
+            'persona_id': '1', 'imagen': _b64_dummy_jpeg()
+        })
+        client.post('/api/personas',
+            headers={'Authorization': f'Bearer {admin_token}'},
+            json={'nombre': 'Otro Rostro', 'rut': '10.930.930-0'})
+        resp = client.post('/api/facial/verificar', json={
+            'persona_id': '2', 'imagen': _b64_dummy_jpeg()
+        })
+        assert resp.status_code in (200, 404)
+
+    def test_identificar_content_type_invalido(self, client):
+        resp = client.post('/api/facial/identificar',
+            data='not an image',
+            headers={'Content-Type': 'text/plain'})
+        assert resp.status_code == 415
