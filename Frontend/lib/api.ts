@@ -90,7 +90,7 @@ export async function getAsistencias() {
 }
 
 export async function getDispositivos() {
-  return request<Array<{ id: string; nombre: string; ip_local: string | null; estado: string; ultimo_heartbeat: string | null }>>('/api/dispositivos');
+  return request<Array<{ id: string; nombre: string; ip_local: string | null; estado: string; ultimo_heartbeat: string | null; tiene_password?: boolean; password_pendiente?: boolean }>>('/api/dispositivos');
 }
 
 export async function getLogs() {

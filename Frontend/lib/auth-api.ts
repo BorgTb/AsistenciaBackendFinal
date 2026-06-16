@@ -127,6 +127,18 @@ export async function verificarDispositivo(ip: string) {
   });
 }
 
+export async function generarPasswordDispositivo(dispositivoId: string) {
+  return request<{ ok: boolean; password: string }>(`/api/dispositivos/${dispositivoId}/generar-password`, {
+    method: 'POST'
+  });
+}
+
+export async function eliminarPasswordDispositivo(dispositivoId: string) {
+  return request<{ ok: boolean; mensaje: string }>(`/api/dispositivos/${dispositivoId}/password`, {
+    method: 'DELETE'
+  });
+}
+
 export async function enviarErp(erpId: string) {
   return request<{ ok: boolean; enviados: number; errores: number; mensaje?: string; ultimo_estado?: unknown }>(`/api/erp/${erpId}/enviar`, {
     method: 'POST'

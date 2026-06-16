@@ -17,6 +17,8 @@ import {
   registrarRostro,
   actualizarRostro,
   generarPinEnrolamiento,
+  generarPasswordDispositivo,
+  eliminarPasswordDispositivo,
   getEmpresas,
   getUsuarios,
   registerUser,
@@ -189,6 +191,8 @@ export function SasDashboard({ initialSection = 'dashboard' }: { initialSection?
   const [deviceVerifyMsg, setDeviceVerifyMsg] = useState('');
   const [editingDeviceId, setEditingDeviceId] = useState<string | null>(null);
   const [editDeviceName, setEditDeviceName] = useState('');
+  const [generatedDevicePassword, setGeneratedDevicePassword] = useState<string | null>(null);
+  const [generatingPasswordFor, setGeneratingPasswordFor] = useState<string | null>(null);
   const [rostroPersonaId, setRostroPersonaId] = useState<string | null>(null);
   const [uploadingRostro, setUploadingRostro] = useState(false);
   const [webcamActive, setWebcamActive] = useState(false);
@@ -253,7 +257,9 @@ export function SasDashboard({ initialSection = 'dashboard' }: { initialSection?
           marcajes: 0,
           mem: 0,
           camara: false,
-          estado: item.estado
+          estado: item.estado,
+          tienePassword: (item as Record<string, unknown>).tiene_password as boolean,
+          passwordPendiente: (item as Record<string, unknown>).password_pendiente as boolean
         })));
       }
       if (erpRes) {
@@ -735,6 +741,37 @@ export function SasDashboard({ initialSection = 'dashboard' }: { initialSection?
     } else {
       const msg = result && 'error' in result ? String(result.error) : 'Error al generar PIN';
       setFormError(msg);
+    }
+  }
+
+  async function handleGenerarPassword(dispositivoId: string, nombre: string, yaTiene: boolean) {
+    if (yaTiene && !window.confirm(`"${nombre}" ya tiene una contraseña. Se sobrescribirá. ¿Continuar?`)) return;
+    setGeneratingPasswordFor(dispositivoId);
+    const result = await generarPasswordDispositivo(dispositivoId);
+    setGeneratingPasswordFor(null);
+    if (result && 'ok' in result && result.ok) {
+      setGeneratedDevicePassword(result.password);
+      setDevices((current) =>
+        current.map((d) => (d.id === dispositivoId ? { ...d, tienePassword: true, passwordPendiente: true } : d))
+      );
+      showToast('success', `Contraseña generada para "${nombre}"`);
+    } else {
+      const msg = result && 'error' in result ? String(result.error) : 'Error al generar contraseña';
+      showToast('error', msg);
+    }
+  }
+
+  async function handleEliminarPassword(dispositivoId: string, nombre: string) {
+    if (!window.confirm(`¿Eliminar la contraseña de "${nombre}"? El dispositivo quedará sin protección.`)) return;
+    const result = await eliminarPasswordDispositivo(dispositivoId);
+    if (result && 'ok' in result && result.ok) {
+      setDevices((current) =>
+        current.map((d) => (d.id === dispositivoId ? { ...d, tienePassword: false, passwordPendiente: false } : d))
+      );
+      showToast('success', `Contraseña eliminada para "${nombre}"`);
+    } else {
+      const msg = result && 'error' in result ? String(result.error) : 'Error al eliminar contraseña';
+      showToast('error', msg);
     }
   }
 
@@ -1539,6 +1576,13 @@ export function SasDashboard({ initialSection = 'dashboard' }: { initialSection?
                       )}
                     </div>
                     <Badge tone={item.online ? 'success' : 'warning'}>{item.online ? 'online' : 'offline'}</Badge>
+                    {item.tienePassword ? (
+                      <span title={item.passwordPendiente ? 'Contraseña pendiente de aplicar en el dispositivo' : 'Con contraseña'} style={{ fontSize: '1.1rem', marginLeft: 4 }}>
+                        {item.passwordPendiente ? '🔑' : '🔒'}
+                      </span>
+                    ) : (
+                      <span title="Sin contraseña" style={{ fontSize: '1.1rem', marginLeft: 4, opacity: 0.5 }}>🔓</span>
+                    )}
                   </div>
 
                   <div className="device-grid" style={{ gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', marginTop: 16 }}>
@@ -1556,6 +1600,19 @@ export function SasDashboard({ initialSection = 'dashboard' }: { initialSection?
 
                   <div className="device-actions">
                     <button className="btn btn-secondary" type="button" onClick={() => { setEditingDeviceId(item.id); setEditDeviceName(item.nombre); }}>Renombrar</button>
+                    <button
+                      className="btn btn-primary"
+                      type="button"
+                      disabled={generatingPasswordFor === item.id}
+                      onClick={() => handleGenerarPassword(item.id, item.nombre, !!item.tienePassword)}
+                    >
+                      {generatingPasswordFor === item.id ? 'Generando...' : item.tienePassword ? 'Regenerar contraseña' : 'Generar contraseña'}
+                    </button>
+                    {item.tienePassword && (
+                      <button className="btn btn-secondary" type="button" onClick={() => handleEliminarPassword(item.id, item.nombre)}>
+                        Quitar contraseña
+                      </button>
+                    )}
                     <a className="btn btn-secondary" href={`${deviceBase}/logs`} target="_blank" rel="noreferrer">Logs</a>
                     <button className="btn btn-secondary" type="button" onClick={() => handleDeviceSync(item.ip)}>Sync</button>
                     <button className="btn btn-danger" type="button" onClick={() => handleDeleteDispositivo(item.id, item.nombre)}>Eliminar</button>
@@ -1992,6 +2049,37 @@ export function SasDashboard({ initialSection = 'dashboard' }: { initialSection?
             <div className="modal-footer">
               <button className="btn btn-secondary" type="button" onClick={closeModal}>Cerrar</button>
               <button className="btn btn-primary" type="button" onClick={handleGenerarPin}>Generar PIN</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {generatedDevicePassword && (
+        <div className="overlay" onClick={() => setGeneratedDevicePassword(null)} role="presentation">
+          <div className="modal" onClick={(e) => e.stopPropagation()} role="presentation">
+            <div className="modal-head">
+              <h3 className="modal-title">Contraseña generada</h3>
+              <p className="modal-subtitle">Guarde esta contraseña. Solo se muestra una vez.</p>
+            </div>
+            <div className="modal-body">
+              <div className="card" style={{ borderColor: 'rgba(255,193,7,0.6)', background: 'rgba(255,193,7,0.1)', padding: 14, marginBottom: 16 }}>
+                <strong style={{ color: 'var(--warning)' }}>Guarde esta contraseña. Solo se muestra una vez.</strong>
+              </div>
+              <div className="mono" style={{ padding: 16, borderRadius: 12, background: '#000', fontSize: '1.6rem', textAlign: 'center', letterSpacing: '0.25em', fontWeight: 700, color: 'var(--accent)' }}>
+                {generatedDevicePassword}
+              </div>
+              <div className="muted" style={{ marginTop: 16, fontSize: '0.82rem' }}>
+                1. El dispositivo aplicara la contrasena cuando se conecte al backend (cada 60s).<br />
+                2. Si esta offline, ingresela manualmente en WiFi Setup del ESP32.<br />
+                3. Use esta contrasena en el parametro admin_password al acceder al dispositivo.
+              </div>
+            </div>
+            <div className="modal-footer">
+              <button className="btn btn-secondary" type="button" onClick={() => setGeneratedDevicePassword(null)}>Cerrar</button>
+              <button className="btn btn-primary" type="button" onClick={() => {
+                navigator.clipboard.writeText(generatedDevicePassword);
+                showToast('success', 'Contrasena copiada al portapapeles');
+              }}>Copiar</button>
             </div>
           </div>
         </div>

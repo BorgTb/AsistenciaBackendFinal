@@ -1312,6 +1312,32 @@ void sincronizarErpConfigDesdeBackend() {
   http.end();
 }
 
+void verificarPasswordPendiente() {
+  if (!isOnline || WiFi.status() != WL_CONNECTED || deviceMAC.length() == 0) return;
+
+  HTTPClient http;
+  beginHttp(http, backendURL + "/api/dispositivos/check-password");
+  int code = http.GET();
+  if (code == 200) {
+    DynamicJsonDocument doc(192);
+    DeserializationError error = deserializeJson(doc, http.getStream());
+    if (!error && doc["pendiente"] == true) {
+      String newPassword = doc["password"].as<String>();
+      if (newPassword.length() > 0) {
+        adminHash = sha256(newPassword);
+        saveAdminHash();
+        addLog("Password actualizada desde backend");
+
+        HTTPClient http2;
+        beginHttp(http2, backendURL + "/api/dispositivos/confirmar-password");
+        http2.POST("");
+        http2.end();
+      }
+    }
+  }
+  http.end();
+}
+
 void enviarAsistenciaAErp(const String& personaId, const String& nombre, const String& tipo, const String& metodo) {
   if (!LittleFS.exists("/erp-config.json")) return;
 
@@ -2225,6 +2251,11 @@ void loop() {
     sincronizarErpConfigDesdeBackend();
   }
 
-  // Respiro al servidor Web y RTOS para evitar congelamientos en la protoboard
-  delay(20); 
+  static unsigned long lastPwdCheck = 0;
+  if (isOnline && (ahora - lastPwdCheck) > 60000UL) {
+    lastPwdCheck = ahora;
+    verificarPasswordPendiente();
+  }
+
+  delay(20);
 }

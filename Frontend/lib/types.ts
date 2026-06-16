@@ -48,6 +48,8 @@ export interface DeviceStatus {
   mem: number;
   camara: boolean;
   estado?: string;
+  tienePassword?: boolean;
+  passwordPendiente?: boolean;
 }
 
 export interface ErpIntegration {
