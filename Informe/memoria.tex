@@ -388,32 +388,9 @@ Para un prototipo IoT con funcionamiento offline, la confiabilidad del almacenam
     \item Verificación con base de datos: Con la finalidad de comprobar la confiabilidad del sistema se debe compara el numero de registros capturados offline en comparación con los almacenados en la base de datos o que fueron sincronizados anteriormente.
 \end{itemize}
 
-\section{Resultados Esperados}
-A continuación en esta sección se presentarán los resultados esperados para los objetivos específicos.
-\begin{itemize}
-    \item Objetivo especifico 2: Implementar el módulo biométrico de registro de asistencia mediante reconocimiento
-facial y huella digital.
-    \begin{itemize}
-        \item  Resultado esperado: Para este objetivo se espera tener un protipo que permita registrar asistencia de un trabajador, mediante reconocimiento facial o huella digital.
-    \end{itemize}
-    \item Objetivo especifico 3: Incorporar capacidad de funcionamiento offline con almacenamiento local y sincronización
-posterior.
-    \begin{itemize}
-        \item  Resultado esperado: Para este objetivo se espera que el prototipo pueda tener la capacidad de funcionamiento offline almacenando los registros de manera local para su posterior sincronización con el servidor.
-    \end{itemize}
-    \item Objetivo especifico 6: Integrar y validar el funcionamiento conjunto del hardware y software desarrollado.
-    \begin{itemize}
-        \item  Resultado esperado: Para este objetivo se espera que el hardware construidor funcione correctamente en conjunto como así su operabilidad con el backend y software.
-    \end{itemize}
-    \item Objetivo especifico 7: Evaluar el desempeño, confiabilidad y usabilidad del sistema en escenarios de prueba
-reales.
-    \begin{itemize}
-        \item  Resultado esperado: Para este objetivo se espera obtener alta disponibilidad con al menos un 90\% de sus funcionamiento en los escenarios en donde el dispositivo se encuentre offline, o con conexión intermitente.
-    \end{itemize}
-\end{itemize}
 
 \subsection{Resultados esperados de las pruebas}
-A diferencia de los resultados esperados asociados a los objetivos del proyecto, este apartado define los valores objetivos y criterios de aceptación que se esperan alcanzar al ejecutar el conjunto de pruebas descritas en la sección 3.3 (Metodología de evaluación). Estos valores sirven como referencia para comparar los resultados reales que se presentarán en el capítulo 5.
+Este apartado define los valores objetivos y criterios de aceptación que se esperan alcanzar al ejecutar el conjunto de pruebas descritas en la sección 3.3 (Metodología de evaluación). Estos valores sirven como referencia para comparar los resultados reales que se presentarán en el capítulo 5.
 
 \subsubsection{Pruebas de integración}
 Las pruebas de integración ascendente definidas en la sección 3.3.1 apuntan a verificar la correcta comunicación entre los módulos del sistema. Se espera alcanzar los siguientes resultados:
@@ -486,6 +463,29 @@ Persistencia & Datos conservados tras corte de energía & 100\% \\
 
 \textbf{Justificación}: según Perry [35] y Atlassian [34], un sistema IoT con operación offline debe garantizar cero pérdida de datos (criterio no negociable) y una disponibilidad acumulada $\geq$ 90\% en escenarios reales de uso para ser considerado operacionalmente viable.
 
+\section{Resultados Esperados de los Objetivos Específicos}
+A continuación en esta sección se presentarán los resultados esperados para los objetivos específicos.
+\begin{itemize}
+    \item Objetivo especifico 2: Implementar el módulo biométrico de registro de asistencia mediante reconocimiento
+facial y huella digital.
+    \begin{itemize}
+        \item  Resultado esperado: Para este objetivo se espera tener un protipo que permita registrar asistencia de un trabajador, mediante reconocimiento facial o huella digital.
+    \end{itemize}
+    \item Objetivo especifico 3: Incorporar capacidad de funcionamiento offline con almacenamiento local y sincronización
+posterior.
+    \begin{itemize}
+        \item  Resultado esperado: Para este objetivo se espera que el prototipo pueda tener la capacidad de funcionamiento offline almacenando los registros de manera local para su posterior sincronización con el servidor.
+    \end{itemize}
+    \item Objetivo especifico 6: Integrar y validar el funcionamiento conjunto del hardware y software desarrollado.
+    \begin{itemize}
+        \item  Resultado esperado: Para este objetivo se espera que el hardware construidor funcione correctamente en conjunto como así su operabilidad con el backend y software.
+    \end{itemize}
+    \item Objetivo especifico 7: Evaluar el desempeño, confiabilidad y usabilidad del sistema en escenarios de prueba
+reales.
+    \begin{itemize}
+        \item  Resultado esperado: Para este objetivo se espera obtener alta disponibilidad con al menos un 90\% de sus funcionamiento en los escenarios en donde el dispositivo se encuentre offline, o con conexión intermitente.
+    \end{itemize}
+\end{itemize}
 
 
 

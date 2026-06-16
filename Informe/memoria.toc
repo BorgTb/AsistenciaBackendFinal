@@ -55,12 +55,12 @@
 \contentsline {subsubsection}{Preguntas para usuarios no técnicos}{30}{}%
 \contentsline {subsubsection}{Preguntas para usuarios técnicos}{31}{}%
 \contentsline {subsection}{\numberline {3.3.3}Pruebas de confiabilidad y disponibilidad}{31}{}%
-\contentsline {section}{\numberline {3.4}Resultados Esperados}{32}{}%
-\contentsline {subsection}{\numberline {3.4.1}Resultados esperados de las pruebas}{33}{}%
-\contentsline {subsubsection}{Pruebas de integración}{33}{}%
+\contentsline {subsection}{\numberline {3.3.4}Resultados esperados de las pruebas}{32}{}%
+\contentsline {subsubsection}{Pruebas de integración}{32}{}%
 \contentsline {subsubsection}{Pruebas de usabilidad (SUS)}{33}{}%
-\contentsline {subsubsection}{Pruebas de confiabilidad y disponibilidad}{34}{}%
-\contentsline {section}{\numberline {3.5}Resumen del capítulo}{35}{}%
+\contentsline {subsubsection}{Pruebas de confiabilidad y disponibilidad}{33}{}%
+\contentsline {section}{\numberline {3.4}Resultados Esperados de los Objetivos Específicos}{34}{}%
+\contentsline {section}{\numberline {3.5}Resumen del capítulo}{34}{}%
 \contentsline {chapter}{\numberline {4}Desarrollo e implementación}{36}{}%
 \contentsline {section}{\numberline {4.1}Diseño de software}{36}{}%
 \contentsline {subsection}{\numberline {4.1.1}Arquitectura física}{36}{}%

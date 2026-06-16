@@ -49,6 +49,12 @@ input:focus{outline:none;border-color:var(--a);box-shadow:0 0 0 3px rgba(59,130,
   <label>Código de enrolamiento (opcional)</label>
   <input type="text" id="pin" placeholder="Código de 6 dígitos" maxlength="8" pattern="[A-Za-z0-9]*" style="font-size:22px;letter-spacing:6px;text-align:center;font-weight:600">
 
+  <h2>Seguridad</h2>
+  <label>Contraseña de Administrador</label>
+  <input type="password" id="adminPasswordNew" placeholder="Nueva contraseña (dejar vacío para no cambiar)">
+  <input type="password" id="adminPasswordOld" placeholder="Contraseña actual (requerido si ya existe)" style="display:none">
+  <div id="adminStatus" style="font-size:11px;color:var(--w);margin-bottom:10px"></div>
+
   <button class="btn btn-go" onclick="guardar()">Guardar y Reiniciar</button>
   <button class="btn btn-sec" onclick="location.href='/'">Cancelar</button>
 
@@ -60,6 +66,10 @@ fetch('/estado').then(r=>r.json()).then(data=>{
   if(data.ssid)document.getElementById('ssid').value=data.ssid;
   if(data.backend)document.getElementById('backend').value=data.backend;
   if(data.mqtt)document.getElementById('mqtt').value=data.mqtt;
+  if(data.admin_protegido){
+    document.getElementById('adminPasswordOld').style.display='block';
+    document.getElementById('adminStatus').textContent='\u26a0\uFE0F Ya hay una contrase\u00f1a configurada';
+  }
 });
 
 async function guardar(){
@@ -68,6 +78,8 @@ async function guardar(){
   const backend=document.getElementById('backend').value.trim();
   const mqtt=document.getElementById('mqtt').value.trim();
   const pin=document.getElementById('pin').value.trim();
+  const adminOld=document.getElementById('adminPasswordOld').value.trim();
+  const adminNew=document.getElementById('adminPasswordNew').value.trim();
   const el=document.getElementById('status');
   try{
     const params=new URLSearchParams();
@@ -76,7 +88,13 @@ async function guardar(){
     if(backend)params.append('backend',backend);
     if(mqtt)params.append('mqtt',mqtt);
     if(pin)params.append('pin',pin);
+    if(adminNew)params.append('admin_password_new',adminNew);
+    if(adminOld)params.append('admin_password_old',adminOld);
     const msg=await fetch('/wifi-config?'+params.toString()).then(r=>r.text());
+    if(msg.includes('incorrecta')){
+      el.className='msg show err';el.textContent=msg;
+      return;
+    }
     el.className='msg show ok';el.textContent=msg;
     setTimeout(()=>location.href='/',3000);
   }catch(e){

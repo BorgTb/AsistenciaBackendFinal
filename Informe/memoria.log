@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.141592653-2.6-1.40.28 (MiKTeX 25.12) (preloaded format=pdflatex 2026.6.4)  14 JUN 2026 20:17
+This is pdfTeX, Version 3.141592653-2.6-1.40.28 (MiKTeX 25.12) (preloaded format=pdflatex 2026.6.4)  15 JUN 2026 17:54
 entering extended mode
  restricted \write18 enabled.
  file:line:error style messages enabled.
@@ -403,41 +403,41 @@ Overfull \hbox (8.18605pt too wide) in paragraph at lines 386--387
  []
 
 [31]
-Overfull \hbox (32.89418pt too wide) in paragraph at lines 399--401
-[]\T1/lmr/m/n/12 (-20) Objetivo especifico 3: Incorporar capacidad de funcionamiento offline con almacenamiento
- []
-
-
-Overfull \hbox (3.70541pt too wide) in paragraph at lines 416--417
-\T1/lmr/m/n/12 (-20) Estos valores sirven como referencia para comparar los resultados reales que se presentarán
- []
-
-[32]
-Underfull \hbox (badness 1406) in paragraph at lines 456--456
+Underfull \hbox (badness 1406) in paragraph at lines 433--433
 []\T1/lmr/m/n/10.95 (+20) Tiempo medio de configuración inicial (no
  []
 
-[33{D:/Latex/fonts/enc/dvips/lm/lm-mathsy.enc}]
-Underfull \hbox (badness 6625) in paragraph at lines 475--475
+[32{D:/Latex/fonts/enc/dvips/lm/lm-mathsy.enc}]
+Underfull \hbox (badness 6625) in paragraph at lines 452--452
 []\T1/lmr/m/n/10.95 (+20) Registros almacenados sin
  []
 
 
-Underfull \hbox (badness 4569) in paragraph at lines 476--476
+Underfull \hbox (badness 4569) in paragraph at lines 453--453
 []\T1/lmr/m/n/10.95 (+20) Reintentos automáticos de
  []
 
 
-Underfull \hbox (badness 10000) in paragraph at lines 477--477
+Underfull \hbox (badness 10000) in paragraph at lines 454--454
 []\T1/lmr/m/n/10.95 (+20) Reintentos exitosos de
  []
 
 
-Underfull \hbox (badness 10000) in paragraph at lines 480--480
+Underfull \hbox (badness 10000) in paragraph at lines 457--457
 []\T1/lmr/m/n/10.95 (+20) Disponibilidad acumulada
  []
 
-[34{D:/Latex/fonts/enc/dvips/lm/lm-mathit.enc}] (cap4_iteraciones.tex [35]
+[33{D:/Latex/fonts/enc/dvips/lm/lm-mathit.enc}]
+Overfull \hbox (10.45134pt too wide) in paragraph at lines 466--466
+[]\T1/lmr/bx/n/17.28 (-20) Resultados Esperados de los Objetivos Específicos 
+ []
+
+
+Overfull \hbox (32.89418pt too wide) in paragraph at lines 474--476
+[]\T1/lmr/m/n/12 (-20) Objetivo especifico 3: Incorporar capacidad de funcionamiento offline con almacenamiento
+ []
+
+[34] (cap4_iteraciones.tex [35]
 \bbl@ensure@spanish {Cap\'\i tulo} 4.
 
 Overfull \hbox (0.94907pt too wide) in paragraph at lines 8--9
@@ -1012,7 +1012,7 @@ Here is how much of TeX's memory you used:
  1141 hyphenation exceptions out of 8191
  72i,11n,79p,1576b,449s stack positions out of 10000i,1000n,20000p,200000b,200000s
 <D:/Latex/fonts/type1/public/lm/lmbx10.pfb><D:/Latex/fonts/type1/public/lm/lmbx12.pfb><D:/Latex/fonts/type1/public/lm/lmmi10.pfb><D:/Latex/fonts/type1/public/lm/lmmi12.pfb><D:/Latex/fonts/type1/public/lm/lmr10.pfb><D:/Latex/fonts/type1/public/lm/lmr12.pfb><D:/Latex/fonts/type1/public/lm/lmri12.pfb><D:/Latex/fonts/type1/public/lm/lmro12.pfb><D:/Latex/fonts/type1/public/lm/lmsy10.pfb><D:/Latex/fonts/type1/public/lm/lmtk10.pfb><D:/Latex/fonts/type1/public/lm/lmtt12.pfb>
-Output written on memoria.pdf (105 pages, 1734766 bytes).
+Output written on memoria.pdf (105 pages, 1734776 bytes).
 PDF statistics:
  444 PDF objects out of 1000 (max. 8388607)
  0 named destinations out of 1000 (max. 500000)

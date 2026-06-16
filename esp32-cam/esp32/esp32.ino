@@ -15,6 +15,7 @@
 #include "esp_camera.h"
 #include "mqtt_client.h"
 #include "esp_crt_bundle.h" 
+#include <mbedtls/md.h>
 
 esp_mqtt_client_handle_t mqtt_client = NULL;
 bool mqttConnected = false;
@@ -56,6 +57,7 @@ String backendURL     = "https://sculpture-kong-filtering-essential.trycloudflar
 String mqttBroker     = "";
 String pinEnrol       = ""; 
 bool   estaEnrolado   = false;
+String adminHash     = "";
 String lastCapturedImageUrl = "";
 bool   camaraIniciada = false;
 bool   wifiEstabaConectado = false;
@@ -635,6 +637,127 @@ void beginHttp(HTTPClient& http, const String& url) {
   http.begin(url);
   http.setTimeout(10000);
   if (deviceMAC.length() > 0) http.addHeader("X-Device-MAC", deviceMAC);
+}
+
+// ============================================================
+// ADMIN LOCAL — SHA256 + Password
+// ============================================================
+String sha256(const String& input) {
+  byte output[32];
+  mbedtls_md_context_t ctx;
+  mbedtls_md_init(&ctx);
+
+  const mbedtls_md_info_t* info = mbedtls_md_info_from_type(MBEDTLS_MD_SHA256);
+  if (info == NULL) {
+    addLog("[ADMIN] ERROR: mbedtls SHA256 no disponible");
+    mbedtls_md_free(&ctx);
+    return "";
+  }
+
+  int ret = mbedtls_md_setup(&ctx, info, 0);
+  if (ret != 0) {
+    addLog("[ADMIN] ERROR: mbedtls_md_setup fallo (codigo " + String(ret) + ")");
+    mbedtls_md_free(&ctx);
+    return "";
+  }
+
+  ret = mbedtls_md_starts(&ctx);
+  if (ret != 0) {
+    addLog("[ADMIN] ERROR: mbedtls_md_starts fallo (codigo " + String(ret) + ")");
+    mbedtls_md_free(&ctx);
+    return "";
+  }
+
+  ret = mbedtls_md_update(&ctx, (const unsigned char*)input.c_str(), input.length());
+  if (ret != 0) {
+    addLog("[ADMIN] ERROR: mbedtls_md_update fallo (codigo " + String(ret) + ")");
+    mbedtls_md_free(&ctx);
+    return "";
+  }
+
+  ret = mbedtls_md_finish(&ctx, output);
+  if (ret != 0) {
+    addLog("[ADMIN] ERROR: mbedtls_md_finish fallo (codigo " + String(ret) + ")");
+    memset(output, 0, 32);
+    mbedtls_md_free(&ctx);
+    return "";
+  }
+  mbedtls_md_free(&ctx);
+
+  char hex[65];
+  for (int i = 0; i < 32; i++) {
+    snprintf(hex + (i * 2), 3, "%02x", output[i]);
+  }
+  hex[64] = '\0';
+  return String(hex);
+}
+
+void cargarAdminHash() {
+  if (!LittleFS.exists("/admin.json")) {
+    addLog("[ADMIN] /admin.json no existe, sin proteccion");
+    return;
+  }
+  File file = LittleFS.open("/admin.json", "r");
+  if (file) {
+    DynamicJsonDocument doc(128);
+    DeserializationError err = deserializeJson(doc, file);
+    if (err) {
+      addLog("[ADMIN] ERROR parseando /admin.json: " + String(err.c_str()));
+      file.close();
+      return;
+    }
+    if (doc.containsKey("admin_hash")) {
+      adminHash = doc["admin_hash"].as<String>();
+      addLog("[ADMIN] Hash cargado (" + String(adminHash.length()) + " chars)");
+    } else {
+      addLog("[ADMIN] /admin.json sin campo admin_hash");
+    }
+    file.close();
+  }
+}
+
+void saveAdminHash() {
+  DynamicJsonDocument doc(128);
+  doc["admin_hash"] = adminHash;
+  File file = LittleFS.open("/admin.json", "w");
+  if (file) {
+    serializeJson(doc, file);
+    file.close();
+    addLog("[ADMIN] Hash guardado en /admin.json");
+  } else {
+    addLog("[ADMIN] ERROR: no se pudo escribir /admin.json");
+  }
+}
+
+bool verificarPassword(const String& password) {
+  if (adminHash.length() == 0) return true;
+  String hash = sha256(password);
+  if (hash.length() == 0) {
+    addLog("[ADMIN] ERROR: sha256 fallo durante verificacion - acceso denegado");
+    return false;
+  }
+  bool ok = (hash == adminHash);
+  if (!ok) addLog("[ADMIN] Password incorrecto (hash_len=" + String(hash.length()) + " admin_len=" + String(adminHash.length()) + ")");
+  return ok;
+}
+
+bool requiereAdmin(WebServer& srv) {
+  if (adminHash.length() == 0) return true;
+  addLog("[ADMIN] Verificando acceso a " + srv.uri() + " (hash_len=" + String(adminHash.length()) + ")");
+  if (!srv.hasArg("admin_password")) {
+    addLog("[ADMIN] Falta admin_password en request");
+    srv.send(401, "text/plain", "Se requiere contrasena de administrador");
+    return false;
+  }
+  String pw = srv.arg("admin_password");
+  addLog("[ADMIN] Password recibido (" + String(pw.length()) + " chars)");
+  if (!verificarPassword(pw)) {
+    addLog("[ADMIN] Password INCORRECTO");
+    srv.send(401, "text/plain", "Contrasena incorrecta");
+    return false;
+  }
+  addLog("[ADMIN] Acceso concedido a " + srv.uri());
+  return true;
 }
 
 void sincronizarPersonasDesdeBackend() {
@@ -1337,11 +1460,13 @@ void saveArray(const char* path, DynamicJsonDocument& doc) {
 
 void initLittleFS() {
   if (!LittleFS.begin(true)) return;
-  const char* files[] = { "/personas.json", "/turnos.json", "/asignaciones.json", "/asistencias.json", "/wifi.json" };
+  const char* files[] = { "/personas.json", "/turnos.json", "/asignaciones.json", "/asistencias.json", "/wifi.json", "/admin.json" };
   for (auto f : files) {
     if (!LittleFS.exists(f)) {
       File file = LittleFS.open(f, "w");
-      file.println(String(f) == "/wifi.json" ? "{\"ssid\":\"\",\"pass\":\"\",\"backend\":\"http://172.20.10.3:5000\",\"mqtt\":\"\",\"pin\":\"\"}" : "[]");
+      if (String(f) == "/wifi.json") file.println("{\"ssid\":\"\",\"pass\":\"\",\"backend\":\"http://172.20.10.3:5000\",\"mqtt\":\"\",\"pin\":\"\"}");
+      else if (String(f) == "/admin.json") file.println("{}");
+      else file.println("[]");
       file.close();
     }
   }
@@ -1359,6 +1484,7 @@ void loadWiFiConfig() {
     if (doc.containsKey("pin")) pinEnrol = doc["pin"].as<String>();
     file.close();
   }
+  cargarAdminHash();
 }
 
 void saveConfig(String ssid, String pass, String backend, String mqtt, String pin) {
@@ -1370,10 +1496,13 @@ void saveConfig(String ssid, String pass, String backend, String mqtt, String pi
 }
 
 void servirArchivo(const char* path, const char* tipo) {
-  if (!LittleFS.exists(path)) { server.send(404, "text/plain", "Archivo no encontrado"); return; }
+  bool existe = LittleFS.exists(path);
+  addLog(String("[FILE] servirArchivo ") + path + " existe=" + (existe ? "SI" : "NO"));
+  if (!existe) { server.send(404, "text/plain", "Archivo no encontrado"); return; }
   File f = LittleFS.open(path, "r");
   server.streamFile(f, tipo);
   f.close();
+  addLog(String("[FILE] servirArchivo ") + path + " -> 200 (" + tipo + ")");
   yield(); 
 }
 
@@ -1387,12 +1516,25 @@ void handleWiFiConfig() {
   String backend = server.hasArg("backend") && server.arg("backend").length() > 0 ? server.arg("backend") : backendURL;
   String mqtt    = server.hasArg("mqtt")    && server.arg("mqtt").length()    > 0 ? server.arg("mqtt")    : mqttBroker;
   String pin     = server.hasArg("pin")     && server.arg("pin").length()     > 0 ? server.arg("pin")     : pinEnrol;
+
+  if (server.hasArg("admin_password_new") && server.arg("admin_password_new").length() > 0) {
+    if (adminHash.length() > 0) {
+      if (!server.hasArg("admin_password_old") || !verificarPassword(server.arg("admin_password_old"))) {
+        server.send(401, "text/plain", "Contrasena actual incorrecta");
+        return;
+      }
+    }
+    adminHash = sha256(server.arg("admin_password_new"));
+    saveAdminHash();
+  }
+
   saveConfig(ssid, pass, backend, mqtt, pin);
   server.send(200, "text/plain", "Guardado. Reiniciando...");
   delay(1500); ESP.restart();
 }
 
 void handleRegisterUser() {
+  if (!requiereAdmin(server)) return;
   if (!server.hasArg("name") || !server.hasArg("rut")) { server.send(400, "text/plain", "Faltan datos"); return; }
   ultimoErrorRegistro = "";
   rostroRegistroExitoso = false;
@@ -1405,6 +1547,7 @@ void handleRegisterUser() {
 }
 
 void handleCreateTurn() {
+  if (!requiereAdmin(server)) return;
   actualizarBloqueoAsistencia();
   if (!server.hasArg("nombre") || !server.hasArg("inicio") || !server.hasArg("fin") || !server.hasArg("dias")) {
     server.send(400, "text/plain", "Datos incompletos");
@@ -1435,6 +1578,7 @@ void handleCreateTurn() {
 }
 
 void handleAssignTurn() {
+  if (!requiereAdmin(server)) return;
   actualizarBloqueoAsistencia();
   if (!server.hasArg("persona") || !server.hasArg("turno")) {
     server.send(400, "text/plain", "Falta persona o turno");
@@ -1500,6 +1644,7 @@ void handleMarcarAsistencia() {
 }
 
 void handleLimpiarDatos() {
+  if (!requiereAdmin(server)) return;
   actualizarBloqueoAsistencia();
   if (!server.hasArg("codigo") || server.arg("codigo") != "1234") {
     server.send(403, "text/plain", "Codigo incorrecto");
@@ -1517,6 +1662,7 @@ void handleLimpiarDatos() {
 }
 
 void handleSincronizar() {
+  if (!requiereAdmin(server)) return;
   actualizarBloqueoAsistencia();
   if (!isOnline) { server.send(503, "text/plain", "Sin conexion"); return; }
   sincronizarPendientes();
@@ -1527,6 +1673,7 @@ void handleSincronizar() {
 }
 
 void handleFetchPersonas() {
+  if (!requiereAdmin(server)) return;
   actualizarBloqueoAsistencia();
   if (!isOnline) { server.send(503, "text/plain", "Sin conexion WiFi"); return; }
   sincronizarPersonasDesdeBackend();
@@ -1534,6 +1681,7 @@ void handleFetchPersonas() {
 }
 
 void handleSetBackend() {
+  if (!requiereAdmin(server)) return;
   actualizarBloqueoAsistencia();
   if (!server.hasArg("url")) { server.send(400, "text/plain", "Falta url"); return; }
   backendURL = server.arg("url");
@@ -1542,6 +1690,7 @@ void handleSetBackend() {
 }
 
 void handleEditarPersona() {
+  if (!requiereAdmin(server)) return;
   actualizarBloqueoAsistencia(60000);
   if (!server.hasArg("id") || !server.hasArg("name")) {
     server.send(400, "text/plain", "Faltan id o name");
@@ -1611,6 +1760,7 @@ void handleEditarPersona() {
 }
 
 void handleActualizarHuellaPersona() {
+  if (!requiereAdmin(server)) return;
   actualizarBloqueoAsistencia(60000);
   if (!server.hasArg("id")) {
     server.send(400, "text/plain", "Falta id");
@@ -1660,6 +1810,7 @@ void handleActualizarHuellaPersona() {
 }
 
 void handleActualizarRostroPersona() {
+  if (!requiereAdmin(server)) return;
   actualizarBloqueoAsistencia(60000);
   if (!server.hasArg("id")) {
     server.send(400, "text/plain", "Falta id");
@@ -1694,6 +1845,7 @@ void handleActualizarRostroPersona() {
 }
 
 void handleAgregarFotosPersona() {
+  if (!requiereAdmin(server)) return;
   actualizarBloqueoAsistencia(60000);
   if (!server.hasArg("id")) {
     server.send(400, "text/plain", "Falta id");
@@ -1791,6 +1943,7 @@ void completarEdicionHuellaExistente() {
 }
 
 void handleBorrarPersona() {
+  if (!requiereAdmin(server)) return;
   actualizarBloqueoAsistencia();
   if (!server.hasArg("id")) { server.send(400, "text/plain", "Falta ID"); return; }
   String id = server.arg("id");
@@ -1823,6 +1976,7 @@ void handleBorrarPersona() {
 }
 
 void handleBorrarTurno() {
+  if (!requiereAdmin(server)) return;
   actualizarBloqueoAsistencia();
   if (!server.hasArg("id")) { server.send(400, "text/plain", "Falta ID"); return; }
   String id = server.arg("id");
@@ -1850,6 +2004,7 @@ void handleBorrarTurno() {
 }
 
 void handleBorrarAsignacion() {
+  if (!requiereAdmin(server)) return;
   actualizarBloqueoAsistencia();
   if (!server.hasArg("persona") || !server.hasArg("turno")) { server.send(400, "text/plain", "Faltan datos"); return; }
   String persona = server.arg("persona");
@@ -1882,6 +2037,8 @@ void handleBorrarAsignacion() {
 }
 
 void handleUltimoRegistro() {
+  addLog("[API] GET /ultimo_registro");
+  if (!requiereAdmin(server)) return;
   actualizarBloqueoAsistencia(); // No se necesita un bloqueo severo de 120s aquí.
     DynamicJsonDocument doc(2048);
     JsonArray personas = loadArray("/personas.json", doc);
@@ -1899,10 +2056,10 @@ void handleUltimoRegistro() {
     server.send(200, "application/json", json);
 }
 
-void handleGetPersonas() { actualizarBloqueoAsistencia(); servirArchivo("/personas.json", "application/json"); }
-void handleGetTurnos() { actualizarBloqueoAsistencia(); servirArchivo("/turnos.json", "application/json"); }
-void handleGetAsignaciones() { actualizarBloqueoAsistencia(); servirArchivo("/asignaciones.json", "application/json"); }
-void handleGetAsistencias() { actualizarBloqueoAsistencia(); servirArchivo("/asistencias.json", "application/json"); }
+void handleGetPersonas() { addLog("[API] GET /api/personas"); if (!requiereAdmin(server)) return; actualizarBloqueoAsistencia(); servirArchivo("/personas.json", "application/json"); }
+void handleGetTurnos() { addLog("[API] GET /api/turnos"); if (!requiereAdmin(server)) return; actualizarBloqueoAsistencia(); servirArchivo("/turnos.json", "application/json"); }
+void handleGetAsignaciones() { addLog("[API] GET /api/asignaciones"); if (!requiereAdmin(server)) return; actualizarBloqueoAsistencia(); servirArchivo("/asignaciones.json", "application/json"); }
+void handleGetAsistencias() { addLog("[API] GET /api/asistencias (public)"); actualizarBloqueoAsistencia(); servirArchivo("/asistencias.json", "application/json"); }
 
 void WiFiEvent(arduino_event_id_t event, arduino_event_info_t info) {
   switch (event) {
@@ -2010,12 +2167,18 @@ void setup() {
   server.on("/api/asignaciones", handleGetAsignaciones);
   server.on("/api/asistencias", handleGetAsistencias);
   server.on("/api/logs", []() {
+    addLog("[API] GET /api/logs");
+    if (!requiereAdmin(server)) return;
     String contenido = logBuffer;
     if (contenido.length() == 0) contenido = "Sin logs disponibles";
+    addLog("[API] /api/logs -> 200 (" + String(contenido.length()) + " bytes)");
     server.send(200, "text/html", contenido);
   });
   server.on("/api/logs/clear", []() {
+    addLog("[API] GET /api/logs/clear");
+    if (!requiereAdmin(server)) return;
     logBuffer = "";
+    addLog("[API] /api/logs/clear -> 200");
     server.send(200, "text/plain", "Logs limpiados");
   });
   server.on("/ultimo_registro", handleUltimoRegistro); 
@@ -2054,6 +2217,7 @@ void setup() {
     json += "\"mqtt\":\""    + mqttBroker + "\",";
     json += "\"ssid\":\""    + jsonEscape(savedSSID) + "\",";
     json += "\"enrolado\":"  + String(estaEnrolado ? "true" : "false") + ",";
+    json += "\"admin_protegido\":" + String(adminHash.length() > 0 ? "true" : "false") + ",";
     json += "\"mac\":\""     + deviceMAC + "\"";
     json += "}";
     server.send(200, "application/json", json);

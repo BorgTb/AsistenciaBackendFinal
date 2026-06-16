@@ -76,6 +76,7 @@ h2{font-size:10px;text-transform:uppercase;letter-spacing:1px;color:var(--dim);m
   </button>
 
   <h2>Zona de Peligro</h2>
+  <div id="adminBadge" style="display:none;font-size:10px;color:var(--w);margin-bottom:6px;padding:4px 8px;background:rgba(245,158,11,.1);border:1px solid rgba(245,158,11,.3);border-radius:4px">&#128274; Admin: Contrase\u00f1a requerida para acciones protegidas</div>
   <button class="btn btn-r" onclick="limpiarDatos()">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
     <span class="txt">Limpiar Todos los Datos</span><span class="arr">→</span>
@@ -85,6 +86,58 @@ h2{font-size:10px;text-transform:uppercase;letter-spacing:1px;color:var(--dim);m
 </div>
 
 <script>
+const ADMIN_PW_KEY='sas_admin_session';
+let adminHabilitado=false;
+async function mostrarModalPassword(errorMsg){
+  return new Promise(resolve=>{
+    const ov=document.createElement('div');
+    ov.style.cssText='position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.7);z-index:9999;display:flex;align-items:center;justify-content:center;font-family:sans-serif';
+    ov.innerHTML='<div style="background:#1e293b;padding:24px;border-radius:8px;max-width:320px;width:90%;text-align:center;border:1px solid #475569">'
+      +'<h2 style="color:#f1f5f9;margin:0 0 16px;font-size:16px">\uD83D\uDD12 Contrase\u00f1a requerida</h2>'
+      +'<input type="password" id="apw" style="width:100%;padding:10px;border:1px solid #475569;border-radius:6px;background:#0f172a;color:#f1f5f9;font-size:14px;margin-bottom:12px;box-sizing:border-box" placeholder="Ingrese contrase\u00f1a"'+(errorMsg?'':' autofocus')+'>'
+      +(errorMsg?'<div style="color:#ef4444;font-size:12px;margin-bottom:8px">'+errorMsg+'</div>':'')
+      +'<button id="apb" style="width:100%;padding:10px;background:#3b82f6;color:#fff;border:none;border-radius:6px;font-size:14px;cursor:pointer">Ingresar</button>'
+      +'<button id="apc" style="width:100%;padding:8px;background:transparent;color:#94a3b8;border:none;border-radius:6px;font-size:12px;cursor:pointer;margin-top:6px">Cancelar</button></div>';
+    document.body.appendChild(ov);
+    const inp=ov.querySelector('#apw'),btn=ov.querySelector('#apb'),can=ov.querySelector('#apc');
+    inp.focus();
+    btn.onclick=()=>{const v=inp.value.trim();if(v){document.body.removeChild(ov);resolve(v);}else inp.focus();};
+    can.onclick=()=>{document.body.removeChild(ov);resolve(null);};
+    inp.onkeydown=e=>{if(e.key==='Enter')btn.onclick();};
+  });
+}
+
+async function verificarAcceso(){
+  try{
+    const e=await fetch('/estado').then(r=>r.json());
+    adminHabilitado=e.admin_protegido||false;
+    if(!adminHabilitado)return true;
+    let pw=sessionStorage.getItem(ADMIN_PW_KEY);
+    if(pw){
+      const t=await fetch('/api/logs?admin_password='+encodeURIComponent(pw));
+      if(t.ok)return true;
+      sessionStorage.removeItem(ADMIN_PW_KEY);
+    }
+    pw=await mostrarModalPassword();
+    while(pw){
+      const t=await fetch('/api/logs?admin_password='+encodeURIComponent(pw));
+      if(t.ok){sessionStorage.setItem(ADMIN_PW_KEY,pw);return true;}
+      pw=await mostrarModalPassword('Contrase\u00f1a incorrecta');
+    }
+    document.body.innerHTML='<div style="padding:2em;text-align:center;font-family:sans-serif"><h2>\uD83D\uDD12 Acceso denegado</h2><p>Se requiere contrase\u00f1a de administrador para ver esta p\u00e1gina.</p></div>';
+    return false;
+  }catch(e){return true;}
+}
+
+async function fetchProtegido(url){
+  if(!adminHabilitado)return fetch(url);
+  let pw=sessionStorage.getItem(ADMIN_PW_KEY);
+  if(!pw)return null;
+  const sep=url.includes('?')?'&':'?';
+  const r=await fetch(url+sep+'admin_password='+encodeURIComponent(pw));
+  if(r.status===401){sessionStorage.removeItem(ADMIN_PW_KEY);alert('Contrase\u00f1a incorrecta. Recargue la p\u00e1gina.');return null;}
+  return r;
+}
 function traducirMotivo(m){
   const map={habilitada:'ACTIVA',sistema_ocupado:'OCUPADO',cooldown:'COOLDOWN',bloqueo_menu:'BLOQUEADO',sin_personas_locales:'SIN PERSONAS',sin_asignaciones_locales:'SIN ASIGNAC.'};
   return map[m]||m||'--';
@@ -98,6 +151,9 @@ async function actualizarEstado(){
     const a=document.getElementById('enrolEstado');
     a.textContent=e.enrolado?'ENROLADO':'PEND.';
     a.className='stat-val '+(e.enrolado?'on':'pend');
+    if(e.admin_protegido){
+      document.getElementById('adminBadge').style.display='block';
+    }
   }catch(err){}
 }
 function setStatus(msg,ok=true){
@@ -113,14 +169,18 @@ async function limpiarDatos(){
   if(!codigo)return;
   if(!confirm('¿Confirmar eliminación total?'))return;
   setStatus('Limpiando datos...');
-  try{const r=await fetch('/limpiar?codigo='+encodeURIComponent(codigo));const msg=await r.text();setStatus(msg);if(msg.includes('correctamente'))setTimeout(()=>location.reload(),3000);}catch(e){setStatus('Error: '+e.message,false);}
+  try{const r=await fetchProtegido('/limpiar?codigo='+encodeURIComponent(codigo));if(!r)return;const msg=await r.text();setStatus(msg);if(msg.includes('correctamente'))setTimeout(()=>location.reload(),3000);}catch(e){setStatus('Error: '+e.message,false);}
 }
 async function sincronizarTodo(){
   setStatus('Sincronizando...');
-  try{const r=await fetch('/sincronizar');const msg=await r.text();setStatus(msg);}catch(e){setStatus('Error: '+e.message,false);}
+  try{const r=await fetchProtegido('/sincronizar');if(!r)return;const msg=await r.text();setStatus(msg);}catch(e){setStatus('Error: '+e.message,false);}
 }
-actualizarEstado();
-setInterval(actualizarEstado,3000);
+(async function(){
+  if(!await verificarAcceso())return;
+  if(adminHabilitado)document.getElementById('adminBadge').style.display='block';
+  actualizarEstado();
+  setInterval(actualizarEstado,3000);
+})();
 </script>
 </body>
 </html>
