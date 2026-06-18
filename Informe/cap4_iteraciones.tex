@@ -230,7 +230,7 @@ Para la implementación del servidor HTTP embebido, se utilizó el módulo \text
 
 \subsubsection{Creación de vistas HTML embebidas}
 
-Las vistas fueron desarrolladas directamente en el firmware utilizando literales de cadena crudos (\texttt{R"rawliteral(...)"}), conteniendo HTML, CSS y JavaScript autónomo, sin dependencias de CDN externas. Esto garantiza que el ESP32-CAM sirva cada página incluso en modo Access Point sin conexión a internet.
+Las vistas fueron desarrolladas como archivos \texttt{.html} independientes almacenados en el sistema de archivos LittleFS del ESP32-CAM, conteniendo HTML, CSS y JavaScript autónomo, sin dependencias de CDN externas. El servidor web embebido las sirve mediante la función \texttt{servirArchivo()}, que lee el archivo solicitado desde LittleFS y lo envía al cliente. Esto garantiza que el ESP32-CAM sirva cada página incluso en modo Access Point sin conexión a internet.
 
 \subsubsection{Menú principal}
 
@@ -1110,9 +1110,30 @@ Para complementar el backend, se desarrolló un panel web independiente (Next.js
 
 El panel web se comunica con el backend Flask mediante un proxy interno (\texttt{app/api/\_proxy.ts}) que reenvía las peticiones a la API REST, evitando problemas de CORS. La aplicación está protegida por un middleware de autenticación que valida el token JWT y restringe el acceso según el rol del usuario (admin, empleador, trabajador). El frontend se compila con Docker en un build multi-etapa usando \texttt{output: 'standalone'} para producir una imagen optimizada lista para producción.
 
+Adicionalmente, el panel web incorpora las siguientes funcionalidades complementarias:
+
+\begin{itemize}
+    \item \textbf{Auto-registro de empresas}: La pantalla de inicio de sesión incluye un modo de registro que permite a nuevas empresas crear su cuenta directamente, invocando al endpoint público \texttt{POST /api/auth/register-company}. El formulario solicita nombre de la empresa y datos del administrador (nombre, email, contraseña), y al enviarlo crea la organización, el usuario administrador y retorna un token JWT para acceso inmediato.
+    \item \textbf{Captura facial por webcam}: El formulario de registro facial en el panel web utiliza la API \texttt{navigator.mediaDevices.getUserMedia()} para capturar fotografías directamente desde la cámara del navegador, eliminando la necesidad de subir archivos desde el sistema de archivos local. La interfaz permite visualizar la vista previa en vivo, capturar, previsualizar y confirmar o repetir la toma, con liberación adecuada del stream al cancelar.
+    \item \textbf{Edición de usuarios del sistema}: Los administradores y empleadores pueden editar los datos de los usuarios del sistema (nombre, email, rol, contraseña, estado activo/inactivo) mediante un formulario modal que reutiliza la interfaz de registro en modo edición. Las actualizaciones son parciales: solo se envían los campos modificados.
+\end{itemize}
+
 \subsubsection{Endpoint de configuración ERP para el ESP32-CAM}
 
 Para que el ESP32-CAM pueda notificar asistencias directamente a los ERP configurados (incluso si el backend central no está disponible), se implementó el endpoint \texttt{GET /api/dispositivos/erp-config}, que retorna la lista de integraciones ERP activas con envío automático habilitado. El ESP32-CAM consulta este endpoint cada hora y almacena la configuración en \texttt{/erp-config.json}, permitiéndole enviar marcaciones a los ERP incluso durante desconexiones parciales.
+
+\subsubsection{Contraseñas para autenticación de dispositivos}
+
+Para reforzar la seguridad en la comunicación entre el backend y los ESP32-CAM enrolados, se implementó un sistema de contraseñas de dispositivo que permite al administrador generar, gestionar y verificar credenciales específicas para cada terminal IoT. El flujo contempla cuatro operaciones:
+
+\begin{itemize}
+    \item \textbf{Generar contraseña} (\texttt{POST /api/dispositivos/<id>/generar-password}): El administrador solicita una nueva contraseña de 12 caracteres alfanuméricos, generada mediante \texttt{secrets.choice()}. El backend almacena el hash SHA256 de la contraseña, la versión en texto plano (temporal) y marca la contraseña como pendiente (\texttt{password\_pendiente = TRUE}). La respuesta incluye la contraseña en texto plano para que el administrador la proporcione al dispositivo.
+    \item \textbf{Verificar contraseña pendiente} (\texttt{GET /api/dispositivos/check-password}): El ESP32-CAM, al iniciar, consulta este endpoint enviando su MAC address como header \texttt{X-Device-MAC}. Si hay una contraseña pendiente, el backend la retorna en texto plano para que el dispositivo la aplique localmente.
+    \item \textbf{Confirmar contraseña} (\texttt{POST /api/dispositivos/confirmar-password}): Una vez que el dispositivo ha aplicado la contraseña localmente, confirma al backend, que limpia el texto plano (\texttt{password\_plain = NULL}) y desmarca el estado pendiente. A partir de este momento, solo el hash SHA256 permanece almacenado.
+    \item \textbf{Eliminar contraseña} (\texttt{DELETE /api/dispositivos/<id>/password}): El administrador puede eliminar la contraseña de un dispositivo, limpiando el hash y el texto plano.
+\end{itemize}
+
+En el panel web, la sección de gestión de dispositivos incorpora botones para generar, regenerar y eliminar contraseñas, así como indicadores visuales del estado de la contraseña (tiene o no tiene, pendiente o confirmada).
 
 \subsubsection{Módulo de integración ERP}
 
@@ -1297,6 +1318,10 @@ Se diseñaron las siguientes pruebas para validar la sincronización diferida, l
 
     \item \textbf{Prueba de flujo completo punta a punta}: Ejecutar el flujo completo: registrar persona con huella y rostro en el ESP32-CAM $\rightarrow$ sincronizar con backend $\rightarrow$ verificar que la persona aparezca en el panel web $\rightarrow$ marcar asistencia por huella offline $\rightarrow$ reconectar y sincronizar $\rightarrow$ verificar que la asistencia aparezca en el panel web y se envíe al ERP de prueba.
 \end{itemize}
+
+\subsubsection{Pruebas automatizadas}
+
+Además de las pruebas funcionales descritas, se implementó una suite de ~243 pruebas automatizadas para el backend y el firmware, utilizando pytest con PostgreSQL en Docker y mocks para DeepFace, OpenCV y MQTT. Las pruebas cubren los flujos de todas las iteraciones: inicialización de la aplicación, esquema de base de datos, cifrado de embeddings, handlers MQTT, autenticación JWT, endpoints faciales, CRUD de personas/turnos/asignaciones/asistencias, sincronización offline, integración ERP y enrolamiento de dispositivos. El detalle completo de los casos de prueba se incluye en el Anexo correspondiente.
 
 
 %% ============================================================

@@ -11,12 +11,12 @@
 
 | Métrica | Valor |
 |---|---|
-| **Congruencia global** | **93%** |
-| Afirmaciones del informe verificadas en código | 38 ✅ |
-| Afirmaciones con divergencia leve | 2 ⚠️ |
-| Afirmaciones NO implementadas | 1 ❌ |
+| **Congruencia global** | **96%** |
+| Afirmaciones del informe verificadas en código | 45 ✅ |
+| Afirmaciones con divergencia leve | 1 ⚠️ |
+| Afirmaciones NO implementadas | 0 ❌ |
 | Elementos en código NO documentados | 4 ➕ |
-| Código muerto (legacy que el informe da por activo) | ~50 líneas (MQTT fragmentado) |
+| Código muerto (legacy que el informe da por activo) | 0 (eliminado) |
 | Correcciones de texto necesarias | 0 |
 
 ### Porcentaje por iteración (capítulo 4)
@@ -29,8 +29,8 @@
 | 4 | Facial + anti-spoofing + cifrado | **99%** |
 | 5 | JWT + multi-tenant + enrolamiento | **100%** |
 | 6 | Antifraude PIR + flash + cooldown | **100%** |
-| 7 | Panel web para la gestión del dispositivo + integración ERP | **84%** |
-| 8 | Sincronización + logs + cierre | **70%** |
+| 7 | Panel web para la gestión del dispositivo + integración ERP | **90%** |
+| 8 | Sincronización + logs + cierre | **85%** |
 
 ---
 
@@ -168,10 +168,8 @@ El capítulo 3 fue reestructurado para presentar un plan de trabajo compacto (la
 | AP: SSID `ESP32-ASISTENCIA`, pass `Asistencia2026` | `esp32.ino:39-40` — coincide exactamente | ✅ |
 | Servidor web puerto 80 con 9 rutas HTML | `esp32.ino:1899-1906` — 10 rutas HTML: `/`, `/register`, `/gestion`, `/personas`, `/asistencias`, `/turnos`, `/asignaciones`, `/wifi-setup`, `/logs`, más `/admin` no documentado en informe | ✅ |
 | 14+ endpoints de acción (handlers) | `esp32.ino:1910-1942` — handlers: wifi-config, registrar, crear_turno, asignar, marcar, limpiar, sincronizar, fetch-personas, set-backend, editar_persona, actualizar_huella, actualizar_rostro, borrar_persona, borrar_turno, borrar_asignacion, + API/ultimo_registro, /api/logs, /api/logs/clear, /wifi-diag, /estado | ✅ |
-| Vistas HTML con literales raw sin CDN | `esp32.ino` almacena HTML en `data/` como archivos LittleFS (no literales incrustados como describe el informe). **Divergencia**: el informe dice "literales R"rawliteral"..." pero en la implementación real las vistas se sirven desde archivos `*.html` en LittleFS. | ⚠️ |
+| Vistas HTML servidas desde LittleFS | `esp32.ino` almacena HTML en `data/` como archivos `.html`. El informe ahora documenta correctamente que se sirven mediante `servirArchivo()` desde LittleFS. Discrepancia corregida en Iter 1. | ✅ |
 | **Elementos no documentados** | Endpoints `/wifi-diag` (diagnóstico Wi-Fi), `/estado` (estado del dispositivo), `/ultimo_registro` (última asistencia) — existen en `esp32.ino:1942,1981,1940` | ➕ |
-
-**Recomendación**: Corregir en `cap4_iteraciones.tex` la mención de "literales R"rawliteral"" indicando que las vistas se almacenan como archivos `.html` en LittleFS y se sirven mediante `servirArchivo()`.
 
 ---
 
@@ -209,8 +207,8 @@ El capítulo 3 fue reestructurado para presentar un plan de trabajo compacto (la
 | Backoff de reconexión Wi-Fi (3-15s) | `esp32.ino` — función `verificarConexionWiFi()` con backoff progresivo | ✅ |
 | Docker Compose Mosquitto | `docker-compose.yml:1-21` — imagen eclipse-mosquitto, red teleasist_network | ✅ |
 | **Puerto MQTT corregido** | `docker-compose.yml:8` — **1884:1883** externo. El informe ya documenta correctamente el mapeo (secciones 9.1 y 9.8). | ✅ |
-| **Fragmentación MQTT (código muerto)** | `mqtt_handler.py:128-172` — handlers para `start`, `part`, `end` que ya no se usan. El código legacy sigue presente sin documentar. | ⚠️ |
-| **sincronizacion_log no se escribe desde sync** | `routes/asistencias.py:127-171` — el endpoint `/api/asistencias/sync` inserta en `asistencias` pero **NUNCA** escribe en `sincronizacion_log`. El informe documenta la tabla pero el código no la escribe. | ❌ |
+| **Fragmentación MQTT (código muerto)** | Código legacy eliminado de `mqtt_handler.py`. Ya no hay handlers para `start`, `part`, `end`. | ✅ |
+| **sincronizacion_log implementado** | `routes/asistencias.py:168-173` — ahora escribe en `sincronizacion_log` con dispositivo_id, registros_enviados, registros_ok, estado y detalle. | ✅ |
 
 ---
 
@@ -285,7 +283,7 @@ El capítulo 3 fue reestructurado para presentar un plan de trabajo compacto (la
 
 ---
 
-### 5.7 Iteración 7: Panel web para la gestión del dispositivo e integración ERP — **84%** ✅
+### 5.7 Iteración 7: Panel web para la gestión del dispositivo e integración ERP — **90%** ✅
 
 | Afirmación | Verificación | Estado |
 |---|---|---|
@@ -299,16 +297,16 @@ El capítulo 3 fue reestructurado para presentar un plan de trabajo compacto (la
 | CORS habilitado | `app.py:18` — `CORS(app)` | ✅ |
 | **Panel web para la gestión del dispositivo** (Next.js 16, React 19, TypeScript) | `Frontend/` — panel con módulo principal de gestión del dispositivo IoT (enrolamiento, PIN, estado online, logs de sincronización), más módulos complementarios de administración. Documentado en `cap4_iteraciones.tex` Iter 7 y `memoria.tex` cap 3 Iter 7. La API se comunica mediante proxy interno. | ✅ |
 | **Página de estado del dispositivo** | `Frontend/app/dispositivos/page.tsx` — tarjetas con indicador de conexión online/offline, generación de PIN, rename, eliminación | ✅ |
-| **Contraseñas de dispositivos** (NO documentado) | `routes/dispositivos.py:161-270` — 4 endpoints: `POST /generar-password`, `DELETE /password`, `GET /check-password`, `POST /confirmar-password`. SHA256, columnas `password_hash`, `password_plain`, `password_pendiente` en BD. UI en `SasDashboard.tsx` con botones generar/regenerar/quitar. **No documentado en informe.** | ❌ |
-| **Frontend: registro de empresas** (NO documentado) | `Frontend/components/LoginForm.tsx` — modo registro con toggle login/register. Llama a `registerCompany()`. **No documentado en informe.** | ➕ |
-| **Frontend: captura por webcam** (NO documentado) | `Frontend/components/SasDashboard.tsx` — `navigator.mediaDevices.getUserMedia()` para captura facial. Reemplaza file-upload. **No documentado en informe.** | ➕ |
-| **Frontend: edición de usuarios** (NO documentado) | `Frontend/components/SasDashboard.tsx` + `Frontend/app/api/auth/usuarios/` — editar usuarios del sistema. **No documentado en informe.** | ➕ |
+| **Contraseñas de dispositivos** | `routes/dispositivos.py:161-270` — 4 endpoints. **Documentado en informe** (Iter 7, subsección "Contraseñas para autenticación de dispositivos"). | ✅ |
+| **Frontend: registro de empresas** | `Frontend/components/LoginForm.tsx` — modo registro con toggle login/register. **Documentado en informe** (Iter 7). | ✅ |
+| **Frontend: captura por webcam** | `Frontend/components/SasDashboard.tsx` — `navigator.mediaDevices.getUserMedia()` para captura facial. **Documentado en informe** (Iter 7). | ✅ |
+| **Frontend: edición de usuarios** | `Frontend/components/SasDashboard.tsx` — editar usuarios del sistema. **Documentado en informe** (Iter 7). | ✅ |
 
-**Análisis del "panel web"**: El informe documenta correctamente el frontend Next.js. Sin embargo, varias funcionalidades nuevas agregadas al frontend entre el 2026-06-04 y el 2026-06-16 (contraseñas de dispositivos, registro de empresas, captura webcam, edición de usuarios) **no están documentadas** en el informe, lo que reduce la congruencia de 90%→84%.
+**Análisis del "panel web"**: Todas las funcionalidades del frontend y las contraseñas de dispositivos ahora están documentadas en el informe. Se actualizó `cap4_iteraciones.tex` con subsecciones específicas, elevando la congruencia de 84%→90%.
 
 ---
 
-### 5.8 Iteración 8: Sincronización, logs y cierre — **70%** ❌
+### 5.8 Iteración 8: Sincronización, logs y cierre — **85%** ✅
 
 | Afirmación | Verificación | Estado |
 |---|---|---|
@@ -319,9 +317,9 @@ El capítulo 3 fue reestructurado para presentar un plan de trabajo compacto (la
 | `sincronizarPendientes()` al inicio | `esp32.ino:1273-1310` — ejecuta en secuencia asistencias, turnos, asignaciones | ✅ |
 | Sincronización periódica cada 5 min | `esp32.ino:2186` — `if (ahora - ultimaSync > 300000) sincronizarPendientes()` | ✅ |
 | Consulta de ERP config cada 1h | `esp32.ino:2192` — `sincronizarErpConfigDesdeBackend()` con timer | ✅ |
-| **sincronizacion_log NO se escribe** | `routes/asistencias.py:127-171` — el endpoint `/api/asistencias/sync` no tiene `INSERT INTO sincronizacion_log`. El informe documenta la tabla (cap4 líneas 522, 1206, 1290) pero el código nunca escribe en ella. | ❌ |
+| **sincronizacion_log implementado** | `routes/asistencias.py:168-173` — ahora escribe en `sincronizacion_log` con dispositivo_id, registros_enviados, registros_ok, estado y detalle. | ✅ |
 | Watchdog (barrido inicial + 60s) | `mqtt_handler.py:253-283` — sweep inicial (marca todos inactivos) + verificación cada 60s | ✅ |
-| `deteccion.py` (script de simulación) | `deteccion.py:1-170` — menú interactivo con selección de fotos + DeepFace + registro en BD. **Ahora documentado** (cap4 líneas 1222, 1265-1296). | ✅ |
+| `deteccion.py` (script de simulación) | `deteccion.py:1-170` — menú interactivo con selección de fotos + DeepFace + registro en BD. **Documentado** (cap4 líneas 1222, 1265-1296). | ✅ |
 | **Sincronización de personas creadas offline** | El informe describe sincronización de entidades con resolución de IDs. No hay evidencia clara de reconciliación de IDs con prefijo `local-`. | ⚠️ |
 | **Elementos no documentados** | `tests/mqtt.py`, `tests/test.py`, `tests/test_sensor/test_sensor.ino` — scripts de prueba no mencionados | ➕ |
 | **tests/Odoo ERP/docker-compose.yml** | Contenedor Odoo para pruebas de integración ERP, no documentado | ➕ |
@@ -360,13 +358,13 @@ Adicionalmente, el backend expone endpoints no consumidos por el ESP32-CAM pero 
 |---|---|---|---|
 | `/api/facial/agregar-foto` | POST | `routes/facial.py` | Sí (Iter 4) |
 | `/api/auth/register-company` | POST | `routes/auth.py:497` | Sí (Iter 5) |
-| `/api/dispositivos/<id>/generar-password` | POST | `routes/dispositivos.py:161` | ❌ No documentado |
-| `/api/dispositivos/<id>/password` | DELETE | `routes/dispositivos.py:207` | ❌ No documentado |
-| `/api/dispositivos/check-password` | GET | `routes/dispositivos.py:232` | ❌ No documentado |
-| `/api/dispositivos/confirmar-password` | POST | `routes/dispositivos.py:259` | ❌ No documentado |
-| `/api/auth/usuarios/<user_id>` | PUT | `routes/auth.py:393` | ➕ No documentado |
+| `/api/dispositivos/<id>/generar-password` | POST | `routes/dispositivos.py:161` | Sí (Iter 7) |
+| `/api/dispositivos/<id>/password` | DELETE | `routes/dispositivos.py:207` | Sí (Iter 7) |
+| `/api/dispositivos/check-password` | GET | `routes/dispositivos.py:232` | Sí (Iter 7) |
+| `/api/dispositivos/confirmar-password` | POST | `routes/dispositivos.py:259` | Sí (Iter 7) |
+| `/api/auth/usuarios/<user_id>` | PUT | `routes/auth.py:393` | Sí (Iter 7) |
 
-**Total: 24 endpoints en backend. 4 de contraseñas de dispositivos + 1 de edición usuarios no documentados en informe.**
+**Total: 24 endpoints en backend. Todos documentados en el informe.**
 
 ---
 
@@ -381,11 +379,11 @@ Adicionalmente, el backend expone endpoints no consumidos por el ESP32-CAM pero 
 | **HTTP `POST /api/facial/identificar`** | N/A (HTTP, no MQTT) | ✅ (ESP32 → backend, identificación) | ✅ (ahora documentado, cap4 líneas 477-484) |
 | `esp32/imagen/eco` | ✅ (`mqtt_handler.py:40,65`) | ✅ (solo debug, Python) | No |
 | `esp32/asistencia/#` | ✅ (`mqtt_handler.py:41`) | No usado | No |
-| `esp32/imagen/start` | ❌ (código muerto líneas 128-131) | No usado | En desuso |
-| `esp32/imagen/part` | ❌ (código muerto líneas 133-137) | No usado | En desuso |
-| `esp32/imagen/end` | ❌ (código muerto líneas 139-172) | No usado | En desuso |
+| ~~`esp32/imagen/start`~~ | ✅ Eliminado | No usado | Obsoleto — código limpiado |
+| ~~`esp32/imagen/part`~~ | ✅ Eliminado | No usado | Obsoleto — código limpiado |
+| ~~`esp32/imagen/end`~~ | ✅ Eliminado | No usado | Obsoleto — código limpiado |
 
-**Código muerto en `mqtt_handler.py:128-172`**: Los handlers para `start`, `part`, `end` corresponden a un enfoque antiguo de fragmentación de imágenes que ya no se utiliza. El ESP32 actual envía la imagen como un único mensaje JSON por el tópico `esp32/imagen/registrar` (con `QoS 1`). Se recomienda **eliminar** las líneas 128-172.
+**Código limpiado**: Los handlers legacy `start`, `part`, `end` fueron **eliminados** de `mqtt_handler.py`. El ESP32 envía la imagen como un único mensaje JSON por `esp32/imagen/registrar` (QoS 1).
 
 ---
 
@@ -405,14 +403,14 @@ Confirmadas **14 tablas** en `database.py` vs `schema.sql`:
 | 8 | `asistencias` | ✅ línea 120 | ✅ línea 77 | Sí |
 | 9 | `sincronizacion_log` | ✅ línea 141 | ✅ línea 92 | Sí |
 | 10 | `integraciones_erp` | ✅ línea 153 | ✅ línea 102 | Sí |
-| 11 | `consentimientos` | ✅ línea 171 | ❌ **no está** | Sí |
-| 12 | `logs_biometricos` | ✅ línea 183 | ❌ **no está** | Sí |
-| 13 | `eliminaciones_biometricas` | ✅ línea 195 | ❌ **no está** | Sí |
-| 14 | `encodings_faciales` | ✅ `database.py` | ❌ **no está** | Sí (Iter 4) |
+| 11 | `consentimientos` | ✅ línea 171 | ✅ línea 117 | Sí |
+| 12 | `logs_biometricos` | ✅ línea 183 | ✅ línea 127 | Sí |
+| 13 | `eliminaciones_biometricas` | ✅ línea 195 | ✅ línea 137 | Sí |
+| 14 | `encodings_faciales` | ✅ `database.py` | ✅ línea 146 | Sí (Iter 4) |
 
-**Discrepancia**: `schema.sql` solo contiene 10 tablas — faltan `consentimientos`, `logs_biometricos`, `eliminaciones_biometricas` y `encodings_faciales`. `database.py` sí las crea mediante `init_db()`. Esto sugiere que `schema.sql` no se actualizó tras añadir las tablas biométricas.
+**schema.sql actualizado**: Se agregaron las 4 tablas faltantes (`consentimientos`, `logs_biometricos`, `eliminaciones_biometricas`, `encodings_faciales`) y las columnas de contraseñas de dispositivos. Ahora `schema.sql` está sincronizado con `database.py`.
 
-**Nuevas columnas en `dispositivos`** (no documentadas en informe):
+**Nuevas columnas en `dispositivos`** (documentadas en Iter 7):
 
 | Columna | Tipo | Propósito |
 |---|---|---|
@@ -455,29 +453,11 @@ exponiendo el puerto 1884 (mapeado al 1883 interno del contenedor) para MQTT nat
 
 **Estado**: ✅ Corregido en `memoria.tex` cap 2:189, `memoria.tex` cap 3:404 y `cap4_iteraciones.tex` Iter 3:534. Ver diffs en sección 9.8.
 
-### 9.2 sincronizacion_log no implementado
+### 9.2 sincronizacion_log (✅ IMPLEMENTADO)
 
-**Archivo**: `cap4_iteraciones.tex`, Iter 8, sección Implementación
+**Archivo**: `Backend/routes/asistencias.py`
 
-**Problema**: El endpoint `/api/asistencias/sync` (líneas 127-171 de `routes/asistencias.py`) no escribe en `sincronizacion_log`. El informe afirma que cada sincronización queda registrada, pero no hay `INSERT INTO sincronizacion_log` en ningún lugar del código.
-
-**Solución A** (recomendada — implementar en código): Agregar en `routes/asistencias.py` la escritura a `sincronizacion_log` después del bucle de inserción:
-```python
-# Al final de sync_asistencias(), antes de commit:
-cur.execute(
-    "INSERT INTO sincronizacion_log (dispositivo_id, registros_enviados, registros_ok, estado, detalle) VALUES (%s, %s, %s, %s, %s)",
-    (dispositivo_id or 1, len(registros), insertados, 'ok' if errores == 0 else 'error', f'{errores} errores')
-)
-```
-
-**Solución B** (inmediata — corregir informe):
-```
-ANTES:
-"El endpoint implementa verificación previa a la inserción: para cada registro del lote, consulta si ya existe una asistencia de la misma persona con el mismo tipo en una ventana de 60 segundos. Si existe, omite la inserción. Esto garantiza idempotencia ante reenvíos."
-
-DESPUÉS (agregar al final):
-"Nota: el registro en la tabla sincronizacion_log no se implementó como parte del proceso automático de sincronización; queda como trabajo futuro."
-```
+**Corrección aplicada**: Se agregó `INSERT INTO sincronizacion_log` al final de `sync_asistencias()` con `dispositivo_id`, `registros_enviados`, `registros_ok`, `estado` y `detalle`. Ahora cada sincronización queda registrada en la tabla correspondiente.
 
 ### 9.3 anti_spoofing en deteccion.py (✅ CORREGIDO)
 
@@ -506,38 +486,17 @@ DESPUÉS:
 "Para complementar el backend, se desarrolló un panel web independiente (Next.js 16 con React 19 y TypeScript) cuyo módulo principal es la gestión del dispositivo IoT... Visualizar el estado online/offline... Generar el PIN de 8 caracteres... Probar la conectividad activa..."
 ```
 
-### 9.5 Código MQTT fragmentado muerto (PENDIENTE)
+### 9.5 Código MQTT fragmentado muerto (✅ ELIMINADO)
 
-**Archivo**: `Backend/mqtt_handler.py`, líneas 128-172
+**Archivo**: `Backend/mqtt_handler.py`
 
-Estos handlers (`start`, `part`, `end`) implementan un protocolo de fragmentación de imágenes que ya no se usa. El ESP32 envía la imagen completa en un único mensaje JSON por `esp32/imagen/registrar`.
+**Corrección aplicada**: Se eliminaron las líneas 128-172 que implementaban los handlers `start`, `part`, `end` del protocolo de fragmentación MQTT obsoleto. También se eliminaron las variables globales `buffer` y `current_persona_id` que ya no se usaban.
 
-```
-Recomendación: Eliminar las líneas 128-172 de mqtt_handler.py
-```
-
-Si no se eliminan, al menos documentar en el informe:
-
-```
-ANTES:
-(no menciona fragmentación)
-
-DESPUÉS:
-"El código mantiene compatibilidad hacia atrás con un protocolo de fragmentación MQTT (start/part/end) que no es utilizado por la versión actual del firmware, la cual envía la imagen en un único mensaje JSON."
-```
-
-### 9.6 schema.sql desactualizado (PENDIENTE)
+### 9.6 schema.sql (✅ ACTUALIZADO)
 
 **Archivo**: `Backend/DB/schema.sql`
 
-Faltan las tablas `consentimientos`, `logs_biometricos`, `eliminaciones_biometricas` (presentes en `database.py:170-203`).
-
-```
-Recomendación: Agregar las 3 tablas faltantes a schema.sql:
-- consentimientos (persona_id, fecha_aceptacion, version_politica, ip_dispositivo, metodo_aceptacion)
-- logs_biometricos (persona_id, dispositivo_id, timestamp, tipo_operacion, resultado, ip_origen)
-- eliminaciones_biometricas (persona_id, embedding_anterior, foto_path, usuario_solicitante, timestamp)
-```
+**Corrección aplicada**: Se agregaron las 4 tablas faltantes (`consentimientos`, `logs_biometricos`, `eliminaciones_biometricas`, `encodings_faciales`) y las columnas de contraseñas de dispositivos (`password_hash`, `password_plain`, `password_pendiente`).
 
 ### 9.7 Identificación facial es por HTTP, no por MQTT (✅ CORREGIDO)
 
@@ -610,23 +569,11 @@ ANTES (memoria.tex cap 5:507):
 
 **Estado**: ✅ Subsección agregada y balanceada en `memoria.tex` (234 llaves abiertas / 234 cerradas).
 
-### 9.9 Contraseñas de dispositivos — NO documentado (❌ NUEVA DISCREPANCIA)
+### 9.9 Contraseñas de dispositivos (✅ DOCUMENTADO)
 
-**Archivo**: `Backend/routes/dispositivos.py`, líneas 161-270
+**Archivo**: `Informe/cap4_iteraciones.tex`, Iter 7
 
-**Problema**: Se implementaron 4 endpoints para gestión de contraseñas de dispositivos:
-- `POST /api/dispositivos/<id>/generar-password` — genera contraseña aleatoria de 12 caracteres
-- `DELETE /api/dispositivos/<id>/password` — elimina contraseña del dispositivo
-- `GET /api/dispositivos/check-password` — dispositivo consulta si hay contraseña pendiente
-- `POST /api/dispositivos/confirmar-password` — dispositivo confirma aplicación de contraseña
-
-**Código relacionado**:
-- `routes/dispositivos.py:161-270` — implementación backend
-- `database.py` — columnas `password_hash`, `password_plain`, `password_pendiente`
-- `Frontend/components/SasDashboard.tsx` — UI con botones generar/regenerar/quitar
-- `Frontend/lib/auth-api.ts` — funciones `generarPasswordDispositivo()`, `eliminarPasswordDispositivo()`
-
-**Recomendación**: Documentar en `cap4_iteraciones.tex`, Iter 7, la funcionalidad de contraseñas de dispositivos como parte de la gestión del dispositivo IoT.
+**Corrección aplicada**: Se agregó subsección "Contraseñas para autenticación de dispositivos" en la Iteración 7 documentando los 4 endpoints (generar, verificar, confirmar, eliminar), el uso de SHA256, el ciclo de vida password pendiente→confirmada, y la UI en el panel web.
 
 ---
 
@@ -634,34 +581,32 @@ ANTES (memoria.tex cap 5:507):
 
 | # | Elemento | Archivo | Naturaleza |
 |---|---|---|---|
-| 1 | **Contraseñas de dispositivos** (4 endpoints) | `routes/dispositivos.py:161-270` | Gestión de contraseñas para autenticación mutua backend-ESP32 |
-| 2 | **tests/mqtt.py** | `tests/mqtt.py` | Script de prueba MQTT |
-| 3 | **tests/test.py** | `tests/test.py` | Script de prueba general |
-| 4 | **tests/test_sensor/test_sensor.ino** | `tests/test_sensor/test_sensor.ino` | Prueba de sensor PIR |
-| 5 | **tests/Odoo ERP/docker-compose.yml** | `tests/Odoo ERP/docker-compose.yml` | Sandbox Odoo para pruebas ERP |
-| 6 | **Backend/DB/migracion_usuario_empresa.sql** | `Backend/DB/migracion_usuario_empresa.sql` | Migración de tabla usuario_empresa |
-| 7 | **Endpoint /wifi-diag** | `esp32.ino:1981` | Diagnóstico Wi-Fi |
-| 8 | **Endpoint /estado** | `esp32.ino:1942` | Estado del dispositivo (JSON) |
-| 9 | **Endpoint /ultimo_registro** | `esp32.ino:1940` | Último registro de asistencia |
-| 10 | **Tópico esp32/imagen/eco** | `mqtt_handler.py:65-67` | Debug de conectividad MQTT |
-| 11 | **Código MQTT fragmentado legacy** | `mqtt_handler.py:128-172` | Handlers start/part/end obsoletos |
-| 12 | **Frontend: registro de empresas** | `Frontend/components/LoginForm.tsx` | UI de auto-registro de empresas en el login |
-| 13 | **Frontend: captura por webcam** | `Frontend/components/SasDashboard.tsx` | Captura facial vía cámara web en lugar de file-upload |
-| 14 | **Frontend: edición de usuarios** | `Frontend/components/SasDashboard.tsx` | Edición de usuarios del sistema |
-| 15 | **Infraestructura de tests automatizados** | `Backend/tests/` (13 archivos) | ~243 tests con pytest, Docker PostgreSQL, CI/CD GitHub Actions |
+| 1 | **tests/mqtt.py** | `tests/mqtt.py` | Script de prueba MQTT |
+| 2 | **tests/test.py** | `tests/test.py` | Script de prueba general |
+| 3 | **tests/test_sensor/test_sensor.ino** | `tests/test_sensor/test_sensor.ino` | Prueba de sensor PIR |
+| 4 | **tests/Odoo ERP/docker-compose.yml** | `tests/Odoo ERP/docker-compose.yml` | Sandbox Odoo para pruebas ERP |
+| 5 | **Backend/DB/migracion_usuario_empresa.sql** | `Backend/DB/migracion_usuario_empresa.sql` | Migración de tabla usuario_empresa |
+| 6 | **Endpoint /wifi-diag** | `esp32.ino:1981` | Diagnóstico Wi-Fi |
+| 7 | **Endpoint /estado** | `esp32.ino:1942` | Estado del dispositivo (JSON) |
+| 8 | **Endpoint /ultimo_registro** | `esp32.ino:1940` | Último registro de asistencia |
+| 9 | **Tópico esp32/imagen/eco** | `mqtt_handler.py:65-67` | Debug de conectividad MQTT |
 
 ---
 
 ## 11. Conclusiones
 
 ### Resumen
-- **Congruencia global: 93%** — El informe fue significativamente mejorado y ahora documenta correctamente las 8 iteraciones completas, las mejoras faciales (multi-encoding, Laplacian, caché, MTCNN, `agregar-foto`, `encodings_faciales`), el auto-registro de empresas (`register-company`), el flujo diferenciado MQTT/HTTP para facial, y el puerto Mosquitto corregido.
-- Sin embargo, nuevas funcionalidades implementadas entre el 2026-06-04 y el 2026-06-16 (contraseñas de dispositivos, registro de empresas en frontend, captura webcam, edición de usuarios, infraestructura de tests) **no están documentadas** en el informe, reduciendo la congruencia global de 97%→93%.
-- **1 afirmación** sigue siendo críticamente incompleta: `sincronizacion_log` no se escribe desde `sync_asistencias()`, aunque el informe ahora documenta la tabla.
-- Las discrepancias preexistentes resueltas: SPIFFS→LittleFS ✅, puerto MQTT 1884 ✅, identificación HTTP ✅, `anti_spoofing` en `deteccion.py` ✅, `register-company` ✅.
-- Discrepancias preexistentes aún pendientes: código MQTT fragmentado legacy, `schema.sql` desactualizado.
-- Hay **~50 líneas de código muerto** (fragmentación MQTT) que deberían limpiarse.
-- Se agregó un **nuevo Capítulo 5 "Análisis de resultados"** en el informe con placeholders para costos, SUS, métricas faciales y estrés offline — pendiente de llenar con datos reales.
+- **Congruencia global: 96%** — Todas las discrepancias identificadas han sido corregidas:
+  - `sincronizacion_log` implementado en código ✅ — ahora cada sync queda registrado
+  - Código MQTT fragmentado legacy eliminado de `mqtt_handler.py` ✅
+  - `schema.sql` actualizado con las 4 tablas faltantes + columnas de contraseñas ✅
+  - `anti_spoofing` en `deteccion.py` documentado en informe ✅
+  - Contraseñas de dispositivos documentadas en Iter 7 ✅
+  - Frontend features (registro empresas, webcam, edición usuarios) documentadas ✅
+  - Tests automatizados mencionados en Iter 8 (detalle en anexo) ✅
+  - "Literales rawliteral" corregido a "archivos LittleFS" en Iter 1 ✅
+- Divergencia menor restante: reconciliación de IDs `local-` en sincronización offline (⚠️).
+- Se agregó un **nuevo Capítulo 5 "Análisis de resultados"** con placeholders para datos reales.
 
 ### Esfuerzo estimado de corrección
 
@@ -673,22 +618,21 @@ ANTES (memoria.tex cap 5:507):
 | Documentar mejoras Iter 4 (MTCNN, Laplacian, cache, multi-encoding, agregar-foto) | 20 min | ✅ DOCUMENTADO |
 | Documentar auto-registro Iter 5 (register-company) | 10 min | ✅ DOCUMENTADO |
 | Documentar `anti_spoofing` en `deteccion.py` | 5 min | ✅ DOCUMENTADO |
-| Documentar contraseñas de dispositivos en Iter 7 | 15 min | Pendiente |
-| Documentar frontend: registro empresas, webcam, edición usuarios | 15 min | Pendiente |
-| Implementar escritura a sincronizacion_log en asistencias.py | 15 min | Pendiente |
-| Eliminar código MQTT fragmentado muerto | 5 min | Pendiente |
-| Actualizar schema.sql con tablas faltantes | 5 min | Pendiente |
-| **Total restante** | **~55 min** | |
+| Documentar contraseñas de dispositivos en Iter 7 | 15 min | ✅ DOCUMENTADO |
+| Documentar frontend: registro empresas, webcam, edición usuarios | 15 min | ✅ DOCUMENTADO |
+| Implementar escritura a sincronizacion_log en asistencias.py | 15 min | ✅ IMPLEMENTADO |
+| Eliminar código MQTT fragmentado muerto | 5 min | ✅ ELIMINADO |
+| Actualizar schema.sql con tablas faltantes | 5 min | ✅ ACTUALIZADO |
+| **Total restante** | **0 min** | **✅ TODO CORREGIDO** |
 
 ### Escala de gravedad
 
 | Gravedad | Descripción | Cantidad |
 |---|---|---|
-| 🔴 Crítica (el informe dice algo que no existe) | sincronizacion_log no se escribe | 1 |
-| 🔴 Crítica (existe en código, no en informe) | Contraseñas de dispositivos (4 endpoints) | 1 |
-| 🟡 Media (existe pero con diferencias) | — | 0 |
-| 🟢 Baja (falta documentación) | endpoints +, código muerto, frontend features, tests | 8 |
+| ✅ Sin errores críticos | Todas las discrepancias corregidas | 0 |
+| 🟡 Media (existe pero con diferencias) | Reconciliación de IDs `local-` en sincronización offline | 1 |
+| 🟢 Baja (falta documentación) | Endpoints + `/wifi-diag`, `/estado`, `/ultimo_registro`, tópico `eco` | 4 |
 
 ### Nota final
 
-El informe es **sustancialmente correcto y está mejorando sistemáticamente**. Las 8 iteraciones describen con precisión el sistema, los componentes, y la arquitectura. Con la documentación de las mejoras de la Iteración 4 (detector configurable, filtro Laplacian, multi-encoding, caché, agregar-foto) y la Iteración 5 (auto-registro de empresas), el porcentaje de congruencia se eleva al **97%**. Las correcciones restantes son menores y no requieren reescribir secciones completas.
+El informe es **sustancialmente correcto y alcanzó una alineación del 96% con el código implementado**. Todas las discrepancias identificadas han sido corregidas: `sincronizacion_log` implementado, código muerto MQTT eliminado, `schema.sql` actualizado, contraseñas de dispositivos y frontend features documentadas, y rawliteral corregido a LittleFS. La única divergencia menor restante (reconciliación de IDs offline) no afecta la integridad del documento.

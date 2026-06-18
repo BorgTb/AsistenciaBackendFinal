@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.141592653-2.6-1.40.28 (MiKTeX 25.12) (preloaded format=pdflatex 2026.6.4)  15 JUN 2026 17:54
+This is pdfTeX, Version 3.141592653-2.6-1.40.28 (MiKTeX 25.12) (preloaded format=pdflatex 2026.6.4)  16 JUN 2026 16:50
 entering extended mode
  restricted \write18 enabled.
  file:line:error style messages enabled.
@@ -867,73 +867,98 @@ Overfull \hbox (52.9637pt too wide) in paragraph at lines 1111--1112
 []\T1/lmr/m/n/12 (-20) El panel web se comunica con el backend Flask mediante un proxy interno (\T1/lmtt/m/n/12 app/api/_proxy.ts\T1/lmr/m/n/12 (-20) )
  []
 
-LaTeX Font Info:    Font shape `T1/lmtt/bx/n' in size <12> not available
-(Font)              Font shape `T1/lmtt/b/n' tried instead on input line 1122.
+
+Overfull \hbox (5.83669pt too wide) in paragraph at lines 1113--1114
+[]\T1/lmr/m/n/12 (-20) Adicionalmente, el panel web incorpora las siguientes funcionalidades complementarias: 
+ []
+
 [87]
-Overfull \hbox (45.66475pt too wide) in paragraph at lines 1146--1147
+Overfull \hbox (2.23586pt too wide) in paragraph at lines 1130--1131
+[]\T1/lmr/bx/n/12 (-20) Generar contraseña \T1/lmr/m/n/12 (-20) (\T1/lmtt/m/n/12 POST /api/dispositivos/<id>/generar-password\T1/lmr/m/n/12 (-20) ): El
+ []
+
+
+Overfull \hbox (5.53693pt too wide) in paragraph at lines 1132--1133
+[]\T1/lmr/bx/n/12 (-20) Confirmar contraseña \T1/lmr/m/n/12 (-20) (\T1/lmtt/m/n/12 POST /api/dispositivos/confirmar-password\T1/lmr/m/n/12 (-20) ): Una
+ []
+
+
+Overfull \hbox (6.51567pt too wide) in paragraph at lines 1132--1133
+\T1/lmr/m/n/12 (-20) que limpia el texto plano (\T1/lmtt/m/n/12 password_plain = NULL\T1/lmr/m/n/12 (-20) ) y desmarca el estado pendiente.
+ []
+
+
+Overfull \hbox (40.86554pt too wide) in paragraph at lines 1133--1134
+[]\T1/lmr/bx/n/12 (-20) Eliminar contraseña \T1/lmr/m/n/12 (-20) (\T1/lmtt/m/n/12 DELETE /api/dispositivos/<id>/password\T1/lmr/m/n/12 (-20) ): El administrador
+ []
+
+LaTeX Font Info:    Font shape `T1/lmtt/bx/n' in size <12> not available
+(Font)              Font shape `T1/lmtt/b/n' tried instead on input line 1143.
+[88]
+Overfull \hbox (45.66475pt too wide) in paragraph at lines 1167--1168
 []\T1/lmr/bx/n/12 (-20) Prueba de envío automático\T1/lmr/m/n/12 (-20) : Registrar una asistencia real (POST a \T1/lmtt/m/n/12 /api/asistencias\T1/lmr/m/n/12 (-20) )
  []
 
-
-Overfull \hbox (6.1994pt too wide) in paragraph at lines 1148--1149
+[89]
+Overfull \hbox (6.1994pt too wide) in paragraph at lines 1169--1170
 []\T1/lmr/bx/n/12 (-20) Prueba de field mapping\T1/lmr/m/n/12 (-20) : Configurar un ERP con field mapping \T1/lmtt/m/n/12 {"persona_id":
  []
 
-[88] [89]
-Overfull \hbox (32.16951pt too wide) in paragraph at lines 1191--1192
+[90]
+Overfull \hbox (32.16951pt too wide) in paragraph at lines 1212--1213
 []\T1/lmtt/m/n/12 sincronizarAsignacionesPendientes()\T1/lmr/m/n/12 (-20) : Similar para asignaciones, dependiendo
  []
 
 
-Overfull \hbox (1.7207pt too wide) in paragraph at lines 1192--1193
+Overfull \hbox (1.7207pt too wide) in paragraph at lines 1213--1214
 []\T1/lmtt/m/n/12 sincronizarAsistencias()\T1/lmr/m/n/12 (-20) : Envía un lote de asistencias con \T1/lmtt/m/n/12 sincronizado
  []
 
-
-Overfull \hbox (26.14981pt too wide) in paragraph at lines 1194--1195
+[91]
+Overfull \hbox (26.14981pt too wide) in paragraph at lines 1215--1216
 []\T1/lmr/bx/n/12 (-20) Periódicamente\T1/lmr/m/n/12 (-20) : Cada 5 minutos (300,000 ms), se ejecuta \T1/lmtt/m/n/12 sincronizarPendientes()
  []
 
-[90] [91] [92]
-Overfull \hbox (7.41635pt too wide) in paragraph at lines 1270--1271
+[92] [93]
+Overfull \hbox (7.41635pt too wide) in paragraph at lines 1291--1292
 []\T1/lmr/m/n/12 (-20) Función \T1/lmtt/m/n/12 extraer_embedding_sim() \T1/lmr/m/n/12 (-20) con DeepFace (Facenet + detector configurable
  []
 
 
-Overfull \hbox (3.168pt too wide) in paragraph at lines 1271--1272
+Overfull \hbox (3.168pt too wide) in paragraph at lines 1292--1293
 []\T1/lmr/m/n/12 (-20) Función \T1/lmtt/m/n/12 simular_asistencia_por_foto() \T1/lmr/m/n/12 (-20) que busca coincidencias del embedding
  []
 
 
-Overfull \hbox (72.41199pt too wide) in paragraph at lines 1272--1273
+Overfull \hbox (72.41199pt too wide) in paragraph at lines 1293--1294
 []\T1/lmr/m/n/12 (-20) Menú interactivo en terminal para seleccionar imágenes de la carpeta \T1/lmtt/m/n/12 static/capturas_prueba/\T1/lmr/m/n/12 (-20) . 
  []
 
-[93]
-Overfull \hbox (7.39166pt too wide) in paragraph at lines 1286--1287
+[94]
+Overfull \hbox (7.39166pt too wide) in paragraph at lines 1307--1308
 []\T1/lmr/bx/n/12 (-20) Prueba de sincronización de turnos y asignaciones\T1/lmr/m/n/12 (-20) : Desconectar el dispositivo,
  []
 
 
-Overfull \hbox (6.53877pt too wide) in paragraph at lines 1292--1293
+Overfull \hbox (6.53877pt too wide) in paragraph at lines 1313--1314
 []\T1/lmr/bx/n/12 (-20) Prueba de logs biométricos\T1/lmr/m/n/12 (-20) : Realizar operaciones de registro facial, identificación
  []
 
-[94]) [95]
+[95]) [96]
 \bbl@ensure@spanish {Cap\'\i tulo} 5.
 
 Overfull \hbox (67.08255pt too wide) in paragraph at lines 531--549
  [][] 
  []
 
-[96
+[97
 
 ]
 Overfull \hbox (64.245pt too wide) in paragraph at lines 555--573
  [][] 
  []
 
-[97] [98] [99]
+[98] [99] [100]
 \bbl@ensure@spanish {Cap\'\i tulo} 6.
 
 Overfull \hbox (97.4343pt too wide) in paragraph at lines 656--657
@@ -945,7 +970,7 @@ Overfull \hbox (0.59369pt too wide) in paragraph at lines 658--659
 \T1/lmr/m/n/12 (-20) Ventajas y desventajas. APD. https://www.apd.es/ventajas-y-desventajas-sistema-
  []
 
-[100
+[101
 
 ]
 Overfull \hbox (8.78482pt too wide) in paragraph at lines 667--668
@@ -962,7 +987,7 @@ Overfull \hbox (12.1488pt too wide) in paragraph at lines 674--675
 \T1/lmr/m/n/12 (-20) de 2025, de https://zktecolatinoamerica.com/categoria-producto/tiempo-y-asistencia 
  []
 
-[101]
+[102]
 Overfull \hbox (11.39685pt too wide) in paragraph at lines 679--680
 \T1/lmr/m/n/12 (-20) Recuperado el 3 de noviembre de 2025, de https://www.atlassian.com/es/agile/scrum 
  []
@@ -982,7 +1007,7 @@ Overfull \hbox (108.85608pt too wide) in paragraph at lines 691--692
 []\T1/lmr/m/n/12 (-20) Kaspersky Lab. (2025). ¾Qué es la biometría? Definición y tipos. https://latam.kaspersky.com/resource-
  []
 
-[102]
+[103]
 Overfull \hbox (89.89452pt too wide) in paragraph at lines 692--693
 []\T1/lmr/m/n/12 (-20) Espressif Systems. (2025). SPIFFS - SPI Flash File System. https://docs.espressif.com/projects/esp-
  []
@@ -997,7 +1022,7 @@ Overfull \hbox (118.26082pt too wide) in paragraph at lines 695--696
 []\T1/lmr/m/n/12 (-20) EMQX Technologies. (2025). The ultimate guide to MQTT brokers. https://www.emqx.com/en/blog/the-
  []
 
-[103] (memoria.aux)
+[104] (memoria.aux)
  ***********
 LaTeX2e <2025-11-01>
 L3 programming layer <2025-12-24>
@@ -1012,9 +1037,9 @@ Here is how much of TeX's memory you used:
  1141 hyphenation exceptions out of 8191
  72i,11n,79p,1576b,449s stack positions out of 10000i,1000n,20000p,200000b,200000s
 <D:/Latex/fonts/type1/public/lm/lmbx10.pfb><D:/Latex/fonts/type1/public/lm/lmbx12.pfb><D:/Latex/fonts/type1/public/lm/lmmi10.pfb><D:/Latex/fonts/type1/public/lm/lmmi12.pfb><D:/Latex/fonts/type1/public/lm/lmr10.pfb><D:/Latex/fonts/type1/public/lm/lmr12.pfb><D:/Latex/fonts/type1/public/lm/lmri12.pfb><D:/Latex/fonts/type1/public/lm/lmro12.pfb><D:/Latex/fonts/type1/public/lm/lmsy10.pfb><D:/Latex/fonts/type1/public/lm/lmtk10.pfb><D:/Latex/fonts/type1/public/lm/lmtt12.pfb>
-Output written on memoria.pdf (105 pages, 1734776 bytes).
+Output written on memoria.pdf (106 pages, 1739211 bytes).
 PDF statistics:
- 444 PDF objects out of 1000 (max. 8388607)
+ 447 PDF objects out of 1000 (max. 8388607)
  0 named destinations out of 1000 (max. 500000)
  38009 words of extra memory for PDF output out of 42996 (max. 10000000)
 

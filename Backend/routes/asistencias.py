@@ -1,6 +1,7 @@
 from flask import Blueprint, request, jsonify
 from database import get_connection
 from routes.auth import token_opcional
+from services.email_service import enviar_notificacion_marcacion
 import threading
 
 asistencias_bp = Blueprint('asistencias', __name__)
@@ -18,6 +19,21 @@ def _disparar_erp_push(persona_id, nombre, tipo, metodo, fecha_hora, empresa_id)
     if not empresa_id:
         return
     t = threading.Thread(target=_erp_push_async, args=(persona_id, nombre, tipo, metodo, fecha_hora, empresa_id))
+    t.daemon = True
+    t.start()
+
+
+def _email_async(persona_email, nombre, tipo, fecha_hora):
+    try:
+        enviar_notificacion_marcacion(persona_email, nombre, tipo, fecha_hora)
+    except Exception:
+        pass
+
+
+def _disparar_email_notificacion(persona_email, nombre, tipo, fecha_hora):
+    if not persona_email:
+        return
+    t = threading.Thread(target=_email_async, args=(persona_email, nombre, tipo, fecha_hora))
     t.daemon = True
     t.start()
 
@@ -107,13 +123,16 @@ def create_asistencia():
         conn.commit()
 
         empresa_id = None
+        persona_email = None
         if persona_id:
-            cur.execute("SELECT empresa_id FROM personas WHERE id = %s", (persona_id,))
+            cur.execute("SELECT empresa_id, email FROM personas WHERE id = %s", (persona_id,))
             emp_row = cur.fetchone()
             if emp_row:
                 empresa_id = emp_row[0]
+                persona_email = emp_row[1]
 
         _disparar_erp_push(persona_id, nombre, tipo, metodo, fecha_hora, empresa_id)
+        _disparar_email_notificacion(persona_email, nombre, tipo, fecha_hora)
 
         return jsonify({'ok': True, 'id': asist_id})
     except Exception as e:
@@ -152,19 +171,28 @@ def sync_asistencias():
                 insertados += 1
 
                 empresa_id = None
+                persona_email = None
                 if persona_id_buscar:
-                    cur.execute("SELECT empresa_id FROM personas WHERE id = %s", (persona_id_buscar,))
+                    cur.execute("SELECT empresa_id, email FROM personas WHERE id = %s", (persona_id_buscar,))
                     emp_row = cur.fetchone()
                     if emp_row:
                         empresa_id = emp_row[0]
+                        persona_email = emp_row[1]
 
                 _disparar_erp_push(
                     persona_id_buscar, r.get('nombre'), tipo_buscar,
                     r.get('metodo', 'huella'), row[1], empresa_id
                 )
+                _disparar_email_notificacion(persona_email, r.get('nombre'), tipo_buscar, row[1])
         except:
             errores += 1
 
+    dispositivo_id = data.get('dispositivo_id', registros[0].get('dispositivo_id', 1) if registros else 1)
+    estado = 'ok' if errores == 0 else 'error'
+    cur.execute(
+        "INSERT INTO sincronizacion_log (dispositivo_id, registros_enviados, registros_ok, estado, detalle) VALUES (%s, %s, %s, %s, %s)",
+        (dispositivo_id, len(registros), insertados, estado, f'{errores} errores')
+    )
     conn.commit()
     cur.close()
     conn.close()

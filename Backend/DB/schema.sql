@@ -114,6 +114,48 @@ CREATE TABLE "integraciones_erp" (
     "created_at" timestamp DEFAULT now()
 );
 
+CREATE TABLE "consentimientos" (
+    "id" serial PRIMARY KEY,
+    "persona_id" integer NOT NULL REFERENCES "personas"("id") ON DELETE CASCADE,
+    "fecha_aceptacion" timestamp DEFAULT now(),
+    "version_politica" varchar(20) DEFAULT '1.0',
+    "ip_dispositivo" varchar(45),
+    "metodo_aceptacion" varchar(30) DEFAULT 'web',
+    UNIQUE("persona_id")
+);
+
+CREATE TABLE "logs_biometricos" (
+    "id" serial PRIMARY KEY,
+    "persona_id" integer REFERENCES "personas"("id") ON DELETE SET NULL,
+    "dispositivo_id" integer REFERENCES "dispositivos"("id") ON DELETE SET NULL,
+    "timestamp" timestamp DEFAULT now(),
+    "tipo_operacion" varchar(30) NOT NULL,
+    "resultado" varchar(20) NOT NULL,
+    "ip_origen" varchar(45)
+);
+
+CREATE TABLE "eliminaciones_biometricas" (
+    "id" serial PRIMARY KEY,
+    "persona_id" integer NOT NULL,
+    "embedding_anterior" text,
+    "foto_path" varchar(500),
+    "usuario_solicitante" varchar(100),
+    "timestamp" timestamp DEFAULT now()
+);
+
+CREATE TABLE "encodings_faciales" (
+    "id" serial PRIMARY KEY,
+    "persona_id" integer NOT NULL REFERENCES "personas"("id") ON DELETE CASCADE,
+    "encoding" text NOT NULL,
+    "foto_path" varchar(500),
+    "quality_score" float DEFAULT 0,
+    "created_at" timestamp DEFAULT now()
+);
+
+ALTER TABLE "dispositivos" ADD COLUMN IF NOT EXISTS "password_hash" VARCHAR(64);
+ALTER TABLE "dispositivos" ADD COLUMN IF NOT EXISTS "password_plain" VARCHAR(20);
+ALTER TABLE "dispositivos" ADD COLUMN IF NOT EXISTS "password_pendiente" BOOLEAN DEFAULT FALSE;
+
 -- Índices
 CREATE INDEX IF NOT EXISTS "idx_asistencias_persona" ON "asistencias" ("persona_id");
 CREATE INDEX IF NOT EXISTS "idx_asistencias_dispositivo" ON "asistencias" ("dispositivo_id");

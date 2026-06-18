@@ -11,8 +11,6 @@ from deepface import DeepFace
 from database import get_connection
 from encryption import cifrar_embedding
 
-buffer = []
-current_persona_id = None
 BROKER_HOST = os.getenv('MQTT_HOST', '127.0.0.1')
 BROKER_PORT = int(os.getenv('MQTT_PORT', '1884'))
 
@@ -54,8 +52,6 @@ def on_connect(client, userdata, flags, rc):
     threading.Thread(target=eco_delayed, daemon=True).start()
 
 def on_message(client, userdata, msg):
-    global buffer, current_persona_id
-    
     # Extraer el tópico completo de forma segura
     full_topic = str(msg.topic)
     
@@ -125,51 +121,7 @@ def on_message(client, userdata, msg):
             print(f"❌ Error LWT DB: {e}", flush=True)
         return
 
-    if full_topic == "esp32/imagen/start":
-        buffer.clear()
-        current_persona_id = msg.payload.decode().strip()
-        print(f"📸 Inicio recepción para ID: '{current_persona_id}'", flush=True)
 
-    elif full_topic == "esp32/imagen/part":
-        buffer.append(msg.payload.decode())
-        # Imprimir progreso cada 5 fragmentos
-        if len(buffer) % 5 == 0:
-            print(f"   ...recibidos {len(buffer)} fragmentos...", flush=True)
-
-    elif full_topic == "esp32/imagen/end":
-        print(f"🔚 'end' recibido. Total fragmentos: {len(buffer)} | ID: '{current_persona_id}'", flush=True)
-
-        if not current_persona_id:
-            print("⚠️ Error: 'end' recibido pero no hay ID activo.", flush=True)
-            buffer.clear()
-            return
-
-        if len(buffer) == 0:
-            print("⚠️ Error: Buffer vacío al recibir 'end'.", flush=True)
-            current_persona_id = None
-            return
-
-        # 1. Unir y limpiar el Base64
-        imagen_b64 = "".join(buffer).replace("\n", "").replace("\r", "").replace(" ", "")
-        
-        # 2. Reparar el final del JPEG (Truco vital)
-        end_marker = "//Z"
-        if end_marker in imagen_b64:
-            imagen_b64 = imagen_b64.split(end_marker)[0] + end_marker
-            
-        # 3. Reparar el Padding de Base64
-        padding_needed = len(imagen_b64) % 4
-        if padding_needed:
-            imagen_b64 += '=' * (4 - padding_needed)
-
-        print(f"✅ Imagen ensamblada y lista para procesar: {len(imagen_b64)} chars", flush=True)
-        
-        # Llamar a la función de procesamiento
-        procesar_imagen_facial(client, current_persona_id, imagen_b64)
-        
-        # Limpiar para el siguiente
-        buffer.clear()
-        current_persona_id = None
 
 def procesar_imagen_facial(client, persona_id, imagen_b64):
     file_name = f"{persona_id}.jpg"
