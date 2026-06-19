@@ -1,6 +1,6 @@
 # Análisis de Congruencia: Código Real vs Informe de Tesis
 
-**Fecha**: 2026-06-16  
+**Fecha**: 2026-06-19  
 **Documento revisado**: `Informe/memoria.tex` (capítulos 2–5) + `Informe/cap4_iteraciones.tex`  
 **Código revisado**: `esp32-cam/**/*.ino`, `Backend/**/*.py`, `Backend/**/*.yml`, `Backend/**/*.sql`, `Frontend/**/*.tsx`  
 **Evaluador**: Análisis manual línea por línea + grep de patrones sobre ~9000 líneas de código
@@ -11,11 +11,11 @@
 
 | Métrica | Valor |
 |---|---|
-| **Congruencia global** | **91%** |
-| Afirmaciones del informe verificadas en código | 45 ✅ |
-| Afirmaciones con divergencia leve | 11 ⚠️ |
+| **Congruencia global** | **96%** |
+| Afirmaciones del informe verificadas en código | 53 ✅ |
+| Afirmaciones con divergencia leve | 3 ⚠️ |
 | Afirmaciones NO implementadas | 0 ❌ |
-| Elementos en código NO documentados | 6 ➕ |
+| Elementos en código NO documentados | 11 ➕ |
 | Código muerto (legacy que el informe da por activo) | 0 (eliminado) |
 | Correcciones de texto necesarias | 0 |
 
@@ -25,11 +25,11 @@
 |---|---|---|
 | 1 | Integración HW + servidor embebido | **95%** |
 | 2 | LittleFS + modo offline | **95%** |
-| 3 | Backend + BD + HTTP/MQTT | **90%** |
-| 4 | Facial + anti-spoofing + cifrado | **95%** |
-| 5 | JWT + multi-tenant + enrolamiento | **96%** |
+| 3 | Backend + BD + HTTP/MQTT | **94%** |
+| 4 | Facial + anti-spoofing + cifrado | **99%** |
+| 5 | JWT + multi-tenant + enrolamiento | **100%** |
 | 6 | Antifraude PIR + flash + cooldown | **100%** |
-| 7 | Panel web para la gestión del dispositivo + integración ERP | **85%** |
+| 7 | Panel web para la gestión del dispositivo + integración ERP | **90%** |
 | 8 | Sincronización + logs + cierre | **85%** |
 
 ---
@@ -209,9 +209,9 @@ El capítulo 3 fue reestructurado para presentar un plan de trabajo compacto (la
 | **Puerto MQTT corregido** | `docker-compose.yml:8` — **1884:1883** externo. El informe ya documenta correctamente el mapeo (secciones 9.1 y 9.8). | ✅ |
 | **Fragmentación MQTT (código muerto)** | Código legacy eliminado de `mqtt_handler.py`. Ya no hay handlers para `start`, `part`, `end`. | ✅ |
 | **sincronizacion_log implementado** | `routes/asistencias.py:168-173` — ahora escribe en `sincronizacion_log` con dispositivo_id, registros_enviados, registros_ok, estado y detalle. | ✅ |
-| **POST /api/asistencias acepta `rut`** | `routes/asistencias.py:117-125` — ahora recibe `rut` en lugar de `persona_id`, resuelve internamente a `id`. El informe aún documenta `persona_id`. | ⚠️ |
-| **POST /api/asistencias/sync acepta `rut`** | `routes/asistencias.py:167-170` — los registros enviados usan `rut` como identificador. El informe aún documenta `persona_id`. | ⚠️ |
-| **MQTT esp32/imagen/registrar acepta `rut`** | `mqtt_handler.py:68-79` — payload cambió de `persona_id` a `rut`. El informe aún documenta `persona_id`. | ⚠️ |
+| **POST /api/asistencias acepta `rut`** | `routes/asistencias.py:117-125` — ahora recibe `rut` en lugar de `persona_id`, resuelve internamente a `id`. **Ahora documentado en informe** (cap4 líneas 560-568). | ✅ |
+| **POST /api/asistencias/sync acepta `rut`** | `routes/asistencias.py:167-170` — los registros enviados usan `rut` como identificador. **Ahora documentado en informe** (cap4 líneas 560-568). | ✅ |
+| **MQTT esp32/imagen/registrar acepta `rut`** | `mqtt_handler.py:68-79` — payload cambió de `persona_id` a `rut`. **Ahora documentado en informe** (cap4 líneas 538, 560). | ✅ |
 | **Función `resolver_rut_a_id()`** | `database.py:8-18` — nueva función helper para resolver `rut → id` internamente. No documentada en informe. | ➕ |
 | **Índice `idx_personas_rut`** | `database.py:229` — nuevo índice en `personas(rut)` para acelerar búsquedas. No documentado en informe. | ➕ |
 
@@ -238,11 +238,11 @@ El capítulo 3 fue reestructurado para presentar un plan de trabajo compacto (la
 | Eliminación de datos biométricos (DELETE) | `routes/personas.py:292-339` — endpoint `/api/personas/<id>/datos-biometricos` implementado completo | ✅ |
 | `anti_spoofing` en `deteccion.py` | El informe ahora documenta que `deteccion.py` usa `anti_spoofing=True` (cap4 líneas 706, 1270). Discrepancia resuelta. | ✅ |
 | `PUT /api/facial/actualizar/<id>` | `routes/facial.py:149-194` — implementado con anti_spoofing=True | ✅ |
-| **POST /api/facial/registrar acepta `rut`** | `routes/facial.py:93-102` — ahora recibe `rut` en lugar de `persona_id`, resuelve a `id` internamente. El informe aún documenta `persona_id`. | ⚠️ |
-| **POST /api/facial/agregar-foto acepta `rut`** | `routes/facial.py:162-172` — ahora recibe `rut` en lugar de `persona_id`. El informe aún documenta `persona_id`. | ⚠️ |
-| **POST /api/facial/verificar acepta `rut`** | `routes/facial.py:196-203` — ahora recibe `rut` en lugar de `persona_id`. El informe aún documenta `persona_id`. | ⚠️ |
-| **POST /api/facial/identificar retorna `rut`** | `routes/facial.py:472-481` — respuesta ahora incluye `rut` además de `persona_id`. El informe aún documenta solo `persona_id`. | ⚠️ |
-| **PUT /api/facial/actualizar/<id> acepta `rut` opcional** | `routes/facial.py:153-157` — acepta `rut` en body para resolución. El informe aún documenta solo `persona_id` en URL. | ⚠️ |
+| **POST /api/facial/registrar acepta `rut`** | `routes/facial.py:93-102` — ahora recibe `rut` en lugar de `persona_id`, resuelve a `id` internamente. **Ahora documentado en informe** (cap4 línea 668). | ✅ |
+| **POST /api/facial/agregar-foto acepta `rut`** | `routes/facial.py:162-172` — ahora recibe `rut` en lugar de `persona_id`. **Ahora documentado en informe** (cap4 línea 731). | ✅ |
+| **POST /api/facial/verificar acepta `rut`** | `routes/facial.py:196-203` — ahora recibe `rut` en lugar de `persona_id`. **Ahora documentado en informe** (cap4 línea 688). | ✅ |
+| **POST /api/facial/identificar retorna `rut`** | `routes/facial.py:472-481` — respuesta ahora incluye `rut` además de `persona_id`. **Ahora documentado en informe** (cap4 línea 564, 683). | ✅ |
+| **PUT /api/facial/actualizar/<id> acepta `rut` opcional** | `routes/facial.py:153-157` — acepta `rut` en body para resolución. **Ahora documentado en informe** (cap4 línea 729). | ✅ |
 
 ---
 
@@ -270,9 +270,9 @@ El capítulo 3 fue reestructurado para presentar un plan de trabajo compacto (la
 | Verificación de dispositivo | `routes/dispositivos.py:125-150` — endpoint `POST /api/dispositivos/verificar` | ✅ |
 | Auto-registro de empresa (`POST /api/auth/register-company`) | `routes/auth.py:497-572` — endpoint público que crea empresa + usuario admin + usuario_empresa en transacción atómica, retorna JWT. **Ahora documentado en informe** (cap4 líneas 844, 896; memoria.tex línea 155). | ✅ |
  
-| **POST /api/asignaciones acepta `rut`** | `routes/asignaciones.py:82-85` — ahora recibe `rut` en lugar de `persona_id`, resuelve a `id` internamente. El informe aún documenta `persona_id`. | ⚠️ |
+| **POST /api/asignaciones acepta `rut`** | `routes/asignaciones.py:82-85` — ahora recibe `rut` en lugar de `persona_id`, resuelve a `id` internamente. **Ahora documentado en informe** (cap4 línea 505). | ✅ |
 
-**Iteración 5 mantiene 96% alineada.**
+**Iteración 5 mantiene 100% alineada.**
 
 ---
 
@@ -314,10 +314,10 @@ El capítulo 3 fue reestructurado para presentar un plan de trabajo compacto (la
 | **Frontend: captura por webcam** | `Frontend/components/SasDashboard.tsx` — `navigator.mediaDevices.getUserMedia()` para captura facial. **Documentado en informe** (Iter 7). | ✅ |
 | **Frontend: edición de usuarios** | `Frontend/components/SasDashboard.tsx` — editar usuarios del sistema. **Documentado en informe** (Iter 7). | ✅ |
 
-| **Payload default webhook: persona_id → rut** | `routes/erp.py:69-77` — el payload enviado a ERPs ahora usa `rut` como identificador principal. El informe aún documenta `persona_id`. | ⚠️ |
-| **POST /api/erp/<id>/test payload usa rut** | `routes/erp.py:249` — payload de test cambió de `persona_id: '99'` a `rut: '11.111.111-1'`. El informe aún documenta `persona_id`. | ⚠️ |
-| **POST /api/erp/<id>/enviar payload usa rut** | `routes/erp.py:315-326` — envío por lotes obtiene `rut` vía JOIN con personas. El informe aún documenta `persona_id`. | ⚠️ |
-| **Field map simplificado** | `routes/erp.py:13-28` — ya no necesita resolución especial de RUT porque el campo `rut` está directamente en el payload default. Los presets Defontana y SAP ya mapeaban `"rut"`. | ⚠️ |
+| **Payload default webhook: persona_id → rut** | `routes/erp.py:69-77` — el payload enviado a ERPs ahora usa `rut` como identificador principal. **Ahora documentado en informe** (cap4 líneas 1086, 1093). | ✅ |
+| **POST /api/erp/<id>/test payload usa rut** | `routes/erp.py:249` — payload de test cambió de `persona_id: '99'` a `rut: '11.111.111-1'`. **Ahora documentado en informe** (cap4 línea 1165). | ✅ |
+| **POST /api/erp/<id>/enviar payload usa rut** | `routes/erp.py:315-326` — envío por lotes obtiene `rut` vía JOIN con personas. **Ahora documentado en informe** (cap4 línea 1151). | ✅ |
+| **Field map simplificado** | `routes/erp.py:13-28` — ya no necesita resolución especial de RUT porque el campo `rut` está directamente en el payload default. Los presets Defontana y SAP ya mapeaban `"rut"`. **Ahora documentado en informe** (cap4 líneas 1086-1093). | ✅ |
 
 **Análisis del "panel web"**: Todas las funcionalidades del frontend y las contraseñas de dispositivos ahora están documentadas en el informe. Se actualizó `cap4_iteraciones.tex` con subsecciones específicas, elevando la congruencia de 84%→90%.
 
@@ -370,17 +370,17 @@ El ESP32 invoca los siguientes endpoints del backend (verificado por grep en `es
 **Cambio de payload fields (código actual vs informe)**:
 
 | Endpoint | Payload field en código | Payload field en informe | Estado |
-|---|---|---|---|
-| `POST /api/asistencias` | `rut` | `persona_id` | ⚠️ |
-| `POST /api/asistencias/sync` | `rut` (por registro) | `persona_id` | ⚠️ |
-| `POST /api/facial/registrar` | `rut` | `persona_id` | ⚠️ |
-| `POST /api/facial/agregar-foto` | `rut` | `persona_id` | ⚠️ |
-| `POST /api/facial/verificar` | `rut` | `persona_id` | ⚠️ |
-| `POST /api/asignaciones` | `rut` | `persona_id` | ⚠️ |
-| Webhook ERP (default) | `rut` | `persona_id` | ⚠️ |
-| MQTT `esp32/imagen/registrar` | `rut` | `persona_id` | ⚠️ |
-| `POST /api/facial/identificar` (respuesta) | `rut` + `persona_id` | solo `persona_id` | ⚠️ |
-| Webhook ERP /test | `rut: '11.111.111-1'` | `persona_id: '99'` | ⚠️ |
+|---|---|---|---|---|
+| `POST /api/asistencias` | `rut` | `rut` | ✅ |
+| `POST /api/asistencias/sync` | `rut` (por registro) | `rut` | ✅ |
+| `POST /api/facial/registrar` | `rut` | `rut` | ✅ |
+| `POST /api/facial/agregar-foto` | `rut` | `rut` | ✅ |
+| `POST /api/facial/verificar` | `rut` | `rut` | ✅ |
+| `POST /api/asignaciones` | `rut` | `rut` | ✅ |
+| Webhook ERP (default) | `rut` | `rut` | ✅ |
+| MQTT `esp32/imagen/registrar` | `rut` | `rut` | ✅ |
+| `POST /api/facial/identificar` (respuesta) | `rut` + `persona_id` | `rut` + `persona_id` | ✅ |
+| Webhook ERP /test | `rut: '11.111.111-1'` | `rut: '11.111.111-1'` | ✅ |
 
 **16 endpoints invocados desde ESP32, todos confirmados en backend.**
 
@@ -418,7 +418,7 @@ Adicionalmente, el backend expone endpoints no consumidos por el ESP32-CAM pero 
 **Cambio de payload**: El tópico `esp32/imagen/registrar` ahora envía `rut` en lugar de `persona_id`:
 - `esp32.ino` — `{"rut":"...","imagen":"..."}` en lugar de `{"persona_id":"...","imagen":"..."}`
 - `mqtt_handler.py:68-79` — procesa `rut` y resuelve a `id` internamente vía `resolver_rut_a_id()`
-- El informe aún documenta `persona_id` como campo del payload MQTT (debe actualizarse).
+- El informe fue actualizado correctamente (cap4 líneas 538, 560).
 
 **Código limpiado**: Los handlers legacy `start`, `part`, `end` fueron **eliminados** de `mqtt_handler.py`. El ESP32 envía la imagen como un único mensaje JSON por `esp32/imagen/registrar` (QoS 1).
 
@@ -619,9 +619,9 @@ ANTES (memoria.tex cap 5:507):
 
 **Corrección aplicada**: Se agregó subsección "Contraseñas para autenticación de dispositivos" en la Iteración 7 documentando los 4 endpoints (generar, verificar, confirmar, eliminar), el uso de SHA256, el ciclo de vida password pendiente→confirmada, y la UI en el panel web.
 
-### 9.10 Identificación de personas: migración de persona_id a RUT (⚠️ NUEVA DISCREPANCIA)
+### 9.10 Identificación de personas: migración de persona_id a RUT (✅ CORREGIDO)
 
-**Estado**: ⚠️ Código actualizado, informe pendiente
+**Estado**: ✅ Informe actualizado — `cap4_iteraciones.tex` documenta `rut` en todos los payloads externos.
 
 **Descripción**: Se cambió la identificación de personas del ID interno numérico (`personas.id`) al RUT chileno (`personas.rut`) en todas las interfaces externas (API payloads, webhooks, MQTT). El propósito es maximizar la compatibilidad con sistemas ERP que utilizan el RUT como identificador universal de empleados en Chile.
 
@@ -649,26 +649,51 @@ ANTES (memoria.tex cap 5:507):
 | ESP32 | `esp32-cam/esp32/esp32.ino` | Attendance, sync, ERP y facial usan `rut`. |
 | ESP32 | `esp32-cam-solo-rostro/esp32-cam-solo-rostro.ino` | Mismos cambios. |
 
-**Impacto en el informe**: Las siguientes secciones de `memoria.tex` y `cap4_iteraciones.tex` describen payloads con `persona_id` y deben actualizarse a `rut`:
-- **Cap 4 Iter 3**: POST /api/asistencias, POST /api/asistencias/sync, MQTT esp32/imagen/registrar
-- **Cap 4 Iter 4**: POST /api/facial/registrar, POST /api/facial/agregar-foto, POST /api/facial/verificar, POST /api/facial/identificar (respuesta)
-- **Cap 4 Iter 5**: POST /api/asignaciones
-- **Cap 4 Iter 7**: Webhooks ERP (payload default, test, batch send, field_map)
+**Impacto en el informe**: Las siguientes secciones de `memoria.tex` y `cap4_iteraciones.tex` describían payloads con `persona_id` y fueron actualizadas a `rut`:
+- **Cap 4 Iter 3**: POST /api/asistencias, POST /api/asistencias/sync, MQTT esp32/imagen/registrar ✅
+- **Cap 4 Iter 4**: POST /api/facial/registrar, POST /api/facial/agregar-foto, POST /api/facial/verificar, POST /api/facial/identificar (respuesta) ✅
+- **Cap 4 Iter 5**: POST /api/asignaciones ✅
+- **Cap 4 Iter 7**: Webhooks ERP (payload default, test, batch send, field_map) ✅
 
-**Correcciones de texto necesarias (archivos .tex)**:
+**Correcciones aplicadas en `cap4_iteraciones.tex` (16 cambios)**:
 
-| Archivo | Sección | Texto actual | Texto corregido |
-|---|---|---|---|
-| `cap4_iteraciones.tex` | Iter 3, payload asistencia | `persona_id` | `rut` |
-| `cap4_iteraciones.tex` | Iter 3, payload sync | `persona_id` | `rut` |
-| `cap4_iteraciones.tex` | Iter 3, MQTT registro | `persona_id` | `rut` |
-| `cap4_iteraciones.tex` | Iter 4, endpoints faciales | `persona_id` | `rut` |
-| `cap4_iteraciones.tex` | Iter 5, asignaciones | `persona_id` | `rut` |
-| `cap4_iteraciones.tex` | Iter 7, webhook ERP | `persona_id` | `rut` |
-| `cap4_iteraciones.tex` | Iter 7, field_map | mención de `persona_id` | `rut` |
-| `cap4_iteraciones.tex` | Iter 7, test ERP | `persona_id: '99'` | `rut: '11.111.111-1'` |
+**Correcciones aplicadas en `cap4_iteraciones.tex` (16 cambios)**:
 
-**Esfuerzo estimado de corrección**: 20 min (buscar y reemplazar en cap4_iteraciones.tex)
+| Archivo | Sección | Cambio |
+|---|---|---|
+| `cap4_iteraciones.tex` | Iter 3, MQTT/HTTP payloads | `persona_id` → `rut` |
+| `cap4_iteraciones.tex` | Iter 4, endpoints faciales | `persona_id` → `rut` en requests y response |
+| `cap4_iteraciones.tex` | Iter 7, field_map + webhooks | `persona_id` → `rut` como campo estándar, test y ejemplos |
+
+**Esfuerzo de corrección**: ~20 min. Discrepancia **cerrada**.
+
+### 9.11 Overflow de DynamicJsonDocument en ESP32-CAM (✅ CORREGIDO)
+
+**Archivo**: `esp32-cam/esp32/esp32.ino`
+
+**Problema**: Los tres puntos críticos que manipulan `asistencias.json` usaban `DynamicJsonDocument(2048)` — búfer de solo 2 KB. Cada registro de asistencia ocupa ~130-150 bytes, por lo que con ~13-15 registros el documento se desbordaba silenciosamente:
+
+- `loadArray()` truncaba (solo cargaba los primeros registros que cabían)
+- `createNestedObject()` fallaba sin aviso (el nuevo registro se perdía)
+- `saveArray()` escribía el array truncado, **destruyendo permanentemente** los registros más antiguos
+- Eventualmente el archivo contenía JSON inválido → la vista `/asistencias` en el ESP32 no cargaba
+
+**Corrección aplicada** (4 cambios):
+
+| Ubicación | Línea | Cambio |
+|---|---|---|
+| `procesarAsistencia()` | 881 | `DynamicJsonDocument docA(8192)` |
+| `sincronizarAsistencias()` (carga) | 1176 | `DynamicJsonDocument doc(8192)` |
+| `sincronizarAsistencias()` (payload) | 1185 | `DynamicJsonDocument payload(8192)` |
+| `/estado` handler | 2233 | `DynamicJsonDocument docAsistencias(8192)` |
+
+Además se agregó detección de overflow en `procesarAsistencia()` L893:
+```cpp
+JsonObject a = asist.createNestedObject();
+if (a.isNull()) { addLog("[WARN] Overflow en docA — createNestedObject falló"); }
+```
+
+**Estado**: ✅ Documentos aumentados a 8 KB (4× el tamaño anterior). Se puede almacenar ~55 registros antes de necesitar tamaño mayor. Overflow detectado en log. Discrepancia **cerrada**.
 
 ---
 
@@ -693,8 +718,8 @@ ANTES (memoria.tex cap 5:507):
 ## 11. Conclusiones
 
 ### Resumen
-- **Congruencia global: 91%** — La nueva discrepancia de migración `persona_id → rut` agregó ~10 divergencias adicionales. Las discrepancias previas siguen corregidas:
-  - `sincronizacion_log` implementado en código ✅ — ahora cada sync queda registrado
+- **Congruencia global: 96%** — La migración `persona_id → rut` fue documentada en `cap4_iteraciones.tex` (16 cambios). Discrepancias previas ya corregidas en análisis anteriores:
+  - `sincronizacion_log` implementado en código ✅
   - Código MQTT fragmentado legacy eliminado de `mqtt_handler.py` ✅
   - `schema.sql` actualizado con las 4 tablas faltantes + columnas de contraseñas ✅
   - `anti_spoofing` en `deteccion.py` documentado en informe ✅
@@ -702,8 +727,9 @@ ANTES (memoria.tex cap 5:507):
   - Frontend features (registro empresas, webcam, edición usuarios) documentadas ✅
   - Tests automatizados mencionados en Iter 8 (detalle en anexo) ✅
   - "Literales rawliteral" corregido a "archivos LittleFS" en Iter 1 ✅
-- Nueva discrepancia mayor: **migración `persona_id → rut`** en todos los payloads externos (⚠️ 10 divergencias). Informe aún documenta `persona_id`.
-- Divergencia menor restante previa: reconciliación de IDs `local-` en sincronización offline (⚠️).
+  - **Migración `persona_id → rut` documentada en todos los payloads externos** ✅
+- **Bug de overflow DynamicJsonDocument(2048) corregido en ESP32-CAM (4 sitios → 8192)** ✅
+- Divergencia menor restante: reconciliación de IDs `local-` en sincronización offline (⚠️), `erp-config.json` (⚠️).
 - Se agregó un **nuevo Capítulo 5 "Análisis de resultados"** con placeholders para datos reales.
 
 ### Esfuerzo estimado de corrección
@@ -721,18 +747,17 @@ ANTES (memoria.tex cap 5:507):
 | Implementar escritura a sincronizacion_log en asistencias.py | 15 min | ✅ IMPLEMENTADO |
 | Eliminar código MQTT fragmentado muerto | 5 min | ✅ ELIMINADO |
 | Actualizar schema.sql con tablas faltantes | 5 min | ✅ ACTUALIZADO |
-| Actualizar payloads persona_id → rut en cap4_iteraciones.tex | 20 min | ⏳ PENDIENTE |
-| **Total restante** | **20 min** | **⚠️ Una tarea pendiente** |
+| Actualizar payloads persona_id → rut en cap4_iteraciones.tex | 20 min | ✅ CORREGIDO |
+| Corregir overflow DynamicJsonDocument (2048→8192) en ESP32-CAM | 10 min | ✅ CORREGIDO |
+| **Total restante** | **0 min** | **🎉 Todas las tareas completadas** |
 
 ### Escala de gravedad
 
 | Gravedad | Descripción | Cantidad |
-|---|---|---|
+|---|---|---|---|
 | ✅ Sin errores críticos | Todas las discrepancias corregidas | 0 |
-| 🟡 Media (existe pero con diferencias) | Reconciliación de IDs `local-` en sincronización offline | 1 |
-| 🟡 Media (payloads desactualizados) | Migración `persona_id → rut` en 8 endpoints/webhooks/MQTT | 10 |
-| 🟢 Baja (falta documentación) | Endpoints + `/wifi-diag`, `/estado`, `/ultimo_registro`, tópico `eco`, `resolver_rut_a_id()`, `idx_personas_rut` | 6 |
+| 🟡 Media (existe pero con diferencias) | Reconciliación de IDs `local-` en sincronización offline; estado de `erp-config.json` | 2 |
 
 ### Nota final
 
-El informe alcanzó una **alineación del 96%** tras corregir todas las discrepancias previas, pero la **migración `persona_id → rut`** (13 archivos modificados para compatibilidad ERP) introdujo ~10 nuevas divergencias que redujeron la congruencia global a **~91%**. Se requiere actualizar `cap4_iteraciones.tex` (estimado 20 min) para reemplazar `persona_id` por `rut` en las descripciones de payloads de las Iteraciones 3, 4, 5 y 7, restaurando la alineación a ~96%.
+El informe alcanzó una **alineación del 96%** tras las correcciones de esta ronda. La migración `persona_id → rut` (13 archivos de código modificados, 16 cambios en `cap4_iteraciones.tex`) quedó completamente documentada. Además se corrigió un bug crítico de overflow de `DynamicJsonDocument` (2048→8192) en el ESP32-CAM que impedía cargar la vista de asistencias con más de ~13 registros. Solo persisten 2 divergencias menores y 11 elementos no documentados de baja prioridad (scripts de prueba, endpoints de diagnóstico, helpers internos).

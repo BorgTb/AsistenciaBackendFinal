@@ -394,6 +394,8 @@ Se implementaron dos funciones genéricas para la manipulación de archivos JSON
 
 Estas funciones encapsulan toda la lógica de persistencia del sistema y son reutilizadas por todos los módulos que necesiten leer o escribir datos.
 
+El tamaño de cada \texttt{DynamicJsonDocument} se dimensionó según el volumen esperado de datos de cada archivo: \texttt{personas.json} y \texttt{turnos.json} utilizan 2048~bytes, \texttt{asignaciones.json} utiliza 1024~bytes y \texttt{asistencias.json} utiliza 8192~bytes, suficiente para aproximadamente 55~registros de asistencia. Adicionalmente, en la función \texttt{procesarAsistencia()} se incorporó una validación sobre el retorno de \texttt{createNestedObject()}: si el objeto retornado es nulo (indicando desbordamiento del documento), se registra una advertencia en el log del sistema, permitiendo detectar tempranamente cuellos de botella de memoria sin comprometer la integridad del archivo JSON.
+
 \begin{figure}[H]
     \centering
     \includegraphics[width=0.95\linewidth]{Imagenes/codigo_funcionesJSON.png}
@@ -448,7 +450,7 @@ Se diseñaron las siguientes pruebas para validar el correcto funcionamiento del
 \begin{itemize}
     \item \textbf{Prueba de persistencia tras reinicio}: Registrar usuarios, turnos, asignaciones y asistencias, luego reiniciar el ESP32-CAM (por corte de energía o comando software). Verificar que todos los archivos JSON conserven su contenido íntegro y que el sistema pueda leerlos correctamente tras el reinicio.
 
-    \item \textbf{Prueba de lectura y deserialización}: Abrir cada archivo JSON generado y verificar que \texttt{ArduinoJson} pueda deserializar su contenido sin errores ni pérdida de campos. Se espera que el tamaño de cada documento no exceda los límites del \texttt{DynamicJsonDocument} configurado (2048-8192 bytes según el archivo).
+    \item \textbf{Prueba de lectura y deserialización}: Abrir cada archivo JSON generado y verificar que \texttt{ArduinoJson} pueda deserializar su contenido sin errores ni pérdida de campos. El tamaño de cada \texttt{DynamicJsonDocument} se configuró según la capacidad esperada del archivo: 2048~bytes para \texttt{personas.json} y \texttt{turnos.json}, 1024~bytes para \texttt{asignaciones.json} y 8192~bytes para \texttt{asistencias.json}. Se incluyó además una validación post-inserción —mediante \texttt{isNull()}— en la función \texttt{procesarAsistencia()} para detectar y registrar en logs cualquier desbordamiento del documento al crear nuevos registros de asistencia.
 
     \item \textbf{Prueba de escritura concurrente}: Realizar múltiples operaciones de escritura (registro de persona + asignación de turno + marcación de asistencia) en rápida sucesión sin reiniciar el sistema. Verificar que no se produzcan corrupciones de archivos ni pérdida de datos.
 
@@ -535,7 +537,7 @@ El diagrama de la base de datos se presenta en la Figura 4.28.
     \caption{Diagrama de la base de datos relacional.}
 \end{figure}
 
-La comunicación MQTT se diseña para transmitir imágenes faciales de \textbf{registro} desde el ESP32-CAM hacia el backend en un único mensaje JSON por el tópico \texttt{esp32/imagen/registrar}, conteniendo el \texttt{persona\_id} y la imagen codificada en Base64. El backend, mediante un cliente MQTT (librería \texttt{paho-mqtt} de Python), se suscribe a este tópico, decodifica la imagen y procesa el enrolamiento facial. Es importante destacar que las imágenes de \textbf{identificación} (consulta 1:N durante la marcación) \textbf{no viajan por MQTT}, sino por HTTP al endpoint \texttt{POST /api/facial/identificar} como JPEG crudo en formato \texttt{application/octet-stream}.
+La comunicación MQTT se diseña para transmitir imágenes faciales de \textbf{registro} desde el ESP32-CAM hacia el backend en un único mensaje JSON por el tópico \texttt{esp32/imagen/registrar}, conteniendo el \texttt{rut} y la imagen codificada en Base64. El backend, mediante un cliente MQTT (librería \texttt{paho-mqtt} de Python), se suscribe a este tópico, decodifica la imagen y procesa el enrolamiento facial. Es importante destacar que las imágenes de \textbf{identificación} (consulta 1:N durante la marcación) \textbf{no viajan por MQTT}, sino por HTTP al endpoint \texttt{POST /api/facial/identificar} como JPEG crudo en formato \texttt{application/octet-stream}.
 
 Adicionalmente, se definen los tópicos \texttt{esp32/heartbeat/<MAC>} para monitorizar la actividad de los dispositivos y \texttt{esp32/lwt/<MAC>} para detectar desconexiones mediante el mecanismo de Last Will Testament (LWT). El backend recibe las respuestas del procesamiento facial por el tópico \texttt{esp32/respuesta/facial}, que el ESP32-CAM escucha para confirmar el éxito o fallo del registro.
 
@@ -557,15 +559,15 @@ El evento \texttt{ARDUINO\_EVENT\_WIFI\_STA\_DISCONNECTED} queda registrado con 
 
 \subsubsection{Envío de imágenes faciales: MQTT para registro, HTTP para identificación}
 
-Siguiendo el diseño establecido, durante el \textbf{registro facial} la imagen es capturada, codificada en Base64 mediante una implementación optimizada que evita el uso de buffers intermedios, y enviada como un único mensaje JSON al tópico \texttt{esp32/imagen/registrar} con QoS 1 (entrega garantizada). El payload contiene dos campos: \texttt{persona\_id} y \texttt{imagen} (string Base64). Este enfoque evita la complejidad de la fragmentación en múltiples mensajes y es factible porque el ESP32-CAM puede manejar cadenas de hasta ~80 KB en memoria con calidad JPEG reducida (q=10 para registro).
+Siguiendo el diseño establecido, durante el \textbf{registro facial} la imagen es capturada, codificada en Base64 mediante una implementación optimizada que evita el uso de buffers intermedios, y enviada como un único mensaje JSON al tópico \texttt{esp32/imagen/registrar} con QoS 1 (entrega garantizada). El payload contiene dos campos: \texttt{rut} y \texttt{imagen} (string Base64). Este enfoque evita la complejidad de la fragmentación en múltiples mensajes y es factible porque el ESP32-CAM puede manejar cadenas de hasta ~80 KB en memoria con calidad JPEG reducida (q=10 para registro).
 
 La función \texttt{registrarRostroEnBackend()} encapsula este flujo y retorna \texttt{true} si la publicación MQTT fue exitosa. La respuesta del backend llega luego al tópico \texttt{esp32/respuesta/facial}, donde el firmware confirma visualmente el éxito (\texttt{flashExito()}) o el error (\texttt{flashError()}).
 
-En contraste, durante la \textbf{identificación facial} (consulta 1:N al momento de marcar asistencia), el flujo es diferente: la imagen se envía por \textbf{HTTP} y no por MQTT. La función \texttt{identificarPorRostro()} reduce la calidad JPEG a 10, captura el frame directamente del buffer de la cámara (\texttt{camera\_fb\_t}) y lo transmite como \texttt{application/octet-stream} mediante un \texttt{HTTPClient.POST(fb->buf, fb->len)} al endpoint \texttt{POST /api/facial/identificar}, evitando la sobrecarga de codificación Base64. El backend responde sincrónicamente con el \texttt{persona\_id} identificado (o HTTP 404 si el rostro no coincide). Esta decisión se tomó porque la marcación requiere respuesta inmediata para validar la identidad y proceder con el registro de asistencia en el mismo flujo.
+En contraste, durante la \textbf{identificación facial} (consulta 1:N al momento de marcar asistencia), el flujo es diferente: la imagen se envía por \textbf{HTTP} y no por MQTT. La función \texttt{identificarPorRostro()} reduce la calidad JPEG a 10, captura el frame directamente del buffer de la cámara (\texttt{camera\_fb\_t}) y lo transmite como \texttt{application/octet-stream} mediante un \texttt{HTTPClient.POST(fb->buf, fb->len)} al endpoint \texttt{POST /api/facial/identificar}, evitando la sobrecarga de codificación Base64. El backend responde sincrónicamente con el \texttt{rut} identificado (o HTTP 404 si el rostro no coincide). Esta decisión se tomó porque la marcación requiere respuesta inmediata para validar la identidad y proceder con el registro de asistencia en el mismo flujo.
 
 \subsubsection{Recepción de imágenes en el backend vía MQTT}
 
-El backend implementa un cliente MQTT mediante la librería \texttt{paho-mqtt} en el módulo \texttt{mqtt\_handler.py}. Al recibir un mensaje en \texttt{esp32/imagen/registrar}, la función \texttt{on\_message} decodifica el JSON, extrae el \texttt{persona\_id} y la imagen Base64, verifica que exista consentimiento biométrico registrado en la base de datos, decodifica la imagen, la guarda en \texttt{static/previews/<persona\_id>.jpg} y extrae el embedding facial. Si el procesamiento es exitoso, publica en \texttt{esp32/respuesta/facial} un JSON con \texttt{status: "ok"} y el nombre del archivo; en caso de error, publica \texttt{status: "error"} con el detalle.
+El backend implementa un cliente MQTT mediante la librería \texttt{paho-mqtt} en el módulo \texttt{mqtt\_handler.py}. Al recibir un mensaje en \texttt{esp32/imagen/registrar}, la función \texttt{on\_message} decodifica el JSON, extrae el \texttt{rut} y la imagen Base64, verifica que exista consentimiento biométrico registrado en la base de datos, resuelve el \texttt{rut} al \texttt{id} interno, decodifica la imagen, la guarda en \texttt{static/previews/<id>.jpg} y extrae el embedding facial. Si el procesamiento es exitoso, publica en \texttt{esp32/respuesta/facial} un JSON con \texttt{status: "ok"} y el nombre del archivo; en caso de error, publica \texttt{status: "error"} con el detalle.
 
 Adicionalmente, el cliente MQTT procesa los heartbeats (\texttt{esp32/heartbeat/<MAC>}) actualizando el estado y la IP del dispositivo en la base de datos, y los mensajes LWT (\texttt{esp32/lwt/<MAC>}) marcando el dispositivo como inactivo.
 
@@ -652,7 +654,7 @@ Se identificaron los siguientes requisitos funcionales para esta iteración:
 \begin{itemize}
     \item \textbf{Registro facial}: Recibir una imagen del ESP32-CAM, extraer el embedding facial, validar que el rostro no esté duplicado en la base de datos (detección de identidades repetidas) y almacenar el embedding cifrado.
     \item \textbf{Identificación 1:N}: Dada una imagen capturada en vivo, comparar su embedding contra todos los embeddings almacenados y retornar la identidad con mayor coincidencia, si supera el umbral de similitud.
-    \item \textbf{Verificación 1:1}: Dada una imagen y un \texttt{persona\_id}, verificar si la imagen corresponde a la persona declarada.
+    \item \textbf{Verificación 1:1}: Dada una imagen y un \texttt{rut}, verificar si la imagen corresponde a la persona declarada.
     \item \textbf{Anti-spoofing}: Detectar intentos de suplantación mediante fotografías impresas, pantallas de dispositivos o máscaras, rechazando la captura si no se detecta un rostro real.
     \item \textbf{Cifrado de embeddings}: Los vectores de características faciales (embeddings) constituyen datos biométricos sensibles. Para protegerlos, se deben cifrar antes de persistirlos en la base de datos, utilizando una clave derivada de una variable de entorno.
     \item \textbf{Consentimiento biométrico}: Todo registro facial debe estar precedido por la aceptación explícita de una política de privacidad por parte del trabajador, en cumplimiento de la normativa de protección de datos.
@@ -665,9 +667,9 @@ El flujo de procesamiento facial se divide en tres operaciones principales:
 \begin{enumerate}
     \item \textbf{Registro} (\texttt{POST /api/facial/registrar}):
     \begin{itemize}
-        \item Recibe \texttt{persona\_id} e \texttt{imagen} (Base64).
+        \item Recibe \texttt{rut} e \texttt{imagen} (Base64).
         \item Verifica que exista consentimiento biométrico en la tabla \texttt{consentimientos}. Si no existe, rechaza con HTTP 403.
-        \item Decodifica la imagen, la guarda como \texttt{static/previews/<persona\_id>.jpg}.
+        \item Decodifica la imagen, la guarda como \texttt{static/previews/<id>.jpg}.
         \item Aplica un \textbf{filtro de calidad de imagen} que mide la nitidez mediante la varianza del Laplaciano. Si la imagen es demasiado plana o borrosa (por debajo de un umbral configurable, 50 por defecto), se rechaza como posible intento de suplantación (foto de pantalla o papel) antes de llegar a DeepFace, ahorrando procesamiento innecesario del modelo.
         \item Extrae el embedding con DeepFace usando el modelo Facenet y un detector configurable mediante variable de entorno (\texttt{FACIAL\_DETECTOR}), utilizando MTCNN por defecto por su velocidad (tres veces más rápido que RetinaFace con precisión comparable) y sin anti-spoofing en esta etapa.
         \item Cifra el embedding con Fernet y lo almacena en la tabla \texttt{encodings\_faciales}, que permite acumular múltiples fotos de referencia por persona con distintos ángulos e iluminación, mejorando la precisión en subsecuentes identificaciones.
@@ -680,12 +682,12 @@ El flujo de procesamiento facial se divide en tres operaciones principales:
         \item Aplica el mismo filtro de calidad Laplacian como barrera anti-spoofing previa, rechazando imágenes de baja nitidez antes de invocar DeepFace.
         \item Extrae el embedding con DeepFace (anti-spoofing activado mediante \texttt{anti\_spoofing=True}).
         \item Consulta una \textbf{caché en memoria} de embeddings (con TTL configurable, 60 segundos por defecto). Si la caché expiró, recarga todos los embeddings desde la base de datos. Para cada persona, compara contra \textbf{todos los embeddings} almacenados en \texttt{encodings\_faciales} (multi-encoding) y selecciona la menor distancia. Esto mejora la precisión porque el sistema puede reconocer a un trabajador aunque la captura en vivo tenga una iluminación o ángulo diferentes a los de su foto de registro.
-        \item Si la menor distancia es inferior al umbral (10.0 para Facenet), retorna el \texttt{persona\_id} correspondiente. En caso contrario, retorna HTTP 404.
+        \item Si la menor distancia es inferior al umbral (10.0 para Facenet), retorna el \texttt{rut} correspondiente. En caso contrario, retorna HTTP 404.
     \end{itemize}
 
     \item \textbf{Verificación 1:1} (\texttt{POST /api/facial/verificar}):
     \begin{itemize}
-        \item Recibe \texttt{persona\_id} e \texttt{imagen} (Base64).
+        \item Recibe \texttt{rut} e \texttt{imagen} (Base64).
         \item Descifra todos los embeddings almacenados para esa persona en \texttt{encodings\_faciales} y extrae el embedding de la imagen capturada (con anti-spoofing activado).
         \item Calcula la distancia euclidiana contra cada embedding de referencia y selecciona la menor. Si es menor que 10.0, retorna éxito con el nivel de confianza calculado como \texttt{max(0, (1 - distancia/20) * 100)}.
     \end{itemize}
@@ -735,13 +737,13 @@ Se implementó además el endpoint \texttt{POST /api/facial/agregar-foto} que pe
 Se diseñaron las siguientes pruebas para validar el módulo de reconocimiento facial:
 
 \begin{itemize}
-    \item \textbf{Prueba de registro facial exitoso}: Enviar una imagen facial válida junto con un \texttt{persona\_id} que tenga consentimiento registrado. Verificar que el backend extraiga el embedding, lo almacene cifrado y responda con HTTP 200. Verificar que la imagen se guarde en \texttt{static/previews/}.
+    \item \textbf{Prueba de registro facial exitoso}: Enviar una imagen facial válida junto con un \texttt{rut} que tenga consentimiento registrado. Verificar que el backend extraiga el embedding, lo almacene cifrado y responda con HTTP 200. Verificar que la imagen se guarde en \texttt{static/previews/}.
 
     \item \textbf{Prueba de detección de duplicados}: Registrar una segunda imagen del mismo rostro para otra persona. Verificar que el backend detecte la similitud (distancia < 10.0) y rechace el registro con HTTP 409, indicando el nombre de la persona con la que coincide.
 
     \item \textbf{Prueba de rechazo por falta de consentimiento}: Intentar registrar un rostro para una persona sin consentimiento biométrico. Verificar que el backend rechace la operación con HTTP 403.
 
-    \item \textbf{Prueba de identificación 1:N}: Registrar 3 personas con sus respectivas fotos. Enviar una nueva foto de una de ellas al endpoint de identificación. Verificar que el backend retorne el \texttt{persona\_id} correcto y que la copia de auditoría se guarde en \texttt{static/capturas\_prueba/}.
+    \item \textbf{Prueba de identificación 1:N}: Registrar 3 personas con sus respectivas fotos. Enviar una nueva foto de una de ellas al endpoint de identificación. Verificar que el backend retorne el \texttt{rut} correcto y que la copia de auditoría se guarde en \texttt{static/capturas\_prueba/}.
 
     \item \textbf{Prueba de identificación con rostro desconocido}: Enviar una foto de una persona no registrada. Verificar que el backend retorne HTTP 404 y registre el intento fallido en \texttt{logs\_biometricos}.
 
@@ -1083,14 +1085,14 @@ Cada integración ERP se configura con los siguientes parámetros:
     \item \texttt{tipo}: Clasificación del ERP (\texttt{generic}, \texttt{softland}, \texttt{defontana}, \texttt{sap}).
     \item \texttt{webhook\_url}: Endpoint HTTP donde el ERP espera recibir los datos.
     \item \texttt{headers}: Objeto JSON con headers HTTP personalizados (ej. \texttt{\{"Authorization": "Bearer <token>"\}}).
-    \item \texttt{field\_map}: Objeto JSON que mapea los campos estándar del sistema (\texttt{persona\_id}, \texttt{nombre}, \texttt{tipo}, \texttt{metodo}, \texttt{fecha\_hora}, \texttt{rut}) a los nombres de campo esperados por el ERP.
+    \item \texttt{field\_map}: Objeto JSON que mapea los campos estándar del sistema (\texttt{rut}, \texttt{nombre}, \texttt{tipo}, \texttt{metodo}, \texttt{fecha\_hora}) a los nombres de campo esperados por el ERP.
     \item \texttt{envio\_auto}: Booleano que indica si el envío se realiza automáticamente al registrar cada asistencia, o solo manualmente.
     \item \texttt{activo}: Booleano para habilitar o deshabilitar temporalmente la integración sin eliminarla.
 \end{itemize}
 
 El field mapping permite adaptar el formato de salida sin modificar el código del backend. Por ejemplo, un ERP que espera los campos \texttt{employee\_id}, \texttt{timestamp} y \texttt{event\_type} puede configurarse con:
 \begin{verbatim}
-{"persona_id": "employee_id", "fecha_hora": "timestamp", "tipo": "event_type"}
+{"rut": "employee_id", "fecha_hora": "timestamp", "tipo": "event_type"}
 \end{verbatim}
 
 \subsection{Implementación}
@@ -1162,11 +1164,11 @@ Se diseñaron las siguientes pruebas para validar el panel web para la gestión 
 
     \item \textbf{Prueba de creación de integración ERP}: Autenticarse como empleador y enviar \texttt{POST /api/erp} con nombre, tipo, webhook URL (usando un servidor de prueba como \texttt{https://webhook.site}) y field mapping. Verificar que la integración se cree con \texttt{activo = TRUE} y \texttt{envio\_auto = TRUE}.
 
-    \item \textbf{Prueba de test de webhook}: Ejecutar \texttt{POST /api/erp/<id>/test} para la integración creada. Verificar que el webhook de prueba reciba un payload JSON con datos ficticios (\texttt{persona\_id = 99}, \texttt{nombre = "Test Usuario"}, \texttt{tipo = "entrada"}). Verificar que el estado se actualice en la base de datos.
+    \item \textbf{Prueba de test de webhook}: Ejecutar \texttt{POST /api/erp/<id>/test} para la integración creada. Verificar que el webhook de prueba reciba un payload JSON con datos ficticios (\texttt{rut = '11.111.111-1'}, \texttt{nombre = "Test Usuario"}, \texttt{tipo = "entrada"}). Verificar que el estado se actualice en la base de datos.
 
     \item \textbf{Prueba de envío automático}: Registrar una asistencia real (POST a \texttt{/api/asistencias}) para una persona de la empresa configurada. Verificar que el servidor de prueba del webhook reciba automáticamente el payload con los datos de la asistencia.
 
-    \item \textbf{Prueba de field mapping}: Configurar un ERP con field mapping \texttt{\{"persona\_id": "employee\_id", "tipo": "event"\}}. Registrar una asistencia y verificar que el webhook reciba el payload con los campos renombrados (\texttt{employee\_id} en lugar de \texttt{persona\_id}, \texttt{event} en lugar de \texttt{tipo}).
+    \item \textbf{Prueba de field mapping}: Configurar un ERP con field mapping \texttt{\{"rut": "employee\_id", "tipo": "event"\}}. Registrar una asistencia y verificar que el webhook reciba el payload con los campos renombrados (\texttt{employee\_id} en lugar de \texttt{rut}, \texttt{event} en lugar de \texttt{tipo}).
 
     \item \textbf{Prueba de envío asíncrono}: Medir el tiempo de respuesta del endpoint \texttt{POST /api/asistencias} cuando hay un ERP configurado cuyo webhook tarda 5 segundos en responder. Verificar que la respuesta al cliente sea inmediata (menor a 200 ms) y que el envío al ERP ocurra en segundo plano.
 

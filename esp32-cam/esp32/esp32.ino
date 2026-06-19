@@ -32,6 +32,7 @@ bool mqttConnected = false;
 #define FLASH_DUTY_MED    128  // 50%
 #define FLASH_DUTY_HIGH   191  // 75%
 #define FLASH_DUTY_FULL   255  // 100%
+#define FLASH_PWM_CH       4     // canal LEDC para el flash (usa timer group 1, no interfiere con cámara)
 
 // ===== Sensor de huellas (RX=GPIO14, TX=GPIO15) =====
 HardwareSerial FingerSerial(2);
@@ -411,14 +412,14 @@ String capturarImagenBase64() {
   if (!camaraIniciada) return "";
 
   // 1. ILUMINACIÓN (Consumo alto: Flash ON al 50%)
-  ledcWrite(FLASH_PIN, FLASH_DUTY_LOW);
+  ledcWrite(FLASH_PWM_CH, FLASH_DUTY_LOW);
   delay(200); // Damos tiempo al sensor OV2640 para ajustar brillo y enfoque
 
   // 2. CAPTURA DE HARDWARE (Guardamos la foto en la RAM)
   camera_fb_t* fb = esp_camera_fb_get();
 
   // 3. APAGADO INMEDIATO (Liberamos carga eléctrica de la fuente)
-  ledcWrite(FLASH_PIN, 0);
+  ledcWrite(FLASH_PWM_CH, 0);
   delay(150);
   if (!fb) {
     addLog("Error: Falla al capturar frame");
@@ -878,7 +879,7 @@ String procesarAsistencia(String personaId, String metodo) {
   if (nombre == "") return "Persona ID no existe localmente";
   if (!turnoActivo(personaId)) return "Sin turno asignado: " + nombre;
 
-  DynamicJsonDocument docA(2048);
+  DynamicJsonDocument docA(8192);
   JsonArray asist = loadArray("/asistencias.json", docA);
   
   String tipo = "entrada";
@@ -891,6 +892,7 @@ String procesarAsistencia(String personaId, String metodo) {
   }
 
   JsonObject a = asist.createNestedObject();
+  if (a.isNull()) { addLog("[WARN] Overflow en docA — createNestedObject falló"); }
   a["persona_id"]   = personaId;
   a["rut"]          = rut;
   a["nombre"]       = nombre;
@@ -1173,7 +1175,7 @@ bool agregarFotoEnBackend(String personaId) {
 
 void sincronizarAsistencias() {
   if (!isOnline) return;
-  DynamicJsonDocument doc(2048);
+  DynamicJsonDocument doc(8192);
   JsonArray asist = loadArray("/asistencias.json", doc);
 
   bool hayPendientes = false;
@@ -1182,7 +1184,7 @@ void sincronizarAsistencias() {
   }
   if (!hayPendientes) return;
 
-  DynamicJsonDocument payload(2048);
+  DynamicJsonDocument payload(8192);
   JsonArray registros = payload.createNestedArray("registros");
   for (JsonObject a : asist) {
     if (a["sincronizado"] == false) {
@@ -2130,8 +2132,9 @@ void setup() {
   pinMode(13, INPUT_PULLUP);
   pinMode(FLASH_PIN, OUTPUT);
   digitalWrite(FLASH_PIN, LOW);
-  ledcAttach(FLASH_PIN, FLASH_PWM_FREQ, FLASH_PWM_RES);
-  ledcWrite(FLASH_PIN, 0);
+  ledcSetup(FLASH_PWM_CH, FLASH_PWM_FREQ, FLASH_PWM_RES);
+  ledcAttachPin(FLASH_PIN, FLASH_PWM_CH);
+  ledcWrite(FLASH_PWM_CH, 0);
   if (digitalRead(13) == LOW) {
     delay(1000);
     if (digitalRead(13) == LOW) {
@@ -2230,7 +2233,7 @@ void setup() {
 
     DynamicJsonDocument docPersonas(2048);
     DynamicJsonDocument docAsignaciones(1024);
-    DynamicJsonDocument docAsistencias(2048);
+    DynamicJsonDocument docAsistencias(8192);
     JsonArray personas = loadArray("/personas.json", docPersonas);
     JsonArray asignaciones = loadArray("/asignaciones.json", docAsignaciones);
     JsonArray asistencias = loadArray("/asistencias.json", docAsistencias);
@@ -2306,7 +2309,7 @@ void loop() {
   
   if (estadoActual != ESTADO_IDLE && estadoActual != ESTADO_PROCESANDO_ASISTENCIA && (ahora - tiempoUltimoEstado) > TIMEOUT_REGISTRO) {
     addLog("Timeout de registro. Volviendo a inactivo.");
-    ledcWrite(FLASH_PIN, 0);
+    ledcWrite(FLASH_PWM_CH, 0);
     estadoActual = ESTADO_IDLE;
   }
 
@@ -2331,7 +2334,7 @@ void loop() {
         hayAlguienFrenteAlSensor = true;
         inicioPIR = ahora;
         tiempoUltimoMovimiento = ahora;
-        ledcWrite(FLASH_PIN, FLASH_DUTY_LOW); // Flash ON al detectar
+        ledcWrite(FLASH_PWM_CH, FLASH_DUTY_LOW); // Flash ON al detectar
         return;
       }
       tiempoUltimoMovimiento = ahora;
@@ -2350,7 +2353,7 @@ void loop() {
       // asumimos que fue una falsa alarma o la persona se retiró.
       if (ahora - tiempoUltimoMovimiento > 15000) {
           addLog("Sin movimiento 15s. Flash OFF, sistema a reposo.");
-          ledcWrite(FLASH_PIN, 0); // Flash OFF al expirar
+          ledcWrite(FLASH_PWM_CH, 0); // Flash OFF al expirar
           hayAlguienFrenteAlSensor = false;
           return;
       }
@@ -2374,7 +2377,7 @@ void loop() {
                     if (resultadoAsistenciaExitosa(res)) flashExito();
                     else flashError();
                     cooldownAsistencia = millis();
-                    ledcWrite(FLASH_PIN, 0);
+                    ledcWrite(FLASH_PWM_CH, 0);
                     hayAlguienFrenteAlSensor = false;
                     asistenciaProcesada = true;
                 } else {
@@ -2409,7 +2412,7 @@ void loop() {
             addLog(res);
             if (resultadoAsistenciaExitosa(res)) flashExito(); else flashError();
             cooldownAsistencia = millis();
-            ledcWrite(FLASH_PIN, 0);
+            ledcWrite(FLASH_PWM_CH, 0);
             hayAlguienFrenteAlSensor = false;
             estadoActual = ESTADO_IDLE;
         } else {
@@ -2465,7 +2468,7 @@ void loop() {
       bool excedido = (fotosTomadas >= FOTOS_REQUERIDAS) || (intentosFacial > 15);
       
       if (excedido && fotosTomadas == 0) {
-        ledcWrite(FLASH_PIN, 0);
+        ledcWrite(FLASH_PWM_CH, 0);
         flashError();
         addLog("No se pudo registrar rostro tras multiples intentos");
         ultimoErrorRegistro = "No se pudo registrar rostro tras multiples intentos";
@@ -2476,7 +2479,7 @@ void loop() {
         personaEditandoId = "";
         fotosTomadas = 0;
       } else if (excedido && fotosTomadas > 0) {
-        ledcWrite(FLASH_PIN, 0);
+        ledcWrite(FLASH_PWM_CH, 0);
         flashExito();
         addLog("Registro completo: " + String(fotosTomadas) + " foto(s) de referencia guardada(s)");
         rostroRegistroExitoso = true;
@@ -2499,7 +2502,7 @@ void loop() {
         if (agregarFotoEnBackend(idParaRostro)) {
           fotosTomadas++;
           if (fotosTomadas >= FOTOS_REQUERIDAS) {
-            ledcWrite(FLASH_PIN, 0);
+            ledcWrite(FLASH_PWM_CH, 0);
             flashExito();
             addLog("Registro completo: " + String(fotosTomadas) + " fotos de referencia guardadas");
             rostroRegistroExitoso = true;
