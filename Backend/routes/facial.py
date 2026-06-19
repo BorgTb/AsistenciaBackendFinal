@@ -1,5 +1,5 @@
 from flask import Blueprint, request, jsonify
-from database import get_connection
+from database import get_connection, resolver_rut_a_id
 from deepface import DeepFace
 from encryption import cifrar_embedding, descifrar_embedding
 import numpy as np
@@ -137,11 +137,15 @@ def extraer_embedding(img_path, anti_spoofing=False):
 @facial_bp.route('/api/facial/registrar', methods=['POST'])
 def registrar_facial():
     data = request.json
-    persona_id = data.get('persona_id')
+    rut = data.get('rut')
     imagen_b64 = data.get('imagen')
 
-    if not persona_id or not imagen_b64:
-        return jsonify({'error': 'Faltan datos'}), 400
+    if not rut or not imagen_b64:
+        return jsonify({'error': 'Faltan datos (rut requerido)'}), 400
+
+    persona_id = resolver_rut_a_id(rut)
+    if not persona_id:
+        return jsonify({'error': f'Persona con rut {rut} no encontrada'}), 404
 
     if not _verificar_consentimiento(persona_id):
         return jsonify({'error': 'Consentimiento biometrico requerido. Acepte la politica de privacidad antes de registrar datos biometricos.'}), 403
@@ -219,11 +223,15 @@ def registrar_facial():
 @facial_bp.route('/api/facial/agregar-foto', methods=['POST'])
 def agregar_foto():
     data = request.json or {}
-    persona_id = data.get('persona_id')
+    rut = data.get('rut')
     imagen_b64 = data.get('imagen')
 
-    if not persona_id or not imagen_b64:
-        return jsonify({'error': 'Faltan datos'}), 400
+    if not rut or not imagen_b64:
+        return jsonify({'error': 'Faltan datos (rut requerido)'}), 400
+
+    persona_id = resolver_rut_a_id(rut)
+    if not persona_id:
+        return jsonify({'error': f'Persona con rut {rut} no encontrada'}), 404
 
     if not _verificar_consentimiento(persona_id):
         return jsonify({'error': 'Consentimiento biometrico requerido'}), 403
@@ -283,6 +291,13 @@ def actualizar_facial(persona_id):
     if not imagen_b64:
         return jsonify({'error': 'Falta imagen'}), 400
 
+    rut = data.get('rut')
+    if rut:
+        pid = resolver_rut_a_id(rut)
+        if not pid:
+            return jsonify({'error': f'Persona con rut {rut} no encontrada'}), 404
+        persona_id = str(pid)
+
     conn = get_connection()
     cur = conn.cursor()
     try:
@@ -339,11 +354,15 @@ def actualizar_facial(persona_id):
 @facial_bp.route('/api/facial/verificar', methods=['POST'])
 def verificar_facial():
     data = request.json
-    persona_id = data.get('persona_id')
+    rut = data.get('rut')
     imagen_b64 = data.get('imagen')
 
-    if not persona_id or not imagen_b64:
-        return jsonify({'error': 'Faltan datos'}), 400
+    if not rut or not imagen_b64:
+        return jsonify({'error': 'Faltan datos (rut requerido)'}), 400
+
+    persona_id = resolver_rut_a_id(rut)
+    if not persona_id:
+        return jsonify({'error': f'Persona con rut {rut} no encontrada'}), 404
 
     imagen_b64 += "=" * ((4 - len(imagen_b64) % 4) % 4)
 
@@ -467,9 +486,21 @@ def identificar_facial():
                     persona_identificada_id = pid
 
         if mejor_distancia < UMBRAL_DISTANCIA:
+            rut_encontrado = None
+            try:
+                conn2 = get_connection()
+                cur2 = conn2.cursor()
+                cur2.execute("SELECT rut FROM personas WHERE id = %s", (persona_identificada_id,))
+                row2 = cur2.fetchone()
+                if row2:
+                    rut_encontrado = row2[0]
+                cur2.close()
+                conn2.close()
+            except Exception:
+                pass
             print(f"ID: {persona_identificada_id} (Distancia: {round(mejor_distancia, 2)})")
             _log_biometrico(persona_identificada_id, None, 'identificacion', 'exito')
-            return jsonify({'ok': True, 'persona_id': str(persona_identificada_id)}), 200
+            return jsonify({'ok': True, 'persona_id': str(persona_identificada_id), 'rut': rut_encontrado}), 200
         else:
             print(f"Desconocido. Distancia: {round(mejor_distancia, 2)}")
             _log_biometrico(None, None, 'identificacion', 'fallo')

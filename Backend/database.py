@@ -8,6 +8,21 @@ DATABASE_URL = os.getenv("DATABASE_URL")
 def get_connection():
     return psycopg2.connect(DATABASE_URL)
 
+def resolver_rut_a_id(rut):
+    if not rut:
+        return None
+    conn = get_connection()
+    cur = conn.cursor()
+    try:
+        cur.execute("SELECT id FROM personas WHERE rut = %s", (rut,))
+        row = cur.fetchone()
+        return row[0] if row else None
+    except Exception:
+        return None
+    finally:
+        cur.close()
+        conn.close()
+
 def init_db():
     conn = None
     try:
@@ -226,6 +241,7 @@ def init_db():
         cur.execute("CREATE INDEX IF NOT EXISTS idx_asistencias_dispositivo ON asistencias(dispositivo_id)")
         cur.execute("CREATE INDEX IF NOT EXISTS idx_asistencias_fecha ON asistencias(fecha_hora)")
         cur.execute("CREATE INDEX IF NOT EXISTS idx_personas_empresa ON personas(empresa_id)")
+        cur.execute("CREATE INDEX IF NOT EXISTS idx_personas_rut ON personas(rut)")
         cur.execute("CREATE INDEX IF NOT EXISTS idx_erp_activo ON integraciones_erp(activo)")
 
         cur.execute("""

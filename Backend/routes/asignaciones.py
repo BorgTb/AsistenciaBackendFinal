@@ -1,5 +1,5 @@
 from flask import Blueprint, request, jsonify
-from database import get_connection
+from database import get_connection, resolver_rut_a_id
 from routes.auth import token_opcional, requiere_rol
 
 
@@ -18,7 +18,7 @@ def get_asignaciones():
 
     if rol == 'admin':
         cur.execute("""
-            SELECT a.id, a.persona_id, p.nombre, a.turno_id, t.nombre,
+            SELECT a.id, a.persona_id, p.rut, p.nombre, a.turno_id, t.nombre,
                    a.fecha_asignacion, a.vigente
             FROM asignaciones a
             JOIN personas p ON a.persona_id = p.id
@@ -27,7 +27,7 @@ def get_asignaciones():
         """)
     elif rol == 'empleador' and empresa_id:
         cur.execute("""
-            SELECT a.id, a.persona_id, p.nombre, a.turno_id, t.nombre,
+            SELECT a.id, a.persona_id, p.rut, p.nombre, a.turno_id, t.nombre,
                    a.fecha_asignacion, a.vigente
             FROM asignaciones a
             JOIN personas p ON a.persona_id = p.id AND p.empresa_id = %s
@@ -36,7 +36,7 @@ def get_asignaciones():
         """, (empresa_id,))
     elif rol == 'trabajador' and persona_id:
         cur.execute("""
-            SELECT a.id, a.persona_id, p.nombre, a.turno_id, t.nombre,
+            SELECT a.id, a.persona_id, p.rut, p.nombre, a.turno_id, t.nombre,
                    a.fecha_asignacion, a.vigente
             FROM asignaciones a
             JOIN personas p ON a.persona_id = p.id
@@ -46,7 +46,7 @@ def get_asignaciones():
         """, (persona_id,))
     else:
         cur.execute("""
-            SELECT a.id, a.persona_id, p.nombre, a.turno_id, t.nombre,
+            SELECT a.id, a.persona_id, p.rut, p.nombre, a.turno_id, t.nombre,
                    a.fecha_asignacion, a.vigente
             FROM asignaciones a
             JOIN personas p ON a.persona_id = p.id
@@ -61,11 +61,12 @@ def get_asignaciones():
     return jsonify([{
         "id": r[0],
         "persona_id": r[1],
-        "persona_nombre": r[2],
-        "turno_id": r[3],
-        "turno_nombre": r[4],
-        "fecha_asignacion": str(r[5]),
-        "vigente": r[6]
+        "rut": r[2],
+        "persona_nombre": r[3],
+        "turno_id": r[4],
+        "turno_nombre": r[5],
+        "fecha_asignacion": str(r[6]),
+        "vigente": r[7]
     } for r in rows])
 
 
@@ -78,21 +79,29 @@ def create_asignacion():
     conn = get_connection()
     cur = conn.cursor()
     try:
+        rut = data.get('rut')
+        if not rut:
+            return jsonify({'error': 'Falta rut'}), 400
+
+        persona_id = resolver_rut_a_id(rut)
+        if not persona_id:
+            return jsonify({'error': f'Persona con rut {rut} no encontrada'}), 404
+
         if empresa_id and request.user_rol != 'admin':
             cur.execute(
                 "SELECT id FROM personas WHERE id = %s AND empresa_id = %s",
-                (data['persona_id'], empresa_id)
+                (persona_id, empresa_id)
             )
             if not cur.fetchone():
                 return jsonify({'error': 'Persona no pertenece a tu empresa'}), 403
 
         cur.execute(
             "INSERT INTO asignaciones (persona_id, turno_id, vigente) VALUES (%s, %s, TRUE) RETURNING id",
-            (data['persona_id'], data['turno_id'])
+            (persona_id, data['turno_id'])
         )
         asig_id = cur.fetchone()[0]
         conn.commit()
-        return jsonify({'ok': True, 'id': asig_id})
+        return jsonify({'ok': True, 'id': asig_id, 'rut': rut})
     except Exception as e:
         conn.rollback()
         return jsonify({'error': str(e)}), 500

@@ -8,7 +8,7 @@ import threading
 from datetime import datetime, timezone
 from PIL import Image
 from deepface import DeepFace
-from database import get_connection
+from database import get_connection, resolver_rut_a_id
 from encryption import cifrar_embedding
 
 BROKER_HOST = os.getenv('MQTT_HOST', '127.0.0.1')
@@ -65,15 +65,20 @@ def on_message(client, userdata, msg):
     if full_topic == "esp32/imagen/registrar":
         try:
             payload = json.loads(msg.payload.decode())
-            persona_id = payload.get("persona_id", "")
+            rut = payload.get("rut", "")
             imagen_b64 = payload.get("imagen", "")
             
-            if not persona_id or not imagen_b64:
-                print("❌ Mensaje de registro incompleto", flush=True)
+            if not rut or not imagen_b64:
+                print("❌ Mensaje de registro incompleto (rut requerido)", flush=True)
+                return
+            
+            persona_id = resolver_rut_a_id(rut)
+            if not persona_id:
+                print(f"❌ Persona con rut {rut} no encontrada en BD", flush=True)
                 return
                 
-            print(f"📸 Registro facial recibido para ID: {persona_id}", flush=True)
-            procesar_imagen_facial(client, persona_id, imagen_b64)
+            print(f"📸 Registro facial recibido para RUT: {rut} (ID: {persona_id})", flush=True)
+            procesar_imagen_facial(client, persona_id, rut, imagen_b64)
         except Exception as e:
             print(f"❌ Error procesando registro facial: {e}", flush=True)
         return
@@ -123,7 +128,7 @@ def on_message(client, userdata, msg):
 
 
 
-def procesar_imagen_facial(client, persona_id, imagen_b64):
+def procesar_imagen_facial(client, persona_id, rut, imagen_b64):
     file_name = f"{persona_id}.jpg"
     file_path = os.path.join(PREVIEWS_DIR, file_name)
 

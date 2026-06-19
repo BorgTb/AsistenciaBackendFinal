@@ -79,7 +79,7 @@ def create_persona():
         )
         persona_id = cur.fetchone()[0]
         conn.commit()
-        return jsonify({'ok': True, 'id': persona_id})
+        return jsonify({'ok': True, 'id': persona_id, 'rut': data['rut']})
     except Exception as e:
         conn.rollback()
         print(f"ERROR FATAL POSTGRESQL: {str(e)}")

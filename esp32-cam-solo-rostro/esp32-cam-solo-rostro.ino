@@ -106,15 +106,15 @@ unsigned long wifiUptimeStart = 0;
 JsonArray loadArray(const char* path, DynamicJsonDocument& doc);
 void saveArray(const char* path, DynamicJsonDocument& doc);
 String identificarPorRostro();
-bool registrarRostroEnBackend(String personaId);
-bool agregarFotoEnBackend(String personaId);
+bool registrarRostroEnBackend(String rut);
+bool agregarFotoEnBackend(String rut);
 void completarRegistroPersona();
 void sincronizarAsistencias();
 void sincronizarPersonasDesdeBackend();
 void sincronizarTurnosDesdeBackend();
 void sincronizarAsignacionesDesdeBackend();
 void sincronizarErpConfigDesdeBackend();
-void enviarAsistenciaAErp(const String& personaId, const String& nombre, const String& tipo, const String& metodo);
+void enviarAsistenciaAErp(const String& personaId, const String& rut, const String& nombre, const String& tipo, const String& metodo);
 void sincronizarPendientes();
 String procesarAsistencia(String personaId, String metodo);
 void addLog(String msg);
@@ -129,7 +129,7 @@ String motivoAsistenciaAutomatica(unsigned long ahora);
 void flashExito();
 void flashError();
 bool resultadoAsistenciaExitosa(const String& resultado);
-bool postAsistenciaEnBackend(const String& personaId, const String& nombre, const String& tipo, const String& metodo);
+bool postAsistenciaEnBackend(const String& rut, const String& nombre, const String& tipo, const String& metodo);
 bool crearTurnoEnBackend(const String& nombre, const String& inicio, const String& fin, const String& dias, String& idBackend);
 bool crearAsignacionEnBackend(const String& personaId, const String& turnoIdBackend, String& idBackend);
 String obtenerTurnoBackendId(const String& turnoLocalId);
@@ -829,10 +829,12 @@ String procesarAsistencia(String personaId, String metodo) {
   DynamicJsonDocument docP(2048);
   JsonArray personas = loadArray("/personas.json", docP);
   String nombre = "";
+  String rut = "";
   
   for (JsonObject p : personas) {
     if (p["id"].as<String>() == personaId) {
       nombre = p["nombre"].as<String>();
+      rut = p["rut"].as<String>();
       break;
     }
   }
@@ -854,28 +856,29 @@ String procesarAsistencia(String personaId, String metodo) {
 
   JsonObject a = asist.createNestedObject();
   a["persona_id"]   = personaId;
+  a["rut"]          = rut;
   a["nombre"]       = nombre;
   a["tipo"]         = tipo;
   a["metodo"]       = metodo;
   a["timestamp"]    = getTimestamp();
   a["sincronizado"] = false;
 
-  if (postAsistenciaEnBackend(personaId, nombre, tipo, metodo)) {
+  if (postAsistenciaEnBackend(rut, nombre, tipo, metodo)) {
     a["sincronizado"] = true;
   }
   
   saveArray("/asistencias.json", docA);
 
-  if (isOnline) enviarAsistenciaAErp(personaId, nombre, tipo, metodo);
+  if (isOnline) enviarAsistenciaAErp(personaId, rut, nombre, tipo, metodo);
 
   String tipoMayus = tipo;
   tipoMayus.toUpperCase();
   return tipoMayus + " OK: " + nombre + " (" + metodo + ")";
 }
 
-bool postAsistenciaEnBackend(const String& personaId, const String& nombre, const String& tipo, const String& metodo) {
+bool postAsistenciaEnBackend(const String& rut, const String& nombre, const String& tipo, const String& metodo) {
   if (!isOnline || WiFi.status() != WL_CONNECTED) return false;
-  if (personaId.startsWith("local-")) return false;
+  if (rut.length() == 0) return false;
 
   HTTPClient http;
   beginHttp(http, backendURL + "/api/asistencias");
@@ -883,7 +886,7 @@ bool postAsistenciaEnBackend(const String& personaId, const String& nombre, cons
   
 
   DynamicJsonDocument payloadDoc(512);
-  payloadDoc["persona_id"] = personaId;
+  payloadDoc["rut"] = rut;
   payloadDoc["nombre"] = nombre;
   payloadDoc["tipo"] = tipo;
   payloadDoc["metodo"] = metodo;
@@ -1066,19 +1069,21 @@ void completarRegistroPersona() {
 bool registrarRostroEnBackend(String personaId) {
   if (!camaraIniciada || !isOnline || !mqttConnected || mqtt_client == NULL) return false;
 
+  String rut = buscarRutPersona(personaId);
+  if (rut.length() == 0) rut = personaId;
+
   String imgBase64 = capturarImagenBase64();
   if (imgBase64.length() == 0) return false;
 
-  // Un único mensaje JSON — sin fragmentación, sin delays artificiales
-  String payload = "{\"persona_id\":\"" + personaId + "\",\"imagen\":\"" + imgBase64 + "\"}";
-  addLog("Enviando rostro MQTT: " + String(payload.length()) + " bytes para ID " + personaId);
+  String payload = "{\"rut\":\"" + rut + "\",\"imagen\":\"" + imgBase64 + "\"}";
+  addLog("Enviando rostro MQTT: " + String(payload.length()) + " bytes para RUT " + rut);
 
   int ret = esp_mqtt_client_publish(
     mqtt_client,
     "esp32/imagen/registrar",
     payload.c_str(),
     payload.length(),
-    1,  // QoS 1: el broker confirma la entrega
+    1,
     0
   );
 
@@ -1092,6 +1097,9 @@ bool registrarRostroEnBackend(String personaId) {
 bool agregarFotoEnBackend(String personaId) {
   if (!camaraIniciada || !isOnline || WiFi.status() != WL_CONNECTED) return false;
 
+  String rut = buscarRutPersona(personaId);
+  if (rut.length() == 0) rut = personaId;
+
   String imgBase64 = capturarImagenBase64();
   if (imgBase64.length() == 0) return false;
 
@@ -1099,12 +1107,12 @@ bool agregarFotoEnBackend(String personaId) {
   beginHttp(http, backendURL + "/api/facial/agregar-foto");
   http.addHeader("Content-Type", "application/json");
 
-  String payload = "{\"persona_id\":\"" + personaId + "\",\"imagen\":\"" + imgBase64 + "\"}";
+  String payload = "{\"rut\":\"" + rut + "\",\"imagen\":\"" + imgBase64 + "\"}";
   int code = http.POST(payload);
   http.end();
 
   if (code == 200) {
-    addLog("Foto adicional guardada en backend para ID " + personaId);
+    addLog("Foto adicional guardada en backend para RUT " + rut);
     return true;
   }
   addLog("Error agregando foto extra: HTTP " + String(code));
@@ -1128,7 +1136,7 @@ void sincronizarAsistencias() {
   for (JsonObject a : asist) {
     if (a["sincronizado"] == false) {
       JsonObject r = registros.createNestedObject();
-      r["persona_id"] = a["persona_id"];
+      r["rut"]       = a["rut"];
       r["nombre"]     = a["nombre"];
       r["tipo"]       = a["tipo"];
       r["metodo"]     = a["metodo"];
@@ -1338,7 +1346,7 @@ void verificarPasswordPendiente() {
   http.end();
 }
 
-void enviarAsistenciaAErp(const String& personaId, const String& nombre, const String& tipo, const String& metodo) {
+void enviarAsistenciaAErp(const String& personaId, const String& rut, const String& nombre, const String& tipo, const String& metodo) {
   if (!LittleFS.exists("/erp-config.json")) return;
 
   DynamicJsonDocument doc(4096);
@@ -1364,8 +1372,7 @@ void enviarAsistenciaAErp(const String& personaId, const String& nombre, const S
       for (JsonPair kv : fm) {
         String key = kv.key().c_str();
         String val = kv.value().as<String>();
-        if (key == "rut") payloadDoc[val] = buscarRutPersona(personaId);
-        else if (key == "persona_id") payloadDoc[val] = personaId;
+        if (key == "rut") payloadDoc[val] = rut;
         else if (key == "nombre") payloadDoc[val] = nombre;
         else if (key == "tipo") payloadDoc[val] = tipo;
         else if (key == "metodo") payloadDoc[val] = metodo;
@@ -1373,7 +1380,7 @@ void enviarAsistenciaAErp(const String& personaId, const String& nombre, const S
         else payloadDoc[key] = val;
       }
     } else {
-      payloadDoc["persona_id"] = personaId;
+      payloadDoc["rut"] = rut;
       payloadDoc["nombre"] = nombre;
       payloadDoc["tipo"] = tipo;
       payloadDoc["metodo"] = metodo;

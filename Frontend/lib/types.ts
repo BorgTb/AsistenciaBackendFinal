@@ -21,6 +21,7 @@ export interface Turno {
 export interface Asignacion {
   id: string;
   persona_id: string;
+  rut: string;
   persona_nombre: string;
   turno_id: string;
   turno_nombre: string;
@@ -31,6 +32,7 @@ export interface Asignacion {
 export interface Asistencia {
   id: string;
   persona_id: string | null;
+  rut: string;
   nombre: string;
   tipo: AttendanceType;
   metodo: string;

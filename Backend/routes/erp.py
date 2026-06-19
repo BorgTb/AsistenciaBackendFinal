@@ -4,7 +4,7 @@ from datetime import datetime
 
 import requests
 from flask import Blueprint, jsonify, request
-from database import get_connection
+from database import get_connection, resolver_rut_a_id
 from routes.auth import requiere_rol, requiere_login, token_opcional
 
 erp_bp = Blueprint('erp', __name__)
@@ -59,12 +59,18 @@ def enviar_asistencia_a_erps(persona_id, nombre, tipo, metodo, fecha_hora, empre
             (empresa_id,)
         )
         erps = cur.fetchall()
+        rut = None
+        if persona_id:
+            cur.execute("SELECT rut FROM personas WHERE id = %s", (persona_id,))
+            row = cur.fetchone()
+            if row:
+                rut = row[0]
     finally:
         cur.close()
         conn.close()
 
     datos = {
-        'persona_id': str(persona_id) if persona_id else '',
+        'rut': rut or '',
         'nombre': nombre or '',
         'tipo': tipo or '',
         'metodo': metodo or '',
@@ -242,7 +248,7 @@ def test_erp(erp_id):
         return jsonify({'ok': False, 'mensaje': 'La integración está inactiva'}), 400
 
     payload = {
-        'persona_id': '99',
+        'rut': '11.111.111-1',
         'nombre': 'Test Usuario',
         'tipo': 'entrada',
         'metodo': 'test',
@@ -293,7 +299,7 @@ def enviar_erp(erp_id):
         return jsonify({'ok': False, 'mensaje': 'La integración está inactiva'}), 400
 
     cur.execute("""
-        SELECT a.persona_id, a.nombre, a.tipo, a.metodo, a.fecha_hora
+        SELECT a.persona_id, p.rut, a.nombre, a.tipo, a.metodo, a.fecha_hora
         FROM asistencias a
         JOIN personas p ON a.persona_id = p.id
         WHERE p.empresa_id = %s
@@ -311,9 +317,9 @@ def enviar_erp(erp_id):
     errores = 0
     ultimo_resultado = None
 
-    for persona_id, nombre, tipo, metodo, fecha_hora in rows:
+    for persona_id, rut, nombre, tipo, metodo, fecha_hora in rows:
         datos = {
-            'persona_id': str(persona_id) if persona_id else '',
+            'rut': rut or '',
             'nombre': nombre or '',
             'tipo': tipo or '',
             'metodo': metodo or '',

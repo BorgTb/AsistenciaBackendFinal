@@ -201,7 +201,7 @@ export function SasDashboard({ initialSection = 'dashboard' }: { initialSection?
 
   const [personaForm, setPersonaForm] = useState({ nombre: '', rut: '', email: '' });
   const [turnoForm, setTurnoForm] = useState({ nombre: '', inicio: '08:00', fin: '17:00' });
-  const [asignacionForm, setAsignacionForm] = useState({ personaId: '', turnoId: '' });
+  const [asignacionForm, setAsignacionForm] = useState({ rut: '', turnoId: '' });
   const [erpForm, setErpForm] = useState<ErpFormState>({
     nombre: 'Nueva integración',
     tipo: 'generic',
@@ -477,18 +477,18 @@ export function SasDashboard({ initialSection = 'dashboard' }: { initialSection?
   }
 
   async function handleCreateAsignacion() {
-    if (!asignacionForm.personaId || !asignacionForm.turnoId) {
+    if (!asignacionForm.rut || !asignacionForm.turnoId) {
       setFormError('Selecciona una persona y un turno');
       return;
     }
 
-    const result = await createAsignacion({ persona_id: asignacionForm.personaId, turno_id: asignacionForm.turnoId });
+    const result = await createAsignacion({ rut: asignacionForm.rut, turno_id: asignacionForm.turnoId });
 
     if (result && 'ok' in result && result.ok) {
-      pushLog('ok', `Asignación creada para persona ${asignacionForm.personaId}`);
+      pushLog('ok', `Asignación creada para RUT ${asignacionForm.rut}`);
       showToast('success', 'Asignación creada');
       closeModal();
-      setAsignacionForm({ personaId: '', turnoId: '' });
+      setAsignacionForm({ rut: '', turnoId: '' });
       await refreshData();
       return;
     }
@@ -673,7 +673,9 @@ export function SasDashboard({ initialSection = 'dashboard' }: { initialSection?
   }
 
   async function handleRostroUpload(personaId: string) {
-    setRostroPersonaId(personaId);
+    const persona = personas.find((p) => p.id === personaId);
+    const rut = persona?.rut || personaId;
+    setRostroPersonaId(rut);
     setCapturedImage(null);
     setWebcamActive(true);
     try {
@@ -717,7 +719,7 @@ export function SasDashboard({ initialSection = 'dashboard' }: { initialSection?
     const base64 = capturedImage.split(',')[1];
     const result = await registrarRostro(rostroPersonaId, base64);
     if (result && 'ok' in result && result.ok) {
-      pushLog('ok', `Rostro registrado para persona ${rostroPersonaId}`);
+      pushLog('ok', `Rostro registrado para RUT ${rostroPersonaId}`);
       showToast('success', 'Rostro registrado correctamente');
     } else {
       const msg = result && 'error' in result ? String(result.error) : 'No se pudo registrar el rostro';
@@ -2188,10 +2190,10 @@ export function SasDashboard({ initialSection = 'dashboard' }: { initialSection?
             <div className="modal-body">
               <div className="field">
                 <label>Persona</label>
-                <select value={asignacionForm.personaId} onChange={(event) => setAsignacionForm((current) => ({ ...current, personaId: event.target.value }))}>
+                <select value={asignacionForm.rut} onChange={(event) => setAsignacionForm((current) => ({ ...current, rut: event.target.value }))}>
                   <option value="">Selecciona una persona</option>
                   {personas.map((item) => (
-                    <option value={item.id} key={item.id}>
+                    <option value={item.rut} key={item.id}>
                       {item.nombre} - {item.rut}
                     </option>
                   ))}

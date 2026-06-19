@@ -1,5 +1,5 @@
 from flask import Blueprint, request, jsonify
-from database import get_connection
+from database import get_connection, resolver_rut_a_id
 from routes.auth import token_opcional
 from services.email_service import enviar_notificacion_marcacion
 import threading
@@ -50,15 +50,16 @@ def get_asistencias():
 
     if rol == 'admin':
         cur.execute("""
-            SELECT a.id, a.persona_id, a.nombre, a.tipo, a.metodo,
+            SELECT a.id, a.persona_id, p.rut, a.nombre, a.tipo, a.metodo,
                    a.fecha_hora, a.origen, a.sincronizado, a.dispositivo_id
             FROM asistencias a
+            JOIN personas p ON a.persona_id = p.id
             ORDER BY a.fecha_hora DESC
             LIMIT 500
         """)
     elif rol == 'empleador' and empresa_id:
         cur.execute("""
-            SELECT a.id, a.persona_id, a.nombre, a.tipo, a.metodo,
+            SELECT a.id, a.persona_id, p.rut, a.nombre, a.tipo, a.metodo,
                    a.fecha_hora, a.origen, a.sincronizado, a.dispositivo_id
             FROM asistencias a
             JOIN personas p ON a.persona_id = p.id
@@ -68,18 +69,20 @@ def get_asistencias():
         """, (empresa_id,))
     elif rol == 'trabajador' and persona_id:
         cur.execute("""
-            SELECT a.id, a.persona_id, a.nombre, a.tipo, a.metodo,
+            SELECT a.id, a.persona_id, p.rut, a.nombre, a.tipo, a.metodo,
                    a.fecha_hora, a.origen, a.sincronizado, a.dispositivo_id
             FROM asistencias a
+            JOIN personas p ON a.persona_id = p.id
             WHERE a.persona_id = %s
             ORDER BY a.fecha_hora DESC
             LIMIT 200
         """, (persona_id,))
     else:
         cur.execute("""
-            SELECT a.id, a.persona_id, a.nombre, a.tipo, a.metodo,
+            SELECT a.id, a.persona_id, p.rut, a.nombre, a.tipo, a.metodo,
                    a.fecha_hora, a.origen, a.sincronizado, a.dispositivo_id
             FROM asistencias a
+            JOIN personas p ON a.persona_id = p.id
             ORDER BY a.fecha_hora DESC
             LIMIT 500
         """)
@@ -91,13 +94,14 @@ def get_asistencias():
     return jsonify([{
         "id": r[0],
         "persona_id": r[1],
-        "nombre": r[2],
-        "tipo": r[3],
-        "metodo": r[4],
-        "fecha_hora": str(r[5]),
-        "origen": r[6],
-        "sincronizado": r[7],
-        "dispositivo_id": r[8]
+        "rut": r[2],
+        "nombre": r[3],
+        "tipo": r[4],
+        "metodo": r[5],
+        "fecha_hora": str(r[6]),
+        "origen": r[7],
+        "sincronizado": r[8],
+        "dispositivo_id": r[9]
     } for r in rows])
 
 
@@ -108,10 +112,17 @@ def create_asistencia():
     cur = conn.cursor()
     try:
         dispositivo_id = data.get('dispositivo_id') or 1
-        persona_id = data.get('persona_id')
         nombre = data.get('nombre')
         tipo = data.get('tipo')
         metodo = data.get('metodo', 'huella')
+
+        rut = data.get('rut')
+        if not rut:
+            return jsonify({'error': 'Falta rut'}), 400
+
+        persona_id = resolver_rut_a_id(rut)
+        if not persona_id:
+            return jsonify({'error': f'Persona con rut {rut} no encontrada'}), 404
 
         cur.execute(
             "INSERT INTO asistencias (persona_id, dispositivo_id, nombre, tipo, metodo, origen, sincronizado) VALUES (%s, %s, %s, %s, %s, %s, %s) RETURNING id, fecha_hora",
@@ -124,17 +135,16 @@ def create_asistencia():
 
         empresa_id = None
         persona_email = None
-        if persona_id:
-            cur.execute("SELECT empresa_id, email FROM personas WHERE id = %s", (persona_id,))
-            emp_row = cur.fetchone()
-            if emp_row:
-                empresa_id = emp_row[0]
-                persona_email = emp_row[1]
+        cur.execute("SELECT empresa_id, email FROM personas WHERE id = %s", (persona_id,))
+        emp_row = cur.fetchone()
+        if emp_row:
+            empresa_id = emp_row[0]
+            persona_email = emp_row[1]
 
         _disparar_erp_push(persona_id, nombre, tipo, metodo, fecha_hora, empresa_id)
         _disparar_email_notificacion(persona_email, nombre, tipo, fecha_hora)
 
-        return jsonify({'ok': True, 'id': asist_id})
+        return jsonify({'ok': True, 'id': asist_id, 'rut': rut})
     except Exception as e:
         conn.rollback()
         return jsonify({'error': str(e)}), 500
@@ -154,7 +164,16 @@ def sync_asistencias():
 
     for r in registros:
         try:
-            persona_id_buscar = r.get('persona_id')
+            rut = r.get('rut')
+            if not rut:
+                errores += 1
+                continue
+
+            persona_id_buscar = resolver_rut_a_id(rut)
+            if not persona_id_buscar:
+                errores += 1
+                continue
+
             tipo_buscar = r.get('tipo')
             cur.execute("""
                 SELECT id FROM asistencias

@@ -72,7 +72,7 @@ export async function getAsignaciones() {
   return request<Asignacion[]>('/api/asignaciones');
 }
 
-export async function createAsignacion(payload: { persona_id: string; turno_id: string }) {
+export async function createAsignacion(payload: { rut: string; turno_id: string }) {
   return request<{ ok: boolean; id: string } | { error: string }>('/api/asignaciones', {
     method: 'POST',
     body: JSON.stringify(payload)
