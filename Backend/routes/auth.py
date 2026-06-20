@@ -267,14 +267,7 @@ def register():
         cur.execute("SELECT id FROM usuarios_web WHERE email = %s", (email,))
         existing = cur.fetchone()
         if existing:
-            user_id = existing[0]
-            cur.execute("""
-                INSERT INTO usuario_empresa (usuario_id, empresa_id, rol)
-                VALUES (%s, %s, %s)
-                ON CONFLICT (usuario_id, empresa_id) DO UPDATE SET rol = EXCLUDED.rol
-            """, (user_id, empresa_id, rol))
-            conn.commit()
-            return jsonify({'ok': True, 'id': user_id, 'mensaje': 'Usuario ya existía. Se asignó a la empresa con el rol indicado.'})
+            return jsonify({'error': 'Ya existe un usuario con ese email'}), 409
         else:
             cur.execute(
                 "INSERT INTO usuarios_web (nombre, email, password_hash) VALUES (%s, %s, %s) RETURNING id",
@@ -747,7 +740,7 @@ def me():
         conn.close()
 
 
-@auth_bp.route('/api/dispositivos/generar-pin', methods=['POST'])
+@auth_bp.route('/api/auth/dispositivos/generar-pin', methods=['POST'])
 @requiere_rol('admin', 'empleador')
 def generar_pin_enrolamiento():
     empresa_id = request.empresa_id
@@ -782,7 +775,7 @@ def generar_pin_enrolamiento():
         conn.close()
 
 
-@auth_bp.route('/api/dispositivos/enrolar', methods=['POST'])
+@auth_bp.route('/api/auth/dispositivos/enrolar', methods=['POST'])
 def enrolar_dispositivo():
     data = request.json or {}
     codigo = (data.get('codigo') or data.get('pin') or '').strip()

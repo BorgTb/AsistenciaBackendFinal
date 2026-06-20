@@ -18,6 +18,7 @@ os.environ.update({
     'BIOMETRIC_KEY': 'test-biometric-key-32chars!!',
     'MQTT_HOST': 'localhost',
     'MQTT_PORT': '1883',
+    'DISABLE_ASYNC_DISPATCH': '1',
 })
 
 # ------------------------------------------------------------
@@ -235,7 +236,7 @@ def mock_requests_get(mocker):
 @pytest.fixture
 def mock_paho_client(mocker):
     """Mock paho.mqtt.client.Client."""
-    mock_class = mocker.patch('mqtt_handler.mqtt_client.Client')
+    mock_class = mocker.patch('mqtt_handler.mqtt.Client')
     instance = mock_class.return_value
     instance.connect.return_value = 0
     instance.loop_start.return_value = None
@@ -243,9 +244,13 @@ def mock_paho_client(mocker):
     return instance
 
 
-@pytest.fixture
+@pytest.fixture(autouse=True)
 def mock_thread(mocker):
-    """Mock threading.Thread para no disparar threads reales."""
+    """Mock threading.Thread para no disparar threads reales.
+
+    Es autouse para evitar que los hilos asincronos (push ERP / email) abran
+    conexiones a la BD y provoquen deadlocks contra el TRUNCATE entre tests.
+    """
     return mocker.patch('threading.Thread')
 
 

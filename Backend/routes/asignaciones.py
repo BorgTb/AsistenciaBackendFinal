@@ -79,13 +79,14 @@ def create_asignacion():
     conn = get_connection()
     cur = conn.cursor()
     try:
-        rut = data.get('rut')
-        if not rut:
-            return jsonify({'error': 'Falta rut'}), 400
-
-        persona_id = resolver_rut_a_id(rut)
+        persona_id = data.get('persona_id')
         if not persona_id:
-            return jsonify({'error': f'Persona con rut {rut} no encontrada'}), 404
+            rut = data.get('rut')
+            if not rut:
+                return jsonify({'error': 'persona_id o rut requerido'}), 400
+            persona_id = resolver_rut_a_id(rut)
+            if not persona_id:
+                return jsonify({'error': f'Persona con rut {rut} no encontrada'}), 404
 
         if empresa_id and request.user_rol != 'admin':
             cur.execute(
@@ -101,7 +102,7 @@ def create_asignacion():
         )
         asig_id = cur.fetchone()[0]
         conn.commit()
-        return jsonify({'ok': True, 'id': asig_id, 'rut': rut})
+        return jsonify({'ok': True, 'id': asig_id, 'persona_id': str(persona_id)})
     except Exception as e:
         conn.rollback()
         return jsonify({'error': str(e)}), 500

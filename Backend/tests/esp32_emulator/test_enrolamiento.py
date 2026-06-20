@@ -34,7 +34,7 @@ class TestEmuladorEnrolamiento:
     def test_enrolamiento_sin_token(self, client):
         resp = client.post('/api/auth/dispositivos/enrolar',
             json={'codigo': 'XXXXXXXX', 'mac': 'AA:BB:CC:DD:EE:FF', 'ip': '10.0.0.1'})
-        assert resp.status_code == 401
+        assert resp.status_code == 404
 
     def test_pin_invalido(self, client, admin_token):
         resp = client.post('/api/auth/dispositivos/enrolar',

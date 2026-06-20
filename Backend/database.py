@@ -154,6 +154,9 @@ def init_db():
         cur.execute("ALTER TABLE asistencias ADD COLUMN IF NOT EXISTS dispositivo_id INTEGER REFERENCES dispositivos(id) DEFAULT 1")
         cur.execute("ALTER TABLE asistencias ADD COLUMN IF NOT EXISTS timestamp_local VARCHAR(50)")
         cur.execute("ALTER TABLE asistencias ADD COLUMN IF NOT EXISTS sincronizado_at TIMESTAMP")
+        # El DEFAULT 1 apunta a un dispositivo que puede no existir (viola la FK).
+        # Quitar el default para que las inserciones que omitan la columna usen NULL.
+        cur.execute("ALTER TABLE asistencias ALTER COLUMN dispositivo_id DROP DEFAULT")
 
         cur.execute("""
             CREATE TABLE IF NOT EXISTS sincronizacion_log (
@@ -166,6 +169,7 @@ def init_db():
                 fecha TIMESTAMP DEFAULT NOW()
             )
         """)
+        cur.execute("ALTER TABLE sincronizacion_log ALTER COLUMN dispositivo_id DROP DEFAULT")
 
         cur.execute("""
             CREATE TABLE IF NOT EXISTS integraciones_erp (
@@ -260,6 +264,9 @@ def init_db():
             VALUES (1, 'Empresa por defecto', '00000000-0')
             ON CONFLICT (id) DO NOTHING
         """)
+        # Insertar con id explicito no avanza la secuencia SERIAL; resincronizar
+        # para evitar colisiones de clave primaria en INSERTs posteriores.
+        cur.execute("SELECT setval(pg_get_serial_sequence('empresas', 'id'), (SELECT MAX(id) FROM empresas))")
 
         cur.execute("SELECT id FROM usuarios_web WHERE email = 'admin@empresa.cl'")
         admin_row = cur.fetchone()

@@ -91,6 +91,16 @@ def _verificar_consentimiento(persona_id):
     conn.close()
     return existe is not None
 
+def _resolver_persona_id(data):
+    """Resuelve el persona_id desde el payload, aceptando 'persona_id' o 'rut'."""
+    persona_id = data.get('persona_id')
+    if persona_id:
+        return persona_id
+    rut = data.get('rut')
+    if rut:
+        return resolver_rut_a_id(rut)
+    return None
+
 def _validar_calidad_imagen(img_path):
     img = cv2.imread(img_path, cv2.IMREAD_GRAYSCALE)
     if img is None:
@@ -136,16 +146,15 @@ def extraer_embedding(img_path, anti_spoofing=False):
 
 @facial_bp.route('/api/facial/registrar', methods=['POST'])
 def registrar_facial():
-    data = request.json
-    rut = data.get('rut')
+    data = request.json or {}
     imagen_b64 = data.get('imagen')
 
-    if not rut or not imagen_b64:
-        return jsonify({'error': 'Faltan datos (rut requerido)'}), 400
+    if (not data.get('rut') and not data.get('persona_id')) or not imagen_b64:
+        return jsonify({'error': 'Faltan datos (persona_id o rut requerido)'}), 400
 
-    persona_id = resolver_rut_a_id(rut)
+    persona_id = _resolver_persona_id(data)
     if not persona_id:
-        return jsonify({'error': f'Persona con rut {rut} no encontrada'}), 404
+        return jsonify({'error': 'Persona no encontrada'}), 404
 
     if not _verificar_consentimiento(persona_id):
         return jsonify({'error': 'Consentimiento biometrico requerido. Acepte la politica de privacidad antes de registrar datos biometricos.'}), 403
@@ -223,15 +232,14 @@ def registrar_facial():
 @facial_bp.route('/api/facial/agregar-foto', methods=['POST'])
 def agregar_foto():
     data = request.json or {}
-    rut = data.get('rut')
     imagen_b64 = data.get('imagen')
 
-    if not rut or not imagen_b64:
-        return jsonify({'error': 'Faltan datos (rut requerido)'}), 400
+    if (not data.get('rut') and not data.get('persona_id')) or not imagen_b64:
+        return jsonify({'error': 'Faltan datos (persona_id o rut requerido)'}), 400
 
-    persona_id = resolver_rut_a_id(rut)
+    persona_id = _resolver_persona_id(data)
     if not persona_id:
-        return jsonify({'error': f'Persona con rut {rut} no encontrada'}), 404
+        return jsonify({'error': 'Persona no encontrada'}), 404
 
     if not _verificar_consentimiento(persona_id):
         return jsonify({'error': 'Consentimiento biometrico requerido'}), 403
@@ -353,16 +361,15 @@ def actualizar_facial(persona_id):
 
 @facial_bp.route('/api/facial/verificar', methods=['POST'])
 def verificar_facial():
-    data = request.json
-    rut = data.get('rut')
+    data = request.json or {}
     imagen_b64 = data.get('imagen')
 
-    if not rut or not imagen_b64:
-        return jsonify({'error': 'Faltan datos (rut requerido)'}), 400
+    if (not data.get('rut') and not data.get('persona_id')) or not imagen_b64:
+        return jsonify({'error': 'Faltan datos (persona_id o rut requerido)'}), 400
 
-    persona_id = resolver_rut_a_id(rut)
+    persona_id = _resolver_persona_id(data)
     if not persona_id:
-        return jsonify({'error': f'Persona con rut {rut} no encontrada'}), 404
+        return jsonify({'error': 'Persona no encontrada'}), 404
 
     imagen_b64 += "=" * ((4 - len(imagen_b64) % 4) % 4)
 
@@ -434,21 +441,32 @@ def identificar_facial():
     content_type = (request.content_type or '').lower()
     print(f"[IDENTIFICAR] Content-Type recibido: '{content_type}' | Body size: {len(request.data)} bytes", flush=True)
 
-    if 'octet-stream' in content_type or (len(request.data) > 0 and 'json' not in content_type):
+    if 'octet-stream' in content_type:
         img_bytes = request.data
         print(f"[IDENTIFICAR] Interpretado como JPEG crudo ({len(img_bytes)} bytes)", flush=True)
-    else:
+    elif 'json' in content_type:
+        data = request.get_json(force=True, silent=True) or {}
+        if not data.get('imagen'):
+            return jsonify({'error': 'Falta imagen'}), 400
         try:
-            data = request.get_json(force=True, silent=True)
-            if data and 'imagen' in data:
-                img_bytes = base64.b64decode(data['imagen'])
-                print(f"[IDENTIFICAR] Interpretado como JSON/Base64", flush=True)
-            else:
-                print(f"[IDENTIFICAR] Body no es JSON ni octet-stream", flush=True)
-                return jsonify({'error': 'Formato no soportado. Enviar JPEG crudo (octet-stream) o JSON con Base64.'}), 415
+            img_bytes = base64.b64decode(data['imagen'])
+            print(f"[IDENTIFICAR] Interpretado como JSON/Base64", flush=True)
         except Exception as e:
-            print(f"[IDENTIFICAR] Error decodificando: {e}", flush=True)
-            return jsonify({'error': f'Error decodificando: {str(e)}'}), 415
+            print(f"[IDENTIFICAR] Error decodificando Base64: {e}", flush=True)
+            return jsonify({'error': f'Base64 invalido: {str(e)}'}), 400
+    elif not content_type and len(request.data) > 0:
+        img_bytes = request.data
+        print(f"[IDENTIFICAR] Interpretado como JPEG crudo sin content-type ({len(img_bytes)} bytes)", flush=True)
+    else:
+        print(f"[IDENTIFICAR] Formato no soportado", flush=True)
+        return jsonify({'error': 'Formato no soportado. Enviar JPEG crudo (octet-stream) o JSON con Base64.'}), 415
+
+    if not img_bytes:
+        return jsonify({'error': 'Falta imagen'}), 400
+
+    embeddings_dict = _obtener_embeddings()
+    if not embeddings_dict:
+        return jsonify({'error': 'Base de datos de rostros vacia'}), 404
 
     debug_dir = os.path.join(os.getcwd(), 'static', 'capturas_prueba')
     os.makedirs(debug_dir, exist_ok=True)
@@ -469,11 +487,6 @@ def identificar_facial():
             return jsonify({'error': msg_calidad}), 400
 
         embedding_captura = np.array(extraer_embedding(file_path, anti_spoofing=True))
-
-        embeddings_dict = _obtener_embeddings()
-
-        if not embeddings_dict:
-            return jsonify({'error': 'Base de datos de rostros vacia'}), 404
 
         mejor_distancia = float('inf')
         persona_identificada_id = None

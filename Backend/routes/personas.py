@@ -229,7 +229,7 @@ def update_huella_persona(persona_id):
 @personas_bp.route('/api/personas/<persona_id>/consentimiento', methods=['POST'])
 @token_opcional
 def registrar_consentimiento(persona_id):
-    data = request.json or {}
+    data = request.get_json(silent=True) or {}
     version_politica = data.get('version_politica', '1.0')
     metodo_aceptacion = data.get('metodo_aceptacion', 'web')
     ip_dispositivo = request.headers.get('X-Forwarded-For', request.remote_addr)
@@ -279,6 +279,8 @@ def delete_persona(persona_id):
             )
         else:
             return jsonify({'error': 'No autorizado'}), 403
+        if cur.rowcount == 0:
+            return jsonify({'error': 'Persona no encontrada'}), 404
         conn.commit()
         return jsonify({'ok': True})
     except Exception as e:

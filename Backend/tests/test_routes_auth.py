@@ -209,11 +209,12 @@ class TestRoutesAuth:
         assert resp.status_code == 401
 
     def test_empleador_elimina_usuario_de_su_empresa(self, client, empleador_token):
-        client.post('/api/auth/register',
+        reg = client.post('/api/auth/register',
             headers={'Authorization': f'Bearer {empleador_token}'},
             json={'nombre': 'Trab Borrar', 'email': 'trab_borrar@test.cl',
                   'password': 'test1234', 'rol': 'trabajador', 'empresa_id': 2})
-        resp = client.delete('/api/auth/usuarios/2',
+        uid = reg.get_json()['id']
+        resp = client.delete(f'/api/auth/usuarios/{uid}',
             headers={'Authorization': f'Bearer {empleador_token}'},
             json={'empresa_id': 2})
         assert resp.status_code == 200
@@ -241,11 +242,12 @@ class TestRoutesAuth:
         assert resp.status_code == 401
 
     def test_empleador_actualiza_solo_trabajador(self, client, empleador_token):
-        client.post('/api/auth/register',
+        reg = client.post('/api/auth/register',
             headers={'Authorization': f'Bearer {empleador_token}'},
             json={'nombre': 'Trab Edit', 'email': 'trab_edit@test.cl',
                   'password': 'test1234', 'rol': 'trabajador', 'empresa_id': 2})
-        resp = client.put('/api/auth/usuarios/2',
+        uid = reg.get_json()['id']
+        resp = client.put(f'/api/auth/usuarios/{uid}',
             headers={'Authorization': f'Bearer {empleador_token}'},
             json={'nombre': 'Editado', 'empresa_id': 2})
         assert resp.status_code == 200
