@@ -1,66 +1,65 @@
 \babel@toc {spanish}{}\relax 
 \babel@toc {nil}{}\relax 
 \contentsline {chapter}{Tabla de Contenidos}{1}{}%
-\contentsline {chapter}{Índice de Figuras}{4}{}%
-\contentsline {chapter}{Índice de Tablas}{5}{}%
-\contentsline {chapter}{Resumen}{6}{}%
-\contentsline {chapter}{\numberline {1}Introducción}{8}{}%
-\contentsline {section}{\numberline {1.1}Contexto}{8}{}%
-\contentsline {section}{\numberline {1.2}Descripción del problema}{9}{}%
-\contentsline {section}{\numberline {1.3}Propuesta de solución}{10}{}%
-\contentsline {section}{\numberline {1.4}Objetivos}{10}{}%
-\contentsline {subsection}{\numberline {1.4.1}Objetivo general}{11}{}%
-\contentsline {subsection}{\numberline {1.4.2}Objetivos específicos}{11}{}%
-\contentsline {subsubsection}{Objetivo especifico 1}{11}{}%
-\contentsline {subsubsection}{Objetivo especifico 2}{11}{}%
-\contentsline {subsubsection}{Objetivo especifico 3}{11}{}%
-\contentsline {subsubsection}{Objetivo especifico 4}{11}{}%
-\contentsline {subsubsection}{Objetivo especifico 5}{11}{}%
-\contentsline {subsubsection}{Objetivo especifico 6}{11}{}%
-\contentsline {subsubsection}{Objetivo especifico 7}{11}{}%
-\contentsline {subsubsection}{Objetivo especifico 8}{12}{}%
-\contentsline {section}{\numberline {1.5}Alcances}{12}{}%
-\contentsline {section}{\numberline {1.6}Resumen capítulo}{13}{}%
-\contentsline {chapter}{\numberline {2}Marco teórico}{14}{}%
-\contentsline {section}{\numberline {2.1}Conceptos básicos}{14}{}%
-\contentsline {subsection}{\numberline {2.1.1}Conceptos globales}{14}{}%
-\contentsline {subsection}{\numberline {2.1.2}Conceptos de software}{15}{}%
-\contentsline {section}{\numberline {2.2}Tecnologías utilizadas}{17}{}%
-\contentsline {subsection}{\numberline {2.2.1}Microcontrolador ESP32-CAM}{17}{}%
-\contentsline {subsection}{\numberline {2.2.2}Lector de huella digital AS608}{17}{}%
-\contentsline {subsection}{\numberline {2.2.3}Protocolos de comunicación HTTP}{17}{}%
-\contentsline {subsection}{\numberline {2.2.4}Protocolo de comunicación MQTT}{18}{}%
-\contentsline {subsection}{\numberline {2.2.5}Contenedores Docker}{18}{}%
-\contentsline {subsection}{\numberline {2.2.6}Sistemas de bases de datos}{18}{}%
-\contentsline {subsection}{\numberline {2.2.7}Sensor PIR (HC-SR501)}{19}{}%
-\contentsline {subsection}{\numberline {2.2.8}Framework DeepFace}{19}{}%
-\contentsline {subsection}{\numberline {2.2.9}Broker Mosquitto en contenedor Docker}{20}{}%
-\contentsline {section}{\numberline {2.3}Estado del arte}{20}{}%
-\contentsline {subsection}{\numberline {2.3.1}Soluciones basadas en hardware}{20}{}%
-\contentsline {subsection}{\numberline {2.3.2}Soluciones basadas en software}{21}{}%
-\contentsline {section}{\numberline {2.4}Metodologias}{22}{}%
-\contentsline {subsection}{\numberline {2.4.1}Metodologia de desarrollo}{22}{}%
-\contentsline {subsection}{\numberline {2.4.2}Metodología de evaluación}{23}{}%
-\contentsline {subsubsection}{Pruebas de integración}{24}{}%
-\contentsline {subsubsection}{Pruebas de usabilidad}{24}{}%
-\contentsline {subsubsection}{Pruebas de confiabilidad y disponibilidad}{24}{}%
-\contentsline {section}{\numberline {2.5}Resumen del capítulo}{25}{}%
-\contentsline {chapter}{\numberline {3}Metodologías}{26}{}%
-\contentsline {section}{\numberline {3.1}Metodologia de desarrollo}{26}{}%
-\contentsline {subsection}{\numberline {3.1.1}Protipado Evolutivo Incremental}{26}{}%
-\contentsline {section}{\numberline {3.2}Plan de trabajo}{28}{}%
-\contentsline {section}{\numberline {3.3}Metodología de evaluación}{28}{}%
-\contentsline {subsection}{\numberline {3.3.1}Pruebas de integración}{29}{}%
-\contentsline {subsection}{\numberline {3.3.2}Pruebas de usabilidad}{30}{}%
-\contentsline {subsubsection}{Preguntas para usuarios no técnicos}{30}{}%
-\contentsline {subsubsection}{Preguntas para usuarios técnicos}{31}{}%
-\contentsline {subsection}{\numberline {3.3.3}Pruebas de confiabilidad y disponibilidad}{31}{}%
+\contentsline {chapter}{Índice de Figuras}{5}{}%
+\contentsline {chapter}{Índice de Tablas}{6}{}%
+\contentsline {chapter}{Resumen}{7}{}%
+\contentsline {chapter}{\numberline {1}Introducción}{9}{}%
+\contentsline {section}{\numberline {1.1}Contexto}{9}{}%
+\contentsline {section}{\numberline {1.2}Descripción del problema}{10}{}%
+\contentsline {section}{\numberline {1.3}Propuesta de solución}{11}{}%
+\contentsline {section}{\numberline {1.4}Objetivos}{11}{}%
+\contentsline {subsection}{\numberline {1.4.1}Objetivo general}{12}{}%
+\contentsline {subsection}{\numberline {1.4.2}Objetivos específicos}{12}{}%
+\contentsline {subsubsection}{Objetivo especifico 1}{12}{}%
+\contentsline {subsubsection}{Objetivo especifico 2}{12}{}%
+\contentsline {subsubsection}{Objetivo especifico 3}{12}{}%
+\contentsline {subsubsection}{Objetivo especifico 4}{12}{}%
+\contentsline {subsubsection}{Objetivo especifico 5}{12}{}%
+\contentsline {subsubsection}{Objetivo especifico 6}{12}{}%
+\contentsline {subsubsection}{Objetivo especifico 7}{12}{}%
+\contentsline {subsubsection}{Objetivo especifico 8}{13}{}%
+\contentsline {section}{\numberline {1.5}Alcances}{13}{}%
+\contentsline {section}{\numberline {1.6}Resumen capítulo}{14}{}%
+\contentsline {chapter}{\numberline {2}Marco teórico}{15}{}%
+\contentsline {section}{\numberline {2.1}Conceptos básicos}{15}{}%
+\contentsline {subsection}{\numberline {2.1.1}Conceptos globales}{15}{}%
+\contentsline {subsection}{\numberline {2.1.2}Conceptos de software}{16}{}%
+\contentsline {section}{\numberline {2.2}Tecnologías utilizadas}{18}{}%
+\contentsline {subsection}{\numberline {2.2.1}Microcontrolador ESP32-CAM}{18}{}%
+\contentsline {subsection}{\numberline {2.2.2}Lector de huella digital AS608}{18}{}%
+\contentsline {subsection}{\numberline {2.2.3}Protocolos de comunicación HTTP}{18}{}%
+\contentsline {subsection}{\numberline {2.2.4}Protocolo de comunicación MQTT}{19}{}%
+\contentsline {subsection}{\numberline {2.2.5}Contenedores Docker}{19}{}%
+\contentsline {subsection}{\numberline {2.2.6}Sistemas de bases de datos}{19}{}%
+\contentsline {subsection}{\numberline {2.2.7}Sensor PIR (HC-SR501)}{20}{}%
+\contentsline {subsection}{\numberline {2.2.8}Framework DeepFace}{20}{}%
+\contentsline {subsection}{\numberline {2.2.9}Broker Mosquitto en contenedor Docker}{21}{}%
+\contentsline {section}{\numberline {2.3}Estado del arte}{21}{}%
+\contentsline {subsection}{\numberline {2.3.1}Soluciones basadas en hardware}{21}{}%
+\contentsline {subsection}{\numberline {2.3.2}Soluciones basadas en software}{22}{}%
+\contentsline {section}{\numberline {2.4}Metodologias}{23}{}%
+\contentsline {subsection}{\numberline {2.4.1}Metodologia de desarrollo}{23}{}%
+\contentsline {subsection}{\numberline {2.4.2}Metodología de evaluación}{24}{}%
+\contentsline {subsubsection}{Pruebas de integración}{25}{}%
+\contentsline {subsubsection}{Pruebas de usabilidad}{25}{}%
+\contentsline {subsubsection}{Pruebas de confiabilidad y disponibilidad}{25}{}%
+\contentsline {section}{\numberline {2.5}Resumen del capítulo}{26}{}%
+\contentsline {chapter}{\numberline {3}Metodologías}{27}{}%
+\contentsline {section}{\numberline {3.1}Metodologia de desarrollo}{27}{}%
+\contentsline {subsection}{\numberline {3.1.1}Protipado Evolutivo Incremental}{27}{}%
+\contentsline {section}{\numberline {3.2}Plan de trabajo}{29}{}%
+\contentsline {section}{\numberline {3.3}Metodología de evaluación}{29}{}%
+\contentsline {subsection}{\numberline {3.3.1}Pruebas de integración}{30}{}%
+\contentsline {subsection}{\numberline {3.3.2}Pruebas de usabilidad}{31}{}%
+\contentsline {subsubsection}{Cuestionario SUS estándar}{31}{}%
+\contentsline {subsection}{\numberline {3.3.3}Pruebas de confiabilidad y disponibilidad}{32}{}%
 \contentsline {subsection}{\numberline {3.3.4}Resultados esperados de las pruebas}{32}{}%
 \contentsline {subsubsection}{Pruebas de integración}{32}{}%
 \contentsline {subsubsection}{Pruebas de usabilidad (SUS)}{33}{}%
-\contentsline {subsubsection}{Pruebas de confiabilidad y disponibilidad}{33}{}%
+\contentsline {subsubsection}{Pruebas de confiabilidad y disponibilidad}{34}{}%
 \contentsline {section}{\numberline {3.4}Resultados Esperados de los Objetivos Específicos}{34}{}%
-\contentsline {section}{\numberline {3.5}Resumen del capítulo}{34}{}%
+\contentsline {section}{\numberline {3.5}Resumen del capítulo}{35}{}%
 \contentsline {chapter}{\numberline {4}Desarrollo e implementación}{36}{}%
 \contentsline {section}{\numberline {4.1}Diseño de software}{36}{}%
 \contentsline {subsection}{\numberline {4.1.1}Arquitectura física}{36}{}%
@@ -90,7 +89,7 @@
 \contentsline {subsubsection}{Inicialización del sistema de archivos y persistencia}{55}{}%
 \contentsline {subsubsection}{Registro de usuarios con huella digital}{56}{}%
 \contentsline {subsubsection}{Registro de asistencia en modo offline}{57}{}%
-\contentsline {subsubsection}{Gestión de turnos y asignaciones}{57}{}%
+\contentsline {subsubsection}{Gestión de turnos y asignaciones}{58}{}%
 \contentsline {subsubsection}{Operación offline del dispositivo}{58}{}%
 \contentsline {subsection}{\numberline {4.4.4}Pruebas}{58}{}%
 \contentsline {section}{\numberline {4.5}Iteración 3: Backend, base de datos y comunicación}{59}{}%
@@ -99,10 +98,10 @@
 \contentsline {subsection}{\numberline {4.5.3}Implementación}{63}{}%
 \contentsline {subsubsection}{Inicialización de la base de datos}{63}{}%
 \contentsline {subsubsection}{Conexión Wi-Fi del ESP32-CAM y gestión de conectividad}{63}{}%
-\contentsline {subsubsection}{Envío de imágenes faciales: MQTT para registro, HTTP para identificación}{63}{}%
+\contentsline {subsubsection}{Envío de imágenes faciales: MQTT para registro, HTTP para identificación}{64}{}%
 \contentsline {subsubsection}{Recepción de imágenes en el backend vía MQTT}{64}{}%
-\contentsline {subsubsection}{Mantenimiento de la conexión MQTT en el ESP32-CAM}{64}{}%
-\contentsline {subsubsection}{Envío de datos mediante HTTP desde el ESP32-CAM}{64}{}%
+\contentsline {subsubsection}{Mantenimiento de la conexión MQTT en el ESP32-CAM}{65}{}%
+\contentsline {subsubsection}{Envío de datos mediante HTTP desde el ESP32-CAM}{65}{}%
 \contentsline {subsubsection}{Implementación de la API REST del backend}{65}{}%
 \contentsline {subsubsection}{Infraestructura con Docker Compose}{66}{}%
 \contentsline {subsection}{\numberline {4.5.4}Pruebas}{66}{}%
@@ -116,23 +115,23 @@
 \contentsline {subsubsection}{Actualización y eliminación de datos faciales}{71}{}%
 \contentsline {subsection}{\numberline {4.6.4}Pruebas}{72}{}%
 \contentsline {section}{\numberline {4.7}Iteración 5: Autenticación, multi-tenant y enrolamiento de dispositivos}{73}{}%
-\contentsline {subsection}{\numberline {4.7.1}Análisis}{73}{}%
+\contentsline {subsection}{\numberline {4.7.1}Análisis}{74}{}%
 \contentsline {subsection}{\numberline {4.7.2}Diseño}{75}{}%
 \contentsline {subsubsection}{Modelo de datos multi-tenant}{75}{}%
 \contentsline {subsubsection}{Flujo de autenticación}{75}{}%
-\contentsline {subsubsection}{Flujo de enrolamiento de dispositivos}{75}{}%
+\contentsline {subsubsection}{Flujo de enrolamiento de dispositivos}{76}{}%
 \contentsline {subsubsection}{Heartbeat y Last Will Testament (LWT)}{76}{}%
 \contentsline {subsection}{\numberline {4.7.3}Implementación}{76}{}%
 \contentsline {subsubsection}{Módulo de autenticación}{76}{}%
 \contentsline {subsubsection}{Gestión de dispositivos}{77}{}%
-\contentsline {subsubsection}{Monitorización vía MQTT}{77}{}%
+\contentsline {subsubsection}{Monitorización vía MQTT}{78}{}%
 \contentsline {subsection}{\numberline {4.7.4}Pruebas}{78}{}%
 \contentsline {section}{\numberline {4.8}Iteración 6: Módulo antifraude y validación previa a la captura}{79}{}%
-\contentsline {subsection}{\numberline {4.8.1}Análisis}{79}{}%
-\contentsline {subsection}{\numberline {4.8.2}Diseño}{80}{}%
-\contentsline {subsubsection}{Sensor PIR como portero del sistema}{80}{}%
+\contentsline {subsection}{\numberline {4.8.1}Análisis}{80}{}%
+\contentsline {subsection}{\numberline {4.8.2}Diseño}{81}{}%
+\contentsline {subsubsection}{Sensor PIR como portero del sistema}{81}{}%
 \contentsline {subsubsection}{Control de acceso con cooldown y bloqueo}{81}{}%
-\contentsline {subsubsection}{Firma de movimiento}{81}{}%
+\contentsline {subsubsection}{Firma de movimiento}{82}{}%
 \contentsline {subsection}{\numberline {4.8.3}Implementación}{82}{}%
 \contentsline {subsubsection}{Integración del PIR}{82}{}%
 \contentsline {subsubsection}{Flash PWM para iluminación facial}{82}{}%
@@ -140,45 +139,46 @@
 \contentsline {subsubsection}{Validación anti-spoofing en el backend}{83}{}%
 \contentsline {subsection}{\numberline {4.8.4}Pruebas}{83}{}%
 \contentsline {section}{\numberline {4.9}Iteración 7: Panel web backend e integración con ERP}{84}{}%
-\contentsline {subsection}{\numberline {4.9.1}Análisis}{84}{}%
+\contentsline {subsection}{\numberline {4.9.1}Análisis}{85}{}%
 \contentsline {subsection}{\numberline {4.9.2}Diseño}{85}{}%
 \contentsline {subsubsection}{Arquitectura del backend}{85}{}%
 \contentsline {subsubsection}{Diseño del módulo ERP}{86}{}%
-\contentsline {subsection}{\numberline {4.9.3}Implementación}{86}{}%
-\contentsline {subsubsection}{Panel web del backend}{86}{}%
-\contentsline {subsubsection}{Endpoint de configuración ERP para el ESP32-CAM}{87}{}%
+\contentsline {subsection}{\numberline {4.9.3}Implementación}{87}{}%
+\contentsline {subsubsection}{Panel web del backend}{87}{}%
+\contentsline {subsubsection}{Endpoint de configuración ERP para el ESP32-CAM}{88}{}%
 \contentsline {subsubsection}{Contraseñas para autenticación de dispositivos}{88}{}%
-\contentsline {subsubsection}{Módulo de integración ERP}{88}{}%
-\contentsline {subsection}{\numberline {4.9.4}Pruebas}{89}{}%
-\contentsline {section}{\numberline {4.10}Iteración 8: Sincronización diferida, logs y cierre del proyecto}{90}{}%
-\contentsline {subsection}{\numberline {4.10.1}Análisis}{90}{}%
-\contentsline {subsection}{\numberline {4.10.2}Diseño}{91}{}%
-\contentsline {subsubsection}{Proceso de sincronización diferida}{91}{}%
+\contentsline {subsubsection}{Módulo de integración ERP}{89}{}%
+\contentsline {subsection}{\numberline {4.9.4}Pruebas}{90}{}%
+\contentsline {section}{\numberline {4.10}Iteración 8: Sincronización diferida, logs y cierre del proyecto}{91}{}%
+\contentsline {subsection}{\numberline {4.10.1}Análisis}{91}{}%
+\contentsline {subsection}{\numberline {4.10.2}Diseño}{92}{}%
+\contentsline {subsubsection}{Proceso de sincronización diferida}{92}{}%
 \contentsline {subsubsection}{Deduplicación en el backend}{92}{}%
 \contentsline {subsubsection}{Tablas de auditoría}{92}{}%
-\contentsline {subsubsection}{Panel de visualización de logs}{92}{}%
+\contentsline {subsubsection}{Panel de visualización de logs}{93}{}%
 \contentsline {subsubsection}{Script de simulación de asistencia facial}{93}{}%
 \contentsline {subsection}{\numberline {4.10.3}Implementación}{93}{}%
 \contentsline {subsubsection}{Sincronización en el ESP32-CAM}{93}{}%
-\contentsline {subsubsection}{Sincronización de asistencias por lote}{93}{}%
+\contentsline {subsubsection}{Sincronización de asistencias por lote}{94}{}%
 \contentsline {subsubsection}{Sincronización en el backend}{94}{}%
 \contentsline {subsubsection}{Watchdog de dispositivos}{94}{}%
-\contentsline {subsubsection}{Herramienta de simulación (deteccion.py)}{94}{}%
-\contentsline {subsection}{\numberline {4.10.4}Pruebas}{94}{}%
+\contentsline {subsubsection}{Herramienta de simulación (deteccion.py)}{95}{}%
+\contentsline {subsection}{\numberline {4.10.4}Pruebas}{95}{}%
 \contentsline {subsubsection}{Pruebas automatizadas}{96}{}%
 \contentsline {section}{\numberline {4.11}Resumen del capítulo}{96}{}%
-\contentsline {chapter}{\numberline {5}Análisis de resultados}{97}{}%
-\contentsline {section}{\numberline {5.1}Costo total del prototipo}{97}{}%
-\contentsline {section}{\numberline {5.2}Resultados de encuestas SUS}{97}{}%
-\contentsline {subsection}{\numberline {5.2.1}Usuarios no técnicos}{98}{}%
-\contentsline {subsection}{\numberline {5.2.2}Usuarios técnicos}{98}{}%
-\contentsline {subsection}{\numberline {5.2.3}Análisis comparativo}{98}{}%
-\contentsline {section}{\numberline {5.3}Métricas de reconocimiento facial}{99}{}%
-\contentsline {subsection}{\numberline {5.3.1}Tiempo de respuesta del ESP32-CAM}{99}{}%
-\contentsline {subsection}{\numberline {5.3.2}Precisión del reconocimiento}{99}{}%
-\contentsline {section}{\numberline {5.4}Resultados de pruebas de estrés offline}{99}{}%
-\contentsline {subsection}{\numberline {5.4.1}Escenario 1: Desconexión total}{99}{}%
-\contentsline {subsection}{\numberline {5.4.2}Escenario 2: Conectividad intermitente}{100}{}%
-\contentsline {subsection}{\numberline {5.4.3}Escenario 3: Reconexión prolongada}{100}{}%
-\contentsline {section}{\numberline {5.5}Resumen del capítulo}{100}{}%
-\contentsline {chapter}{\numberline {6}Bibliografía}{101}{}%
+\contentsline {chapter}{\numberline {5}Análisis de resultados}{98}{}%
+\contentsline {section}{\numberline {5.1}Costo total del prototipo}{98}{}%
+\contentsline {section}{\numberline {5.2}Resultados de encuestas SUS}{98}{}%
+\contentsline {subsection}{\numberline {5.2.1}Usuarios no técnicos}{99}{}%
+\contentsline {subsection}{\numberline {5.2.2}Usuarios técnicos}{100}{}%
+\contentsline {subsection}{\numberline {5.2.3}Análisis comparativo}{100}{}%
+\contentsline {section}{\numberline {5.3}Métricas de reconocimiento facial}{100}{}%
+\contentsline {subsection}{\numberline {5.3.1}Tiempo de respuesta del ESP32-CAM}{100}{}%
+\contentsline {subsection}{\numberline {5.3.2}Precisión del reconocimiento}{101}{}%
+\contentsline {section}{\numberline {5.4}Resultados de pruebas de estrés offline}{101}{}%
+\contentsline {subsection}{\numberline {5.4.1}Escenario 1: Desconexión total}{101}{}%
+\contentsline {subsection}{\numberline {5.4.2}Escenario 2: Conectividad intermitente}{101}{}%
+\contentsline {subsection}{\numberline {5.4.3}Escenario 3: Reconexión prolongada}{102}{}%
+\contentsline {section}{\numberline {5.5}Resumen del capítulo}{102}{}%
+\contentsline {chapter}{\numberline {6}Bibliografía}{103}{}%
+\contentsline {chapter}{Anexo A: Preguntas complementarias de usabilidad}{107}{}%

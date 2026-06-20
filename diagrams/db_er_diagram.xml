@@ -1,0 +1,173 @@
+﻿<?xml version="1.0" encoding="UTF-8"?>
+<mxfile host="opencode">
+  <diagram id="db-er-diagram" name="Diagrama ER - Base de Datos">
+    <mxGraphModel dx="0" dy="0" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1500" pageHeight="1200" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="100" value="&lt;b&gt;empresas&lt;/b&gt;&lt;hr size='1'&gt;🔑 id SERIAL&lt;hr size='1'&gt;&amp;nbsp;&amp;nbsp;&amp;nbsp;nombre VARCHAR(100)&lt;hr size='1'&gt;&amp;nbsp;&amp;nbsp;&amp;nbsp;rut_empresa VARCHAR(20)&lt;hr size='1'&gt;&amp;nbsp;&amp;nbsp;&amp;nbsp;email_contacto VARCHAR(100)&lt;hr size='1'&gt;&amp;nbsp;&amp;nbsp;&amp;nbsp;telefono VARCHAR(20)&lt;hr size='1'&gt;&amp;nbsp;&amp;nbsp;&amp;nbsp;direccion VARCHAR(200)&lt;hr size='1'&gt;&amp;nbsp;&amp;nbsp;&amp;nbsp;created_at TIMESTAMP" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#000000;overflow=hidden;fontSize=11;align=left;verticalAlign=top;spacing=4;arcSize=6;" vertex="1" parent="1">
+          <mxGeometry x="50" y="50" width="250" height="190" as="geometry" />
+        </mxCell>
+        <mxCell id="101" value="&lt;b&gt;usuarios_web&lt;/b&gt;&lt;hr size='1'&gt;🔑 id SERIAL&lt;hr size='1'&gt;&amp;nbsp;&amp;nbsp;&amp;nbsp;nombre VARCHAR(100)&lt;hr size='1'&gt;&amp;nbsp;&amp;nbsp;&amp;nbsp;email VARCHAR(100) &lt;font color='#888'&gt;[UNIQUE]&lt;/font&gt;&lt;hr size='1'&gt;&amp;nbsp;&amp;nbsp;&amp;nbsp;password_hash VARCHAR(200)&lt;hr size='1'&gt;&amp;nbsp;&amp;nbsp;&amp;nbsp;activo BOOLEAN&lt;hr size='1'&gt;&amp;nbsp;&amp;nbsp;&amp;nbsp;created_at TIMESTAMP" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#000000;overflow=hidden;fontSize=11;align=left;verticalAlign=top;spacing=4;arcSize=6;" vertex="1" parent="1">
+          <mxGeometry x="380" y="50" width="250" height="168" as="geometry" />
+        </mxCell>
+        <mxCell id="102" value="&lt;b&gt;usuario_empresa&lt;/b&gt;&lt;hr size='1'&gt;🔑 id SERIAL&lt;hr size='1'&gt;&amp;nbsp;&amp;nbsp;&amp;nbsp;usuario_id INTEGER &lt;font color='#888'&gt;[FK→usuarios_web]&lt;/font&gt;&lt;hr size='1'&gt;&amp;nbsp;&amp;nbsp;&amp;nbsp;empresa_id INTEGER &lt;font color='#888'&gt;[FK→empresas]&lt;/font&gt;&lt;hr size='1'&gt;&amp;nbsp;&amp;nbsp;&amp;nbsp;rol VARCHAR(20)&lt;hr size='1'&gt;&amp;nbsp;&amp;nbsp;&amp;nbsp;activo BOOLEAN&lt;hr size='1'&gt;&amp;nbsp;&amp;nbsp;&amp;nbsp;created_at TIMESTAMP" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#000000;overflow=hidden;fontSize=11;align=left;verticalAlign=top;spacing=4;arcSize=6;" vertex="1" parent="1">
+          <mxGeometry x="710" y="50" width="250" height="168" as="geometry" />
+        </mxCell>
+        <mxCell id="103" value="&lt;b&gt;sincronizacion_log&lt;/b&gt;&lt;hr size='1'&gt;🔑 id SERIAL&lt;hr size='1'&gt;&amp;nbsp;&amp;nbsp;&amp;nbsp;dispositivo_id INTEGER &lt;font color='#888'&gt;[FK→dispositivos]&lt;/font&gt;&lt;hr size='1'&gt;&amp;nbsp;&amp;nbsp;&amp;nbsp;registros_enviados INTEGER&lt;hr size='1'&gt;&amp;nbsp;&amp;nbsp;&amp;nbsp;registros_ok INTEGER&lt;hr size='1'&gt;&amp;nbsp;&amp;nbsp;&amp;nbsp;estado VARCHAR(20)&lt;hr size='1'&gt;&amp;nbsp;&amp;nbsp;&amp;nbsp;detalle TEXT&lt;hr size='1'&gt;&amp;nbsp;&amp;nbsp;&amp;nbsp;fecha TIMESTAMP" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#000000;overflow=hidden;fontSize=11;align=left;verticalAlign=top;spacing=4;arcSize=6;" vertex="1" parent="1">
+          <mxGeometry x="1040" y="50" width="250" height="190" as="geometry" />
+        </mxCell>
+        <mxCell id="104" value="&lt;b&gt;personas&lt;/b&gt;&lt;hr size='1'&gt;🔑 id SERIAL&lt;hr size='1'&gt;&amp;nbsp;&amp;nbsp;&amp;nbsp;empresa_id INTEGER &lt;font color='#888'&gt;[FK→empresas]&lt;/font&gt;&lt;hr size='1'&gt;&amp;nbsp;&amp;nbsp;&amp;nbsp;nombre VARCHAR(100)&lt;hr size='1'&gt;&amp;nbsp;&amp;nbsp;&amp;nbsp;rut VARCHAR(20) &lt;font color='#888'&gt;[UNIQUE]&lt;/font&gt;&lt;hr size='1'&gt;&amp;nbsp;&amp;nbsp;&amp;nbsp;email VARCHAR(100)&lt;hr size='1'&gt;&amp;nbsp;&amp;nbsp;&amp;nbsp;huella_id INTEGER&lt;hr size='1'&gt;&amp;nbsp;&amp;nbsp;&amp;nbsp;encoding_facial TEXT&lt;hr size='1'&gt;&amp;nbsp;&amp;nbsp;&amp;nbsp;activo BOOLEAN&lt;hr size='1'&gt;&amp;nbsp;&amp;nbsp;&amp;nbsp;created_at TIMESTAMP" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#000000;overflow=hidden;fontSize=11;align=left;verticalAlign=top;spacing=4;arcSize=6;" vertex="1" parent="1">
+          <mxGeometry x="50" y="280" width="250" height="234" as="geometry" />
+        </mxCell>
+        <mxCell id="105" value="&lt;b&gt;dispositivos&lt;/b&gt;&lt;hr size='1'&gt;🔑 id SERIAL&lt;hr size='1'&gt;&amp;nbsp;&amp;nbsp;&amp;nbsp;empresa_id INTEGER &lt;font color='#888'&gt;[FK→empresas]&lt;/font&gt;&lt;hr size='1'&gt;&amp;nbsp;&amp;nbsp;&amp;nbsp;nombre VARCHAR(100)&lt;hr size='1'&gt;&amp;nbsp;&amp;nbsp;&amp;nbsp;mac_address VARCHAR(20)&lt;hr size='1'&gt;&amp;nbsp;&amp;nbsp;&amp;nbsp;ip_local VARCHAR(20)&lt;hr size='1'&gt;&amp;nbsp;&amp;nbsp;&amp;nbsp;estado VARCHAR(20)&lt;hr size='1'&gt;&amp;nbsp;&amp;nbsp;&amp;nbsp;ultimo_heartbeat TIMESTAMP&lt;hr size='1'&gt;&amp;nbsp;&amp;nbsp;&amp;nbsp;codigo_enrol VARCHAR(8)&lt;hr size='1'&gt;&amp;nbsp;&amp;nbsp;&amp;nbsp;password_hash VARCHAR(64)&lt;hr size='1'&gt;&amp;nbsp;&amp;nbsp;&amp;nbsp;password_plain VARCHAR(20)&lt;hr size='1'&gt;&amp;nbsp;&amp;nbsp;&amp;nbsp;password_pendiente BOOLEAN&lt;hr size='1'&gt;&amp;nbsp;&amp;nbsp;&amp;nbsp;created_at TIMESTAMP" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#000000;overflow=hidden;fontSize=11;align=left;verticalAlign=top;spacing=4;arcSize=6;" vertex="1" parent="1">
+          <mxGeometry x="380" y="280" width="250" height="300" as="geometry" />
+        </mxCell>
+        <mxCell id="106" value="&lt;b&gt;turnos&lt;/b&gt;&lt;hr size='1'&gt;🔑 id SERIAL&lt;hr size='1'&gt;&amp;nbsp;&amp;nbsp;&amp;nbsp;empresa_id INTEGER &lt;font color='#888'&gt;[FK→empresas]&lt;/font&gt;&lt;hr size='1'&gt;&amp;nbsp;&amp;nbsp;&amp;nbsp;nombre VARCHAR(100)&lt;hr size='1'&gt;&amp;nbsp;&amp;nbsp;&amp;nbsp;hora_inicio TIME&lt;hr size='1'&gt;&amp;nbsp;&amp;nbsp;&amp;nbsp;hora_fin TIME&lt;hr size='1'&gt;&amp;nbsp;&amp;nbsp;&amp;nbsp;dias VARCHAR(50)&lt;hr size='1'&gt;&amp;nbsp;&amp;nbsp;&amp;nbsp;activo BOOLEAN&lt;hr size='1'&gt;&amp;nbsp;&amp;nbsp;&amp;nbsp;created_at TIMESTAMP" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#000000;overflow=hidden;fontSize=11;align=left;verticalAlign=top;spacing=4;arcSize=6;" vertex="1" parent="1">
+          <mxGeometry x="710" y="280" width="250" height="212" as="geometry" />
+        </mxCell>
+        <mxCell id="107" value="&lt;b&gt;integraciones_erp&lt;/b&gt;&lt;hr size='1'&gt;🔑 id SERIAL&lt;hr size='1'&gt;&amp;nbsp;&amp;nbsp;&amp;nbsp;empresa_id INTEGER &lt;font color='#888'&gt;[FK→empresas]&lt;/font&gt;&lt;hr size='1'&gt;&amp;nbsp;&amp;nbsp;&amp;nbsp;nombre VARCHAR(120)&lt;hr size='1'&gt;&amp;nbsp;&amp;nbsp;&amp;nbsp;tipo VARCHAR(40)&lt;hr size='1'&gt;&amp;nbsp;&amp;nbsp;&amp;nbsp;webhook_url TEXT&lt;hr size='1'&gt;&amp;nbsp;&amp;nbsp;&amp;nbsp;headers TEXT&lt;hr size='1'&gt;&amp;nbsp;&amp;nbsp;&amp;nbsp;field_map TEXT&lt;hr size='1'&gt;&amp;nbsp;&amp;nbsp;&amp;nbsp;envio_auto BOOLEAN&lt;hr size='1'&gt;&amp;nbsp;&amp;nbsp;&amp;nbsp;activo BOOLEAN&lt;hr size='1'&gt;&amp;nbsp;&amp;nbsp;&amp;nbsp;ultimo_envio TIMESTAMP&lt;hr size='1'&gt;&amp;nbsp;&amp;nbsp;&amp;nbsp;ultimo_estado VARCHAR(200)&lt;hr size='1'&gt;&amp;nbsp;&amp;nbsp;&amp;nbsp;created_at TIMESTAMP" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#000000;overflow=hidden;fontSize=11;align=left;verticalAlign=top;spacing=4;arcSize=6;" vertex="1" parent="1">
+          <mxGeometry x="1040" y="280" width="250" height="300" as="geometry" />
+        </mxCell>
+        <mxCell id="108" value="&lt;b&gt;consentimientos&lt;/b&gt;&lt;hr size='1'&gt;🔑 id SERIAL&lt;hr size='1'&gt;&amp;nbsp;&amp;nbsp;&amp;nbsp;persona_id INTEGER &lt;font color='#888'&gt;[FK→personas (U)]&lt;/font&gt;&lt;hr size='1'&gt;&amp;nbsp;&amp;nbsp;&amp;nbsp;fecha_aceptacion TIMESTAMP&lt;hr size='1'&gt;&amp;nbsp;&amp;nbsp;&amp;nbsp;version_politica VARCHAR(20)&lt;hr size='1'&gt;&amp;nbsp;&amp;nbsp;&amp;nbsp;ip_dispositivo VARCHAR(45)&lt;hr size='1'&gt;&amp;nbsp;&amp;nbsp;&amp;nbsp;metodo_aceptacion VARCHAR(30)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#000000;overflow=hidden;fontSize=11;align=left;verticalAlign=top;spacing=4;arcSize=6;" vertex="1" parent="1">
+          <mxGeometry x="50" y="520" width="250" height="168" as="geometry" />
+        </mxCell>
+        <mxCell id="109" value="&lt;b&gt;asistencias&lt;/b&gt;&lt;hr size='1'&gt;🔑 id SERIAL&lt;hr size='1'&gt;&amp;nbsp;&amp;nbsp;&amp;nbsp;persona_id INTEGER &lt;font color='#888'&gt;[FK→personas]&lt;/font&gt;&lt;hr size='1'&gt;&amp;nbsp;&amp;nbsp;&amp;nbsp;dispositivo_id INTEGER &lt;font color='#888'&gt;[FK→dispositivos]&lt;/font&gt;&lt;hr size='1'&gt;&amp;nbsp;&amp;nbsp;&amp;nbsp;nombre VARCHAR(100)&lt;hr size='1'&gt;&amp;nbsp;&amp;nbsp;&amp;nbsp;tipo VARCHAR(20)&lt;hr size='1'&gt;&amp;nbsp;&amp;nbsp;&amp;nbsp;metodo VARCHAR(50)&lt;hr size='1'&gt;&amp;nbsp;&amp;nbsp;&amp;nbsp;fecha_hora TIMESTAMP&lt;hr size='1'&gt;&amp;nbsp;&amp;nbsp;&amp;nbsp;timestamp_local VARCHAR(50)&lt;hr size='1'&gt;&amp;nbsp;&amp;nbsp;&amp;nbsp;origen VARCHAR(20)&lt;hr size='1'&gt;&amp;nbsp;&amp;nbsp;&amp;nbsp;imagen_path TEXT&lt;hr size='1'&gt;&amp;nbsp;&amp;nbsp;&amp;nbsp;sincronizado BOOLEAN&lt;hr size='1'&gt;&amp;nbsp;&amp;nbsp;&amp;nbsp;sincronizado_at TIMESTAMP" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#000000;overflow=hidden;fontSize=11;align=left;verticalAlign=top;spacing=4;arcSize=6;" vertex="1" parent="1">
+          <mxGeometry x="380" y="520" width="250" height="300" as="geometry" />
+        </mxCell>
+        <mxCell id="110" value="&lt;b&gt;asignaciones&lt;/b&gt;&lt;hr size='1'&gt;🔑 id SERIAL&lt;hr size='1'&gt;&amp;nbsp;&amp;nbsp;&amp;nbsp;persona_id INTEGER &lt;font color='#888'&gt;[FK→personas]&lt;/font&gt;&lt;hr size='1'&gt;&amp;nbsp;&amp;nbsp;&amp;nbsp;turno_id INTEGER &lt;font color='#888'&gt;[FK→turnos]&lt;/font&gt;&lt;hr size='1'&gt;&amp;nbsp;&amp;nbsp;&amp;nbsp;fecha_asignacion TIMESTAMP&lt;hr size='1'&gt;&amp;nbsp;&amp;nbsp;&amp;nbsp;vigente BOOLEAN" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#000000;overflow=hidden;fontSize=11;align=left;verticalAlign=top;spacing=4;arcSize=6;" vertex="1" parent="1">
+          <mxGeometry x="710" y="520" width="250" height="146" as="geometry" />
+        </mxCell>
+        <mxCell id="111" value="&lt;b&gt;encodings_faciales&lt;/b&gt;&lt;hr size='1'&gt;🔑 id SERIAL&lt;hr size='1'&gt;&amp;nbsp;&amp;nbsp;&amp;nbsp;persona_id INTEGER &lt;font color='#888'&gt;[FK→personas]&lt;/font&gt;&lt;hr size='1'&gt;&amp;nbsp;&amp;nbsp;&amp;nbsp;encoding TEXT&lt;hr size='1'&gt;&amp;nbsp;&amp;nbsp;&amp;nbsp;foto_path VARCHAR(500)&lt;hr size='1'&gt;&amp;nbsp;&amp;nbsp;&amp;nbsp;quality_score FLOAT&lt;hr size='1'&gt;&amp;nbsp;&amp;nbsp;&amp;nbsp;created_at TIMESTAMP" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#000000;overflow=hidden;fontSize=11;align=left;verticalAlign=top;spacing=4;arcSize=6;" vertex="1" parent="1">
+          <mxGeometry x="1040" y="520" width="250" height="168" as="geometry" />
+        </mxCell>
+        <mxCell id="112" value="&lt;b&gt;logs_biometricos&lt;/b&gt;&lt;hr size='1'&gt;🔑 id SERIAL&lt;hr size='1'&gt;&amp;nbsp;&amp;nbsp;&amp;nbsp;persona_id INTEGER &lt;font color='#888'&gt;[FK→personas]&lt;/font&gt;&lt;hr size='1'&gt;&amp;nbsp;&amp;nbsp;&amp;nbsp;dispositivo_id INTEGER &lt;font color='#888'&gt;[FK→dispositivos]&lt;/font&gt;&lt;hr size='1'&gt;&amp;nbsp;&amp;nbsp;&amp;nbsp;timestamp TIMESTAMP&lt;hr size='1'&gt;&amp;nbsp;&amp;nbsp;&amp;nbsp;tipo_operacion VARCHAR(30)&lt;hr size='1'&gt;&amp;nbsp;&amp;nbsp;&amp;nbsp;resultado VARCHAR(20)&lt;hr size='1'&gt;&amp;nbsp;&amp;nbsp;&amp;nbsp;ip_origen VARCHAR(45)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#000000;overflow=hidden;fontSize=11;align=left;verticalAlign=top;spacing=4;arcSize=6;" vertex="1" parent="1">
+          <mxGeometry x="380" y="760" width="250" height="190" as="geometry" />
+        </mxCell>
+        <mxCell id="113" value="&lt;b&gt;eliminaciones_biometricas&lt;/b&gt;&lt;hr size='1'&gt;🔑 id SERIAL&lt;hr size='1'&gt;&amp;nbsp;&amp;nbsp;&amp;nbsp;persona_id INTEGER&lt;hr size='1'&gt;&amp;nbsp;&amp;nbsp;&amp;nbsp;embedding_anterior TEXT&lt;hr size='1'&gt;&amp;nbsp;&amp;nbsp;&amp;nbsp;foto_path VARCHAR(500)&lt;hr size='1'&gt;&amp;nbsp;&amp;nbsp;&amp;nbsp;usuario_solicitante VARCHAR(100)&lt;hr size='1'&gt;&amp;nbsp;&amp;nbsp;&amp;nbsp;timestamp TIMESTAMP" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#000000;overflow=hidden;fontSize=11;align=left;verticalAlign=top;spacing=4;arcSize=6;" vertex="1" parent="1">
+          <mxGeometry x="710" y="760" width="250" height="168" as="geometry" />
+        </mxCell>
+        <mxCell id="114" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;exitX=1;exitY=0.15;exitDx=0;exitDy=0;entryX=0;entryY=0.85;entryDx=0;entryDy=0;" edge="1" parent="1" source="100" target="102">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="115" value="1 → N" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontSize=11;fontColor=#333;" vertex="1" connectable="0" parent="114">
+          <mxGeometry x="-0.5" y="-2" relative="1" as="geometry">
+            <mxPoint as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="116" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="100" target="104">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="117" value="1 → N" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontSize=11;fontColor=#333;" vertex="1" connectable="0" parent="116">
+          <mxGeometry x="-0.5" y="-2" relative="1" as="geometry">
+            <mxPoint as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="118" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;exitX=1;exitY=0.85;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="100" target="105">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="119" value="1 → N" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontSize=11;fontColor=#333;" vertex="1" connectable="0" parent="118">
+          <mxGeometry x="-0.5" y="-2" relative="1" as="geometry">
+            <mxPoint as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="120" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;exitX=1;exitY=0.32;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="100" target="106">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="121" value="1 → N" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontSize=11;fontColor=#333;" vertex="1" connectable="0" parent="120">
+          <mxGeometry x="-0.5" y="-2" relative="1" as="geometry">
+            <mxPoint as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="122" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;exitX=1;exitY=0.68;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="100" target="107">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="123" value="1 → N" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontSize=11;fontColor=#333;" vertex="1" connectable="0" parent="122">
+          <mxGeometry x="-0.5" y="-2" relative="1" as="geometry">
+            <mxPoint as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="124" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.15;entryDx=0;entryDy=0;" edge="1" parent="1" source="101" target="102">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="125" value="1 → N" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontSize=11;fontColor=#333;" vertex="1" connectable="0" parent="124">
+          <mxGeometry x="-0.5" y="-2" relative="1" as="geometry">
+            <mxPoint as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="126" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;exitX=1;exitY=0.68;exitDx=0;exitDy=0;entryX=0;entryY=0.15;entryDx=0;entryDy=0;" edge="1" parent="1" source="104" target="109">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="127" value="1 → N" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontSize=11;fontColor=#333;" vertex="1" connectable="0" parent="126">
+          <mxGeometry x="-0.5" y="-2" relative="1" as="geometry">
+            <mxPoint as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="128" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;exitX=1;exitY=0.15;exitDx=0;exitDy=0;entryX=0;entryY=0.85;entryDx=0;entryDy=0;" edge="1" parent="1" source="104" target="110">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="129" value="1 → N" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontSize=11;fontColor=#333;" vertex="1" connectable="0" parent="128">
+          <mxGeometry x="-0.5" y="-2" relative="1" as="geometry">
+            <mxPoint as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="130" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="104" target="108">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="131" value="1 → 1" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontSize=11;fontColor=#333;" vertex="1" connectable="0" parent="130">
+          <mxGeometry x="-0.5" y="-2" relative="1" as="geometry">
+            <mxPoint as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="132" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;exitX=1;exitY=0.32;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="104" target="111">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="133" value="1 → N" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontSize=11;fontColor=#333;" vertex="1" connectable="0" parent="132">
+          <mxGeometry x="-0.5" y="-2" relative="1" as="geometry">
+            <mxPoint as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="134" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;exitX=1;exitY=0.85;exitDx=0;exitDy=0;entryX=0;entryY=0.15;entryDx=0;entryDy=0;" edge="1" parent="1" source="104" target="112">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="135" value="1 → N" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontSize=11;fontColor=#333;" vertex="1" connectable="0" parent="134">
+          <mxGeometry x="-0.5" y="-2" relative="1" as="geometry">
+            <mxPoint as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="136" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.85;entryDx=0;entryDy=0;" edge="1" parent="1" source="105" target="109">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="137" value="1 → N" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontSize=11;fontColor=#333;" vertex="1" connectable="0" parent="136">
+          <mxGeometry x="-0.5" y="-2" relative="1" as="geometry">
+            <mxPoint as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="138" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;exitX=1;exitY=0.15;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="105" target="103">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="139" value="1 → N" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontSize=11;fontColor=#333;" vertex="1" connectable="0" parent="138">
+          <mxGeometry x="-0.5" y="-2" relative="1" as="geometry">
+            <mxPoint as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="140" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;exitX=1;exitY=0.85;exitDx=0;exitDy=0;entryX=0;entryY=0.85;entryDx=0;entryDy=0;" edge="1" parent="1" source="105" target="112">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="141" value="1 → N" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontSize=11;fontColor=#333;" vertex="1" connectable="0" parent="140">
+          <mxGeometry x="-0.5" y="-2" relative="1" as="geometry">
+            <mxPoint as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="142" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;exitX=1;exitY=1;exitDx=0;exitDy=0;entryX=0;entryY=0.15;entryDx=0;entryDy=0;" edge="1" parent="1" source="106" target="110">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="143" value="1 → N" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontSize=11;fontColor=#333;" vertex="1" connectable="0" parent="142">
+          <mxGeometry x="-0.5" y="-2" relative="1" as="geometry">
+            <mxPoint as="offset" />
+          </mxGeometry>
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

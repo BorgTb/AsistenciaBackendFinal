@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.141592653-2.6-1.40.28 (MiKTeX 25.12) (preloaded format=pdflatex 2026.6.4)  16 JUN 2026 16:50
+This is pdfTeX, Version 3.141592653-2.6-1.40.28 (MiKTeX 25.12) (preloaded format=pdflatex 2026.6.4)  19 JUN 2026 23:25
 entering extended mode
  restricted \write18 enabled.
  file:line:error style messages enabled.
@@ -291,19 +291,19 @@ Underfull \hbox (badness 10000) in paragraph at lines 16--16
 
  []
 
-[0] (memoria.toc [1] [2])
+[0] (memoria.toc [1] [2] [3])
 \tf@toc=\write3
 \openout3 = `memoria.toc'.
 
- [3] (memoria.lof)
+ [4] (memoria.lof)
 \tf@lof=\write4
 \openout4 = `memoria.lof'.
 
- [4] (memoria.lot)
+ [5] (memoria.lot)
 \tf@lot=\write5
 \openout5 = `memoria.lot'.
 
- [5]
+ [6]
 LaTeX Font Info:    Trying to load font information for TS1+lmr on input line 26.
  (D:\Latex\tex/latex/lm\ts1lmr.fd
 File: ts1lmr.fd 2015/05/01 v1.6.1 Font defs for Latin Modern
@@ -312,33 +312,33 @@ Overfull \hbox (26.01497pt too wide) in paragraph at lines 28--29
 []\T1/lmr/m/n/12 (-20) La solución desarrollada utiliza como dispositivo central un ESP32-CAM, microcontrolador
  []
 
-[6{D:/Latex/fonts/enc/dvips/lm/lm-ts1.enc}] [7]
+[7{D:/Latex/fonts/enc/dvips/lm/lm-ts1.enc}] [8]
 \bbl@ensure@spanish {Cap\'\i tulo} 1.
 
 Overfull \hbox (13.09453pt too wide) in paragraph at lines 48--49
 []\T1/lmr/m/n/12 (-20) El cumplimiento de estas normas no solo busca garantizar la trazabilidad y transparencia
  []
 
-[8
+[9
 
-] [9]
+] [10]
 Overfull \hbox (3.92714pt too wide) in paragraph at lines 83--84
 \T1/lmr/m/n/12 (-20) laboral en pequeñas y medianas empresas mediante integración con ERP y funcionamiento
  []
 
-[10]
+[11]
 Overfull \hbox (1.88141pt too wide) in paragraph at lines 92--93
 \T1/lmr/m/n/12 (-20) Incorporar capacidad de funcionamiento offline con almacenamiento local y sincronización
  []
 
-[11]
+[12]
 Overfull \hbox (1.76286pt too wide) in paragraph at lines 110--111
 \T1/lmr/m/n/12 (-20) reconocimiento facial y huella digital, operando en modo offline con almacenamiento
  []
 
-[12] [13]
+[13] [14]
 \bbl@ensure@spanish {Cap\'\i tulo} 2.
-[14
+[15
 
 ]
 Overfull \hbox (1.31255pt too wide) in paragraph at lines 143--144
@@ -365,7 +365,7 @@ Overfull \hbox (6.40356pt too wide) in paragraph at lines 151--152
 \T1/lmr/m/n/12 (-20) entre el publicador (el ESP32-CAM) y los suscriptores (backend u otros servicios)[40]. 
  []
 
-[15]
+[16]
 LaTeX Font Info:    Trying to load font information for T1+lmtt on input line 155.
  (D:\Latex\tex/latex/lm\t1lmtt.fd
 File: t1lmtt.fd 2015/05/01 v1.6.1 Font defs for Latin Modern
@@ -374,66 +374,66 @@ Package microtype Info: Loading generic protrusion settings for font family
 (microtype)             `lmtt' (encoding: T1).
 (microtype)             For optimal results, create family-specific settings.
 (microtype)             See the microtype manual for details.
- [16] [17] [18] [19]
+ [17] [18] [19] [20]
 Overfull \hbox (1.9233pt too wide) in paragraph at lines 193--194
 \T1/lmr/m/n/12 (-20) A continuación se revisaran los sistemas y tecnológicas existentes relacionados dispositivos
  []
 
-[20] [21] [22]
-<Imagenes/metodologia (1).png, id=85, 1256.695pt x 230.8625pt>
+[21] [22] [23]
+<Imagenes/metodologia (1).png, id=89, 1256.695pt x 230.8625pt>
 File: Imagenes/metodologia (1).png Graphic file (type png)
 <use Imagenes/metodologia (1).png>
 Package pdftex.def Info: Imagenes/metodologia (1).png  used on input line 239.
 (pdftex.def)             Requested size: 308.71106pt x 56.71152pt.
- [23 <./Imagenes/metodologia (1).png>] [24] [25]
+ [24 <./Imagenes/metodologia (1).png>] [25] [26]
 \bbl@ensure@spanish {Cap\'\i tulo} 3.
-[26
+[27
 
 ]
 Overfull \hbox (2.15076pt too wide) in paragraph at lines 296--297
 []\T1/lmr/m/n/12 (-20) Paralelamente, se realizan pruebas integradas para verificar que la nueva funcionalidad
  []
 
-[27]
+[28]
 LaTeX Font Info:    External font `lmex10' loaded for size
 (Font)              <10.95> on input line 313.
- [28] [29] [30]
-Overfull \hbox (8.18605pt too wide) in paragraph at lines 386--387
+ [29] [30] [31]
+Overfull \hbox (8.18605pt too wide) in paragraph at lines 388--389
 \T1/lmr/m/n/12 (-20) de los cuales consideramos escenarios de desconexión total, conectividad intermitente,
  []
 
-[31]
-Underfull \hbox (badness 1406) in paragraph at lines 433--433
+[32{D:/Latex/fonts/enc/dvips/lm/lm-mathsy.enc}{D:/Latex/fonts/enc/dvips/lm/lm-mathit.enc}]
+Underfull \hbox (badness 1406) in paragraph at lines 435--435
 []\T1/lmr/m/n/10.95 (+20) Tiempo medio de configuración inicial (no
  []
 
-[32{D:/Latex/fonts/enc/dvips/lm/lm-mathsy.enc}]
-Underfull \hbox (badness 6625) in paragraph at lines 452--452
+
+Underfull \hbox (badness 6625) in paragraph at lines 454--454
 []\T1/lmr/m/n/10.95 (+20) Registros almacenados sin
  []
 
 
-Underfull \hbox (badness 4569) in paragraph at lines 453--453
+Underfull \hbox (badness 4569) in paragraph at lines 455--455
 []\T1/lmr/m/n/10.95 (+20) Reintentos automáticos de
  []
 
 
-Underfull \hbox (badness 10000) in paragraph at lines 454--454
+Underfull \hbox (badness 10000) in paragraph at lines 456--456
 []\T1/lmr/m/n/10.95 (+20) Reintentos exitosos de
  []
 
 
-Underfull \hbox (badness 10000) in paragraph at lines 457--457
+Underfull \hbox (badness 10000) in paragraph at lines 459--459
 []\T1/lmr/m/n/10.95 (+20) Disponibilidad acumulada
  []
 
-[33{D:/Latex/fonts/enc/dvips/lm/lm-mathit.enc}]
-Overfull \hbox (10.45134pt too wide) in paragraph at lines 466--466
+[33]
+Overfull \hbox (10.45134pt too wide) in paragraph at lines 468--468
 []\T1/lmr/bx/n/17.28 (-20) Resultados Esperados de los Objetivos Específicos 
  []
 
 
-Overfull \hbox (32.89418pt too wide) in paragraph at lines 474--476
+Overfull \hbox (32.89418pt too wide) in paragraph at lines 476--478
 []\T1/lmr/m/n/12 (-20) Objetivo especifico 3: Incorporar capacidad de funcionamiento offline con almacenamiento
  []
 
@@ -444,7 +444,7 @@ Overfull \hbox (0.94907pt too wide) in paragraph at lines 8--9
 \T1/lmr/m/n/12 (-20) En el siguiente capítulo se presentan en detalle las 8 iteraciones del proyecto, desarrolladas
  []
 
-<Imagenes/arqui2.drawio.png, id=134, 969.6225pt x 269.005pt>
+<Imagenes/arqui2.drawio.png, id=135, 969.6225pt x 269.005pt>
 File: Imagenes/arqui2.drawio.png Graphic file (type png)
 <use Imagenes/arqui2.drawio.png>
 Package pdftex.def Info: Imagenes/arqui2.drawio.png  used on input line 18.
@@ -455,7 +455,7 @@ LaTeX Warning: `h' float specifier changed to `ht'.
 [36
 
 ]
-<Imagenes/arquilogica.png, id=138, 1120.185pt x 798.985pt>
+<Imagenes/arquilogica.png, id=139, 1120.185pt x 798.985pt>
 File: Imagenes/arquilogica.png Graphic file (type png)
 <use Imagenes/arquilogica.png>
 Package pdftex.def Info: Imagenes/arquilogica.png  used on input line 31.
@@ -480,46 +480,46 @@ Overfull \hbox (13.91939pt too wide) in paragraph at lines 60--62
  []
 
 [38 <./Imagenes/arquilogica.png>]
-<Imagenes/menu.drawio.png, id=147, 1929.2075pt x 1086.0575pt>
+<Imagenes/menu.drawio.png, id=148, 1929.2075pt x 1086.0575pt>
 File: Imagenes/menu.drawio.png Graphic file (type png)
 <use Imagenes/menu.drawio.png>
 Package pdftex.def Info: Imagenes/menu.drawio.png  used on input line 81.
 (pdftex.def)             Requested size: 352.81552pt x 198.614pt.
  [39]
-<Imagenes/configwifi.drawio.png, id=151, 1929.2075pt x 1086.0575pt>
+<Imagenes/configwifi.drawio.png, id=152, 1929.2075pt x 1086.0575pt>
 File: Imagenes/configwifi.drawio.png Graphic file (type png)
 <use Imagenes/configwifi.drawio.png>
 Package pdftex.def Info: Imagenes/configwifi.drawio.png  used on input line 90.
 (pdftex.def)             Requested size: 352.81552pt x 198.614pt.
-<Imagenes/registeruser.jpg, id=152, 1929.2075pt x 1085.05376pt>
+<Imagenes/registeruser.jpg, id=153, 1929.2075pt x 1085.05376pt>
 File: Imagenes/registeruser.jpg Graphic file (type jpg)
 <use Imagenes/registeruser.jpg>
 Package pdftex.def Info: Imagenes/registeruser.jpg  used on input line 99.
 (pdftex.def)             Requested size: 352.81552pt x 198.43044pt.
  [40 <./Imagenes/menu.drawio.png> <./Imagenes/configwifi.drawio.png>]
-<Imagenes/lista user.jpg, id=158, 1929.2075pt x 1086.0575pt>
+<Imagenes/lista user.jpg, id=159, 1929.2075pt x 1086.0575pt>
 File: Imagenes/lista user.jpg Graphic file (type jpg)
 <use Imagenes/lista user.jpg>
 Package pdftex.def Info: Imagenes/lista user.jpg  used on input line 108.
 (pdftex.def)             Requested size: 352.81552pt x 198.614pt.
-<Imagenes/ver turnos.drawio.png, id=159, 1928.20375pt x 1085.05376pt>
+<Imagenes/ver turnos.drawio.png, id=160, 1928.20375pt x 1085.05376pt>
 File: Imagenes/ver turnos.drawio.png Graphic file (type png)
 <use Imagenes/ver turnos.drawio.png>
 Package pdftex.def Info: Imagenes/ver turnos.drawio.png  used on input line 117.
 (pdftex.def)             Requested size: 352.81552pt x 198.52977pt.
  [41 <./Imagenes/registeruser.jpg> <./Imagenes/lista user.jpg>]
-<Imagenes/crearturnosmockup.png, id=164, 1928.20375pt x 1085.05376pt>
+<Imagenes/crearturnosmockup.png, id=165, 1928.20375pt x 1085.05376pt>
 File: Imagenes/crearturnosmockup.png Graphic file (type png)
 <use Imagenes/crearturnosmockup.png>
 Package pdftex.def Info: Imagenes/crearturnosmockup.png  used on input line 126.
 (pdftex.def)             Requested size: 352.81552pt x 198.52977pt.
-<Imagenes/asigncaiondeturnomockup2.png, id=165, 1928.20375pt x 1085.05376pt>
+<Imagenes/asigncaiondeturnomockup2.png, id=166, 1928.20375pt x 1085.05376pt>
 File: Imagenes/asigncaiondeturnomockup2.png Graphic file (type png)
 <use Imagenes/asigncaiondeturnomockup2.png>
 Package pdftex.def Info: Imagenes/asigncaiondeturnomockup2.png  used on input line 135.
 (pdftex.def)             Requested size: 352.81552pt x 198.52977pt.
  [42 <./Imagenes/ver turnos.drawio.png> <./Imagenes/crearturnosmockup.png>]
-<Imagenes/diagramaflujo2 (1).png, id=171, 1057.9525pt x 1306.8825pt>
+<Imagenes/diagramaflujo2 (1).png, id=172, 1057.9525pt x 1306.8825pt>
 File: Imagenes/diagramaflujo2 (1).png Graphic file (type png)
 <use Imagenes/diagramaflujo2 (1).png>
 Package pdftex.def Info: Imagenes/diagramaflujo2 (1).png  used on input line 145.
@@ -529,59 +529,59 @@ Overfull \hbox (0.28592pt too wide) in paragraph at lines 162--163
 []\T1/lmtt/m/n/12 LittleFS \T1/lmr/m/n/12 (-20) y \T1/lmtt/m/n/12 ArduinoJson\T1/lmr/m/n/12 (-20) , empleadas para almacenamiento persistente en memoria
  []
 
-<Imagenes/conexiones.png, id=180, 465.74pt x 259.97125pt>
+<Imagenes/conexiones.png, id=181, 465.74pt x 259.97125pt>
 File: Imagenes/conexiones.png Graphic file (type png)
 <use Imagenes/conexiones.png>
 Package pdftex.def Info: Imagenes/conexiones.png  used on input line 172.
 (pdftex.def)             Requested size: 352.81552pt x 196.9455pt.
 [45 <./Imagenes/conexiones.png>]
-<Imagenes/codigo_inicializacion_huella.png, id=185, 386.94562pt x 190.46156pt>
+<Imagenes/codigo_inicializacion_huella.png, id=186, 386.94562pt x 190.46156pt>
 File: Imagenes/codigo_inicializacion_huella.png Graphic file (type png)
 <use Imagenes/codigo_inicializacion_huella.png>
 Package pdftex.def Info: Imagenes/codigo_inicializacion_huella.png  used on input line 191.
 (pdftex.def)             Requested size: 418.96548pt x 206.22432pt.
  [46 <./Imagenes/codigo_inicializacion_huella.png>]
-<Imagenes/codigo_rutas_servidor.png, id=190, 566.86781pt x 279.29344pt>
+<Imagenes/codigo_rutas_servidor.png, id=191, 566.86781pt x 279.29344pt>
 File: Imagenes/codigo_rutas_servidor.png Graphic file (type png)
 <use Imagenes/codigo_rutas_servidor.png>
 Package pdftex.def Info: Imagenes/codigo_rutas_servidor.png  used on input line 226.
 (pdftex.def)             Requested size: 418.96548pt x 206.42673pt.
  [47]
-<Imagenes/menuimplementado.png, id=196, 1794.705pt x 867.24pt>
+<Imagenes/menuimplementado.png, id=197, 1794.705pt x 867.24pt>
 File: Imagenes/menuimplementado.png Graphic file (type png)
 <use Imagenes/menuimplementado.png>
 Package pdftex.def Info: Imagenes/menuimplementado.png  used on input line 242.
 (pdftex.def)             Requested size: 352.81552pt x 170.48073pt.
  [48 <./Imagenes/codigo_rutas_servidor.png>]
-<Imagenes/menuwifiimplementado.png, id=201, 1794.705pt x 867.24pt>
+<Imagenes/menuwifiimplementado.png, id=202, 1794.705pt x 867.24pt>
 File: Imagenes/menuwifiimplementado.png Graphic file (type png)
 <use Imagenes/menuwifiimplementado.png>
 Package pdftex.def Info: Imagenes/menuwifiimplementado.png  used on input line 255.
 (pdftex.def)             Requested size: 352.81552pt x 170.48073pt.
  [49 <./Imagenes/menuimplementado.png (PNG copy)> <./Imagenes/menuwifiimplementado.png (PNG copy)>]
-<Imagenes/registroimplementado.png, id=205, 1794.705pt x 867.24pt>
+<Imagenes/registroimplementado.png, id=206, 1794.705pt x 867.24pt>
 File: Imagenes/registroimplementado.png Graphic file (type png)
 <use Imagenes/registroimplementado.png>
 Package pdftex.def Info: Imagenes/registroimplementado.png  used on input line 268.
 (pdftex.def)             Requested size: 352.81552pt x 170.48073pt.
-<Imagenes/vistaasitenciasimplementado.png, id=206, 1794.705pt x 867.24pt>
+<Imagenes/vistaasitenciasimplementado.png, id=207, 1794.705pt x 867.24pt>
 File: Imagenes/vistaasitenciasimplementado.png Graphic file (type png)
 <use Imagenes/vistaasitenciasimplementado.png>
 Package pdftex.def Info: Imagenes/vistaasitenciasimplementado.png  used on input line 281.
 (pdftex.def)             Requested size: 352.81552pt x 170.48073pt.
  [50 <./Imagenes/registroimplementado.png (PNG copy)>]
-<Imagenes/personasregistradasimplementada.png, id=210, 1794.705pt x 867.24pt>
+<Imagenes/personasregistradasimplementada.png, id=211, 1794.705pt x 867.24pt>
 File: Imagenes/personasregistradasimplementada.png Graphic file (type png)
 <use Imagenes/personasregistradasimplementada.png>
 Package pdftex.def Info: Imagenes/personasregistradasimplementada.png  used on input line 294.
 (pdftex.def)             Requested size: 352.81552pt x 170.48073pt.
  [51 <./Imagenes/vistaasitenciasimplementado.png (PNG copy)> <./Imagenes/personasregistradasimplementada.png (PNG copy)>]
-<Imagenes/creacionturnos.png, id=214, 1794.705pt x 892.33376pt>
+<Imagenes/creacionturnos.png, id=215, 1794.705pt x 892.33376pt>
 File: Imagenes/creacionturnos.png Graphic file (type png)
 <use Imagenes/creacionturnos.png>
 Package pdftex.def Info: Imagenes/creacionturnos.png  used on input line 307.
 (pdftex.def)             Requested size: 352.81552pt x 175.41362pt.
-<Imagenes/asignacionturnoimplementacion.png, id=215, 1794.705pt x 867.24pt>
+<Imagenes/asignacionturnoimplementacion.png, id=216, 1794.705pt x 867.24pt>
 File: Imagenes/asignacionturnoimplementacion.png Graphic file (type png)
 <use Imagenes/asignacionturnoimplementacion.png>
 Package pdftex.def Info: Imagenes/asignacionturnoimplementacion.png  used on input line 320.
@@ -621,425 +621,431 @@ Overfull \hbox (34.17665pt too wide) in paragraph at lines 392--393
 []\T1/lmtt/m/n/12 saveArray(const char* path, DynamicJsonDocument& doc)\T1/lmr/m/n/12 (-20) : Serializa el documento
  []
 
-<Imagenes/codigo_funcionesJSON.png, id=229, 404.26031pt x 177.66376pt>
+
+Overfull \hbox (51.86494pt too wide) in paragraph at lines 397--398
+\T1/lmr/m/n/12 (-20) de datos de cada archivo: \T1/lmtt/m/n/12 personas.json \T1/lmr/m/n/12 (-20) y \T1/lmtt/m/n/12 turnos.json \T1/lmr/m/n/12 (-20) utilizan 2048 bytes, \T1/lmtt/m/n/12 asignaciones.json
+ []
+
+
+Overfull \hbox (12.91978pt too wide) in paragraph at lines 397--398
+\T1/lmr/m/n/12 (-20) utiliza 1024 bytes y \T1/lmtt/m/n/12 asistencias.json \T1/lmr/m/n/12 (-20) utiliza 8192 bytes, suficiente para aproximadamente
+ []
+
+<Imagenes/codigo_funcionesJSON.png, id=230, 404.26031pt x 177.66376pt>
 File: Imagenes/codigo_funcionesJSON.png Graphic file (type png)
 <use Imagenes/codigo_funcionesJSON.png>
-Package pdftex.def Info: Imagenes/codigo_funcionesJSON.png  used on input line 399.
+Package pdftex.def Info: Imagenes/codigo_funcionesJSON.png  used on input line 401.
 (pdftex.def)             Requested size: 418.96548pt x 184.12888pt.
 [56 <./Imagenes/codigo_funcionesJSON.png>]
-Overfull \hbox (7.27206pt too wide) in paragraph at lines 414--415
+Overfull \hbox (7.27206pt too wide) in paragraph at lines 416--417
 []\T1/lmr/m/n/12 (-20) Luego del enrolamiento exitoso, se almacena un nuevo objeto dentro de \T1/lmtt/m/n/12 personas.json
  []
 
 
-Overfull \hbox (2.36801pt too wide) in paragraph at lines 422--423
+Overfull \hbox (2.36801pt too wide) in paragraph at lines 424--425
 \T1/lmr/m/n/12 (-20) biométrica (\T1/lmtt/m/n/12 finger.fingerSearch()\T1/lmr/m/n/12 (-20) ) que retorna el \T1/lmtt/m/n/12 fingerID \T1/lmr/m/n/12 (-20) del slot coincidente. 
  []
 
 
-Overfull \hbox (17.28096pt too wide) in paragraph at lines 424--425
+Overfull \hbox (17.28096pt too wide) in paragraph at lines 426--427
 []\T1/lmr/m/n/12 (-20) Verificar que el usuario cuente con un turno asignado consultando \T1/lmtt/m/n/12 asignaciones.json
  []
 
 
-Overfull \hbox (2.30736pt too wide) in paragraph at lines 425--426
+Overfull \hbox (2.30736pt too wide) in paragraph at lines 427--428
 []\T1/lmr/m/n/12 (-20) Determinar el tipo de evento (entrada/salida) alternando automáticamente respecto
  []
 
 
-Overfull \hbox (4.50627pt too wide) in paragraph at lines 433--434
+Overfull \hbox (4.50627pt too wide) in paragraph at lines 435--436
 \T1/lmr/m/n/12 (-20) Además del registro de asistencias, el sistema permite crear turnos (\T1/lmtt/m/n/12 handleCreateTurn()\T1/lmr/m/n/12 (-20) )
  []
 
 [57]
-Overfull \hbox (25.88206pt too wide) in paragraph at lines 446--447
+Overfull \hbox (25.88206pt too wide) in paragraph at lines 448--449
 \T1/lmr/m/n/12 (-20) Se diseñaron las siguientes pruebas para validar el correcto funcionamiento del almacenamiento
  []
 
+
+Overfull \hbox (0.34079pt too wide) in paragraph at lines 453--454
+\T1/lmtt/m/n/12 procesarAsistencia() \T1/lmr/m/n/12 (-20) para detectar y registrar en logs cualquier desbordamiento
+ []
+
 [58]
-Overfull \hbox (22.56345pt too wide) in paragraph at lines 469--469
+Overfull \hbox (22.56345pt too wide) in paragraph at lines 471--471
 []\T1/lmr/bx/n/17.28 (-20) Iteración 3: Backend, base de datos y comunicación 
  []
 
-[59]
-Overfull \hbox (10.79437pt too wide) in paragraph at lines 500--501
+[59] [60]
+Overfull \hbox (10.79437pt too wide) in paragraph at lines 502--503
 []\T1/lmtt/m/n/12 POST /api/personas\T1/lmr/m/n/12 (-20) : Registra una nueva persona (nombre, RUT, email, huella_id). 
  []
 
-[60]
-Overfull \hbox (11.22224pt too wide) in paragraph at lines 521--522
+
+Overfull \hbox (11.22224pt too wide) in paragraph at lines 523--524
 []\T1/lmtt/m/n/12 asistencias\T1/lmr/m/n/12 (-20) : Registros de marcación con persona, dispositivo, tipo (entrada/salida),
  []
 
 [61]
-<Imagenes/Untitled.png, id=250, 1160.335pt x 345.29pt>
+<Imagenes/Untitled.png, id=251, 1160.335pt x 345.29pt>
 File: Imagenes/Untitled.png Graphic file (type png)
 <use Imagenes/Untitled.png>
-Package pdftex.def Info: Imagenes/Untitled.png  used on input line 534.
+Package pdftex.def Info: Imagenes/Untitled.png  used on input line 536.
 (pdftex.def)             Requested size: 418.96548pt x 124.6731pt.
-
-Overfull \hbox (0.31523pt too wide) in paragraph at lines 538--539
-\T1/lmtt/m/n/12 esp32/imagen/registrar\T1/lmr/m/n/12 (-20) , conteniendo el \T1/lmtt/m/n/12 persona_id \T1/lmr/m/n/12 (-20) y la imagen codificada en Base64.
- []
-
-[62 <./Imagenes/Untitled.png>]
-Overfull \hbox (2.32866pt too wide) in paragraph at lines 560--561
+ [62 <./Imagenes/Untitled.png>] [63]
+Overfull \hbox (2.32866pt too wide) in paragraph at lines 562--563
 \T1/lmr/m/n/12 (-20) intermedios, y enviada como un único mensaje JSON al tópico \T1/lmtt/m/n/12 esp32/imagen/registrar
  []
 
 
-Overfull \hbox (18.73244pt too wide) in paragraph at lines 562--563
+Overfull \hbox (18.73244pt too wide) in paragraph at lines 564--565
 \T1/lmtt/m/n/12 esp32/respuesta/facial\T1/lmr/m/n/12 (-20) , donde el firmware confirma visualmente el éxito (\T1/lmtt/m/n/12 flashExito()\T1/lmr/m/n/12 (-20) )
  []
 
-[63]
-Overfull \hbox (23.43208pt too wide) in paragraph at lines 574--575
+
+Overfull \hbox (23.43208pt too wide) in paragraph at lines 576--577
 \T1/lmtt/m/n/12 mqtt://\T1/lmr/m/n/12 (-20) , \T1/lmtt/m/n/12 ws:// \T1/lmr/m/n/12 (-20) o \T1/lmtt/m/n/12 wss:// \T1/lmr/m/n/12 (-20) (WebSockets seguros con TLS mediante \T1/lmtt/m/n/12 esp_crt_bundle_attach\T1/lmr/m/n/12 (-20) ).
  []
 
 [64]
-Overfull \hbox (55.14795pt too wide) in paragraph at lines 585--586
+Overfull \hbox (55.14795pt too wide) in paragraph at lines 587--588
 []\T1/lmtt/m/n/12 postAsistenciaEnBackend()\T1/lmr/m/n/12 (-20) : Envía una asistencia individual vía \T1/lmtt/m/n/12 POST /api/asistencias\T1/lmr/m/n/12 (-20) . 
  []
 
 
-Overfull \hbox (27.11804pt too wide) in paragraph at lines 595--596
+Overfull \hbox (27.11804pt too wide) in paragraph at lines 597--598
 []\T1/lmtt/m/n/12 asignaciones_bp \T1/lmr/m/n/12 (-20) (\T1/lmtt/m/n/12 routes/asignaciones.py\T1/lmr/m/n/12 (-20) ): CRUD de asignaciones con verificación
  []
 
-
-Overfull \hbox (18.0251pt too wide) in paragraph at lines 598--599
+[65]
+Overfull \hbox (18.0251pt too wide) in paragraph at lines 600--601
 []\T1/lmtt/m/n/12 dispositivos_bp \T1/lmr/m/n/12 (-20) (\T1/lmtt/m/n/12 routes/dispositivos.py\T1/lmr/m/n/12 (-20) ): Gestión y verificación de dispositivos. 
  []
 
-[65]
-Overfull \hbox (26.30685pt too wide) in paragraph at lines 619--620
+
+Overfull \hbox (26.30685pt too wide) in paragraph at lines 621--622
 \T1/lmtt/m/n/12 ultimo_heartbeat \T1/lmr/m/n/12 (-20) en la tabla \T1/lmtt/m/n/12 dispositivos\T1/lmr/m/n/12 (-20) . Desconectar el dispositivo abruptamente
  []
 
-
-Overfull \hbox (6.51077pt too wide) in paragraph at lines 621--622
+[66]
+Overfull \hbox (6.51077pt too wide) in paragraph at lines 623--624
 \T1/lmr/m/n/12 (-20) POST a \T1/lmtt/m/n/12 /api/personas\T1/lmr/m/n/12 (-20) , \T1/lmtt/m/n/12 /api/turnos\T1/lmr/m/n/12 (-20) , \T1/lmtt/m/n/12 /api/asignaciones \T1/lmr/m/n/12 (-20) y \T1/lmtt/m/n/12 /api/asistencias
  []
 
-[66]
-Overfull \hbox (1.25072pt too wide) in paragraph at lines 635--635
+
+Overfull \hbox (1.25072pt too wide) in paragraph at lines 637--637
 []\T1/lmr/bx/n/17.28 (-20) Iteración 4: Reconocimiento facial, anti-spoofing
  []
 
 
-Overfull \hbox (31.88536pt too wide) in paragraph at lines 637--638
+Overfull \hbox (31.88536pt too wide) in paragraph at lines 639--640
 \T1/lmr/m/n/12 (-20) reconocimiento facial mediante DeepFace, validación anti-spoofing para prevenir suplantaciones,
  []
 
 [67] [68]
-Overfull \hbox (0.94275pt too wide) in paragraph at lines 673--674
+Overfull \hbox (0.94275pt too wide) in paragraph at lines 675--676
 []\T1/lmr/m/n/12 (-20) Cifra el embedding con Fernet y lo almacena en la tabla \T1/lmtt/m/n/12 encodings_faciales\T1/lmr/m/n/12 (-20) ,
  []
 
 
-Overfull \hbox (70.41005pt too wide) in paragraph at lines 681--682
+Overfull \hbox (70.41005pt too wide) in paragraph at lines 683--684
 []\T1/lmr/m/n/12 (-20) Extrae el embedding con DeepFace (anti-spoofing activado mediante \T1/lmtt/m/n/12 anti_spoofing=True\T1/lmr/m/n/12 (-20) ). 
  []
 
 
-Overfull \hbox (40.60664pt too wide) in paragraph at lines 689--690
+Overfull \hbox (40.60664pt too wide) in paragraph at lines 691--692
 []\T1/lmr/m/n/12 (-20) Descifra todos los embeddings almacenados para esa persona en \T1/lmtt/m/n/12 encodings_faciales
  []
 
 [69]
-Overfull \hbox (13.43294pt too wide) in paragraph at lines 706--707
+Overfull \hbox (13.43294pt too wide) in paragraph at lines 708--709
 []\T1/lmtt/m/n/12 extraer_embedding(img_path, anti_spoofing)\T1/lmr/m/n/12 (-20) : Invoca \T1/lmtt/m/n/12 DeepFace.represent()
  []
 
 
-Overfull \hbox (6.85347pt too wide) in paragraph at lines 707--708
+Overfull \hbox (6.85347pt too wide) in paragraph at lines 709--710
 []\T1/lmtt/m/n/12 guardar_imagen_de_registro(persona_id, imagen_b64)\T1/lmr/m/n/12 (-20) : Decodifica la imagen
  []
 
 
-Overfull \hbox (4.59485pt too wide) in paragraph at lines 708--709
+Overfull \hbox (4.59485pt too wide) in paragraph at lines 710--711
 []\T1/lmtt/m/n/12 _verificar_consentimiento(persona_id)\T1/lmr/m/n/12 (-20) : Consulta la tabla \T1/lmtt/m/n/12 consentimientos
  []
 
-
-Overfull \hbox (22.17267pt too wide) in paragraph at lines 709--710
+[70]
+Overfull \hbox (22.17267pt too wide) in paragraph at lines 711--712
 []\T1/lmtt/m/n/12 _log_biometrico(persona_id, dispositivo_id, tipo_operacion, resultado)\T1/lmr/m/n/12 (-20) :
  []
 
 
-Overfull \hbox (29.05093pt too wide) in paragraph at lines 712--713
+Overfull \hbox (29.05093pt too wide) in paragraph at lines 714--715
 \T1/lmr/bx/n/12 (-20) el servidor \T1/lmr/m/n/12 (-20) mediante \T1/lmtt/m/n/12 DeepFace.build_model('Facenet', task='facial_recognition')\T1/lmr/m/n/12 (-20) ,
  []
 
-[70]
-Overfull \hbox (78.4763pt too wide) in paragraph at lines 716--717
+
+Overfull \hbox (78.4763pt too wide) in paragraph at lines 718--719
 \T1/lmr/m/n/12 (-20) de un mensaje MQTT en \T1/lmtt/m/n/12 esp32/imagen/registrar\T1/lmr/m/n/12 (-20) . Publica el resultado en \T1/lmtt/m/n/12 esp32/respuesta/facial
  []
 
 
-Overfull \hbox (33.60977pt too wide) in paragraph at lines 729--730
+Overfull \hbox (33.60977pt too wide) in paragraph at lines 731--732
 \T1/lmr/m/n/12 (-20) asistencia históricos. La eliminación queda registrada en la tabla \T1/lmtt/m/n/12 eliminaciones_biometricas
  []
 
 [71] [72]
-Overfull \hbox (1.02739pt too wide) in paragraph at lines 760--761
+Overfull \hbox (1.02739pt too wide) in paragraph at lines 762--763
 \T1/lmr/m/n/12 (-20) después; verificar que el tiempo sea significativamente menor porque los embeddings
  []
 
 
-Overfull \hbox (59.31917pt too wide) in paragraph at lines 768--768
+Overfull \hbox (59.31917pt too wide) in paragraph at lines 770--770
 []\T1/lmr/bx/n/17.28 (-20) Iteración 5: Autenticación, multi-tenant y enrolamiento
  []
 
-
-Overfull \hbox (18.05328pt too wide) in paragraph at lines 774--775
+[73]
+Overfull \hbox (18.05328pt too wide) in paragraph at lines 776--777
 \T1/lmr/m/n/12 (-20) El sistema, al estar orientado a un entorno empresarial, requiere que diferentes organizaciones
  []
 
-[73] [74]
-Overfull \hbox (20.54562pt too wide) in paragraph at lines 821--822
+[74] [75]
+Overfull \hbox (20.54562pt too wide) in paragraph at lines 823--824
 []\T1/lmr/m/n/12 (-20) Al guardar la configuración, el ESP32-CAM envía \T1/lmtt/m/n/12 POST /api/dispositivos/enrolar
  []
 
-[75] [76]
-Overfull \hbox (21.86034pt too wide) in paragraph at lines 843--844
+[76]
+Overfull \hbox (21.86034pt too wide) in paragraph at lines 845--846
 []\T1/lmtt/m/n/12 listar_usuarios()\T1/lmr/m/n/12 (-20) , \T1/lmtt/m/n/12 eliminar_usuario()\T1/lmr/m/n/12 (-20) , \T1/lmtt/m/n/12 listar_empresas()\T1/lmr/m/n/12 (-20) , \T1/lmtt/m/n/12 crear_empresa()\T1/lmr/m/n/12 (-20) :
  []
 
 
-Overfull \hbox (3.60721pt too wide) in paragraph at lines 856--857
+Overfull \hbox (3.60721pt too wide) in paragraph at lines 858--859
 []\T1/lmtt/m/n/12 DELETE /api/dispositivos/<id>\T1/lmr/m/n/12 (-20) : Elimina un dispositivo (admin) o lo desvincula
  []
 
-[77]
-Overfull \hbox (106.21501pt too wide) in paragraph at lines 890--891
+[77] [78]
+Overfull \hbox (106.21501pt too wide) in paragraph at lines 892--893
 []\T1/lmr/bx/n/12 (-20) Prueba de enrolamiento exitoso\T1/lmr/m/n/12 (-20) : Con un PIN generado, enviar \T1/lmtt/m/n/12 POST /api/dispositivos/enrolar
  []
 
-[78]
-Overfull \hbox (100.05692pt too wide) in paragraph at lines 896--897
+
+Overfull \hbox (100.05692pt too wide) in paragraph at lines 898--899
 []\T1/lmr/bx/n/12 (-20) Prueba de auto-registro de empresa\T1/lmr/m/n/12 (-20) : Enviar una solicitud a \T1/lmtt/m/n/12 POST /api/auth/register-company
  []
 
 [79] [80]
-Overfull \hbox (22.00774pt too wide) in paragraph at lines 953--954
+Overfull \hbox (22.00774pt too wide) in paragraph at lines 955--956
 []\T1/lmr/bx/n/12 (-20) Cooldown entre marcaciones \T1/lmr/m/n/12 (-20) (\T1/lmtt/m/n/12 COOLDOWN_TIEMPO = 8000 ms\T1/lmr/m/n/12 (-20) ): Tras una marcación
  []
 
-
-Overfull \hbox (25.43852pt too wide) in paragraph at lines 965--966
+[81]
+Overfull \hbox (25.43852pt too wide) in paragraph at lines 967--968
 []\T1/lmr/m/n/12 (-20) Si la diferencia entre la firma actual y la anterior supera un umbral (\T1/lmtt/m/n/12 UMBRAL_MOVIMIENTO
  []
 
-[81] [82] [83] [84]
-Overfull \hbox (13.44098pt too wide) in paragraph at lines 1064--1065
+[82] [83] [84]
+Overfull \hbox (13.44098pt too wide) in paragraph at lines 1066--1067
 []\T1/lmtt/m/n/12 auth_bp\T1/lmr/m/n/12 (-20) : Autenticación JWT, registro de usuarios, gestión de empresas, enrolamiento
  []
 
-
-Overfull \hbox (0.37251pt too wide) in paragraph at lines 1070--1071
+[85]
+Overfull \hbox (0.37251pt too wide) in paragraph at lines 1072--1073
 []\T1/lmtt/m/n/12 dispositivos_bp\T1/lmr/m/n/12 (-20) : Gestión de dispositivos enrolados y verificación de conectividad. 
  []
 
-[85]
-Overfull \hbox (3.37509pt too wide) in paragraph at lines 1085--1086
+
+Overfull \hbox (3.37509pt too wide) in paragraph at lines 1087--1088
 []\T1/lmtt/m/n/12 headers\T1/lmr/m/n/12 (-20) : Objeto JSON con headers HTTP personalizados (ej. \T1/lmtt/m/n/12 {"Authorization":
  []
 
-
-Overfull \hbox (3.85246pt too wide) in paragraph at lines 1086--1087
-[]\T1/lmtt/m/n/12 field_map\T1/lmr/m/n/12 (-20) : Objeto JSON que mapea los campos estándar del sistema (\T1/lmtt/m/n/12 persona_id\T1/lmr/m/n/12 (-20) ,
- []
-
-
-Overfull \hbox (40.6325pt too wide) in paragraph at lines 1094--1094
-[]\T1/lmtt/m/n/12 {"persona_id": "employee_id", "fecha_hora": "timestamp", "tipo": "event_type"}[] 
- []
-
-
-Overfull \hbox (26.748pt too wide) in paragraph at lines 1105--1106
+[86]
+Overfull \hbox (26.748pt too wide) in paragraph at lines 1107--1108
 \T1/lmtt/m/n/12 /estado \T1/lmr/m/n/12 (-20) (variable \T1/lmtt/m/n/12 NEXT_PUBLIC_DEVICE_BASE_URL\T1/lmr/m/n/12 (-20) , por defecto \T1/lmtt/m/n/12 http://192.168.4.1\T1/lmr/m/n/12 (-20) ). 
  []
 
-[86]
-Overfull \hbox (52.9637pt too wide) in paragraph at lines 1111--1112
+
+Overfull \hbox (52.9637pt too wide) in paragraph at lines 1113--1114
 []\T1/lmr/m/n/12 (-20) El panel web se comunica con el backend Flask mediante un proxy interno (\T1/lmtt/m/n/12 app/api/_proxy.ts\T1/lmr/m/n/12 (-20) )
  []
 
 
-Overfull \hbox (5.83669pt too wide) in paragraph at lines 1113--1114
+Overfull \hbox (5.83669pt too wide) in paragraph at lines 1115--1116
 []\T1/lmr/m/n/12 (-20) Adicionalmente, el panel web incorpora las siguientes funcionalidades complementarias: 
  []
 
 [87]
-Overfull \hbox (2.23586pt too wide) in paragraph at lines 1130--1131
+Overfull \hbox (2.23586pt too wide) in paragraph at lines 1132--1133
 []\T1/lmr/bx/n/12 (-20) Generar contraseña \T1/lmr/m/n/12 (-20) (\T1/lmtt/m/n/12 POST /api/dispositivos/<id>/generar-password\T1/lmr/m/n/12 (-20) ): El
  []
 
 
-Overfull \hbox (5.53693pt too wide) in paragraph at lines 1132--1133
+Overfull \hbox (5.53693pt too wide) in paragraph at lines 1134--1135
 []\T1/lmr/bx/n/12 (-20) Confirmar contraseña \T1/lmr/m/n/12 (-20) (\T1/lmtt/m/n/12 POST /api/dispositivos/confirmar-password\T1/lmr/m/n/12 (-20) ): Una
  []
 
 
-Overfull \hbox (6.51567pt too wide) in paragraph at lines 1132--1133
+Overfull \hbox (6.51567pt too wide) in paragraph at lines 1134--1135
 \T1/lmr/m/n/12 (-20) que limpia el texto plano (\T1/lmtt/m/n/12 password_plain = NULL\T1/lmr/m/n/12 (-20) ) y desmarca el estado pendiente.
  []
 
-
-Overfull \hbox (40.86554pt too wide) in paragraph at lines 1133--1134
+[88]
+Overfull \hbox (40.86554pt too wide) in paragraph at lines 1135--1136
 []\T1/lmr/bx/n/12 (-20) Eliminar contraseña \T1/lmr/m/n/12 (-20) (\T1/lmtt/m/n/12 DELETE /api/dispositivos/<id>/password\T1/lmr/m/n/12 (-20) ): El administrador
  []
 
 LaTeX Font Info:    Font shape `T1/lmtt/bx/n' in size <12> not available
-(Font)              Font shape `T1/lmtt/b/n' tried instead on input line 1143.
-[88]
-Overfull \hbox (45.66475pt too wide) in paragraph at lines 1167--1168
+(Font)              Font shape `T1/lmtt/b/n' tried instead on input line 1145.
+[89]
+Overfull \hbox (45.66475pt too wide) in paragraph at lines 1169--1170
 []\T1/lmr/bx/n/12 (-20) Prueba de envío automático\T1/lmr/m/n/12 (-20) : Registrar una asistencia real (POST a \T1/lmtt/m/n/12 /api/asistencias\T1/lmr/m/n/12 (-20) )
  []
 
-[89]
-Overfull \hbox (6.1994pt too wide) in paragraph at lines 1169--1170
-[]\T1/lmr/bx/n/12 (-20) Prueba de field mapping\T1/lmr/m/n/12 (-20) : Configurar un ERP con field mapping \T1/lmtt/m/n/12 {"persona_id":
- []
-
-[90]
-Overfull \hbox (32.16951pt too wide) in paragraph at lines 1212--1213
+[90] [91]
+Overfull \hbox (32.16951pt too wide) in paragraph at lines 1214--1215
 []\T1/lmtt/m/n/12 sincronizarAsignacionesPendientes()\T1/lmr/m/n/12 (-20) : Similar para asignaciones, dependiendo
  []
 
 
-Overfull \hbox (1.7207pt too wide) in paragraph at lines 1213--1214
+Overfull \hbox (1.7207pt too wide) in paragraph at lines 1215--1216
 []\T1/lmtt/m/n/12 sincronizarAsistencias()\T1/lmr/m/n/12 (-20) : Envía un lote de asistencias con \T1/lmtt/m/n/12 sincronizado
  []
 
-[91]
-Overfull \hbox (26.14981pt too wide) in paragraph at lines 1215--1216
+
+Overfull \hbox (26.14981pt too wide) in paragraph at lines 1217--1218
 []\T1/lmr/bx/n/12 (-20) Periódicamente\T1/lmr/m/n/12 (-20) : Cada 5 minutos (300,000 ms), se ejecuta \T1/lmtt/m/n/12 sincronizarPendientes()
  []
 
-[92] [93]
-Overfull \hbox (7.41635pt too wide) in paragraph at lines 1291--1292
+[92] [93] [94]
+Overfull \hbox (7.41635pt too wide) in paragraph at lines 1293--1294
 []\T1/lmr/m/n/12 (-20) Función \T1/lmtt/m/n/12 extraer_embedding_sim() \T1/lmr/m/n/12 (-20) con DeepFace (Facenet + detector configurable
  []
 
 
-Overfull \hbox (3.168pt too wide) in paragraph at lines 1292--1293
+Overfull \hbox (3.168pt too wide) in paragraph at lines 1294--1295
 []\T1/lmr/m/n/12 (-20) Función \T1/lmtt/m/n/12 simular_asistencia_por_foto() \T1/lmr/m/n/12 (-20) que busca coincidencias del embedding
  []
 
 
-Overfull \hbox (72.41199pt too wide) in paragraph at lines 1293--1294
+Overfull \hbox (72.41199pt too wide) in paragraph at lines 1295--1296
 []\T1/lmr/m/n/12 (-20) Menú interactivo en terminal para seleccionar imágenes de la carpeta \T1/lmtt/m/n/12 static/capturas_prueba/\T1/lmr/m/n/12 (-20) . 
  []
 
-[94]
-Overfull \hbox (7.39166pt too wide) in paragraph at lines 1307--1308
+
+Overfull \hbox (7.39166pt too wide) in paragraph at lines 1309--1310
 []\T1/lmr/bx/n/12 (-20) Prueba de sincronización de turnos y asignaciones\T1/lmr/m/n/12 (-20) : Desconectar el dispositivo,
  []
 
-
-Overfull \hbox (6.53877pt too wide) in paragraph at lines 1313--1314
+[95]
+Overfull \hbox (6.53877pt too wide) in paragraph at lines 1315--1316
 []\T1/lmr/bx/n/12 (-20) Prueba de logs biométricos\T1/lmr/m/n/12 (-20) : Realizar operaciones de registro facial, identificación
  []
 
-[95]) [96]
+[96]) [97]
 \bbl@ensure@spanish {Cap\'\i tulo} 5.
-
-Overfull \hbox (67.08255pt too wide) in paragraph at lines 531--549
- [][] 
- []
-
-[97
+[98
 
 ]
-Overfull \hbox (64.245pt too wide) in paragraph at lines 555--573
- [][] 
+Underfull \hbox (badness 2799) in paragraph at lines 543--543
+[]\T1/lmr/m/n/12 (+20) Imagino que la mayoría de las personas
  []
 
-[98] [99] [100]
+
+Underfull \hbox (badness 2799) in paragraph at lines 567--567
+[]\T1/lmr/m/n/12 (+20) Imagino que la mayoría de las personas
+ []
+
+[99] [100] [101] [102]
 \bbl@ensure@spanish {Cap\'\i tulo} 6.
 
-Overfull \hbox (97.4343pt too wide) in paragraph at lines 656--657
+Overfull \hbox (97.4343pt too wide) in paragraph at lines 658--659
 \T1/lmr/m/n/12 (-20) Chile. https://www.bcn.cl/leychile/navegar?idNorma=1203415&idParte=10499950&idVersion=2025-
  []
 
 
-Overfull \hbox (0.59369pt too wide) in paragraph at lines 658--659
+Overfull \hbox (0.59369pt too wide) in paragraph at lines 660--661
 \T1/lmr/m/n/12 (-20) Ventajas y desventajas. APD. https://www.apd.es/ventajas-y-desventajas-sistema-
  []
 
-[101
+[103
 
 ]
-Overfull \hbox (8.78482pt too wide) in paragraph at lines 667--668
+Overfull \hbox (8.78482pt too wide) in paragraph at lines 669--670
 []\T1/lmr/m/n/12 (-20) Last Minute Engineers. (s.f.). Empezando con ESP32-CAM: Guía para principiantes.
  []
 
 
-Overfull \hbox (36.03314pt too wide) in paragraph at lines 669--670
+Overfull \hbox (36.03314pt too wide) in paragraph at lines 671--672
 \T1/lmr/m/n/12 (-20) octubre de 2025, de https://developer.mozilla.org/es/docs/Web/HTTP/Guides/Overview 
  []
 
 
-Overfull \hbox (12.1488pt too wide) in paragraph at lines 674--675
+Overfull \hbox (12.1488pt too wide) in paragraph at lines 676--677
 \T1/lmr/m/n/12 (-20) de 2025, de https://zktecolatinoamerica.com/categoria-producto/tiempo-y-asistencia 
  []
 
-[102]
-Overfull \hbox (11.39685pt too wide) in paragraph at lines 679--680
+[104]
+Overfull \hbox (11.39685pt too wide) in paragraph at lines 681--682
 \T1/lmr/m/n/12 (-20) Recuperado el 3 de noviembre de 2025, de https://www.atlassian.com/es/agile/scrum 
  []
 
 
-Overfull \hbox (184.26674pt too wide) in paragraph at lines 680--681
+Overfull \hbox (184.26674pt too wide) in paragraph at lines 682--683
 \T1/lmr/m/n/12 (-20) https://www.teach-ict.com/as_a2_ict_new/ocr/A2_G063/331_systems_cycle/prototyping_RAD/miniweb/pg3.htm 
  []
 
 
-Overfull \hbox (54.17564pt too wide) in paragraph at lines 681--682
+Overfull \hbox (54.17564pt too wide) in paragraph at lines 683--684
 \T1/lmr/m/n/12 (-20) software. Recuperado el 20 de noviembre de 2025, de https://www.geeksforgeeks.org/software-
  []
 
 
-Overfull \hbox (108.85608pt too wide) in paragraph at lines 691--692
+Overfull \hbox (108.85608pt too wide) in paragraph at lines 693--694
 []\T1/lmr/m/n/12 (-20) Kaspersky Lab. (2025). ¾Qué es la biometría? Definición y tipos. https://latam.kaspersky.com/resource-
  []
 
-[103]
-Overfull \hbox (89.89452pt too wide) in paragraph at lines 692--693
+[105]
+Overfull \hbox (89.89452pt too wide) in paragraph at lines 694--695
 []\T1/lmr/m/n/12 (-20) Espressif Systems. (2025). SPIFFS - SPI Flash File System. https://docs.espressif.com/projects/esp-
  []
 
 
-Overfull \hbox (88.28545pt too wide) in paragraph at lines 694--695
+Overfull \hbox (88.28545pt too wide) in paragraph at lines 696--697
 []\T1/lmr/m/n/12 (-20) Red Hat Inc. (2025). ¾Qué son los microservicios? https://www.redhat.com/es/topics/microservices 
  []
 
 
-Overfull \hbox (118.26082pt too wide) in paragraph at lines 695--696
+Overfull \hbox (118.26082pt too wide) in paragraph at lines 697--698
 []\T1/lmr/m/n/12 (-20) EMQX Technologies. (2025). The ultimate guide to MQTT brokers. https://www.emqx.com/en/blog/the-
  []
 
-[104] (memoria.aux)
+[106] [107
+
+]
+Overfull \hbox (4.07831pt too wide) in paragraph at lines 734--734
+[]\T1/lmr/bx/n/17.28 (-20) A.2 Preguntas complementarias para usuarios técnicos 
+ []
+
+[108] [109] (memoria.aux)
  ***********
 LaTeX2e <2025-11-01>
 L3 programming layer <2025-12-24>
  ***********
+
+
+LaTeX Warning: Label(s) may have changed. Rerun to get cross-references right.
+
  ) 
 Here is how much of TeX's memory you used:
  5919 strings out of 467871
  102020 string characters out of 5435693
- 558575 words of memory out of 5000000
+ 559575 words of memory out of 5000000
  34508 multiletter control sequences out of 15000+600000
- 692085 words of font info for 178 fonts, out of 8000000 for 9000
+ 692117 words of font info for 178 fonts, out of 8000000 for 9000
  1141 hyphenation exceptions out of 8191
- 72i,11n,79p,1576b,449s stack positions out of 10000i,1000n,20000p,200000b,200000s
+ 72i,11n,79p,1576b,483s stack positions out of 10000i,1000n,20000p,200000b,200000s
 <D:/Latex/fonts/type1/public/lm/lmbx10.pfb><D:/Latex/fonts/type1/public/lm/lmbx12.pfb><D:/Latex/fonts/type1/public/lm/lmmi10.pfb><D:/Latex/fonts/type1/public/lm/lmmi12.pfb><D:/Latex/fonts/type1/public/lm/lmr10.pfb><D:/Latex/fonts/type1/public/lm/lmr12.pfb><D:/Latex/fonts/type1/public/lm/lmri12.pfb><D:/Latex/fonts/type1/public/lm/lmro12.pfb><D:/Latex/fonts/type1/public/lm/lmsy10.pfb><D:/Latex/fonts/type1/public/lm/lmtk10.pfb><D:/Latex/fonts/type1/public/lm/lmtt12.pfb>
-Output written on memoria.pdf (106 pages, 1739211 bytes).
+Output written on memoria.pdf (111 pages, 1747952 bytes).
 PDF statistics:
- 447 PDF objects out of 1000 (max. 8388607)
+ 464 PDF objects out of 1000 (max. 8388607)
  0 named destinations out of 1000 (max. 500000)
  38009 words of extra memory for PDF output out of 42996 (max. 10000000)
 

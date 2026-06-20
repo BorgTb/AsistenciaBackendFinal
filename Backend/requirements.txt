@@ -1,13 +1,14 @@
-flask
-psycopg2-binary
-python-dotenv
-deepface
-numpy
-pillow
-flask-cors
-paho-mqtt
-requests
-bcrypt
-PyJWT
-cryptography
-opencv-python-headless
+    flask
+    psycopg2-binary
+    python-dotenv
+    deepface
+    numpy
+    pillow
+    flask-cors
+    paho-mqtt
+    requests
+    bcrypt
+    PyJWT
+    cryptography
+    opencv-python-headless
+    

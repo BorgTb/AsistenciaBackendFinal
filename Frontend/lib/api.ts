@@ -51,6 +51,26 @@ export async function setPersonaHuella(personaId: string, huellaId: number) {
   });
 }
 
+export async function getPersonaById(personaId: number) {
+  return request<{ id: string; nombre: string; rut: string; email: string; huella_id: number; encoding_facial: string | null; fecha_registro: string; activo: boolean } | { error: string }>(`/api/personas/${personaId}`);
+}
+
+export async function registrarConsentimiento(personaId: number, version?: string, metodo?: string) {
+  return request<{ ok: boolean; mensaje: string } | { error: string }>(`/api/personas/${personaId}/consentimiento`, {
+    method: 'POST',
+    body: JSON.stringify({
+      version_politica: version || '1.0',
+      metodo_aceptacion: metodo || 'web'
+    })
+  });
+}
+
+export async function eliminarDatosBiometricos(personaId: number) {
+  return request<{ ok: boolean; mensaje: string } | { error: string }>(`/api/personas/${personaId}/datos-biometricos`, {
+    method: 'DELETE'
+  });
+}
+
 export async function getTurnos() {
   return request<Turno[]>('/api/turnos');
 }

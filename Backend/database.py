@@ -71,7 +71,7 @@ def init_db():
                 created_at TIMESTAMP DEFAULT NOW()
             )
         """)
-        cur.execute("ALTER TABLE usuarios_web ALTER COLUMN empresa_id DROP NOT NULL")
+        cur.execute("ALTER TABLE usuarios_web ADD COLUMN IF NOT EXISTS empresa_id INTEGER REFERENCES empresas(id)")
         cur.execute("ALTER TABLE usuarios_web DROP COLUMN IF EXISTS rol")
 
         cur.execute("""
@@ -282,8 +282,10 @@ def init_db():
 
         conn.commit()
         print("Base de datos inicializada correctamente")
-    except Exception as e:
-        print(f"Error al inicializar BD: {e}")
+    except Exception:
+        import traceback
+        traceback.print_exc()
+        raise
     finally:
         if conn:
             cur.close()

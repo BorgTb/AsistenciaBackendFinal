@@ -42,7 +42,10 @@ import {
   getErp,
   getLogs,
   getPersonas,
+  getPersonaById,
   getTurnos,
+  registrarConsentimiento,
+  eliminarDatosBiometricos,
   testErp,
   setPersonaHuella
 } from '@/lib/api';
@@ -198,6 +201,10 @@ export function SasDashboard({ initialSection = 'dashboard' }: { initialSection?
   const [webcamActive, setWebcamActive] = useState(false);
   const [capturedImage, setCapturedImage] = useState<string | null>(null);
   const [captureStream, setCaptureStream] = useState<MediaStream | null>(null);
+  const [personaActual, setPersonaActual] = useState<{ id: string; nombre: string; rut: string; email: string; huella_id: number | null; encoding_facial: string | null; fecha_registro: string; activo: boolean } | null>(null);
+  const [consentimientoActivo, setConsentimientoActivo] = useState(false);
+  const [guardandoConsentimiento, setGuardandoConsentimiento] = useState(false);
+  const [eliminandoBiometricos, setEliminandoBiometricos] = useState(false);
 
   const [personaForm, setPersonaForm] = useState({ nombre: '', rut: '', email: '' });
   const [turnoForm, setTurnoForm] = useState({ nombre: '', inicio: '08:00', fin: '17:00' });
@@ -216,21 +223,36 @@ export function SasDashboard({ initialSection = 'dashboard' }: { initialSection?
     setSection(initialSection);
   }, [initialSection]);
 
+  const allowedSections: Section[] = useMemo(() => {
+    if (!user) return [];
+    if (user.rol === 'admin') return ['dashboard', 'asistencias', 'personas', 'turnos', 'asignaciones', 'dispositivos', 'erp', 'logs', 'usuarios', 'empresas'];
+    if (user.rol === 'empleador') return ['dashboard', 'asistencias', 'personas', 'turnos', 'asignaciones', 'dispositivos', 'erp', 'logs', 'usuarios'];
+    return ['asistencias', 'usuarios'];
+  }, [user]);
+
+  useEffect(() => {
+    if (!allowedSections.includes(section)) {
+      setSection(allowedSections.length > 0 ? allowedSections[0] : 'asistencias');
+    }
+  }, [section, allowedSections]);
+
   useEffect(() => {
     let alive = true;
 
     async function loadData(view: Section) {
-      const needsPersonas = view === 'dashboard' || view === 'personas' || view === 'asignaciones';
-      const needsTurnos = view === 'dashboard' || view === 'turnos' || view === 'asignaciones';
-      const needsAsignaciones = view === 'dashboard' || view === 'asignaciones';
+      const isTrabajador = user?.rol === 'trabajador';
+      const needsPersonas = !isTrabajador && (view === 'dashboard' || view === 'personas' || view === 'asignaciones');
+      const needsTurnos = !isTrabajador && (view === 'dashboard' || view === 'turnos' || view === 'asignaciones');
+      const needsAsignaciones = !isTrabajador && (view === 'dashboard' || view === 'asignaciones');
       const needsAsistencias = view === 'dashboard' || view === 'asistencias';
-      const needsDevices = view === 'dashboard' || view === 'dispositivos';
-      const needsErp = view === 'erp';
-      const needsLogs = view === 'logs';
-      const needsUsuarios = view === 'usuarios';
-      const needsEmpresas = view === 'empresas' || (view === 'usuarios' && user?.rol === 'admin');
+      const needsDevices = !isTrabajador && (view === 'dashboard' || view === 'dispositivos');
+      const needsErp = !isTrabajador && view === 'erp';
+      const needsLogs = !isTrabajador && view === 'logs';
+      const needsUsuarios = !isTrabajador && view === 'usuarios';
+      const needsEmpresas = !isTrabajador && (view === 'empresas' || (view === 'usuarios' && user?.rol === 'admin'));
+      const needsPersonaActual = isTrabajador && view === 'usuarios';
 
-      const [personasRes, turnosRes, asignacionesRes, asistenciasRes, devicesRes, erpRes, logsRes, usuariosRes, empresasRes] = await Promise.all([
+      const [personasRes, turnosRes, asignacionesRes, asistenciasRes, devicesRes, erpRes, logsRes, usuariosRes, empresasRes, personaActualRes] = await Promise.all([
         needsPersonas ? getPersonas() : Promise.resolve(null),
         needsTurnos ? getTurnos() : Promise.resolve(null),
         needsAsignaciones ? getAsignaciones() : Promise.resolve(null),
@@ -239,7 +261,8 @@ export function SasDashboard({ initialSection = 'dashboard' }: { initialSection?
         needsErp ? getErp() : Promise.resolve(null),
         needsLogs ? getLogs() : Promise.resolve(null),
         needsUsuarios ? getUsuarios() : Promise.resolve(null),
-        needsEmpresas ? getEmpresas() : Promise.resolve(null)
+        needsEmpresas ? getEmpresas() : Promise.resolve(null),
+        needsPersonaActual && user?.persona_id ? getPersonaById(user.persona_id) : Promise.resolve(null)
       ]);
 
       if (!alive) return;
@@ -249,18 +272,29 @@ export function SasDashboard({ initialSection = 'dashboard' }: { initialSection?
       if (asignacionesRes) setAsignaciones(asignacionesRes);
       if (asistenciasRes) setAsistencias(asistenciasRes);
       if (devicesRes) {
-        setDevices(devicesRes.map((item) => ({
-          id: item.id,
-          nombre: item.nombre,
-          ip: item.ip_local || '—',
-          online: (item.estado || '').toLowerCase() === 'activo',
-          marcajes: 0,
-          mem: 0,
-          camara: false,
-          estado: item.estado,
-          tienePassword: (item as Record<string, unknown>).tiene_password as boolean,
-          passwordPendiente: (item as Record<string, unknown>).password_pendiente as boolean
-        })));
+        const now = Date.now();
+        const fiveMinutes = 5 * 60 * 1000;
+        setDevices(devicesRes.map((item) => {
+          const ultimoHeartbeat = (item as Record<string, unknown>).ultimo_heartbeat as string | null | undefined;
+          let online = (item.estado || '').toLowerCase() === 'activo';
+          if (ultimoHeartbeat) {
+            const heartbeatTime = new Date(ultimoHeartbeat).getTime();
+            online = (now - heartbeatTime) < fiveMinutes;
+          }
+          return {
+            id: item.id,
+            nombre: item.nombre,
+            ip: item.ip_local || '—',
+            online,
+            marcajes: 0,
+            mem: 0,
+            camara: false,
+            estado: item.estado,
+            tienePassword: (item as Record<string, unknown>).tiene_password as boolean,
+            passwordPendiente: (item as Record<string, unknown>).password_pendiente as boolean,
+            ultimoHeartbeat
+          };
+        }));
       }
       if (erpRes) {
         setErpList(erpRes.map((item) => ({
@@ -286,6 +320,10 @@ export function SasDashboard({ initialSection = 'dashboard' }: { initialSection?
       }
       if (usuariosRes) setUsuarios(usuariosRes);
       if (empresasRes) setEmpresas(empresasRes);
+      if (personaActualRes && !('error' in personaActualRes)) {
+        setPersonaActual(personaActualRes);
+        setConsentimientoActivo(!!(personaActualRes as { encoding_facial: string | null }).encoding_facial);
+      }
     }
 
     loadData(section);
@@ -353,13 +391,13 @@ export function SasDashboard({ initialSection = 'dashboard' }: { initialSection?
   }
 
   async function refreshData() {
-    pushLog('info', 'Refrescando datos desde el backend');
+    pushLog('info', 'Actualizando datos del sistema');
     await Promise.all([
       refreshSection(section),
       section === 'dashboard' ? Promise.all([refreshSection('personas'), refreshSection('turnos')]) : Promise.resolve()
     ]);
     showToast('success', 'Datos actualizados');
-    pushLog('ok', 'Sincronización visual completada');
+    pushLog('ok', 'Datos actualizados correctamente');
   }
 
   async function refreshSection(view: Section) {
@@ -386,16 +424,27 @@ export function SasDashboard({ initialSection = 'dashboard' }: { initialSection?
     if (view === 'dashboard' || view === 'dispositivos') {
       const devicesRes = await getDispositivos();
       if (devicesRes) {
-        setDevices(devicesRes.map((item) => ({
-          id: item.id,
-          nombre: item.nombre,
-          ip: item.ip_local || '—',
-          online: (item.estado || '').toLowerCase() === 'activo',
-          marcajes: 0,
-          mem: 0,
-          camara: false,
-          estado: item.estado
-        })));
+        const now = Date.now();
+        const fiveMinutes = 5 * 60 * 1000;
+        setDevices(devicesRes.map((item) => {
+          const ultimoHeartbeat = (item as Record<string, unknown>).ultimo_heartbeat as string | null | undefined;
+          let online = (item.estado || '').toLowerCase() === 'activo';
+          if (ultimoHeartbeat) {
+            const heartbeatTime = new Date(ultimoHeartbeat).getTime();
+            online = (now - heartbeatTime) < fiveMinutes;
+          }
+          return {
+            id: item.id,
+            nombre: item.nombre,
+            ip: item.ip_local || '—',
+            online,
+            marcajes: 0,
+            mem: 0,
+            camara: false,
+            estado: item.estado,
+            ultimoHeartbeat
+          };
+        }));
       }
     }
 
@@ -623,8 +672,8 @@ export function SasDashboard({ initialSection = 'dashboard' }: { initialSection?
   async function handleTestErp(erpId: string, nombre: string) {
     const result = await testErp(erpId);
     if (result && 'ok' in result && result.ok) {
-      pushLog('ok', `ERP probado: ${nombre}`);
-      showToast('success', `Test ejecutado para ${nombre}`);
+      pushLog('ok', `ERP verificado: ${nombre}`);
+      showToast('success', `Verificación ejecutada para ${nombre}`);
       return;
     }
 
@@ -668,8 +717,44 @@ export function SasDashboard({ initialSection = 'dashboard' }: { initialSection?
   }
 
   function handleDeviceSync(ip: string) {
-    pushLog('info', `Sincronización solicitada: ${ip}`);
-    showToast('success', `El dispositivo ${ip} se gestiona desde su backend`);
+    pushLog('info', `Sincronización solicitada para ${ip}`);
+    showToast('success', `Sincronización iniciada para el dispositivo`);
+  }
+
+  async function handleToggleConsentimiento() {
+    if (!personaActual) return;
+    setGuardandoConsentimiento(true);
+    const res = await registrarConsentimiento(Number(personaActual.id), '1.0', 'web');
+    setGuardandoConsentimiento(false);
+    if (!res) {
+      showToast('error', 'Error de conexión al actualizar consentimiento');
+      return;
+    }
+    if ('ok' in res && res.ok) {
+      setConsentimientoActivo(!consentimientoActivo);
+      showToast('success', consentimientoActivo ? 'Consentimiento revocado' : 'Consentimiento registrado');
+    } else {
+      showToast('error', (res as { error: string }).error || 'Error al actualizar consentimiento');
+    }
+  }
+
+  async function handleEliminarBiometricos() {
+    if (!personaActual) return;
+    setEliminandoBiometricos(true);
+    const res = await eliminarDatosBiometricos(Number(personaActual.id));
+    setEliminandoBiometricos(false);
+    if (!res) {
+      showToast('error', 'Error de conexión al eliminar datos biométricos');
+      return;
+    }
+    if ('ok' in res && res.ok) {
+      setPersonaActual((prev) => prev ? { ...prev, encoding_facial: null } : null);
+      setConsentimientoActivo(false);
+      showToast('success', 'Datos biométricos eliminados correctamente');
+      pushLog('info', 'Datos biométricos eliminados por el usuario');
+    } else {
+      showToast('error', (res as { error: string }).error || 'Error al eliminar datos biométricos');
+    }
   }
 
   async function handleRostroUpload(personaId: string) {
@@ -719,18 +804,17 @@ export function SasDashboard({ initialSection = 'dashboard' }: { initialSection?
     const base64 = capturedImage.split(',')[1];
     const result = await registrarRostro(rostroPersonaId, base64);
     if (result && 'ok' in result && result.ok) {
-      pushLog('ok', `Rostro registrado para RUT ${rostroPersonaId}`);
+      pushLog('ok', `Rostro registrado para ID ${rostroPersonaId}`);
       showToast('success', 'Rostro registrado correctamente');
+      if (personaActual && personaActual.id === rostroPersonaId) {
+        setPersonaActual((prev) => prev ? { ...prev, encoding_facial: 'registered' } : prev);
+      }
     } else {
       const msg = result && 'error' in result ? String(result.error) : 'No se pudo registrar el rostro';
       showToast('error', msg);
     }
     setUploadingRostro(false);
     handleWebcamCancel();
-  }
-
-  function handleQuickEntry() {
-    showToast('error', 'El marcaje manual quedó deshabilitado para usar solo datos de la base de datos');
   }
 
   async function handleGenerarPin() {
@@ -993,29 +1077,29 @@ export function SasDashboard({ initialSection = 'dashboard' }: { initialSection?
   const recentAsistencias = asistencias.slice(0, 6);
   const dashboardDevices = devices;
   const currentTitle = {
-    dashboard: 'Dashboard ejecutivo',
-    asistencias: 'Asistencias y marcajes',
-    personas: 'Personas y biometría',
-    turnos: 'Turnos y calendario',
-    asignaciones: 'Asignaciones activas',
-    dispositivos: 'Dispositivos conectados',
-    erp: 'Integraciones ERP',
-    logs: 'Actividad y trazabilidad',
-    usuarios: 'Gestión de usuarios',
-    empresas: 'Gestión de empresas'
+    dashboard: 'Panel principal',
+    asistencias: 'Asistencias',
+    personas: 'Personas',
+    turnos: 'Turnos',
+    asignaciones: 'Asignaciones',
+    dispositivos: 'Dispositivos',
+    erp: 'Integraciones',
+    logs: 'Registro de actividad',
+    usuarios: 'Usuarios',
+    empresas: 'Empresas'
   }[section];
 
   const currentSubtitle = {
-    dashboard: 'Una vista centralizada con métricas, estados y acciones rápidas para operación diaria.',
-    asistencias: 'Filtra entradas, salidas y estado de sincronización con exportación CSV.',
-    personas: 'Gestiona la base de personas y asigna huellas sin salir del panel.',
-    turnos: 'Define jornadas, horarios y días activos desde una interfaz más clara.',
-    asignaciones: 'Relaciona personas y turnos con control visual del estado vigente.',
-    dispositivos: 'Supervisa nodos ESP32, cámara, RAM libre y acceso al panel local.',
-    erp: 'Guarda endpoints, cabeceras y mapeos sin tocar el backend.',
-    logs: 'Revisa eventos, filtrado de mensajes y evidencia operativa.',
-    usuarios: 'Administra usuarios del sistema, roles y permisos de acceso.',
-    empresas: 'Crea y administra empresas del sistema. Cada empresa tiene sus propios usuarios, dispositivos y datos.'
+    dashboard: 'Métricas, estado del sistema y acceso rápido a las funciones principales.',
+    asistencias: 'Consulta y filtra los registros de asistencia del personal.',
+    personas: 'Administra las personas registradas y sus datos biométricos.',
+    turnos: 'Define los horarios y jornadas de trabajo.',
+    asignaciones: 'Asigna turnos a las personas de la organización.',
+    dispositivos: 'Supervisa y administra los dispositivos de registro.',
+    erp: 'Conecta el sistema con tus plataformas externas.',
+    logs: 'Revisa el historial de eventos y operaciones del sistema.',
+    usuarios: 'Administra las cuentas de acceso y sus permisos.',
+    empresas: 'Cada empresa opera con sus propios datos y configuraciones.'
   }[section];
 
   return (
@@ -1031,7 +1115,7 @@ export function SasDashboard({ initialSection = 'dashboard' }: { initialSection?
           <div className="brand-mark">SAS</div>
           <div className="brand-copy">
             <div className="brand-title">Sistema de Asistencia</div>
-            <div className="brand-subtitle">Next.js + Flask + IoT</div>
+            <div className="brand-subtitle">Control de Asistencia</div>
           </div>
         </div>
 
@@ -1092,23 +1176,14 @@ export function SasDashboard({ initialSection = 'dashboard' }: { initialSection?
           </div>
         )}
 
-        <div className="sidebar-card">
-          <div className="status-row">
-            <div className="status-dot live" />
-            <div>
-              <div className="sidebar-card-title">Backend conectado</div>
-              <div className="sidebar-card-subtitle">{apiBaseUrl()}</div>
+        {user && (
+          <div className="sidebar-card">
+            <div className="sidebar-card-title">{user.empresa_nombre}</div>
+            <div className="sidebar-card-subtitle" style={{ marginTop: 4 }}>
+              {user.nombre} · {user.rol === 'admin' ? 'Administrador' : user.rol === 'empleador' ? 'Empleador' : 'Trabajador'}
             </div>
           </div>
-          {user && (
-            <div className="sidebar-card-subtitle" style={{ marginTop: 12 }}>
-              {user.empresa_nombre} · {user.rol}
-            </div>
-          )}
-          <div className="sidebar-card-subtitle" style={{ marginTop: user ? 2 : 12 }}>
-            El frontend consume Flask por REST y todo el contenido operativo proviene de la base de datos.
-          </div>
-        </div>
+        )}
       </aside>
 
       <main className="content">
@@ -1117,7 +1192,7 @@ export function SasDashboard({ initialSection = 'dashboard' }: { initialSection?
             <button className="btn btn-secondary mobile-menu-btn" type="button" onClick={() => setSidebarOpen(true)}>
               Menú
             </button>
-            <span className="eyebrow">SAS control center</span>
+            <span className="eyebrow">SAS</span>
             <h1 className="page-title">{currentTitle}</h1>
             <p className="page-subtitle">{currentSubtitle}</p>
           </div>
@@ -1162,19 +1237,21 @@ export function SasDashboard({ initialSection = 'dashboard' }: { initialSection?
           <div className="panel hero-main">
             <div className="split-row" style={{ alignItems: 'start' }}>
               <div style={{ maxWidth: 720 }}>
-                <span className="eyebrow">{user?.rol === 'trabajador' ? 'Mi asistencia' : 'Operación en tiempo real'}</span>
+                <span className="eyebrow">{user?.rol === 'trabajador' ? 'Mi asistencia' : 'Panel general'}</span>
                 <h2 className="page-title" style={{ fontSize: 'clamp(1.7rem, 3vw, 3.1rem)', marginTop: 12 }}>
                   {user?.rol === 'trabajador'
-                    ? 'Registro de asistencias y turno asignado.'
-                    : 'Un panel más completo para control de asistencia, biometría y dispositivos IoT.'}
+                    ? 'Tus registros de asistencia.'
+                    : 'Control de asistencia, biometría y dispositivos en un solo lugar.'}
                 </h2>
                 <p className="page-subtitle" style={{ marginTop: 12 }}>
-                  Conserva tu backend Python y suma una capa Next.js más clara, responsiva y modular. Esta base ya trae navegación, filtros, formularios, logs y una estructura lista para seguir creciendo.
+                  {user?.rol === 'trabajador'
+                    ? 'Revisa tus registros de entrada y salida.'
+                    : 'Monitorea la operación diaria, administra el personal y mantén todo sincronizado desde esta plataforma.'}
                 </p>
               </div>
-              <Badge tone="info">REST Flask</Badge>
             </div>
 
+            {user?.rol !== 'trabajador' && (
             <div className="hero-grid">
               <article className="metric-card">
                 <div className="metric-top">
@@ -1185,7 +1262,7 @@ export function SasDashboard({ initialSection = 'dashboard' }: { initialSection?
                 <div className="metric-foot">{stats.pending} pendientes de sincronización</div>
                 <div className="sparkline" aria-hidden>
                   {[20, 34, 28, 50, 46, 64, 41, 72].map((height, index) => (
-                    <span key={index} style={{ height: `${height}%`, background: index >= 5 ? 'linear-gradient(180deg, var(--accent), #89f0b6)' : 'linear-gradient(180deg, var(--accent), rgba(125, 211, 252, 0.28))' }} />
+                    <span key={index} style={{ height: `${height}%` }} />
                   ))}
                 </div>
               </article>
@@ -1198,7 +1275,7 @@ export function SasDashboard({ initialSection = 'dashboard' }: { initialSection?
                 <div className="metric-foot">{personas.filter((item) => item.huella_id > 0).length} con huella registrada</div>
                 <div className="sparkline" aria-hidden>
                   {[30, 24, 48, 44, 58, 60, 74, 82].map((height, index) => (
-                    <span key={index} style={{ height: `${height}%`, background: 'linear-gradient(180deg, #89f0b6, rgba(56, 217, 255, 0.4))' }} />
+                    <span key={index} style={{ height: `${height}%` }} />
                   ))}
                 </div>
               </article>
@@ -1208,7 +1285,7 @@ export function SasDashboard({ initialSection = 'dashboard' }: { initialSection?
                   <Badge tone={stats.onlineDevices > 0 ? 'success' : 'warning'}>{stats.onlineDevices} online</Badge>
                 </div>
                 <div className="metric-value">{devices.length}</div>
-                <div className="metric-foot">Cámara, RAM libre y acceso directo al nodo local</div>
+                <div className="metric-foot">{devices.filter(d => d.online).length} en línea · {devices.length} registrados</div>
                 <div className="sparkline" aria-hidden>
                   {[68, 62, 58, 71, 64, 78, 85, 72].map((height, index) => (
                     <span key={index} style={{ height: `${height}%` }} />
@@ -1217,28 +1294,31 @@ export function SasDashboard({ initialSection = 'dashboard' }: { initialSection?
               </article>
               <article className="metric-card">
                 <div className="metric-top">
-                  <span className="metric-label">Facial + huella</span>
+                  <span className="metric-label">Verificación biométrica</span>
                   <Badge tone="warning">capturas</Badge>
                 </div>
                 <div className="metric-value">{stats.facialChecks}</div>
-                <div className="metric-foot">Marcajes con combinación biométrica y validación visual</div>
+                <div className="metric-foot">Marcajes con verificación biométrica</div>
                 <div className="sparkline" aria-hidden>
                   {[16, 28, 18, 46, 38, 52, 48, 66].map((height, index) => (
-                    <span key={index} style={{ height: `${height}%`, background: 'linear-gradient(180deg, var(--accent-warm), rgba(56, 217, 255, 0.42))' }} />
+                    <span key={index} style={{ height: `${height}%` }} />
                   ))}
                 </div>
               </article>
             </div>
+            )}
+
           </div>
 
+          {user?.rol !== 'trabajador' && (
           <div className="side-stack">
             <div className="panel status-panel">
               <div className="split-row">
                 <div>
-                  <h3 className="section-title">Estado operativo</h3>
-                  <p className="section-subtitle">Resumen rápido del ecosistema</p>
+                  <h3 className="section-title">Resumen</h3>
+                  <p className="section-subtitle">Estado general del sistema</p>
                 </div>
-                <Badge tone="success">estable</Badge>
+                <Badge tone="success">operativo</Badge>
               </div>
 
               <div className="status-list">
@@ -1246,31 +1326,31 @@ export function SasDashboard({ initialSection = 'dashboard' }: { initialSection?
                   <div className="status-item-left">
                     <span className="dot-online" />
                     <div>
-                      <div className="status-name">Backend Flask</div>
-                      <div className="status-meta">{apiBaseUrl()}</div>
+                      <div className="status-name">Servidor</div>
+                      <div className="status-meta">Conectado y operativo</div>
                     </div>
                   </div>
-                  <Badge tone="success">ok</Badge>
+                  <Badge tone="success">activo</Badge>
                 </div>
                 <div className="status-item">
                   <div className="status-item-left">
-                    <span className="dot-warning" />
+                    <span className={devices.some(d => d.online) ? 'dot-online' : 'dot-warning'} />
                     <div>
-                      <div className="status-name">Dispositivo principal</div>
-                      <div className="status-meta">ESP32-CAM / detección facial</div>
+                      <div className="status-name">Dispositivos</div>
+                      <div className="status-meta">{devices.filter(d => d.online).length} de {devices.length} en línea</div>
                     </div>
                   </div>
-                  <Badge tone="warning">live</Badge>
+                  <Badge tone={devices.some(d => d.online) ? 'success' : 'warning'}>{devices.filter(d => d.online).length > 0 ? 'conectado' : 'desconectado'}</Badge>
                 </div>
                 <div className="status-item">
                   <div className="status-item-left">
-                    <span className="dot-offline" />
+                    <span className="dot-online" />
                     <div>
-                      <div className="status-name">ERP en DB</div>
-                      <div className="status-meta">Integraciones persistidas en PostgreSQL</div>
+                      <div className="status-name">Integraciones</div>
+                      <div className="status-meta">{erpList.length} {erpList.length === 1 ? 'conexión activa' : 'conexiones activas'}</div>
                     </div>
                   </div>
-                  <Badge tone="info">next</Badge>
+                  <Badge tone={erpList.length > 0 ? 'success' : 'info'}>{erpList.length > 0 ? 'conectado' : 'sin configurar'}</Badge>
                 </div>
               </div>
             </div>
@@ -1279,17 +1359,17 @@ export function SasDashboard({ initialSection = 'dashboard' }: { initialSection?
               <div className="split-row">
                 <div>
                   <h3 className="section-title">Acciones rápidas</h3>
-                  <p className="section-subtitle">Tareas frecuentes del panel</p>
+                  <p className="section-subtitle">Tareas frecuentes</p>
                 </div>
               </div>
               <div className="toolbar" style={{ marginTop: 14 }}>
                 <button className="btn btn-secondary" type="button" onClick={() => openModal('persona')}>Nueva persona</button>
                 <button className="btn btn-secondary" type="button" onClick={() => openModal('turno')}>Nuevo turno</button>
                 <button className="btn btn-secondary" type="button" onClick={() => openModal('asignacion')}>Asignar turno</button>
-                <button className="btn btn-secondary" type="button" onClick={handleQuickEntry}>Marcaje manual</button>
               </div>
             </div>
           </div>
+          )}
         </section>
 
         {(section === 'dashboard' || section === 'asistencias') && (
@@ -1297,7 +1377,7 @@ export function SasDashboard({ initialSection = 'dashboard' }: { initialSection?
             <div className="section-head">
               <div>
                 <h2 className="section-title">Asistencias recientes</h2>
-                <p className="section-subtitle">Puedes filtrar, exportar y revisar estado de sync.</p>
+                <p className="section-subtitle">Filtra y revisa los registros de asistencia del personal.</p>
               </div>
               <div className="toolbar">
                 <button className="btn btn-secondary" type="button" onClick={handleExportCsv}>Exportar CSV</button>
@@ -1378,7 +1458,7 @@ export function SasDashboard({ initialSection = 'dashboard' }: { initialSection?
             <div className="section-head">
               <div>
                 <h2 className="section-title">Personas</h2>
-                <p className="section-subtitle">Registro, huella y acciones de mantenimiento.</p>
+                <p className="section-subtitle">Administra las personas registradas en el sistema.</p>
               </div>
               <div className="toolbar">
                 <button className="btn btn-secondary" type="button" onClick={() => openModal('persona')}>Nueva persona</button>
@@ -1430,7 +1510,7 @@ export function SasDashboard({ initialSection = 'dashboard' }: { initialSection?
             <div className="section-head">
               <div>
                 <h2 className="section-title">Turnos</h2>
-                <p className="section-subtitle">Horario, duración y días activos.</p>
+                <p className="section-subtitle">Define los horarios y jornadas de trabajo.</p>
               </div>
               <button className="btn btn-secondary" type="button" onClick={() => openModal('turno')}>Nuevo turno</button>
             </div>
@@ -1479,7 +1559,7 @@ export function SasDashboard({ initialSection = 'dashboard' }: { initialSection?
             <div className="section-head">
               <div>
                 <h2 className="section-title">Asignaciones</h2>
-                <p className="section-subtitle">Relación vigente entre personas y turnos.</p>
+                <p className="section-subtitle">Asigna turnos a las personas de la organización.</p>
               </div>
               <button className="btn btn-secondary" type="button" onClick={() => openModal('asignacion')}>Nueva asignación</button>
             </div>
@@ -1524,7 +1604,7 @@ export function SasDashboard({ initialSection = 'dashboard' }: { initialSection?
             <div className="section-head">
               <div>
                 <h2 className="section-title">Dispositivos</h2>
-                <p className="section-subtitle">Estado del nodo local y acceso rápido al panel de cada equipo.</p>
+                <p className="section-subtitle">Supervisa y administra los dispositivos de registro.</p>
               </div>
               {(user?.rol === 'admin' || user?.rol === 'empleador') && (
                 <button className="btn btn-primary" type="button" onClick={() => openModal('dispositivo')}>
@@ -1534,19 +1614,19 @@ export function SasDashboard({ initialSection = 'dashboard' }: { initialSection?
             </div>
 
             {generatedPin && (
-              <div className="card" style={{ marginBottom: 18, borderColor: 'rgba(56,217,255,0.4)', background: 'rgba(56,217,255,0.08)', padding: 20 }}>
+              <div className="card" style={{ marginBottom: 18, borderColor: 'var(--primary)', borderLeft: '4px solid var(--primary)', padding: 20 }}>
                 <div className="status-row">
-                  <div className="status-dot" style={{ boxShadow: '0 0 0 6px rgba(56,217,255,0.3)' }} />
+                  <div className="status-dot" style={{ background: 'var(--primary)' }} />
                   <div>
                     <div className="device-name" style={{ fontWeight: 700, fontSize: '1.1rem' }}>PIN de enrolamiento generado</div>
                     <div className="device-ip">Copia este código para configurar el dispositivo físico</div>
                   </div>
                 </div>
-                <div className="mono" style={{ marginTop: 16, padding: 16, borderRadius: 12, background: '#000', fontSize: '1.8rem', textAlign: 'center', letterSpacing: '0.3em', fontWeight: 700, color: 'var(--accent)' }}>
+                <div className="mono" style={{ marginTop: 16, padding: 16, borderRadius: 'var(--radius-md)', background: '#f8fafc', border: '1px solid var(--line)', fontSize: '1.8rem', textAlign: 'center', letterSpacing: '0.3em', fontWeight: 700, color: 'var(--primary)' }}>
                   {generatedPin}
                 </div>
                 <div className="muted" style={{ marginTop: 12, fontSize: '0.82rem' }}>
-                  1. Enciende el dispositivo · 2. Conéctate a su WiFi (192.168.4.1) · 3. Ve a WiFi Setup · 4. Ingresa el PIN y la URL del backend
+                  1. Enciende el dispositivo · 2. Conéctate a su WiFi · 3. Ingresa el PIN y la URL del servidor · 4. El dispositivo se configurará automáticamente
                 </div>
               </div>
             )}
@@ -1589,16 +1669,16 @@ export function SasDashboard({ initialSection = 'dashboard' }: { initialSection?
 
                   <div className="device-grid" style={{ gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', marginTop: 16 }}>
                     <div className="card">
-                      <div className="muted">Marcajes hoy</div>
-                      <div className="metric-value" style={{ fontSize: '1.6rem', marginTop: 8 }}>{item.marcajes}</div>
+                      <div className="muted">Estado</div>
+                      <div className="metric-value" style={{ fontSize: '1.6rem', marginTop: 8, color: item.online ? 'var(--success)' : 'var(--muted)' }}>{item.online ? 'En línea' : 'Desconectado'}</div>
                     </div>
                     <div className="card">
-                      <div className="muted">RAM libre</div>
-                      <div className="metric-value" style={{ fontSize: '1.6rem', marginTop: 8, color: item.mem > 70 ? 'var(--warning)' : 'var(--success)' }}>{item.mem}%</div>
+                      <div className="muted">Última conexión</div>
+                      <div className="metric-value" style={{ fontSize: '1rem', marginTop: 8, fontFamily: 'var(--font-mono)' }}>
+                        {item.ultimoHeartbeat ? formatDate(item.ultimoHeartbeat) + ' ' + formatTime(item.ultimoHeartbeat) : '—'}
+                      </div>
                     </div>
                   </div>
-
-                  <div className="progress"><span style={{ width: `${item.mem}%`, background: item.mem > 70 ? 'linear-gradient(90deg, var(--danger), var(--warning))' : 'linear-gradient(90deg, var(--accent), var(--success))' }} /></div>
 
                   <div className="device-actions">
                     <button className="btn btn-secondary" type="button" onClick={() => { setEditingDeviceId(item.id); setEditDeviceName(item.nombre); }}>Renombrar</button>
@@ -1621,7 +1701,7 @@ export function SasDashboard({ initialSection = 'dashboard' }: { initialSection?
                   </div>
                 </article>
               ))}
-                  {dashboardDevices.length === 0 ? <div className="empty-state">No hay dispositivos registrados en la base de datos.</div> : null}
+                  {dashboardDevices.length === 0 ? <div className="empty-state">No hay dispositivos registrados.</div> : null}
             </div>
           </section>
         )}
@@ -1631,7 +1711,7 @@ export function SasDashboard({ initialSection = 'dashboard' }: { initialSection?
             <div className="section-head">
               <div>
                 <h2 className="section-title">Integraciones ERP</h2>
-                <p className="section-subtitle">Configuración persistida en PostgreSQL y expuesta por Flask.</p>
+                <p className="section-subtitle">Conecta el sistema con tus plataformas externas.</p>
               </div>
               <button className="btn btn-secondary" type="button" onClick={() => openModal('erp')}>Agregar ERP</button>
             </div>
@@ -1650,7 +1730,7 @@ export function SasDashboard({ initialSection = 'dashboard' }: { initialSection?
                   <div className="muted" style={{ marginTop: 14, wordBreak: 'break-word' }}>{item.webhookUrl}</div>
                   {item.ultimoEstado && (
                     <div className="muted" style={{ marginTop: 8, fontSize: '0.82rem' }}>
-                      Ultimo envio: {item.ultimoEnvio ? new Date(item.ultimoEnvio).toLocaleString() : '—'} · {item.ultimoEstado}
+                      Último envío: {item.ultimoEnvio ? new Date(item.ultimoEnvio).toLocaleString() : '—'} · {item.ultimoEstado}
                     </div>
                   )}
                   <div className="device-actions" style={{ marginTop: 16 }}>
@@ -1660,7 +1740,7 @@ export function SasDashboard({ initialSection = 'dashboard' }: { initialSection?
                   </div>
                 </article>
               ))}
-              {erpList.length === 0 ? <div className="empty-state">No hay integraciones ERP cargadas desde la base de datos.</div> : null}
+              {erpList.length === 0 ? <div className="empty-state">No hay integraciones configuradas.</div> : null}
             </div>
           </section>
         )}
@@ -1670,7 +1750,7 @@ export function SasDashboard({ initialSection = 'dashboard' }: { initialSection?
             <div className="section-head">
               <div>
                 <h2 className="section-title">Logs</h2>
-                <p className="section-subtitle">Eventos de interfaz, backend y tareas del sistema.</p>
+                <p className="section-subtitle">Historial de eventos y operaciones del sistema.</p>
               </div>
               <div className="toolbar">
                 <select value={logFilter} onChange={(event) => setLogFilter(event.target.value as typeof logFilter)}>
@@ -1699,29 +1779,26 @@ export function SasDashboard({ initialSection = 'dashboard' }: { initialSection?
               </div>
 
               <div className="card">
-                <h3 className="section-title">Actividad reciente</h3>
-                <p className="section-subtitle">Lo que se está viendo en el panel ahora mismo.</p>
+                <h3 className="section-title">Información del sistema</h3>
+                <p className="section-subtitle">Resumen de la configuración actual.</p>
                 <div className="status-list" style={{ marginTop: 16 }}>
                   <div className="status-item">
                     <div>
-                      <div className="status-name">Endpoint base</div>
-                      <div className="status-meta">{apiBaseUrl()}</div>
+                      <div className="status-name">Personas registradas</div>
+                      <div className="status-meta">{personas.length} en total</div>
                     </div>
-                    <Badge tone="info">REST</Badge>
                   </div>
                   <div className="status-item">
                     <div>
-                      <div className="status-name">Dispositivo</div>
-                      <div className="status-meta">{deviceBase}</div>
+                      <div className="status-name">Dispositivos activos</div>
+                      <div className="status-meta">{devices.filter(d => d.online).length} en línea de {devices.length}</div>
                     </div>
-                    <Badge tone="warning">IoT</Badge>
                   </div>
                   <div className="status-item">
                     <div>
-                      <div className="status-name">ERPs guardados</div>
-                      <div className="status-meta">{erpList.length}</div>
+                      <div className="status-name">Integraciones activas</div>
+                      <div className="status-meta">{erpList.length} configuradas</div>
                     </div>
-                    <Badge tone="success">local</Badge>
                   </div>
                 </div>
               </div>
@@ -1729,12 +1806,119 @@ export function SasDashboard({ initialSection = 'dashboard' }: { initialSection?
           </section>
         )}
 
-        {section === 'usuarios' && (
+        {section === 'usuarios' && user?.rol === 'trabajador' && personaActual && (
+          <section className="section">
+            <div className="section-head">
+              <div>
+                <h3 className="section-title">Mi cuenta</h3>
+                <p className="section-subtitle">Información personal, consentimiento biométrico y registro facial.</p>
+              </div>
+            </div>
+
+            <div className="profile-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(360px, 1fr))', gap: 24 }}>
+              <div className="card" style={{ padding: 24 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: 20 }}>
+                  <div>
+                    <h4 style={{ fontSize: 18, fontWeight: 600, margin: 0 }}>Información personal</h4>
+                    <p style={{ fontSize: 13, color: '#64748b', margin: '4px 0 0' }}>Tus datos registrados en el sistema.</p>
+                  </div>
+                  <div style={{ width: 48, height: 48, borderRadius: 12, background: '#1d4ed8', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, fontWeight: 700, flexShrink: 0 }}>
+                    {personaActual.nombre.charAt(0).toUpperCase()}
+                  </div>
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                  <div><span style={{ fontSize: 12, color: '#64748b', display: 'block' }}>Nombre completo</span><span style={{ fontSize: 15, fontWeight: 500 }}>{personaActual.nombre}</span></div>
+                  <div><span style={{ fontSize: 12, color: '#64748b', display: 'block' }}>RUT</span><span style={{ fontSize: 15, fontWeight: 500 }}>{personaActual.rut || '—'}</span></div>
+                  <div><span style={{ fontSize: 12, color: '#64748b', display: 'block' }}>Email</span><span style={{ fontSize: 15, fontWeight: 500 }}>{personaActual.email || '—'}</span></div>
+                  <div><span style={{ fontSize: 12, color: '#64748b', display: 'block' }}>Registrado desde</span><span style={{ fontSize: 15, fontWeight: 500 }}>{personaActual.fecha_registro ? formatDate(personaActual.fecha_registro) : '—'}</span></div>
+                  <div><span style={{ fontSize: 12, color: '#64748b', display: 'block' }}>Huella</span><span style={{ fontSize: 15, fontWeight: 500 }}>{personaActual.huella_id ? 'Registrada' : 'No registrada'}</span></div>
+                </div>
+              </div>
+
+              <div className="card" style={{ padding: 24 }}>
+                <h4 style={{ fontSize: 18, fontWeight: 600, margin: 0 }}>Consentimiento biométrico</h4>
+                <p style={{ fontSize: 13, color: '#64748b', margin: '8px 0 0' }}>Debes aceptar el consentimiento antes de registrar tus datos faciales.</p>
+                <div style={{ marginTop: 24, display: 'flex', alignItems: 'center', gap: 12 }}>
+                  <label style={{ position: 'relative', display: 'inline-block', width: 48, height: 26, cursor: guardandoConsentimiento ? 'not-allowed' : 'pointer' }}>
+                    <input
+                      type="checkbox"
+                      checked={consentimientoActivo}
+                      disabled={guardandoConsentimiento}
+                      onChange={handleToggleConsentimiento}
+                      style={{ opacity: 0, width: 0, height: 0, position: 'absolute' }}
+                    />
+                    <span style={{
+                      position: 'absolute', inset: 0, borderRadius: 26, transition: 'background .2s',
+                      background: consentimientoActivo ? '#1d4ed8' : '#cbd5e1'
+                    }}>
+                      <span style={{
+                        position: 'absolute', left: consentimientoActivo ? 24 : 2, top: 2, width: 22, height: 22,
+                        borderRadius: '50%', background: '#fff', transition: 'left .2s', boxShadow: '0 1px 3px rgba(0,0,0,.15)'
+                      }} />
+                    </span>
+                  </label>
+                  <span style={{ fontSize: 14, color: '#334155', fontWeight: 500 }}>
+                    {consentimientoActivo ? 'Consentimiento otorgado' : 'Consentimiento no otorgado'}
+                  </span>
+                </div>
+                {guardandoConsentimiento && <p style={{ fontSize: 13, color: '#64748b', marginTop: 8 }}>Guardando...</p>}
+              </div>
+
+              <div className="card" style={{ padding: 24 }}>
+                <h4 style={{ fontSize: 18, fontWeight: 600, margin: 0 }}>Registro facial</h4>
+                <p style={{ fontSize: 13, color: '#64748b', margin: '8px 0 0' }}>Captura tu rostro para habilitar el reconocimiento biométrico.</p>
+                <button
+                  className="btn btn-primary"
+                  type="button"
+                  disabled={!consentimientoActivo}
+                  onClick={() => {
+                    setRostroPersonaId(personaActual.id);
+                    setWebcamActive(true);
+                    setCapturedImage(null);
+                  }}
+                  style={{ marginTop: 24, opacity: consentimientoActivo ? 1 : 0.5 }}
+                >
+                  {personaActual.encoding_facial ? 'Actualizar rostro' : 'Registrar rostro'}
+                </button>
+                {!consentimientoActivo && (
+                  <p style={{ fontSize: 12, color: '#dc2626', marginTop: 8 }}>Debes otorgar consentimiento biométrico primero.</p>
+                )}
+              </div>
+
+              <div className="card" style={{ padding: 24 }}>
+                <h4 style={{ fontSize: 18, fontWeight: 600, margin: 0 }}>Estado biométrico</h4>
+                <p style={{ fontSize: 13, color: '#64748b', margin: '8px 0 0' }}>Estado actual de tus datos biométricos en el sistema.</p>
+                <div style={{ marginTop: 24, display: 'flex', flexDirection: 'column', gap: 12 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', background: '#f8fafc', borderRadius: 8 }}>
+                    <div>
+                      <div style={{ fontSize: 14, fontWeight: 500 }}>Datos faciales</div>
+                      <div style={{ fontSize: 12, color: '#64748b' }}>Encoding biométrico</div>
+                    </div>
+                    <Badge tone={personaActual.encoding_facial ? 'success' : 'warning'}>
+                      {personaActual.encoding_facial ? 'Registrado' : 'No registrado'}
+                    </Badge>
+                  </div>
+                  {personaActual.encoding_facial && (
+                    <button
+                      className="btn btn-danger"
+                      type="button"
+                      disabled={eliminandoBiometricos}
+                      onClick={handleEliminarBiometricos}
+                    >
+                      {eliminandoBiometricos ? 'Eliminando...' : 'Eliminar datos biométricos'}
+                    </button>
+                  )}
+                </div>
+              </div>
+            </div>
+          </section>
+        )}
+        {section === 'usuarios' && user?.rol !== 'trabajador' && (
           <section className="section">
             <div className="section-head">
               <div>
                 <h3 className="section-title">Usuarios del sistema</h3>
-                <p className="section-subtitle">Administra cuentas de acceso con roles y permisos.</p>
+                <p className="section-subtitle">Administra los usuarios del sistema y sus permisos.</p>
               </div>
               <div className="toolbar">
                 <button className="btn btn-secondary" type="button" onClick={() => openModal('password')}>
@@ -1802,7 +1986,7 @@ export function SasDashboard({ initialSection = 'dashboard' }: { initialSection?
             <div className="section-head">
               <div>
                 <h3 className="section-title">Empresas registradas</h3>
-                <p className="section-subtitle">Cada empresa tiene sus propios dispositivos, trabajadores y datos aislados.</p>
+                <p className="section-subtitle">Cada empresa opera con sus propios datos y configuraciones.</p>
               </div>
               <div className="toolbar">
                 <button className="btn btn-primary" type="button" onClick={() => openModal('empresa')}>
@@ -1861,7 +2045,7 @@ export function SasDashboard({ initialSection = 'dashboard' }: { initialSection?
           <div className="modal" onClick={(e) => e.stopPropagation()} role="presentation">
             <div className="modal-head">
               <h3 className="modal-title">Nueva empresa</h3>
-              <p className="modal-subtitle">Cada empresa aísla sus datos, usuarios, dispositivos y trabajadores.</p>
+              <p className="modal-subtitle">Registra una nueva empresa en el sistema.</p>
             </div>
             <div className="modal-body">
               {formError && <div className="login-error" style={{ marginBottom: 12 }}>{formError}</div>}
@@ -2017,7 +2201,7 @@ export function SasDashboard({ initialSection = 'dashboard' }: { initialSection?
           <div className="modal" onClick={(e) => e.stopPropagation()} role="presentation">
             <div className="modal-head">
               <h3 className="modal-title">Agregar dispositivo</h3>
-              <p className="modal-subtitle">Asigna un nombre y genera el PIN. El dispositivo enviará su IP automáticamente al enrolarse.</p>
+              <p className="modal-subtitle">Genera un PIN de enrolamiento para configurar un nuevo dispositivo.</p>
             </div>
             <div className="modal-body">
               {formError && <div className="login-error" style={{ marginBottom: 12 }}>{formError}</div>}
@@ -2031,19 +2215,19 @@ export function SasDashboard({ initialSection = 'dashboard' }: { initialSection?
                 />
               </div>
               {generatedPin && (
-                <div className="card" style={{ marginTop: 16, borderColor: 'rgba(56,217,255,0.4)', background: 'rgba(56,217,255,0.08)', padding: 16 }}>
+                <div className="card" style={{ marginTop: 16, borderColor: 'var(--primary)', borderLeft: '4px solid var(--primary)', padding: 16 }}>
                   <div className="status-row">
-                    <div className="status-dot" style={{ boxShadow: '0 0 0 6px rgba(56,217,255,0.3)' }} />
+                    <div className="status-dot" style={{ background: 'var(--primary)' }} />
                     <div>
                       <div className="device-name" style={{ fontWeight: 700 }}>PIN generado</div>
                       <div className="device-ip">Copia este código para configurar el dispositivo</div>
                     </div>
                   </div>
-                  <div className="mono" style={{ marginTop: 12, padding: 12, borderRadius: 10, background: '#000', fontSize: '1.5rem', textAlign: 'center', letterSpacing: '0.3em', fontWeight: 700, color: 'var(--accent)' }}>
+                  <div className="mono" style={{ marginTop: 12, padding: 12, borderRadius: 'var(--radius-md)', background: '#f8fafc', border: '1px solid var(--line)', fontSize: '1.5rem', textAlign: 'center', letterSpacing: '0.3em', fontWeight: 700, color: 'var(--primary)' }}>
                     {generatedPin}
                   </div>
                   <div className="muted" style={{ marginTop: 12, fontSize: '0.82rem' }}>
-                    1. Enciende el dispositivo · 2. Conéctate a su WiFi (192.168.4.1) · 3. Ve a WiFi Setup · 4. Ingresa el PIN y la URL del backend · 5. El dispositivo se enrolará automáticamente
+                    1. Enciende el dispositivo · 2. Conéctate a su WiFi · 3. Ingresa el PIN y la URL del servidor · 4. El dispositivo se configurará automáticamente
                   </div>
                 </div>
               )}
@@ -2064,16 +2248,16 @@ export function SasDashboard({ initialSection = 'dashboard' }: { initialSection?
               <p className="modal-subtitle">Guarde esta contraseña. Solo se muestra una vez.</p>
             </div>
             <div className="modal-body">
-              <div className="card" style={{ borderColor: 'rgba(255,193,7,0.6)', background: 'rgba(255,193,7,0.1)', padding: 14, marginBottom: 16 }}>
+              <div className="card" style={{ borderColor: 'rgba(217, 119, 6, 0.3)', borderLeft: '4px solid var(--warning)', background: 'var(--warning-light)', padding: 14, marginBottom: 16 }}>
                 <strong style={{ color: 'var(--warning)' }}>Guarde esta contraseña. Solo se muestra una vez.</strong>
               </div>
-              <div className="mono" style={{ padding: 16, borderRadius: 12, background: '#000', fontSize: '1.6rem', textAlign: 'center', letterSpacing: '0.25em', fontWeight: 700, color: 'var(--accent)' }}>
+              <div className="mono" style={{ padding: 16, borderRadius: 'var(--radius-md)', background: '#f8fafc', border: '1px solid var(--line)', fontSize: '1.6rem', textAlign: 'center', letterSpacing: '0.25em', fontWeight: 700, color: 'var(--primary)' }}>
                 {generatedDevicePassword}
               </div>
               <div className="muted" style={{ marginTop: 16, fontSize: '0.82rem' }}>
-                1. El dispositivo aplicara la contrasena cuando se conecte al backend (cada 60s).<br />
-                2. Si esta offline, ingresela manualmente en WiFi Setup del ESP32.<br />
-                3. Use esta contrasena en el parametro admin_password al acceder al dispositivo.
+                1. El dispositivo aplicará la contraseña cuando se conecte al servidor.<br />
+                2. Si está offline, ingrésela manualmente en la configuración WiFi del dispositivo.<br />
+                3. Use esta contraseña para acceder a la configuración del dispositivo.
               </div>
             </div>
             <div className="modal-footer">
@@ -2094,7 +2278,7 @@ export function SasDashboard({ initialSection = 'dashboard' }: { initialSection?
               <div>
                 <span className="eyebrow">Registro</span>
                 <h3 className="modal-title">Nueva persona</h3>
-                <p className="section-subtitle">Se guarda en el backend y luego abre el registro facial/huella del dispositivo.</p>
+                <p className="section-subtitle">Registra una nueva persona para control de asistencia.</p>
               </div>
               <button className="btn btn-ghost" type="button" onClick={closeModal}>Cerrar</button>
             </div>
@@ -2117,7 +2301,7 @@ export function SasDashboard({ initialSection = 'dashboard' }: { initialSection?
             </div>
             <div className="modal-footer">
               <button className="btn btn-secondary" type="button" onClick={closeModal}>Cancelar</button>
-              <button className="btn btn-primary" type="button" onClick={handleCreatePersona}>Registrar y capturar huella</button>
+              <button className="btn btn-primary" type="button" onClick={handleCreatePersona}>Registrar persona</button>
             </div>
           </div>
         </div>
@@ -2227,7 +2411,7 @@ export function SasDashboard({ initialSection = 'dashboard' }: { initialSection?
               <div>
                 <span className="eyebrow">Integraciones</span>
                 <h3 className="modal-title">Nueva integración ERP</h3>
-                <p className="section-subtitle">Guarda el endpoint, headers y mapeo de campos en la base de datos.</p>
+                <p className="section-subtitle">Configura la conexión con tu sistema externo.</p>
               </div>
               <button className="btn btn-ghost" type="button" onClick={closeModal}>Cerrar</button>
             </div>

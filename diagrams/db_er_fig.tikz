@@ -1,0 +1,212 @@
+\definecolor{colC}{HTML}{dae8fc}
+\definecolor{colU}{HTML}{e1d5e7}
+\definecolor{colP}{HTML}{ffe6cc}
+\definecolor{colG}{HTML}{d5e8d4}
+\definecolor{colY}{HTML}{fff2cc}
+\definecolor{colR}{HTML}{f8cecc}
+
+\begin{tikzpicture}[
+  scale=0.72, transform shape,
+  every node/.style={inner sep=0pt},
+  tbl/.style={draw=black!40, rounded corners=3pt, line width=0.4pt},
+  thdr/.style={font=\sffamily\bfseries\fontsize{8}{9}\selectfont, text centered, inner ysep=4pt},
+  trw/.style={font=\sffamily\fontsize{7}{8}\selectfont, inner xsep=6pt, inner ysep=1.8pt, anchor=west},
+  rel/.style={-{Stealth[length=2.5mm,width=1.8mm]}, line width=0.7pt, draw=black!50, shorten >=1.5pt, shorten <=1.5pt},
+  rlbl/.style={font=\sffamily\bfseries\tiny\selectfont, fill=white, inner sep=1.5pt, text=black!70}
+]
+
+% Empresas
+\draw[tbl, fill=colC!25] (0,0) rectangle (4.2,-2.94);
+\draw[draw=black!40, line width=0.4pt] (0,-0.7) -- (4.2,-0.7);
+\node[thdr] at (2.1,-0.35) {\textbf{Empresas}};
+\node[thdr, anchor=west, font=\sffamily\bfseries\fontsize{7}{8}\selectfont] at (0.1,-0.86) {$\bigstar$ id SERIAL};
+\node[trw] at (0.1,-1.18) {\hspace{0.7em}nombre VARCHAR(100)};
+\node[trw] at (0.1,-1.5) {\hspace{0.7em}rut\_empresa VARCHAR(20)};
+\node[trw] at (0.1,-1.82) {\hspace{0.7em}email\_contacto VARCHAR(100)};
+\node[trw] at (0.1,-2.14) {\hspace{0.7em}telefono VARCHAR(20)};
+\node[trw] at (0.1,-2.46) {\hspace{0.7em}direccion VARCHAR(200)};
+\node[trw] at (0.1,-2.78) {\hspace{0.7em}created\_at TIMESTAMP};
+
+% UsuariosWeb
+\draw[tbl, fill=colU!25] (5.5,0) rectangle (9.7,-2.62);
+\draw[draw=black!40, line width=0.4pt] (5.5,-0.7) -- (9.7,-0.7);
+\node[thdr] at (7.6,-0.35) {\textbf{UsuariosWeb}};
+\node[thdr, anchor=west, font=\sffamily\bfseries\fontsize{7}{8}\selectfont] at (5.6,-0.86) {$\bigstar$ id SERIAL};
+\node[trw] at (5.6,-1.18) {\hspace{0.7em}nombre VARCHAR(100)};
+\node[trw] at (5.6,-1.5) {\hspace{0.7em}email VARCHAR(100) {\color{gray!55} [UNIQUE]}};
+\node[trw] at (5.6,-1.82) {\hspace{0.7em}password\_hash VARCHAR(200)};
+\node[trw] at (5.6,-2.14) {\hspace{0.7em}activo BOOLEAN};
+\node[trw] at (5.6,-2.46) {\hspace{0.7em}created\_at TIMESTAMP};
+
+% UsuarioEmpresa
+\draw[tbl, fill=colP!25] (11,0) rectangle (15.2,-2.62);
+\draw[draw=black!40, line width=0.4pt] (11,-0.7) -- (15.2,-0.7);
+\node[thdr] at (13.1,-0.35) {\textbf{UsuarioEmpresa}};
+\node[thdr, anchor=west, font=\sffamily\bfseries\fontsize{7}{8}\selectfont] at (11.1,-0.86) {$\bigstar$ id SERIAL};
+\node[trw] at (11.1,-1.18) {\hspace{0.7em}usuario\_id INTEGER {\color{gray!55} [FK $\to$ UsuariosWeb]}};
+\node[trw] at (11.1,-1.5) {\hspace{0.7em}empresa\_id INTEGER {\color{gray!55} [FK $\to$ Empresas]}};
+\node[trw] at (11.1,-1.82) {\hspace{0.7em}rol VARCHAR(20)};
+\node[trw] at (11.1,-2.14) {\hspace{0.7em}activo BOOLEAN};
+\node[trw] at (11.1,-2.46) {\hspace{0.7em}created\_at TIMESTAMP};
+
+% SincronizacionLog
+\draw[tbl, fill=colY!25] (16.5,0) rectangle (20.7,-2.94);
+\draw[draw=black!40, line width=0.4pt] (16.5,-0.7) -- (20.7,-0.7);
+\node[thdr] at (18.6,-0.35) {\textbf{SincronizacionLog}};
+\node[thdr, anchor=west, font=\sffamily\bfseries\fontsize{7}{8}\selectfont] at (16.6,-0.86) {$\bigstar$ id SERIAL};
+\node[trw] at (16.6,-1.18) {\hspace{0.7em}dispositivo\_id INTEGER {\color{gray!55} [FK $\to$ Dispositivos]}};
+\node[trw] at (16.6,-1.5) {\hspace{0.7em}registros\_enviados INTEGER};
+\node[trw] at (16.6,-1.82) {\hspace{0.7em}registros\_ok INTEGER};
+\node[trw] at (16.6,-2.14) {\hspace{0.7em}estado VARCHAR(20)};
+\node[trw] at (16.6,-2.46) {\hspace{0.7em}detalle TEXT};
+\node[trw] at (16.6,-2.78) {\hspace{0.7em}fecha TIMESTAMP};
+
+% Personas
+\draw[tbl, fill=colG!25] (0,-6) rectangle (4.2,-9.58);
+\draw[draw=black!40, line width=0.4pt] (0,-6.7) -- (4.2,-6.7);
+\node[thdr] at (2.1,-6.35) {\textbf{Personas}};
+\node[thdr, anchor=west, font=\sffamily\bfseries\fontsize{7}{8}\selectfont] at (0.1,-6.86) {$\bigstar$ id SERIAL};
+\node[trw] at (0.1,-7.18) {\hspace{0.7em}empresa\_id INTEGER {\color{gray!55} [FK $\to$ Empresas]}};
+\node[trw] at (0.1,-7.5) {\hspace{0.7em}nombre VARCHAR(100)};
+\node[trw] at (0.1,-7.82) {\hspace{0.7em}rut VARCHAR(20) {\color{gray!55} [UNIQUE]}};
+\node[trw] at (0.1,-8.14) {\hspace{0.7em}email VARCHAR(100)};
+\node[trw] at (0.1,-8.46) {\hspace{0.7em}huella\_id INTEGER};
+\node[trw] at (0.1,-8.78) {\hspace{0.7em}encoding\_facial TEXT};
+\node[trw] at (0.1,-9.1) {\hspace{0.7em}activo BOOLEAN};
+\node[trw] at (0.1,-9.42) {\hspace{0.7em}created\_at TIMESTAMP};
+
+% Dispositivos
+\draw[tbl, fill=colY!25] (5.5,-6) rectangle (9.7,-9.94);
+\draw[draw=black!40, line width=0.4pt] (5.5,-6.7) -- (9.7,-6.7);
+\node[thdr] at (7.6,-6.35) {\textbf{Dispositivos}};
+\node[thdr, anchor=west, font=\sffamily\bfseries\fontsize{7}{8}\selectfont] at (5.6,-6.86) {$\bigstar$ id SERIAL};
+\node[trw] at (5.6,-7.18) {\hspace{0.7em}empresa\_id INTEGER {\color{gray!55} [FK $\to$ Empresas]}};
+\node[trw] at (5.6,-7.5) {\hspace{0.7em}nombre VARCHAR(100)};
+\node[trw] at (5.6,-7.82) {\hspace{0.7em}mac\_address VARCHAR(20)};
+\node[trw] at (5.6,-8.14) {\hspace{0.7em}ip\_local VARCHAR(20)};
+\node[trw] at (5.6,-8.46) {\hspace{0.7em}estado VARCHAR(20)};
+\node[trw] at (5.6,-8.78) {\hspace{0.7em}ultimo\_heartbeat TIMESTAMP};
+\node[trw] at (5.6,-9.1) {\hspace{0.7em}codigo\_enrol VARCHAR(8)};
+\node[trw] at (5.6,-9.42) {\hspace{0.7em}password\_hash VARCHAR(64)};
+\node[trw] at (5.6,-9.74) {\hspace{0.7em}password\_plain VARCHAR(20)};
+\node[trw] at (5.6,-10.06) {\hspace{0.7em}password\_pendiente BOOLEAN};
+\node[trw] at (5.6,-10.38) {\hspace{0.7em}created\_at TIMESTAMP};
+
+% Turnos
+\draw[tbl, fill=colR!25] (11,-6) rectangle (15.2,-8.94);
+\draw[draw=black!40, line width=0.4pt] (11,-6.7) -- (15.2,-6.7);
+\node[thdr] at (13.1,-6.35) {\textbf{Turnos}};
+\node[thdr, anchor=west, font=\sffamily\bfseries\fontsize{7}{8}\selectfont] at (11.1,-6.86) {$\bigstar$ id SERIAL};
+\node[trw] at (11.1,-7.18) {\hspace{0.7em}empresa\_id INTEGER {\color{gray!55} [FK $\to$ Empresas]}};
+\node[trw] at (11.1,-7.5) {\hspace{0.7em}nombre VARCHAR(100)};
+\node[trw] at (11.1,-7.82) {\hspace{0.7em}hora\_inicio TIME};
+\node[trw] at (11.1,-8.14) {\hspace{0.7em}hora\_fin TIME};
+\node[trw] at (11.1,-8.46) {\hspace{0.7em}dias VARCHAR(50)};
+\node[trw] at (11.1,-8.78) {\hspace{0.7em}activo BOOLEAN};
+\node[trw] at (11.1,-9.1) {\hspace{0.7em}created\_at TIMESTAMP};
+
+% IntegracionesERP
+\draw[tbl, fill=colC!25] (16.5,-6) rectangle (20.7,-9.94);
+\draw[draw=black!40, line width=0.4pt] (16.5,-6.7) -- (20.7,-6.7);
+\node[thdr] at (18.6,-6.35) {\textbf{IntegracionesERP}};
+\node[thdr, anchor=west, font=\sffamily\bfseries\fontsize{7}{8}\selectfont] at (16.6,-6.86) {$\bigstar$ id SERIAL};
+\node[trw] at (16.6,-7.18) {\hspace{0.7em}empresa\_id INTEGER {\color{gray!55} [FK $\to$ Empresas]}};
+\node[trw] at (16.6,-7.5) {\hspace{0.7em}nombre VARCHAR(120)};
+\node[trw] at (16.6,-7.82) {\hspace{0.7em}tipo VARCHAR(40)};
+\node[trw] at (16.6,-8.14) {\hspace{0.7em}webhook\_url TEXT};
+\node[trw] at (16.6,-8.46) {\hspace{0.7em}headers TEXT {\color{gray!55} [JSON]}};
+\node[trw] at (16.6,-8.78) {\hspace{0.7em}field\_map TEXT {\color{gray!55} [JSON]}};
+\node[trw] at (16.6,-9.1) {\hspace{0.7em}envio\_auto BOOLEAN};
+\node[trw] at (16.6,-9.42) {\hspace{0.7em}activo BOOLEAN};
+\node[trw] at (16.6,-9.74) {\hspace{0.7em}ultimo\_envio TIMESTAMP};
+\node[trw] at (16.6,-10.06) {\hspace{0.7em}ultimo\_estado VARCHAR(200)};
+\node[trw] at (16.6,-10.38) {\hspace{0.7em}created\_at TIMESTAMP};
+
+% Consentimientos
+\draw[tbl, fill=colU!25] (0,-12) rectangle (4.2,-14.62);
+\draw[draw=black!40, line width=0.4pt] (0,-12.7) -- (4.2,-12.7);
+\node[thdr] at (2.1,-12.35) {\textbf{Consentimientos}};
+\node[thdr, anchor=west, font=\sffamily\bfseries\fontsize{7}{8}\selectfont] at (0.1,-12.86) {$\bigstar$ id SERIAL};
+\node[trw] at (0.1,-13.18) {\hspace{0.7em}persona\_id INTEGER {\color{gray!55} [FK $\to$ Personas]}};
+\node[trw] at (0.1,-13.5) {\hspace{0.7em}fecha\_aceptacion TIMESTAMP};
+\node[trw] at (0.1,-13.82) {\hspace{0.7em}version\_politica VARCHAR(20)};
+\node[trw] at (0.1,-14.14) {\hspace{0.7em}ip\_dispositivo VARCHAR(45)};
+\node[trw] at (0.1,-14.46) {\hspace{0.7em}metodo\_aceptacion VARCHAR(30)};
+
+% Asistencias
+\draw[tbl, fill=colG!25] (5.5,-12) rectangle (9.7,-15.94);
+\draw[draw=black!40, line width=0.4pt] (5.5,-12.7) -- (9.7,-12.7);
+\node[thdr] at (7.6,-12.35) {\textbf{Asistencias}};
+\node[thdr, anchor=west, font=\sffamily\bfseries\fontsize{7}{8}\selectfont] at (5.6,-12.86) {$\bigstar$ id SERIAL};
+\node[trw] at (5.6,-13.18) {\hspace{0.7em}persona\_id INTEGER {\color{gray!55} [FK $\to$ Personas]}};
+\node[trw] at (5.6,-13.5) {\hspace{0.7em}dispositivo\_id INTEGER {\color{gray!55} [FK $\to$ Dispositivos]}};
+\node[trw] at (5.6,-13.82) {\hspace{0.7em}nombre VARCHAR(100)};
+\node[trw] at (5.6,-14.14) {\hspace{0.7em}tipo VARCHAR(20)};
+\node[trw] at (5.6,-14.46) {\hspace{0.7em}metodo VARCHAR(50)};
+\node[trw] at (5.6,-14.78) {\hspace{0.7em}fecha\_hora TIMESTAMP};
+\node[trw] at (5.6,-15.1) {\hspace{0.7em}timestamp\_local VARCHAR(50)};
+\node[trw] at (5.6,-15.42) {\hspace{0.7em}origen VARCHAR(20)};
+\node[trw] at (5.6,-15.74) {\hspace{0.7em}imagen\_path TEXT};
+
+% Asignaciones
+\draw[tbl, fill=colR!25] (11,-12) rectangle (15.2,-14.26);
+\draw[draw=black!40, line width=0.4pt] (11,-12.7) -- (15.2,-12.7);
+\node[thdr] at (13.1,-12.35) {\textbf{Asignaciones}};
+\node[thdr, anchor=west, font=\sffamily\bfseries\fontsize{7}{8}\selectfont] at (11.1,-12.86) {$\bigstar$ id SERIAL};
+\node[trw] at (11.1,-13.18) {\hspace{0.7em}persona\_id INTEGER {\color{gray!55} [FK $\to$ Personas]}};
+\node[trw] at (11.1,-13.5) {\hspace{0.7em}turno\_id INTEGER {\color{gray!55} [FK $\to$ Turnos]}};
+\node[trw] at (11.1,-13.82) {\hspace{0.7em}fecha\_asignacion TIMESTAMP};
+\node[trw] at (11.1,-14.14) {\hspace{0.7em}vigente BOOLEAN};
+
+% EncodingsFaciales
+\draw[tbl, fill=colG!25] (16.5,-12) rectangle (20.7,-14.62);
+\draw[draw=black!40, line width=0.4pt] (16.5,-12.7) -- (20.7,-12.7);
+\node[thdr] at (18.6,-12.35) {\textbf{EncodingsFaciales}};
+\node[thdr, anchor=west, font=\sffamily\bfseries\fontsize{7}{8}\selectfont] at (16.6,-12.86) {$\bigstar$ id SERIAL};
+\node[trw] at (16.6,-13.18) {\hspace{0.7em}persona\_id INTEGER {\color{gray!55} [FK $\to$ Personas]}};
+\node[trw] at (16.6,-13.5) {\hspace{0.7em}encoding TEXT};
+\node[trw] at (16.6,-13.82) {\hspace{0.7em}foto\_path VARCHAR(500)};
+\node[trw] at (16.6,-14.14) {\hspace{0.7em}quality\_score FLOAT};
+\node[trw] at (16.6,-14.46) {\hspace{0.7em}created\_at TIMESTAMP};
+
+% LogsBiometricos
+\draw[tbl, fill=colP!25] (5.5,-18) rectangle (9.7,-20.58);
+\draw[draw=black!40, line width=0.4pt] (5.5,-18.7) -- (9.7,-18.7);
+\node[thdr] at (7.6,-18.35) {\textbf{LogsBiometricos}};
+\node[thdr, anchor=west, font=\sffamily\bfseries\fontsize{7}{8}\selectfont] at (5.6,-18.86) {$\bigstar$ id SERIAL};
+\node[trw] at (5.6,-19.18) {\hspace{0.7em}persona\_id INTEGER {\color{gray!55} [FK $\to$ Personas]}};
+\node[trw] at (5.6,-19.5) {\hspace{0.7em}dispositivo\_id INTEGER {\color{gray!55} [FK $\to$ Dispositivos]}};
+\node[trw] at (5.6,-19.82) {\hspace{0.7em}timestamp TIMESTAMP};
+\node[trw] at (5.6,-20.14) {\hspace{0.7em}tipo\_operacion VARCHAR(30)};
+\node[trw] at (5.6,-20.46) {\hspace{0.7em}resultado VARCHAR(20)};
+\node[trw] at (5.6,-20.78) {\hspace{0.7em}ip\_origen VARCHAR(45)};
+
+% EliminacionesBiome
+\draw[tbl, fill=colR!25] (11,-18) rectangle (15.2,-20.62);
+\draw[draw=black!40, line width=0.4pt] (11,-18.7) -- (15.2,-18.7);
+\node[thdr] at (13.1,-18.35) {\textbf{EliminacionesBiometricas}};
+\node[thdr, anchor=west, font=\sffamily\bfseries\fontsize{7}{8}\selectfont] at (11.1,-18.86) {$\bigstar$ id SERIAL};
+\node[trw] at (11.1,-19.18) {\hspace{0.7em}persona\_id INTEGER};
+\node[trw] at (11.1,-19.5) {\hspace{0.7em}embedding\_anterior TEXT};
+\node[trw] at (11.1,-19.82) {\hspace{0.7em}foto\_path VARCHAR(500)};
+\node[trw] at (11.1,-20.14) {\hspace{0.7em}usuario\_solicitante VARCHAR(100)};
+\node[trw] at (11.1,-20.46) {\hspace{0.7em}timestamp TIMESTAMP};
+
+% Relationships
+\draw[rel] (Empresas.east) -- node[rlbl, above] {1\nN} (UsuarioEmpresa.west);
+\draw[rel] (Empresas.south) -- node[rlbl, right] {1\nN} (Personas.north);
+\draw[rel] (Empresas.east) -- node[rlbl, above] {1\nN} (Dispositivos.west);
+\draw[rel] (Empresas.east) -- node[rlbl, above] {1\nN} (Turnos.west);
+\draw[rel] (Empresas.east) -- node[rlbl, above] {1\nN} (IntegracionesERP.west);
+\draw[rel] (UsuariosWeb.east) -- node[rlbl, above] {1\nN} (UsuarioEmpresa.west);
+\draw[rel] (Personas.east) -- node[rlbl, above] {1\nN} (Asistencias.west);
+\draw[rel] (Personas.east) -- node[rlbl, above] {1\nN} (Asignaciones.west);
+\draw[rel] (Personas.south) -- node[rlbl, right] {1\n1} (Consentimientos.north);
+\draw[rel] (Personas.east) -- node[rlbl, above] {1\nN} (EncodingsFaciales.west);
+\draw[rel] (Personas.south) -- node[rlbl, right] {1\nN} (LogsBiometricos.north);
+\draw[rel] (Dispositivos.east) -- node[rlbl, above] {1\nN} (Asistencias.west);
+\draw[rel] (Dispositivos.north) -- node[rlbl, left] {1\nN} (SincronizacionLog.south);
+\draw[rel] (Dispositivos.south) -- node[rlbl, right] {1\nN} (LogsBiometricos.north);
+\draw[rel] (Turnos.south) -- node[rlbl, right] {1\nN} (Asignaciones.north);
+
+\end{tikzpicture}

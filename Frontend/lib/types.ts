@@ -52,6 +52,7 @@ export interface DeviceStatus {
   estado?: string;
   tienePassword?: boolean;
   passwordPendiente?: boolean;
+  ultimoHeartbeat?: string | null;
 }
 
 export interface ErpIntegration {

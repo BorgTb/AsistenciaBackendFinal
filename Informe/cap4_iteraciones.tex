@@ -529,12 +529,13 @@ Todos estos endpoints operan sobre una base de datos relacional PostgreSQL. El d
     \item \texttt{encodings\_faciales}: Almacena múltiples embeddings faciales cifrados por persona (FOREIGN KEY con eliminación en cascada), permitiendo que un trabajador tenga varias fotos de referencia con distintos ángulos e iluminación para mejorar la precisión del reconocimiento.
 \end{itemize}
 
-El diagrama de la base de datos se presenta en la Figura 4.28.
+El diagrama de la base de datos se presenta en la Figura~\ref{fig:db-er}.
 
 \begin{figure}[H]
     \centering
-    \includegraphics[width=0.95\linewidth]{Imagenes/Untitled.png}
-    \caption{Diagrama de la base de datos relacional.}
+    \input{diagrams/db_er_fig.tikz}
+    \caption{Diagrama entidad-relación de la base de datos.}
+    \label{fig:db-er}
 \end{figure}
 
 La comunicación MQTT se diseña para transmitir imágenes faciales de \textbf{registro} desde el ESP32-CAM hacia el backend en un único mensaje JSON por el tópico \texttt{esp32/imagen/registrar}, conteniendo el \texttt{rut} y la imagen codificada en Base64. El backend, mediante un cliente MQTT (librería \texttt{paho-mqtt} de Python), se suscribe a este tópico, decodifica la imagen y procesa el enrolamiento facial. Es importante destacar que las imágenes de \textbf{identificación} (consulta 1:N durante la marcación) \textbf{no viajan por MQTT}, sino por HTTP al endpoint \texttt{POST /api/facial/identificar} como JPEG crudo en formato \texttt{application/octet-stream}.

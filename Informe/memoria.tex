@@ -9,6 +9,10 @@
 \director{Francisco Javier Arias Pavez }
 \date{Noviembre, 2026}
 
+%% paquetes para diagramas
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta}
+
 %% inicio de documento
 \begin{document}
 
@@ -347,35 +351,37 @@ Con el objetivo de asegurar que todos los componentes mencionados anteriormente 
 Estas pruebas permiten evaluar el sistema propuesto de manera sistematica, de manera que cada elemento más pequeño se va integrando a medida que se avanza en el proyecto.
 
 \subsection{Pruebas de usabilidad}
-Las pruebas de usabilida SUS como se menciona anteriormente en el punto 2.4.2 permite evaluar la facilidad de uso, la eficacia del sistema o la claridad de la interfaz. Dado el contexto del proyecto de un prototipo de control de asistencia su usuarios esperados serian trabajadores y desarolladores, es por esto que la prueba de usabilidad y facilidad con la que interactuan usuarios no técnicos como trabajadores, empleadores, y junto a esto la facilidad de integración del sistema destinada para programadores o personal técnico que deberá integrar el prototipo con el ERP. Considerando lo anterior el procedimiento sera de realizar una encuesta con 10 preguntas, donde se responderan en base a la escala Likert. A continuacion se presentarán las preguntas tanto para usuarios no técnicos y para desarrolladores.
+Las pruebas de usabilidad, como se mencionó en el punto 2.4.2, permiten evaluar la facilidad de uso, la eficacia del sistema y la claridad de la interfaz. Dado que los usuarios esperados del prototipo incluyen tanto trabajadores (usuarios no técnicos) como desarrolladores e integradores ERP (usuarios técnicos), la evaluación debe abarcar ambos perfiles.
 
-\subsubsection{Preguntas para usuarios no técnicos}
-\begin{itemize}
-    \item ¿Qué tan fácil fue encontrar la opción para configurar la red WiFi dentro de la interfaz embebida?
-    \item ¿Lograste modificar los parámetros del dispositivo (como el endpoint del backend) sin necesitar asistencia?
-    \item ¿Te resultó clara la estructura del panel web al momento de buscar registros de asistencia?
-    \item ¿Pudiste identificar rápidamente las imágenes asociadas a cada marcación en el panel web?
-    \item ¿Encontraste intuitivo el uso de los filtros por fecha, usuario o tipo de autenticación?
-    \item ¿La interfaz te entregaba suficiente información para entender si el dispositivo estaba funcionando online u offline?
-    \item ¿En algún momento sentiste confusión respecto a qué botón o sección debías utilizar para continuar una tarea?
-    \item ¿Te pareció clara y legible la información mostrada en la tabla de registros?
-    \item ¿Consideras que podrías aprender a usar la interfaz completa (embebida + panel web) sin instrucción adicional?
-    \item ¿Experimentaste dificultades al intentar visualizar o interpretar algún dato dentro de la interfaz?
-\end{itemize}
+Para llevar a cabo esta evaluación se utilizará el cuestionario \textbf{System Usability Scale (SUS)} desarrollado por Brooke [31], un instrumento estandarizado y ampliamente validado compuesto por exactamente 10 preguntas que se responden mediante una escala Likert de 5 puntos, donde 1 equivale a ``Totalmente en desacuerdo'' y 5 a ``Totalmente de acuerdo''. Las preguntas impares son afirmaciones positivas, mientras que las pares son afirmaciones negativas (invertidas). La misma encuesta se aplica a ambos grupos de usuarios, garantizando que la puntuación obtenida sea comparable y metodológicamente válida.
 
-\subsubsection{Preguntas para usuarios técnicos}
-\begin{itemize}
-    \item ¿La documentación técnica del backend contenía suficiente información para comenzar a integrar la API sin asistencia externa?
-    \item ¿Pudiste consumir los endpoints del prototipo utilizando herramientas como Postman, cURL o aplicaciones propias sin complicaciones?
-    \item ¿La estructura JSON entregada por el dispositivo te pareció clara, consistente y fácil de mapear a otros sistemas?
-    \item ¿Lograste identificar rápidamente los campos esenciales del registro (timestamp, usuario, métodos biométricos, estado de sincronización)?
-    \item ¿Te resultó sencillo modificar el endpoint configurado en el dispositivo para redirigir los datos hacia tu propio servidor?
-    \item ¿Los mensajes de error entregados por el backend fueron comprensibles y útiles para depurar problemas de integración?
-    \item ¿Encontraste coherencia entre los distintos endpoints del backend (nombres, métodos HTTP, estructura de respuesta)?
-    \item ¿Fue simple integrar o reutilizar las imágenes enviadas por la ESP32-CAM para procesamientos posteriores?
-    \item ¿Consideras que la API del prototipo podría integrarse fácilmente a un sistema ERP real sin necesidad de modificaciones mayores?
-    \item ¿Tuviste dificultades técnicas significativas durante el proceso de integración que consideres relevantes para mejorar el sistema?
-\end{itemize}
+\subsubsection{Cuestionario SUS estándar}
+A continuación se presentan las 10 preguntas del instrumento SUS en su traducción al español, utilizadas para ambos perfiles de usuario:
+
+\begin{table}[H]
+\centering
+\begin{tabular}{|c|p{10.5cm}|c|}
+\hline
+\textbf{N.º} & \textbf{Pregunta} & \textbf{Tipo} \\
+\hline
+1 & Creo que me gustaría usar este sistema con frecuencia. & Positiva \\
+2 & Encontré el sistema innecesariamente complejo. & Invertida \\
+3 & Pensé que el sistema era fácil de usar. & Positiva \\
+4 & Creo que necesitaría apoyo de una persona técnica para poder usar este sistema. & Invertida \\
+5 & Consideré que las funciones del sistema estaban bien integradas. & Positiva \\
+6 & Pensé que había demasiada inconsistencia en el sistema. & Invertida \\
+7 & Imagino que la mayoría de las personas aprenderían a usar este sistema rápidamente. & Positiva \\
+8 & Encontré el sistema muy engorroso de usar. & Invertida \\
+9 & Me sentí seguro al usar el sistema. & Positiva \\
+10 & Necesité aprender muchas cosas antes de poder empezar a usar este sistema. & Invertida \\
+\hline
+\end{tabular}
+\caption{Cuestionario SUS estándar (Brooke, 1996) — Traducción al español}
+\end{table}
+
+La puntuación SUS se calcula según el método descrito por Brooke [31]: para cada pregunta impar se resta 1 a la respuesta, y para cada pregunta par se resta la respuesta de 5. La suma de los 10 valores se multiplica por 2.5, obteniendo una puntuación entre 0 y 100. Según Bangor et al. [32], una puntuación $\geq$ 70 se considera ``aceptable'', entre 50 y 70 ``marginal'' y $<$ 50 ``no aceptable''.
+
+Adicionalmente, se aplicarán preguntas complementarias de contexto específicas para cada grupo (ver Anexo A), las cuales no forman parte del cuestionario SUS estándar y se analizan de forma descriptiva separada.
 
 
 
@@ -523,58 +529,58 @@ Carcasa / soporte impreso en 3D & 1 & \\
 \end{table}
 
 \section{Resultados de encuestas SUS}
-Se aplicó el cuestionario System Usability Scale a dos grupos de usuarios: \textit{no técnicos} (trabajadores y empleadores) y \textit{técnicos} (desarrolladores e integradores ERP). Cada encuesta consta de 10 preguntas en escala Likert de 5 puntos. La puntuación SUS se calcula según el método estándar descrito por Brooke [31].
+Se aplicó el cuestionario System Usability Scale estándar a dos grupos de usuarios: \textit{no técnicos} (trabajadores y empleadores) y \textit{técnicos} (desarrolladores e integradores ERP). Ambos grupos respondieron las mismas 10 preguntas en escala Likert de 5 puntos (1 = Totalmente en desacuerdo, 5 = Totalmente de acuerdo). La puntuación SUS se calcula según el método estándar descrito por Brooke [31]: para cada ítem impar se resta 1, para cada ítem par se resta de 5, y el resultado se multiplica por 2.5, obteniendo un valor entre 0 y 100.
 
 \subsection{Usuarios no técnicos}
 \begin{table}[H]
 \centering
-\begin{tabular}{|c|l|c|}
+\begin{tabular}{|c|p{8.5cm}|c|c|}
 \hline
-\textbf{N.º} & \textbf{Pregunta} & \textbf{Puntaje promedio} \\
+\textbf{N.º} & \textbf{Pregunta} & \textbf{Promedio} & \textbf{Tipo} \\
 \hline
-1 & ¿Qué tan fácil fue encontrar la opción para configurar la red WiFi? & \\
-2 & ¿Lograste modificar los parámetros del dispositivo sin asistencia? & \\
-3 & ¿Te resultó clara la estructura del panel web al buscar registros? & \\
-4 & ¿Pudiste identificar rápidamente las imágenes de cada marcación? & \\
-5 & ¿Encontraste intuitivo el uso de los filtros? & \\
-6 & ¿La interfaz indicaba si el dispositivo estaba online u offline? & \\
-7 & ¿Sentiste confusión respecto a qué botón usar? & \\
-8 & ¿Te pareció clara la información en la tabla de registros? & \\
-9 & ¿Podrías usar la interfaz sin instrucción adicional? & \\
-10 & ¿Tuviste dificultades para interpretar algún dato? & \\
+1 & Creo que me gustaría usar este sistema con frecuencia. & & Positiva \\
+2 & Encontré el sistema innecesariamente complejo. & & Invertida \\
+3 & Pensé que el sistema era fácil de usar. & & Positiva \\
+4 & Creo que necesitaría apoyo de una persona técnica para poder usar este sistema. & & Invertida \\
+5 & Consideré que las funciones del sistema estaban bien integradas. & & Positiva \\
+6 & Pensé que había demasiada inconsistencia en el sistema. & & Invertida \\
+7 & Imagino que la mayoría de las personas aprenderían a usar este sistema rápidamente. & & Positiva \\
+8 & Encontré el sistema muy engorroso de usar. & & Invertida \\
+9 & Me sentí seguro al usar el sistema. & & Positiva \\
+10 & Necesité aprender muchas cosas antes de poder empezar a usar este sistema. & & Invertida \\
 \hline
-\multicolumn{2}{|l|}{\textbf{Puntuación SUS total}} & \\
+\multicolumn{3}{|l|}{\textbf{Puntuación SUS total}} & \\
 \hline
 \end{tabular}
-\caption{Resultados de encuesta SUS - usuarios no técnicos}
+\caption{Resultados de encuesta SUS — usuarios no técnicos}
 \end{table}
 
 \subsection{Usuarios técnicos}
 \begin{table}[H]
 \centering
-\begin{tabular}{|c|l|c|}
+\begin{tabular}{|c|p{8.5cm}|c|c|}
 \hline
-\textbf{N.º} & \textbf{Pregunta} & \textbf{Puntaje promedio} \\
+\textbf{N.º} & \textbf{Pregunta} & \textbf{Promedio} & \textbf{Tipo} \\
 \hline
-1 & ¿La documentación del backend tenía suficiente información? & \\
-2 & ¿Pudiste consumir los endpoints sin complicaciones? & \\
-3 & ¿La estructura JSON te pareció clara y consistente? & \\
-4 & ¿Identificaste rápidamente los campos esenciales del registro? & \\
-5 & ¿Fue sencillo modificar el endpoint del dispositivo? & \\
-6 & ¿Los mensajes de error fueron comprensibles? & \\
-7 & ¿Hay coherencia entre los endpoints (nombres, métodos, formato)? & \\
-8 & ¿Fue simple reutilizar las imágenes del ESP32-CAM? & \\
-9 & ¿La API se integraría fácilmente a un ERP real? & \\
-10 & ¿Tuviste dificultades técnicas significativas? & \\
+1 & Creo que me gustaría usar este sistema con frecuencia. & & Positiva \\
+2 & Encontré el sistema innecesariamente complejo. & & Invertida \\
+3 & Pensé que el sistema era fácil de usar. & & Positiva \\
+4 & Creo que necesitaría apoyo de una persona técnica para poder usar este sistema. & & Invertida \\
+5 & Consideré que las funciones del sistema estaban bien integradas. & & Positiva \\
+6 & Pensé que había demasiada inconsistencia en el sistema. & & Invertida \\
+7 & Imagino que la mayoría de las personas aprenderían a usar este sistema rápidamente. & & Positiva \\
+8 & Encontré el sistema muy engorroso de usar. & & Invertida \\
+9 & Me sentí seguro al usar el sistema. & & Positiva \\
+10 & Necesité aprender muchas cosas antes de poder empezar a usar este sistema. & & Invertida \\
 \hline
-\multicolumn{2}{|l|}{\textbf{Puntuación SUS total}} & \\
+\multicolumn{3}{|l|}{\textbf{Puntuación SUS total}} & \\
 \hline
 \end{tabular}
-\caption{Resultados de encuesta SUS - usuarios técnicos}
+\caption{Resultados de encuesta SUS — usuarios técnicos}
 \end{table}
 
 \subsection{Análisis comparativo}
-Se presentará aquí la comparación entre ambos grupos, el promedio general y la interpretación según la escala de Bangor et al. [32] (no aceptable < 50, marginal 50-70, aceptable > 70).
+Se presentará aquí la comparación entre ambos grupos, el promedio general y la interpretación según la escala de Bangor et al. [32] (no aceptable $<$ 50, marginal 50--70, aceptable $>$ 70).
 
 \section{Métricas de reconocimiento facial}
 \subsection{Tiempo de respuesta del ESP32-CAM}
@@ -694,6 +700,67 @@ El capítulo 5 presentó los resultados obtenidos en las cuatro dimensiones de e
     \item Red Hat Inc. (2025). ¿Qué son los microservicios? https://www.redhat.com/es/topics/microservices
     \item EMQX Technologies. (2025). The ultimate guide to MQTT brokers. https://www.emqx.com/en/blog/the-ultimate-guide-to-mqtt-broker-comparison
 \end{enumerate}
+
+% ── ANEXOS ────────────────────────────────────────────────────────
+\chapter*{Anexo A: Preguntas complementarias de usabilidad}
+\addcontentsline{toc}{chapter}{Anexo A: Preguntas complementarias de usabilidad}
+
+\textbf{Nota}: Las siguientes preguntas complementarias no forman parte del cuestionario SUS estándar (Brooke, 1996). Se aplicaron a cada grupo de usuarios por separado con el objetivo de obtener información contextual adicional sobre aspectos específicos del prototipo. Sus resultados se analizan de forma descriptiva y no intervienen en el cálculo de la puntuación SUS.
+
+\section*{A.1 Preguntas complementarias para usuarios no técnicos}
+
+\subsubsection*{Tareas (Sí / No)}
+\begin{itemize}
+    \item ¿Lograste configurar la red WiFi del dispositivo sin necesitar asistencia?
+    \item ¿Lograste configurar el endpoint del backend desde la interfaz embebida (sin editar archivos de configuración) sin necesitar asistencia?
+    \item ¿Pudiste encontrar y visualizar los registros de asistencia en el panel web sin ayuda?
+    \item ¿Pudiste identificar la imagen asociada a una marcación específica sin ayuda?
+\end{itemize}
+
+\subsubsection*{Percepción (escala 1 a 5)}
+\begin{itemize}
+    \item Me resultó fácil encontrar la opción de configuración de WiFi en la interfaz embebida.
+    \item Tuve que pensar bastante para entender la estructura del panel web al buscar registros de asistencia.
+    \item El uso de los filtros por fecha, usuario o tipo de autenticación me pareció intuitivo.
+    \item Me costó saber, a partir de la información mostrada, si el dispositivo estaba funcionando online u offline.
+    \item La información mostrada en la tabla de registros fue clara.
+    \item Encontré difícil leer la información de la tabla de registros (tamaño, contraste, orden visual).
+    \item Me siento capaz de usar la interfaz completa (embebida + panel web) sin instrucción adicional.
+    \item Sentiría que necesito ayuda de alguien con más conocimientos técnicos para usar esta interfaz regularmente.
+\end{itemize}
+
+\subsubsection*{Preguntas abiertas}
+\begin{itemize}
+    \item ¿En algún momento sentiste confusión respecto a qué botón o sección debías utilizar para continuar una tarea? ¿Cuál?
+    \item ¿Qué cambiarías o mejorarías de la interfaz embebida o del panel web?
+\end{itemize}
+
+\section*{A.2 Preguntas complementarias para usuarios técnicos}
+
+\subsubsection*{Tareas (Sí / No)}
+\begin{itemize}
+    \item ¿Pudiste consumir los endpoints del prototipo (Postman, cURL o aplicación propia) sin complicaciones?
+    \item ¿Lograste modificar el endpoint configurado en el dispositivo para redirigir los datos hacia tu propio servidor sin asistencia?
+    \item ¿Lograste integrar o reutilizar las imágenes enviadas por la ESP32-CAM en un procesamiento posterior?
+\end{itemize}
+
+\subsubsection*{Percepción (escala 1 a 5)}
+\begin{itemize}
+    \item La documentación técnica del backend contenía la información necesaria para comenzar a integrar la API sin asistencia externa.
+    \item Tuve que recurrir a prueba y error, más que a la documentación, para entender cómo funcionaban los endpoints.
+    \item La estructura JSON entregada por el dispositivo es clara y fácil de mapear a otros sistemas.
+    \item Me costó identificar los campos esenciales del registro (timestamp, usuario, métodos biométricos, estado de sincronización).
+    \item Los mensajes de error entregados por el backend fueron comprensibles y útiles para depurar problemas de integración.
+    \item Encontré inconsistencias entre los distintos endpoints del backend (nombres, métodos HTTP o estructura de respuesta).
+    \item Creo que esta API podría integrarse a un sistema ERP real sin necesidad de modificaciones mayores.
+    \item Necesitaría hacer cambios significativos en mi propio sistema o flujo de trabajo para poder integrar esta API.
+\end{itemize}
+
+\subsubsection*{Preguntas abiertas}
+\begin{itemize}
+    \item ¿Tuviste dificultades técnicas significativas durante la integración? Descríbelas.
+    \item ¿Qué cambiarías o mejorarías de la API o del backend?
+\end{itemize}
 
 %% fin
 \end{document}

@@ -16,8 +16,8 @@ const spaceMono = Space_Mono({
 });
 
 export const metadata: Metadata = {
-  title: 'SAS Next',
-  description: 'Panel de asistencia IoT en Next.js con backend Flask.'
+  title: 'SAS - Sistema de Asistencia',
+  description: 'Plataforma corporativa de control de asistencia, biometría y dispositivos IoT.'
 };
 
 export default function RootLayout({
