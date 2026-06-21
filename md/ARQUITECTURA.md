@@ -82,7 +82,7 @@ Backend/
 ├── database.py                 # Conexión psycopg2 + init_db() (crea/evoluciona esquema)
 ├── encryption.py               # ⭐ Cifrado AES de embeddings biométricos
 ├── mqtt_handler.py             # Cliente MQTT: recepción de imágenes del ESP32
-├── deteccion.py                # Simulador CLI de detección facial
+├── tests/                       # Tests automatizados (pytest, 284 tests, 90% cobertura)
 ├── requirements.txt
 ├── Dockerfile
 ├── .env                        # DATABASE_URL real (Neon en producción)

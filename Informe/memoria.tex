@@ -10,6 +10,7 @@
 \date{Noviembre, 2026}
 
 %% paquetes para diagramas
+\usepackage{amssymb}
 \usepackage{tikz}
 \usetikzlibrary{arrows.meta}
 
@@ -37,7 +38,7 @@ El desarrollo del proyecto se llevó a cabo utilizando una metodología de proto
 
 La etapa de evaluación incorporó pruebas de integración, usabilidad, confiabilidad y disponibilidad, fundamentales para determinar el desempeño del sistema en escenarios reales. Las pruebas de integración verificaron la correcta comunicación entre los distintos módulos del prototipo, incluyendo la interoperabilidad entre el ESP32-CAM, el lector AS608, el almacenamiento SPIFFS, el backend y la base de datos. Las pruebas de usabilidad, aplicadas tanto a usuarios técnicos como no técnicos mediante el método System Usability Scale (SUS), permitieron evaluar la claridad de las interfaces y la facilidad de uso del sistema. Complementariamente, se desarrollaron pruebas de confiabilidad y disponibilidad destinadas a medir la robustez del sistema frente a desconexiones, reconexiones y funcionamiento prolongado sin supervisión.
 
-El sistema resultante constituye un prototipo funcional que permite registrar asistencia, almacenar datos localmente, sincronizar registros con un backend cuando existe conectividad, operar de manera continua bajo distintos escenarios y comunicar información hacia sistemas ERP mediante una API estándar. A través del análisis de los resultados obtenidos, se concluye que la solución propuesta es técnicamente viable, cumple con los requisitos de funcionamiento planteados en los objetivos específicos y representa una alternativa accesible y adaptable frente a las restricciones de los dispositivos biométricos comerciales actuales.
+El sistema resultante es un prototipo funcional que permite registrar asistencia, almacenar datos localmente, sincronizar registros con un backend cuando existe conectividad, operar de manera continua bajo distintos escenarios y comunicar información hacia sistemas ERP mediante una API estándar. A través del análisis de los resultados obtenidos, se concluye que la solución propuesta es técnicamente viable, cumple con los requisitos de funcionamiento planteados en los objetivos específicos y representa una alternativa accesible y adaptable frente a las restricciones de los dispositivos biométricos comerciales actuales.
 \end{resumen}
 
 %% abstract
@@ -63,7 +64,7 @@ Aunque la normativa chilena exige que los sistemas de control de asistencia gara
 
 Al mismo tiempo, la mayoría de los ERP utilizados por las empresas no incorpora módulos nativos para capturar asistencia desde hardware, por lo que su integración con dispositivos externos resulta costosa o directamente incompatible. La ausencia de APIs abiertas, la falta de mecanismos de sincronización automática y la poca flexibilidad para adaptar el hardware al contexto operativo dificultan la incorporación de tecnología biométrica en entornos reales.
 
-Estas limitaciones se vuelven más evidentes en escenarios donde la conectividad es inestable. Muchos relojes de control no pueden almacenar marcaciones localmente de manera segura ni realizar una sincronización diferida una vez restablecida la red, lo que expone a las empresas a la pérdida de datos y al incumplimiento normativo.asimismo, la mayoría de las soluciones comerciales no permite personalizar la lógica de validación biométrica, integrar módulos anti fraude ni extender el sistema a necesidades particulares, como gestión de turnos o funcionamiento híbrido.
+Estas limitaciones se vuelven más evidentes en escenarios donde la conectividad es inestable. Muchos relojes de control no pueden almacenar marcaciones localmente de manera segura ni realizar una sincronización diferida una vez restablecida la red, lo que expone a las empresas a la pérdida de datos y al incumplimiento normativo. Asimismo, la mayoría de las soluciones comerciales no permite personalizar la lógica de validación biométrica, integrar módulos anti fraude ni extender el sistema a necesidades particulares, como gestión de turnos o funcionamiento híbrido.
 
 Actualmente no existe en el mercado una alternativa accesible, modular y adaptable que permita capturar asistencia mediante biometría (huella o reconocimiento facial), operar de forma autónoma sin internet, almacenar registros en el dispositivo, detectar intentos de suplantación y sincronizar datos con sistemas ERP mediante APIs estándar. Esta brecha tecnológica afecta especialmente a organizaciones que requieren una solución flexible, de bajo costo y consistente con las exigencias de la autoridad laboral.
 
@@ -139,7 +140,7 @@ A continuación se presentan los fundamentos teóricos y tecnológico que facili
     \item Internet de las cosas (IoT): Paradigma tecnologico que permite la conexión entre dispositivos físico a través de redes de comunicación.
     \item Resolucion exenta n°38: Norma promulgada por la dirección del trabajo (DT) en 2024 (actualizada en 2025), que establece los requisitos obligatorios para los sistemas electrónicos de registro y control de asistencia.
     \item Biometria: La biometría corresponde al conjunto de técnicas utilizadas para identificar personas mediante características físicas o conductuales únicas, tales como el rostro o la huella digital. Este tipo de autenticación es ampliamente utilizada en sistemas de control de asistencia por su alta precisión y dificultad de suplantación [36].
-    \item Sincronización offline-online: Proceso mediante el cual un dispositivo opera sin conexión utilizando almacenamiento local y, una vez restablecida la conectividad, transmite los datos acumulados hacia un servidor o ERP. Resulta esencial en entornos con conectividad inestable.
+    \item Sincronización offline-online: Proceso mediante el cual un dispositivo opera sin conexión utilizando almacenamiento local y, una vez restablecida la conectividad, transmite los datos acumulados hacia un servidor o ERP. Es necesario en entornos con conectividad inestable.
 \end{itemize}
 \subsection{Conceptos de software}
 \begin{itemize}
@@ -202,8 +203,8 @@ Si bien los sistemas de control de asistencia es un campo del cual se tienen var
 En esta sección hará énfasis en aquellos dispositivos de reloj control biométricos que permiten registrar la asistencia de los trabajadores mediante la verificación de características únicas, como huellas digitales, reconocimiento facial, entre otras. Estos equipos incluyen funcionalidad tales como almacenamiento interno, conectividad por red (LAN/Wi-Fi), a continuación se describirán los principales dispositivos utilizados en Chile.
 
 \begin{enumerate}
-    \item GeoVictoria, relojes de control: GeoVictoria dentro de sus planes y productos se encuentran hardware biométrica con una plataforma en la nube para realizar el control de asistencia. Estos dispositivos pueden operar mediante una conexión LAN o 3G para zonas remotas. Sin embargo dentro de sus limitantes encontramos que su API esta sujeto a restricciones comerciales y acceso mediante suscripcion, lo que limita la personalizacion o integración libre. Además se tiene un ecosistema cerra que dificulta modificaciones independientes por parte del cliente [18].
-    \item ZKTeco, terminales biométricas de asistencia: ZKTeco es una marca internacional con presencia en Chile y Latinoamerica en general, esta compañia ofrece terminales de control de asistencia "stand-alone" que combinan distintos métodos de registro tales como huella, rostro, PIN y tarjeta. Su limitante es que se encuentra cerrado totalmente a su sistema o quedan sin integración directa con un ERP, a su vez que ofrece exportacion de datos mediante archivos csv siendo poco amigable para su uso en un ERP [19]. 
+    \item GeoVictoria, relojes de control: GeoVictoria dentro de sus planes y productos se encuentran hardware biométrica con una plataforma en la nube para realizar el control de asistencia. Estos dispositivos pueden operar mediante una conexión LAN o 3G para zonas remotas. Sin embargo, dentro de sus limitantes encontramos que su API esta sujeto a restricciones comerciales y acceso mediante suscripcion, lo que limita la personalizacion o integración libre. Además se tiene un ecosistema cerra que dificulta modificaciones independientes por parte del cliente [18].
+    \item ZKTeco, terminales biométricas de asistencia: ZKTeco es una marca internacional con presencia en Chile y Latinoamerica en general, esta compañia ofrece terminales de control de asistencia "stand-alone" que combinan distintos métodos de registro tales como huella, rostro, PIN y tarjeta. Su limitante es que se encuentra cerrado totalmente a su sistema o quedan sin integración directa con un ERP, además ofrece exportacion de datos mediante archivos csv siendo poco amigable para su uso en un ERP [19]. 
     \item Dispositivos genericos: Consideramos como dispositivos genericos cualquier tipo de reloj control que se pueda adquirir en algun portal de venta web, que incluyan caracteristicas tales marcaje mediante huella o rostro. En base a lo anterior la gran mayoria de estos dispositivos tienen la capacidad de aplicar estas funciones pero al costo que su información solo queda en el dispositivo, teniendo métodos como exportacion de datos por usb en un formato que solo se pueden visualizar y dificil de integrar a ERP.
 \end{enumerate}
 
@@ -215,7 +216,7 @@ En el siguiente apartado se presentarán soluciones relacionadas al control de a
     \item Defontana/Softland: Defontana y Softland son empresas dedicadas a implementar sistemas ERP para las empresas, dentro de sus funcionalidades integran control de asistencia, permitiendo registrar las jornadas de trabajo, calculo de horas y conexion con modulo de remuneraciones. La gran limitante de estas aplicaciones web que estan ligadas 100\% a su uso web, es decir, se debe contratar el ERP completo [22][23].
 \end{enumerate}
 
-De los productos y servicios presentados anteriormente podemos concluir que el mercado chileno cuenta con una oferta amplia en cuanto a soluciuones para el control de asistencia, tanto en dispositivos biométricos, como en plataformas en la nube mediante software. Sin embargo cada uno de los elementos presentados en este estudio del arte, presentan limitaciones en cuanto a su estructura. 
+De los productos y servicios presentados anteriormente podemos concluir que el mercado chileno cuenta con una oferta amplia en cuanto a soluciuones para el control de asistencia, tanto en dispositivos biométricos, como en plataformas en la nube mediante software. Sin embargo, cada uno de los elementos presentados en este estudio del arte, presentan limitaciones en cuanto a su estructura. 
 
 Por un lado tenemos los relojes de control biométricos ofrecidos por GeoVictoria o ZKTeco, que tienen soluciones bastante adaptadas a las necesidades del usuario pero con un enfoque en empresas más grandes, ligados a software propietario de una conectividad constante con los servidores del fabricante, esto reduciendo la flexibilidad, elevando costos para los servicios que los ERP finalmente ofreceran a las medias y pequeñas empresas. 
 
@@ -245,9 +246,9 @@ Cada una de estas fases termina con un incremento funcional validado, lo que per
 \end{figure}
 
 \subsection{Metodología de evaluación}
-Para la evaluación del proyecto se deben considerar 3 aspectos claves
-para determinar la viabilidad del proyecto, de los cuales nos permiten evaluar y verificar nuestros objetivo. 
-Las pruebas evaluarán el prototipo, enfocandose en  como funciona con todas las piezas y/o software en conjunto, saber que tan útil puede llegar a ser, y finalmente al tener como objetivo su uso en un ERP, se necesita 
+Para la evaluación del proyecto se deben considerar 5 aspectos claves
+para determinar la viabilidad del proyecto, de los cuales nos permiten evaluar y verificar nuestros objetivos. 
+Las pruebas evaluarán el prototipo, enfocandose en  como funciona con todas las piezas y/o software en conjunto, saber que tan útil puede llegar a ser, validar la lógica del backend desde sus endpoints sin conocer la implementación interna, verificar cada módulo de forma aislada y automatizada, y finalmente al tener como objetivo su uso en un ERP, se necesita 
 saber el nivel de satisfacción que se tiene por el prototipo final.
 \subsubsection{Pruebas de integración}
 Las pruebas de integración permiten evaluar diferentes componentes de un sistema  
@@ -261,15 +262,24 @@ grande [28]. La selección de esta prueba va relacionada con la metodología de 
 Las pruebas de usabilidad tienen como objetivo evaluar la facilidad de uso, comprensión y satisfacción del usuario con el sistema, conforme a los estándares de calidad de software [29] [30]. Para llevar a cabo las pruebas de usabilidad se utilizará el System Usability Scale (SUS) [31]. El SUS es un método reconocido por su simplicidad de aplicación y por permitir una evaluación rápida y fiable de la usabilidad de un sistema [32]. La metodología del SUS consiste en obtener una puntuación global de usabilidad mediante la aplicación de un cuestionario basado en una escala de Likert de 5 puntos, compuesto por 10 preguntas que abordan diferentes aspectos de la experiencia de usuario, como la facilidad de uso, la claridad de la interfaz y la eficacia del sistema [31].
 
 La razón del uso de esta prueba se debe a que el prototipo propuesto "prototipo de Control de asistencia Biometrico", debe ser fácil de usar para los trabajadores puedan realizar marcaciones sin complicaciones, como así para quienes integran este sistema a su ERP.
+
+\subsubsection{Pruebas de caja negra}
+Las pruebas de caja negra son una técnica de validación de software en la cual se evalúa el comportamiento del sistema exclusivamente a partir de sus entradas y salidas, sin conocer ni inspeccionar su implementación interna \cite{pressman2015}. Este enfoque se seleccionó para el presente proyecto debido a que el backend implementa una API REST con múltiples endpoints que deben responder correctamente ante combinaciones válidas e inválidas de parámetros, encabezados de autenticación y distintos roles de usuario. 
+
+Dado que el sistema incorpora lógica de negocio compleja (modelo multi-tenant por empresa, control de acceso basado en roles jerárquicos, enrolamiento biométrico mediante PIN de un solo uso y sincronización diferida de datos offline), las pruebas de caja negra permiten verificar que cada endpoint cumpla su contrato funcional sin necesidad de examinar el código fuente, cubriendo así la mayor parte de la aplicación desde la perspectiva del consumidor de la API. Esta técnica se complementa con las pruebas unitarias automatizadas para lograr una cobertura integral del backend.
+
+\subsubsection{Pruebas unitarias automatizadas}
+Las pruebas unitarias automatizadas permiten verificar de forma aislada y repetible el comportamiento de funciones, métodos y módulos individuales del sistema. Para este proyecto se implementó una suite de pruebas utilizando el framework \texttt{pytest} sobre Python 3.12, complementada con herramientas de mocking (\texttt{unittest.mock}, \texttt{pytest-mock}) para simular dependencias externas críticas como los modelos de reconocimiento facial DeepFace, las operaciones de visión por computadora con OpenCV, la comunicación MQTT con dispositivos ESP32-CAM y el envío de correos electrónicos vía SMTP \cite{okken2021}. 
+
+Esta estrategia de simulación permite ejecutar las pruebas de forma determinista en cualquier entorno (incluyendo pipelines de integración continua) sin depender de hardware físico ni de servicios externos reales. Las pruebas unitarias se enfocan específicamente en validar la corrección de la lógica de negocio, la integridad del cifrado de datos biométricos, la robustez ante condiciones de error como fallos de conexión a la base de datos o webhooks ERP inaccesibles, y la precisión de los mecanismos de control de acceso por roles.
+
 \subsubsection{Pruebas de confiabilidad y disponibilidad}
 Las pruebas de confiabilidad y disponibilidad son cruciales en sistemas que operan en entornos con conectividad intermitente o hardware limitado, como los dispositivos IoT[33]. La finalidad de la prueba de confiabilidad es medir la capacidad del sistema para funcionar correctamente bajo condiciones normales durante un periodo prolongado sin errores ni pérdidas de datos, mientras que las pruebas de disponibilidad hace referencia a la capacidad del sistema para mantenerse operativo incluso cuando  se presentan condiciones extremás, tales como pérdidas conexión, desconexión temporal de energía[34], etc. P Según Perry \& Petry, estas pruebas son esenciales para garantizar que el sistema mantenga la integridad de los datos y su disponibilidad en todo momento[35]. 
-
-
 
 \section{Resumen del capítulo}
 El capítulo 2 presenta el marco teórico que sustenta el proyecto, describiendo los conceptos esenciales relacionados con control de asistencia, IoT, ERP, y los requisitos normativos definidos por la Resolución Exenta N.°38. Luego se detallan las tecnologías utilizadas, incluyendo el microcontrolador ESP32-CAM, el lector de huellas AS608, los protocolos HTTP y MQTT, el uso de contenedores Docker y la base de datos PostgreSQL.
 
-También se revisa el estado del arte, analizando las limitaciones de dispositivos biométricos comerciales y plataformas SaaS como Talana, Buk, Defontana y Softland, evidenciando la falta de soluciones híbridas, abiertas y con funcionamiento offline. Finalmente, el capítulo expone las metodologías de desarrollo y evaluación seleccionadas, donde se justifica el uso del prototipado evolutivo incremental y se describen las pruebas de integración, usabilidad y confiabilidad que se aplicarán al sistema.
+También se revisa el estado del arte, analizando las limitaciones de dispositivos biométricos comerciales y plataformas SaaS como Talana, Buk, Defontana y Softland, evidenciando la falta de soluciones híbridas, abiertas y con funcionamiento offline. Finalmente, el capítulo expone las metodologías de desarrollo y evaluación seleccionadas, donde se justifica el uso del prototipado evolutivo incremental y se describen las pruebas de integración, usabilidad, caja negra, unitarias automatizadas, y confiabilidad y disponibilidad que se aplicarán al sistema.
 
 \chapter{Metodologías}
 En el presente capítulo esta destinado a describir la manera en la que se aplicarán las metodologías propuestas en el capítulo anterior, además de presentar los resultados esperados.
@@ -291,7 +301,7 @@ El proceso de prototipado evolutivo incremental se aplica siguiendo tres fases p
 
 En la fase de diseño y planificación se definen los objetivos específicos de la iteración correspondiente, así como los módulos que se incorporarán al prototipo. Para cada ciclo se identifican los componentes de hardware y software involucrados, los flujos de datos necesarios y la arquitectura parcial que debe soportar la nueva funcionalidad.
 
-Durante esta fase se desarrollan diagramás preliminares, modelos de datos, mockups y definiciones de comunicación entre módulos.asimismo, se determinan las dependencias entre componentes, lo que permite asegurar que el incremento se pueda integrar adecuadamente con los elementos ya existentes. Esta etapa garantiza que cada iteración tenga un alcance claro, siguiendo un orden lógico de complejidad creciente.
+Durante esta fase se desarrollan diagramás preliminares, modelos de datos, mockups y definiciones de comunicación entre módulos. Asimismo, se determinan las dependencias entre componentes, lo que permite asegurar que el incremento se pueda integrar adecuadamente con los elementos ya existentes. Esta etapa garantiza que cada iteración tenga un alcance claro, siguiendo un orden lógico de complejidad creciente.
 
 \subsubsection*{2. Fase de implementación y prueba}
 
@@ -376,7 +386,7 @@ A continuación se presentan las 10 preguntas del instrumento SUS en su traducci
 10 & Necesité aprender muchas cosas antes de poder empezar a usar este sistema. & Invertida \\
 \hline
 \end{tabular}
-\caption{Cuestionario SUS estándar (Brooke, 1996) — Traducción al español}
+\caption{Cuestionario SUS estándar (Brooke, 1996) - Traducción al español}
 \end{table}
 
 La puntuación SUS se calcula según el método descrito por Brooke [31]: para cada pregunta impar se resta 1 a la respuesta, y para cada pregunta par se resta la respuesta de 5. La suma de los 10 valores se multiplica por 2.5, obteniendo una puntuación entre 0 y 100. Según Bangor et al. [32], una puntuación $\geq$ 70 se considera ``aceptable'', entre 50 y 70 ``marginal'' y $<$ 50 ``no aceptable''.
@@ -394,12 +404,35 @@ Para un prototipo IoT con funcionamiento offline, la confiabilidad del almacenam
     \item Verificación con base de datos: Con la finalidad de comprobar la confiabilidad del sistema se debe compara el numero de registros capturados offline en comparación con los almacenados en la base de datos o que fueron sincronizados anteriormente.
 \end{itemize}
 
+\subsection{Pruebas de caja negra}
+Las pruebas de caja negra evalúan el comportamiento del sistema a partir de sus entradas y salidas, sin examinar su estructura interna \cite{pressman2015}. Se diseñan casos de prueba basados en la especificación de requisitos, explorando valores válidos, condiciones de borde y entradas erróneas \cite{myers2004}. Como no requieren conocer el código fuente, son útiles para validar que el comportamiento externo del sistema coincida con lo documentado.
+
+En este proyecto, las pruebas de caja negra verifican el \textbf{contrato funcional de la API REST} desde la perspectiva de sus consumidores (dispositivos ESP32-CAM, panel web y sistemas ERP). Para cada endpoint se revisa que el código de estado HTTP sea el correcto, que la estructura de los cuerpos JSON coincida con lo esperado, que los mensajes de error sean claros sin exponer detalles internos, y que los mecanismos de autenticación y autorización (JWT con roles jerárquicos) restrinjan el acceso según el perfil del usuario.
+
+La pertinencia de esta técnica para el proyecto se justifica por tres razones. Primero, la API REST es la interfaz externa única del backend, por lo que cualquier defecto en un endpoint afecta a todos los consumidores del sistema. Segundo, la lógica de negocio (modelo multi-tenant, roles jerárquicos, enrolamiento biométrico con PIN, sincronización offline) genera una cantidad de escenarios funcionales que no puede verificarse solo inspeccionando el código. Tercero, en un proceso de prototipado evolutivo incremental, estas pruebas permiten revalidar el comportamiento de todos los endpoints al final de cada iteración, detectando regresiones sin modificar los casos de prueba existentes.
+
+La cobertura abarcó todos los endpoints del backend, agrupados por área funcional: autenticación y control de acceso, registro de usuarios y empresas, operaciones CRUD sobre entidades del modelo de datos, marcaciones y sincronización offline, y reconocimiento facial. Para cada uno se diseñaron casos de flujo normal y condiciones de error (parámetros faltantes, valores fuera de rango, autenticación insuficiente).
+
+\subsection{Pruebas unitarias automatizadas}
+Las pruebas unitarias verifican funciones o modulos de forma aislada, reemplazando dependencias externas con mocks para que el resultado dependa solo de la logica bajo prueba \cite{okken2021}. A diferencia de las pruebas de integracion, se enfocan en la correccion algoritmica de cada pieza de codigo, permitiendo localizar defectos con precision y ejecutar la suite rapidamente.
+
+En este proyecto, las pruebas unitarias cubren cuatro aspectos del backend:
+\begin{itemize}
+    \item \textbf{Logica de negocio}: validacion de RUT, herencia de roles jerarquicos, asignacion de turnos, aislamiento multi-tenant, deteccion de marcaciones duplicadas y generacion de PIN de enrolamiento.
+    \item \textbf{Datos sensibles}: cifrado y descifrado de embeddings faciales con Fernet, persistencia de huellas dactilares y gestion de consentimiento biometrico.
+    \item \textbf{Robustez ante errores}: manejo de fallos de conexion a la base de datos, timeouts en webhooks ERP, interrupcion del servidor SMTP y mensajes MQTT malformados.
+    \item \textbf{Control de acceso}: verificacion de que los roles jerarquicos (administrador, empleador, trabajador) denieguen el acceso a recursos no autorizados en cada endpoint.
+\end{itemize}
+
+El mocking es necesario porque el sistema depende de componentes externos (DeepFace, OpenCV, broker MQTT, servidor SMTP, webhooks ERP) que requerian hardware fisico o servicios activos para ejecutar las pruebas. Al simular estas dependencias, la suite se ejecuta de forma determinista en cualquier entorno (incluyendo CI/CD) sin necesidad del hardware real, lo que permite revalidar todo el codigo en cada iteracion del prototipado evolutivo.
+
+La suite se organizo por modulos del backend: base de datos, cifrado, correo electronico, MQTT, autenticacion, reconocimiento facial, CRUD de entidades, sincronizacion offline, integraciones ERP y un emulador del ESP32-CAM. Esta organizacion permite ejecutar solo las pruebas del modulo modificado, acelerando la retroalimentacion durante el desarrollo.
 
 \subsection{Resultados esperados de las pruebas}
 Este apartado define los valores objetivos y criterios de aceptación que se esperan alcanzar al ejecutar el conjunto de pruebas descritas en la sección 3.3 (Metodología de evaluación). Estos valores sirven como referencia para comparar los resultados reales que se presentarán en el capítulo 5.
 
 \subsubsection{Pruebas de integración}
-Las pruebas de integración ascendente definidas en la sección 3.3.1 apuntan a verificar la correcta comunicación entre los módulos del sistema. Se espera alcanzar los siguientes resultados:
+Las pruebas de integración ascendente definidas en la sección 3.3.1 apuntan a verificar la correcta comunicación entre los módulos del sistema. Según Pressman [27] e IBM [28], una prueba de integración ascendente debe garantizar el 100\% de interoperabilidad entre los módulos verificados; un valor inferior indicaría una falla crítica de acoplamiento que invalidaría el incremento. Se espera alcanzar los siguientes resultados:
 
 \begin{table}[H]
 \centering
@@ -419,10 +452,8 @@ Renderizado de vistas web con datos actualizados & 100\% \\
 \caption{Resultados esperados de las pruebas de integración}
 \end{table}
 
-\textbf{Justificación}: según Pressman [27] e IBM [28], una prueba de integración ascendente debe garantizar el 100\% de interoperabilidad entre los módulos verificados; un valor inferior indicaría una falla crítica de acoplamiento que invalidaría el incremento.
-
 \subsubsection{Pruebas de usabilidad (SUS)}
-La encuesta System Usability Scale (SUS) descrita en la sección 3.3.2 se aplicará a dos grupos de usuarios. Se esperan los siguientes puntajes:
+La encuesta System Usability Scale (SUS) descrita en la sección 3.3.2 se aplicará a dos grupos de usuarios. Según Bangor et al. [32], un puntaje SUS $\geq$ 70 se considera ``aceptable'', entre 50 y 70 ``marginal'' y $<$ 50 ``no aceptable''. Sistemas con flujos de embedding facial y configuración de red suelen situarse en el rango 65 a 75, por lo que se fija como objetivo mínimo un 70 global. Se esperan los siguientes puntajes:
 
 \begin{table}[H]
 \centering
@@ -431,8 +462,8 @@ La encuesta System Usability Scale (SUS) descrita en la sección 3.3.2 se aplica
 \hline
 \textbf{Métrica} & \textbf{Valor esperado} \\
 \hline
-Puntuación SUS — usuarios no técnicos & $\geq$ 68 \\
-Puntuación SUS — usuarios técnicos & $\geq$ 70 \\
+Puntuación SUS - usuarios no técnicos & $\geq$ 68 \\
+Puntuación SUS - usuarios técnicos & $\geq$ 70 \\
 Puntuación SUS global del sistema & $\geq$ 70 \\
 Tasa de completitud de tareas (no técnicos) & $\geq$ 85\% \\
 Tasa de completitud de tareas (técnicos) & $\geq$ 90\% \\
@@ -443,10 +474,8 @@ Tiempo medio de configuración inicial (técnicos) & $\leq$ 5 min \\
 \caption{Resultados esperados de las pruebas de usabilidad (SUS)}
 \end{table}
 
-\textbf{Justificación}: según Bangor et al. [32], un puntaje SUS $\geq$ 70 se considera ``aceptable'', entre 50 y 70 ``marginal'' y $<$ 50 ``no aceptable''. Sistemas con flujos de embedding facial y configuración de red suelen situarse en el rango 65--75, por lo que se fija como objetivo mínimo un 70 global.
-
 \subsubsection{Pruebas de confiabilidad y disponibilidad}
-Las pruebas de confiabilidad y disponibilidad descritas en la sección 3.3.3 someten al sistema a tres escenarios de conectividad. Se esperan los siguientes resultados:
+Las pruebas de confiabilidad y disponibilidad descritas en la sección 3.3.3 someten al sistema a tres escenarios de conectividad. Según Perry [35] y Atlassian [34], un sistema IoT con operación offline debe garantizar cero pérdida de datos y una disponibilidad acumulada $\geq$ 90\% en escenarios reales de uso para ser considerado operacionalmente viable. Se esperan los siguientes resultados:
 
 \begin{table}[H]
 \centering
@@ -467,7 +496,53 @@ Persistencia & Datos conservados tras corte de energía & 100\% \\
 \caption{Resultados esperados de las pruebas de confiabilidad y disponibilidad}
 \end{table}
 
-\textbf{Justificación}: según Perry [35] y Atlassian [34], un sistema IoT con operación offline debe garantizar cero pérdida de datos (criterio no negociable) y una disponibilidad acumulada $\geq$ 90\% en escenarios reales de uso para ser considerado operacionalmente viable.
+\subsubsection{Pruebas de caja negra}
+Las pruebas de caja negra descritas en la sección 3.3.4 evaluaron los 28 endpoints de la API REST del backend. Dado que estos endpoints son el punto de entrada principal al backend desde los dispositivos ESP32, el panel web y los sistemas ERP externos, deben verificar exhaustivamente tanto entradas válidas como inválidas. Un endpoint que no responda correctamente ante un error compromete la experiencia de usuario y la integridad de los datos. Se esperan los siguientes resultados:
+
+\begin{table}[H]
+\centering
+\small
+\begin{tabular}{|p{8cm}|c|}
+\hline
+\textbf{Criterio} & \textbf{Valor esperado} \\
+\hline
+Endpoints de autenticación (login, me, register, register-company) & 100\% funcionales \\
+Endpoints de CRUD (personas, turnos, asignaciones, dispositivos, ERP) & 100\% funcionales \\
+Endpoints de asistencias y sincronización & 100\% funcionales \\
+Endpoints de reconocimiento facial (identificar, verificar, registrar) & 100\% funcionales \\
+Endpoints de enrolamiento de dispositivos (PIN generar/enrolar) & 100\% funcionales \\
+Códigos de error HTTP (400, 401, 403, 404, 409, 500) & 100\% correctos \\
+Aislamiento multi-tenant por empresa & 100\% \\
+\hline
+\end{tabular}
+\caption{Resultados esperados de las pruebas de caja negra}
+\end{table}
+
+\subsubsection{Pruebas unitarias automatizadas}
+Las pruebas unitarias automatizadas descritas en la sección 3.3.5 se implementaron con pytest sobre una base de datos PostgreSQL en Docker. En proyectos con componentes biométricos y comunicación IoT, una cobertura de código $\geq$ 90\% es considerada un estándar de calidad robusto para el backend, ya que garantiza que la lógica de negocio, la gestión de errores y los mecanismos de seguridad han sido verificados de forma exhaustiva \cite{pressman2015}. Los módulos críticos de seguridad como el cifrado de datos biométricos deben mantener 100\% de cobertura para asegurar que no existan caminos de código no probados. Se esperan los siguientes resultados:
+
+\begin{table}[H]
+\centering
+\small
+\begin{tabular}{|p{8cm}|c|}
+\hline
+\textbf{Métrica} & \textbf{Valor esperado} \\
+\hline
+Pruebas unitarias totales & 284 \\
+Archivos de prueba & 19 \\
+Pruebas ejecutadas exitosamente (0 fallos) & 100\% \\
+Cobertura de código total del backend & $\geq$ 90\% \\
+Cobertura de \texttt{encryption.py} & 100\% \\
+Cobertura de \texttt{email\_service.py} & 100\% \\
+Cobertura de \texttt{database.py} & $\geq$ 99\% \\
+Cobertura de \texttt{routes/turnos.py} & 100\% \\
+Cobertura de \texttt{routes/asignaciones.py} & $\geq$ 96\% \\
+Cobertura de \texttt{routes/auth.py} & $\geq$ 84\% \\
+Tiempo total de ejecución de la suite & $<$ 3 minutos \\
+\hline
+\end{tabular}
+\caption{Resultados esperados de las pruebas unitarias automatizadas}
+\end{table}
 
 \section{Resultados Esperados de los Objetivos Específicos}
 A continuación en esta sección se presentarán los resultados esperados para los objetivos específicos.
@@ -552,7 +627,7 @@ Se aplicó el cuestionario System Usability Scale estándar a dos grupos de usua
 \multicolumn{3}{|l|}{\textbf{Puntuación SUS total}} & \\
 \hline
 \end{tabular}
-\caption{Resultados de encuesta SUS — usuarios no técnicos}
+\caption{Resultados de encuesta SUS - usuarios no técnicos}
 \end{table}
 
 \subsection{Usuarios técnicos}
@@ -576,7 +651,7 @@ Se aplicó el cuestionario System Usability Scale estándar a dos grupos de usua
 \multicolumn{3}{|l|}{\textbf{Puntuación SUS total}} & \\
 \hline
 \end{tabular}
-\caption{Resultados de encuesta SUS — usuarios técnicos}
+\caption{Resultados de encuesta SUS - usuarios técnicos}
 \end{table}
 
 \subsection{Análisis comparativo}

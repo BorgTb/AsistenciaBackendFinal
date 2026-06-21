@@ -1,6 +1,6 @@
 # Pruebas del Prototipo — Automaticas vs Fisicas
 
-> **Actualizado**: 2026-06-16 — Suite de tests pytest (243 tests) + contraseñas dispositivos + Vitest (32 tests) + Playwright (9 tests).
+> **Actualizado**: 2026-06-21 — Suite de tests pytest (284 tests, 90% cobertura) + Vitest (32 tests) + Playwright (9 tests).
 
 Corresponden a las pruebas descritas en `Informe/cap4_iteraciones.tex`. Las pruebas se dividen en tres categorias:
 

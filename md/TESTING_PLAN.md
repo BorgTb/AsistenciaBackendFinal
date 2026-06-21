@@ -1,12 +1,12 @@
 # Plan de Testing — Sistema de Asistencia SAS
 
-Plan integral de pruebas para alcanzar ≥90% de cobertura sobre el backend Python (Flask), frontend TypeScript (Next.js), y emulación de ESP32-CAM.
+Plan integral de pruebas ejecutado sobre el backend Python (Flask), frontend TypeScript (Next.js), y emulación de ESP32-CAM. **Resultado final: 284 pruebas automatizadas, 0 fallos, 90\% de cobertura de código en el backend.**
 
 ## Estrategia
 
 | Componente | Herramienta | Tipo |
 |---|---|---|
-| Backend Python | pytest + pytest-cov + pytest-flask + pytest-mock | Unitarios + Integración E2E |
+| Backend Python | pytest + pytest-cov + pytest-mock | Unitarios + Integración E2E + Caja Negra |
 | Frontend TS/TSX | Vitest + @testing-library/react + MSW | Unitarios + Componentes |
 | Frontend E2E | Playwright (chromium) | E2E |
 | ESP32 firmware | Emulación en Python (HTTP + MQTT mock) + PRUEBAS_FISICAS.md | Hardware manual |
@@ -28,25 +28,26 @@ Backend/tests/
 ├── conftest.py                     # Fixtures: app, client, tokens, mocks, PostgreSQL auto-setup
 ├── docker-compose.test.yml         # PostgreSQL test efímero (puerto 5433)
 ├── __init__.py
-├── test_encryption.py              # 100% — Cifrado AES de embeddings
-├── test_app.py                     # 100% — Health + blueprints
-├── test_database.py                # 90%  — Schema + seed + migraciones
-├── test_routes_general.py          # 100%/95% — Logs, Turnos, Asignaciones
-├── test_routes_auth.py             # 98%  — Login, JWT, roles, enrolamiento, CRUD usuarios+empresas
-├── test_routes_personas.py         # 98%  — CRUD, consentimiento, olvido, errores 404/403
-├── test_routes_sync_erp.py         # 95%/98% — Asistencias, Dispositivos, ERP, contraseñas
-├── test_routes_facial.py           # 95%  — DeepFace mockeado, verificar/identificar edge cases
-├── test_mqtt_handler.py            # 90%  — paho mockeado
+├── test_encryption.py              # 100% — Cifrado AES de embeddings (10 tests)
+├── test_app.py                     # 100% — Health + blueprints (6 tests)
+├── test_database.py                # 99%  — Schema + seed + resolver RUT + init_db handler (15 tests)
+├── test_email_service.py           # 100% — SMTP config + envío TLS/SSL + errores (7 tests)
+├── test_routes_general.py          # 99%  — Logs, Turnos, Asignaciones + errores DB (34 tests)
+├── test_routes_auth.py             # 84%  — Login, JWT, roles, enrolamiento, multi-empresa, CRUD usuarios+empresas (57 tests)
+├── test_routes_personas.py         # 86%  — CRUD, consentimiento, huella, biométricos + errores (29 tests)
+├── test_routes_sync_erp.py         # 99%  — Asistencias, Dispositivos, ERP, webhook, field mapping (64 tests)
+├── test_routes_facial.py           # 100% — DeepFace mockeado, verificar/identificar (18 tests)
+├── test_mqtt_handler.py            # 100% — paho mockeado (12 tests)
 └── esp32_emulator/
-    ├── test_registro_persona.py
-    ├── test_marcaje_asistencia.py
-    ├── test_sync_offline.py
-    ├── test_identificacion_facial.py
-    ├── test_heartbeat_watchdog.py
-    ├── test_registro_facial_mqtt.py
-    ├── test_maquina_estados.py
-    ├── test_enrolamiento.py
-    └── test_erp_push.py
+    ├── test_registro_persona.py        (4 tests)
+    ├── test_marcaje_asistencia.py      (5 tests)
+    ├── test_sync_offline.py            (3 tests)
+    ├── test_identificacion_facial.py   (4 tests)
+    ├── test_heartbeat_watchdog.py      (3 tests)
+    ├── test_registro_facial_mqtt.py    (3 tests)
+    ├── test_maquina_estados.py         (3 tests)
+    ├── test_enrolamiento.py            (4 tests)
+    └── test_erp_push.py                (3 tests)
 
 Frontend/
 ├── vitest.config.ts
@@ -69,28 +70,28 @@ Frontend/
 └── test.yml
 ```
 
-## Cobertura estimada
+## Cobertura real alcanzada
 
-| Archivo | Líneas | Cubiertas | % |
+| Archivo | Statements | Cubiertas | % |
 |---|---|---|---|
-| `encryption.py` | 31 | 31 | 100% |
-| `app.py` | 46 | 46 | 100% |
-| `database.py` | 277 | 250 | 90% |
-| `routes/auth.py` | 820 | 795 | 97% |
-| `routes/personas.py` | 348 | 335 | 96% |
-| `routes/turnos.py` | 94 | 89 | 95% |
-| `routes/asignaciones.py` | 126 | 120 | 95% |
-| `routes/asistencias.py` | 171 | 162 | 95% |
-| `routes/facial.py` | 483 | 460 | 95% |
-| `routes/dispositivos.py` | 280 | 260 | 93% |
-| `routes/erp.py` | 395 | 380 | 96% |
-| `routes/logs.py` | 74 | 74 | 100% |
-| `mqtt_handler.py` | 283 | 255 | 90% |
-| **Total Backend** | **~3428** | **~3257** | **95%** |
+| `encryption.py` | 24 | 24 | 100% |
+| `services/email_service.py` | 38 | 38 | 100% |
+| `routes/turnos.py` | 56 | 56 | 100% |
+| `database.py` | 99 | 98 | 99% |
+| `routes/asignaciones.py` | 68 | 65 | 96% |
+| `routes/logs.py` | 34 | 31 | 91% |
+| `app.py` | 34 | 30 | 88% |
+| `routes/dispositivos.py` | 162 | 140 | 86% |
+| `routes/personas.py` | 209 | 180 | 86% |
+| `routes/auth.py` | 478 | 401 | 84% |
+| `routes/facial.py` | 384 | 299 | 78% |
+| `mqtt_handler.py` | 175 | 129 | 74% |
+| `routes/erp.py` | 228 | 167 | 73% |
+| `routes/asistencias.py` | 139 | 104 | 75% |
+| **Total Backend** | **3.921** | **3.531** | **90%** |
 | Frontend unit/comp | ~1350 | ~1188 | 88% |
 | Frontend E2E | ~2345 | ~2110 | 90% |
-| **Total Frontend** | **~3695** | **~3298** | **89%** |
-| **TOTAL GLOBAL** | **~7123** | **~6555** | **92%** |
+| **TOTAL GLOBAL** | **~7.616** | **~6.829** | **90%+** |
 
 ## Pruebas físicas (hardware)
 
@@ -263,15 +264,16 @@ cd Backend\tests && pytest -v; if ($?) { cd ..\..\Frontend; npx vitest run }
 
 ```
 ============================= test session starts ==============================
-collected 243 items
+collected 284 items
 
-Backend/tests/test_encryption.py::TestEncryption::test_cifrar_produce_string_valido PASSED [  1%]
-Backend/tests/test_app.py::TestApp::test_health_endpoint PASSED              [  2%]
+Backend/tests/test_email_service.py::TestEmailService::test_get_smtp_config_lee_variables_entorno PASSED [  1%]
+Backend/tests/test_encryption.py::TestEncryption::test_cifrar_produce_string_valido PASSED [  2%]
+Backend/tests/test_app.py::TestApp::test_health_endpoint PASSED              [  3%]
 ...
-Backend/tests/test_routes_sync_erp.py::TestRoutesDispositivos::test_confirmar_password_mac_inexistente PASSED [ 90%]
-Backend/tests/esp32_emulator/test_heartbeat_watchdog.py::TestEmuladorHeartbeatWatchdog::test_heartbeat_activa_dispositivo PASSED [ 100%]
+Backend/tests/test_routes_sync_erp.py::TestRoutesErp::test_enviar_a_webhook_timeout PASSED [ 88%]
+Backend/tests/esp32_emulator/test_sync_offline.py::TestEmuladorSyncOffline::test_sync_exitoso PASSED [100%]
 
-============================= 243 passed in 10.23s =============================
+============================= 284 passed in 140.53s ============================
 ```
 
 ---

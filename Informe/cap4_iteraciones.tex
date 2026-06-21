@@ -46,7 +46,7 @@ La primera iteración corresponde al diseño conceptual del sistema y a la prepa
 
 \subsection{Análisis}
 
-La primera iteración se orientó a comprender el alcance inicial del prototipo y a establecer los requisitos mínimos necesarios para validar la viabilidad técnica del sistema. En esta etapa se analizaron los componentes esenciales, las restricciones del hardware y las funcionalidades críticas que debían ser implementadas para permitir la construcción de las siguientes iteraciones.
+En esta iteración se definieron los requisitos mínimos para validar la viabilidad técnica del sistema, analizando los componentes del hardware y las funcionalidades necesarias para las iteraciones siguientes.
 
 El análisis se centró en tres ejes principales:
 
@@ -450,7 +450,7 @@ Se diseñaron las siguientes pruebas para validar el correcto funcionamiento del
 \begin{itemize}
     \item \textbf{Prueba de persistencia tras reinicio}: Registrar usuarios, turnos, asignaciones y asistencias, luego reiniciar el ESP32-CAM (por corte de energía o comando software). Verificar que todos los archivos JSON conserven su contenido íntegro y que el sistema pueda leerlos correctamente tras el reinicio.
 
-    \item \textbf{Prueba de lectura y deserialización}: Abrir cada archivo JSON generado y verificar que \texttt{ArduinoJson} pueda deserializar su contenido sin errores ni pérdida de campos. El tamaño de cada \texttt{DynamicJsonDocument} se configuró según la capacidad esperada del archivo: 2048~bytes para \texttt{personas.json} y \texttt{turnos.json}, 1024~bytes para \texttt{asignaciones.json} y 8192~bytes para \texttt{asistencias.json}. Se incluyó además una validación post-inserción —mediante \texttt{isNull()}— en la función \texttt{procesarAsistencia()} para detectar y registrar en logs cualquier desbordamiento del documento al crear nuevos registros de asistencia.
+    \item \textbf{Prueba de lectura y deserialización}: Abrir cada archivo JSON generado y verificar que \texttt{ArduinoJson} pueda deserializar su contenido sin errores ni pérdida de campos. El tamaño de cada \texttt{DynamicJsonDocument} se configuró según la capacidad esperada del archivo: 2048~bytes para \texttt{personas.json} y \texttt{turnos.json}, 1024~bytes para \texttt{asignaciones.json} y 8192~bytes para \texttt{asistencias.json}. Se incluyó además una validación post-inserción (mediante \texttt{isNull()}) en la función \texttt{procesarAsistencia()} para detectar y registrar en logs cualquier desbordamiento del documento al crear nuevos registros de asistencia.
 
     \item \textbf{Prueba de escritura concurrente}: Realizar múltiples operaciones de escritura (registro de persona + asignación de turno + marcación de asistencia) en rápida sucesión sin reiniciar el sistema. Verificar que no se produzcan corrupciones de archivos ni pérdida de datos.
 
@@ -529,11 +529,9 @@ Todos estos endpoints operan sobre una base de datos relacional PostgreSQL. El d
     \item \texttt{encodings\_faciales}: Almacena múltiples embeddings faciales cifrados por persona (FOREIGN KEY con eliminación en cascada), permitiendo que un trabajador tenga varias fotos de referencia con distintos ángulos e iluminación para mejorar la precisión del reconocimiento.
 \end{itemize}
 
-El diagrama de la base de datos se presenta en la Figura~\ref{fig:db-er}.
-
 \begin{figure}[H]
     \centering
-    \input{diagrams/db_er_fig.tikz}
+    \input{../diagrams/db_er_fig.tikz}
     \caption{Diagrama entidad-relación de la base de datos.}
     \label{fig:db-er}
 \end{figure}
@@ -637,7 +635,7 @@ Se diseñaron las siguientes pruebas para validar la comunicación y el backend:
 
 \section{Iteración 4: Reconocimiento facial, anti-spoofing y cifrado biométrico}
 
-La cuarta iteración incorpora el procesamiento biométrico avanzado en el backend: reconocimiento facial mediante DeepFace, validación anti-spoofing para prevenir suplantaciones, y cifrado de los embeddings faciales almacenados en la base de datos. Esta etapa transforma el sistema de un simple transmisor de imágenes a un sistema con capacidad real de verificación e identificación biométrica.
+Esta iteración incorpora el procesamiento biométrico en el backend: reconocimiento facial con DeepFace, validación anti-spoofing y cifrado de embeddings faciales. El sistema pasa de solo transmitir imágenes a realizar verificación e identificación biométrica.
 
 \subsection{Análisis}
 
@@ -657,7 +655,7 @@ Se identificaron los siguientes requisitos funcionales para esta iteración:
     \item \textbf{Identificación 1:N}: Dada una imagen capturada en vivo, comparar su embedding contra todos los embeddings almacenados y retornar la identidad con mayor coincidencia, si supera el umbral de similitud.
     \item \textbf{Verificación 1:1}: Dada una imagen y un \texttt{rut}, verificar si la imagen corresponde a la persona declarada.
     \item \textbf{Anti-spoofing}: Detectar intentos de suplantación mediante fotografías impresas, pantallas de dispositivos o máscaras, rechazando la captura si no se detecta un rostro real.
-    \item \textbf{Cifrado de embeddings}: Los vectores de características faciales (embeddings) constituyen datos biométricos sensibles. Para protegerlos, se deben cifrar antes de persistirlos en la base de datos, utilizando una clave derivada de una variable de entorno.
+    \item \textbf{Cifrado de embeddings}: Los vectores de características faciales (embeddings) son datos biométricos sensibles. Para protegerlos, se deben cifrar antes de persistirlos en la base de datos, utilizando una clave derivada de una variable de entorno.
     \item \textbf{Consentimiento biométrico}: Todo registro facial debe estar precedido por la aceptación explícita de una política de privacidad por parte del trabajador, en cumplimiento de la normativa de protección de datos.
 \end{itemize}
 
@@ -906,7 +904,7 @@ Se diseñaron las siguientes pruebas para validar la autenticación, el multi-te
 
 \section{Iteración 6: Módulo antifraude y validación previa a la captura}
 
-La sexta iteración aborda la prevención de suplantación de identidad en el dispositivo ESP32-CAM mediante una estrategia combinada de detección física de presencia, control de iluminación y procesamiento biométrico. Si bien el plan original contemplaba un sensor infrarrojo (IR) dedicado para detectar intentos de suplantación con fotografías, el enfoque implementado evolucionó hacia una solución de múltiples capas que resultó más robusta y prescindió del sensor IR adicional.
+Esta iteración implementa la prevención de suplantación de identidad en el ESP32-CAM mediante detección física de presencia, control de iluminación y procesamiento biométrico. Si bien el plan original contemplaba un sensor infrarrojo (IR) dedicado para detectar intentos de suplantación con fotografías, el enfoque implementado evolucionó hacia una solución de múltiples capas que resultó más robusta y prescindió del sensor IR adicional.
 
 \subsection{Análisis}
 
@@ -1187,7 +1185,7 @@ Se diseñaron las siguientes pruebas para validar el panel web para la gestión 
 
 \section{Iteración 8: Sincronización diferida, logs y cierre del proyecto}
 
-La octava y última iteración integra los mecanismos de sincronización diferida entre el ESP32-CAM y el backend, implementa la capa de auditoría y logs del sistema, incorpora herramientas de diagnóstico, y consolida el prototipo como un sistema completo y funcional.
+Esta iteración integra la sincronización diferida entre el ESP32-CAM y el backend, la capa de auditoría y logs del sistema, y las herramientas de diagnóstico.
 
 \subsection{Análisis}
 
@@ -1286,15 +1284,9 @@ El hilo \texttt{device\_watchdog} en \texttt{mqtt\_handler.py} ejecuta dos funci
     \item \textbf{Verificación periódica}: Cada 60 segundos, revisa los heartbeats. Los dispositivos que no han enviado heartbeat en más de 90 segundos se marcan como \texttt{inactivo}. Esto permite detectar desconexiones incluso si el mensaje LWT no fue entregado (por ejemplo, si el ESP32-CAM se queda sin alimentación de forma abrupta y el broker no alcanza a publicar el LWT).
 \end{itemize}
 
-\subsubsection{Herramienta de simulación (deteccion.py)}
+\subsubsection{Herramienta de simulación facial}
 
-El script \texttt{deteccion.py} implementa:
-\begin{itemize}
-    \item Conexión directa a la base de datos PostgreSQL.
-    \item Función \texttt{extraer\_embedding\_sim()} con DeepFace (Facenet + detector configurable + anti-spoofing).
-    \item Función \texttt{simular\_asistencia\_por\_foto()} que busca coincidencias del embedding contra la base de datos y, si encuentra una, registra la asistencia en la tabla \texttt{asistencias}.
-    \item Menú interactivo en terminal para seleccionar imágenes de la carpeta \texttt{static/capturas\_prueba/}.
-\end{itemize}
+Como complemento durante el desarrollo se implementó \texttt{deteccion.py}, un script de línea de comandos que permitió probar el flujo de reconocimiento facial sin necesidad del ESP32-CAM. El script se conectaba directamente a PostgreSQL, ejecutaba DeepFace (Facenet + detector configurable + anti-spoofing) sobre imágenes almacenadas en \texttt{static/capturas\_prueba/}, y registraba asistencias de prueba en la base de datos. En las etapas finales del proyecto, esta funcionalidad de simulación fue absorbida por la suite de pruebas automatizadas (con mocks de DeepFace, OpenCV y PostgreSQL en Docker), que ofrece mayor repetibilidad y cobertura sin dependencia del sistema de archivos local.
 
 \subsection{Pruebas}
 
@@ -1317,18 +1309,20 @@ Se diseñaron las siguientes pruebas para validar la sincronización diferida, l
 
     \item \textbf{Prueba de watchdog}: Iniciar el backend, verificar que todos los dispositivos se marquen como inactivos. Conectar un ESP32-CAM, verificar que tras el primer heartbeat cambie a activo. Desconectar el ESP32-CAM y verificar que tras 90 segundos el watchdog lo marque como inactivo.
 
-    \item \textbf{Prueba de simulación facial}: Ejecutar \texttt{deteccion.py} y seleccionar una foto de una persona registrada. Verificar que el script encuentre la coincidencia, determine el tipo de evento (entrada/salida) y registre la asistencia en la base de datos. Repetir con una foto de una persona no registrada y verificar que el script indique ``Rostro no coincide''.
+    \item \textbf{Prueba de simulación facial automatizada}: Utilizar la suite de pruebas \texttt{test\_routes\_facial.py} y el emulador \texttt{test\_identificacion\_facial.py} para simular el flujo completo de identificación 1:N con imágenes sintéticas generadas en memoria, cubriendo casos de coincidencia exitosa, rostro no registrado y calidad insuficiente de imagen.
 
     \item \textbf{Prueba de flujo completo punta a punta}: Ejecutar el flujo completo: registrar persona con huella y rostro en el ESP32-CAM $\rightarrow$ sincronizar con backend $\rightarrow$ verificar que la persona aparezca en el panel web $\rightarrow$ marcar asistencia por huella offline $\rightarrow$ reconectar y sincronizar $\rightarrow$ verificar que la asistencia aparezca en el panel web y se envíe al ERP de prueba.
 \end{itemize}
 
 \subsubsection{Pruebas automatizadas}
 
-Además de las pruebas funcionales descritas, se implementó una suite de ~243 pruebas automatizadas para el backend y el firmware, utilizando pytest con PostgreSQL en Docker y mocks para DeepFace, OpenCV y MQTT. Las pruebas cubren los flujos de todas las iteraciones: inicialización de la aplicación, esquema de base de datos, cifrado de embeddings, handlers MQTT, autenticación JWT, endpoints faciales, CRUD de personas/turnos/asignaciones/asistencias, sincronización offline, integración ERP y enrolamiento de dispositivos. El detalle completo de los casos de prueba se incluye en el Anexo correspondiente.
+Además de las pruebas funcionales descritas, se implementó una suite de \textbf{284 pruebas automatizadas} para el backend y el firmware, utilizando pytest con PostgreSQL en Docker y mocks para DeepFace, OpenCV y MQTT. La suite se organiza en 19 archivos de prueba (10 en \texttt{Backend/tests/} y 9 en \texttt{Backend/tests/esp32\_emulator/}) y alcanza una cobertura de código del \textbf{90\%} sobre 3.925 líneas de código fuente, sin fallos en ninguna de las 284 pruebas.
+
+Las pruebas cubren los flujos de todas las iteraciones: inicialización de la aplicación, esquema de base de datos, cifrado de embeddings, servicio de correo electrónico (con mock de SMTP), handlers MQTT, autenticación JWT con roles jerárquicos y flujo multi-empresa, endpoints faciales, CRUD de personas/turnos/asignaciones/asistencias, verificación de dispositivos, integraciones ERP con tolerancia a fallos de conexión y timeout, enrolamiento de dispositivos mediante PIN, sincronización offline, y logs de auditoría. Entre los módulos con mayor cobertura destacan el cifrado de embeddings (100\%), el servicio de correo (100\%), la gestión de turnos (100\%), la base de datos (99\%) y el módulo de asignaciones (96\%). El detalle completo de los casos de prueba se incluye en el Anexo correspondiente.
 
 
 %% ============================================================
 \section{Resumen del capítulo}
 El capítulo 4 presenta el desarrollo completo del prototipo a lo largo de ocho iteraciones, siguiendo la metodología de prototipado evolutivo incremental. Se documenta la integración del hardware (ESP32-CAM, lector AS608, sensor PIR, cámara OV2640), la implementación del almacenamiento local con LittleFS y JSON, el desarrollo del backend con Flask y PostgreSQL (14 tablas con soporte multi-tenant), la comunicación mediante HTTP y MQTT, el reconocimiento facial con DeepFace (modelo Facenet, detector configurable MTCNN/RetinaFace y anti-spoofing), el cifrado de embeddings biométricos con Fernet, la autenticación JWT con roles jerárquicos, el enrolamiento seguro de dispositivos mediante PIN, el sistema antifraude multicapa (PIR + flash PWM + anti-spoofing + cooldown), el panel web para la gestión del dispositivo, la integración con ERP externos vía webhooks con field mapping, y los mecanismos de sincronización diferida con logs de auditoría.
 
-Cada iteración incluyó su respectivo análisis de requisitos, diseño de la solución, implementación detallada y un plan de pruebas de integración para validar el correcto funcionamiento de los componentes desarrollados.
+Cada iteración incluyó su respectivo análisis de requisitos, diseño de la solución, implementación detallada y un plan de pruebas de integración para validar el correcto funcionamiento de los componentes desarrollados. Adicionalmente, se documenta la suite de 284 pruebas unitarias automatizadas con pytest, que alcanzó una cobertura de código del 90\% sobre 3.925 líneas del backend, incluyendo pruebas de caja negra sobre los 28 endpoints de la API REST y verificación exhaustiva de todos los caminos de error.
