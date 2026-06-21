@@ -39,8 +39,6 @@ def token_required(fn):
     return wrapper
 
 
-requiere_login = token_required
-
 
 def requiere_rol(*roles):
     def decorator(fn):
@@ -96,17 +94,6 @@ def token_opcional(fn):
 
     return wrapper
 
-
-def solo_mis_datos(fn):
-    @wraps(fn)
-    @token_required
-    def wrapper(*args, **kwargs):
-        if request.user_rol == 'trabajador':
-            if not request.persona_id:
-                return jsonify({'error': 'No hay persona vinculada a este usuario'}), 403
-            kwargs['persona_id'] = request.persona_id
-        return fn(*args, **kwargs)
-    return wrapper
 
 
 def _puede_crear_rol(rol_creador, rol_a_crear):

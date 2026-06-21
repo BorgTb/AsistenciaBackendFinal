@@ -1,6 +1,6 @@
 from flask import Blueprint, request, jsonify
 from database import get_connection, resolver_rut_a_id
-from routes.auth import token_opcional, requiere_rol
+from routes.auth import token_opcional
 
 
 asignaciones_bp = Blueprint('asignaciones', __name__)

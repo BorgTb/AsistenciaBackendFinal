@@ -156,15 +156,6 @@ export async function registrarRostro(rut: string, imagenBase64: string) {
   });
 }
 
-export async function actualizarRostro(personaId: string, imagenBase64: string, rut?: string) {
-  const body: Record<string, unknown> = { imagen: imagenBase64 };
-  if (rut) body.rut = rut;
-  return request<{ ok: boolean; mensaje: string; preview_url?: string }>(`/api/facial/actualizar/${personaId}`, {
-    method: 'PUT',
-    body: JSON.stringify(body)
-  });
-}
-
 export interface RegisterCompanyPayload {
   empresa_nombre: string;
   admin_nombre: string;

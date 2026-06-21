@@ -375,6 +375,35 @@ class TestRoutesDispositivos:
         assert resp.status_code == 200
         assert isinstance(resp.get_json(), list)
 
+    def test_listar_dispositivos_empleador(self, client, empleador_token):
+        resp = client.get('/api/dispositivos',
+            headers={'Authorization': f'Bearer {empleador_token}'})
+        assert resp.status_code == 200
+
+    def test_delete_dispositivo_admin(self, client, admin_token):
+        from unittest.mock import patch, MagicMock
+        _enrolar_dispositivo(client, admin_token, 'DeleteMe', 'AA:BB:CC:DD:EE:99', '10.0.0.99')
+        resp = client.delete('/api/dispositivos/1',
+            headers={'Authorization': f'Bearer {admin_token}'})
+        assert resp.status_code == 200
+
+    def test_delete_dispositivo_db_error(self, client, admin_token):
+        from unittest.mock import patch, MagicMock
+        _enrolar_dispositivo(client, admin_token, 'ErrDel', 'AA:BB:CC:DD:EE:98', '10.0.0.98')
+        mock_conn = MagicMock()
+        mock_cur = MagicMock()
+        mock_conn.cursor.return_value = mock_cur
+        mock_cur.execute.side_effect = Exception('DB error')
+        with patch('routes.dispositivos.get_connection', return_value=mock_conn):
+            resp = client.delete('/api/dispositivos/1',
+                headers={'Authorization': f'Bearer {admin_token}'})
+            assert resp.status_code == 500
+
+    def test_listar_dispositivos_trabajador(self, client, trabajador_token):
+        resp = client.get('/api/dispositivos',
+            headers={'Authorization': f'Bearer {trabajador_token}'})
+        assert resp.status_code == 200
+
 
 class TestRoutesErp:
     """Tests para /api/erp — integraciones ERP."""
@@ -529,3 +558,53 @@ class TestRoutesErp:
             headers={'Authorization': f'Bearer {admin_token}'})
         assert resp.status_code == 200
         assert resp.get_json()['enviados'] == 0
+
+    def test_transformar_datos_vacio(self):
+        from routes.erp import _transformar_datos
+        result = _transformar_datos({'a': 1}, None)
+        assert result == {'a': 1}
+        result = _transformar_datos({'a': 1}, '')
+        assert result == {'a': 1}
+        result = _transformar_datos({'a': 1}, '{}')
+        assert result == {'a': 1}
+
+    def test_transformar_datos_json_invalido(self):
+        from routes.erp import _transformar_datos
+        result = _transformar_datos({'a': 1}, 'not-json')
+        assert result == {'a': 1}
+
+    def test_transformar_datos_mapping(self):
+        from routes.erp import _transformar_datos
+        result = _transformar_datos(
+            {'nombre': 'Juan', 'rut': '11-1'},
+            '{"nombre": "name", "rut": "tax_id"}'
+        )
+        assert result['name'] == 'Juan'
+        assert result['tax_id'] == '11-1'
+
+    def test_enviar_a_webhook_headers_json_invalido(self):
+        from routes.erp import _enviar_a_webhook
+        result = _enviar_a_webhook(
+            'http://fake.test', 'bad-json', {'test': 1}, timeout=1
+        )
+        assert result['ok'] is False
+
+    def test_enviar_a_webhook_connection_error(self, mocker):
+        from routes.erp import _enviar_a_webhook
+        mock_post = mocker.patch('routes.erp.requests.post')
+        mock_post.side_effect = __import__('requests').ConnectionError()
+        result = _enviar_a_webhook(
+            'http://fake.test', None, {'test': 1}, timeout=1
+        )
+        assert result['ok'] is False
+        assert 'No se pudo conectar' in result['error']
+
+    def test_enviar_a_webhook_timeout(self, mocker):
+        from routes.erp import _enviar_a_webhook
+        mock_post = mocker.patch('routes.erp.requests.post')
+        mock_post.side_effect = __import__('requests').Timeout()
+        result = _enviar_a_webhook(
+            'http://fake.test', None, {'test': 1}, timeout=1
+        )
+        assert result['ok'] is False
+        assert 'Timeout' in result['error']

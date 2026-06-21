@@ -157,6 +157,64 @@ class TestRoutesTurnos:
             headers={'Authorization': f'Bearer {empleador_token}'})
         assert resp.status_code == 200
 
+    def test_crear_turno_db_error(self, client, admin_token):
+        """Fuerza excepcion en DB para cubrir el except block de create_turno."""
+        from unittest.mock import patch, MagicMock
+        mock_conn = MagicMock()
+        mock_cur = MagicMock()
+        mock_conn.cursor.return_value = mock_cur
+        mock_cur.execute.side_effect = Exception('DB error simulado')
+        with patch('routes.turnos.get_connection', return_value=mock_conn):
+            resp = client.post('/api/turnos',
+                headers={'Authorization': f'Bearer {admin_token}'},
+                json={'nombre': 'T', 'inicio': '08:00', 'fin': '17:00', 'dias': 'L'})
+            assert resp.status_code == 500
+            mock_conn.rollback.assert_called_once()
+
+    def test_delete_turno_db_error(self, client, admin_token):
+        from unittest.mock import patch, MagicMock
+        mock_conn = MagicMock()
+        mock_cur = MagicMock()
+        mock_conn.cursor.return_value = mock_cur
+        mock_cur.execute.side_effect = Exception('DB error')
+        with patch('routes.turnos.get_connection', return_value=mock_conn):
+            resp = client.delete('/api/turnos/1',
+                headers={'Authorization': f'Bearer {admin_token}'})
+            assert resp.status_code == 500
+
+    def test_turnos_filtrados_por_persona_trabajador(self, client, empleador_token):
+        """Cubre el JOIN de turnos por persona_id (rol trabajador)."""
+        client.post('/api/personas',
+            headers={'Authorization': f'Bearer {empleador_token}'},
+            json={'nombre': 'Vinc Trab', 'rut': '55.555.555-5', 'email': 'vinc@t.cl'})
+        reg = client.post('/api/auth/register',
+            headers={'Authorization': f'Bearer {empleador_token}'},
+            json={'nombre': 'Vinc User', 'email': 'vinc@t.cl',
+                  'password': 'test1234', 'rol': 'trabajador', 'empresa_id': 2})
+        assert reg.status_code == 200, reg.get_data(as_text=True)
+        login_resp = client.post('/api/auth/login', json={
+            'email': 'vinc@t.cl', 'password': 'test1234', 'empresa_id': 2
+        })
+        assert login_resp.status_code == 200, login_resp.get_data(as_text=True)
+        vinc_data = login_resp.get_json()
+        assert vinc_data['user']['persona_id'] is not None, 'persona_id no vinculado'
+
+        t = client.post('/api/turnos',
+            headers={'Authorization': f'Bearer {empleador_token}'},
+            json={'nombre': 'Turno Vinc', 'inicio': '08:00', 'fin': '17:00', 'dias': 'L'})
+        client.post('/api/asignaciones',
+            headers={'Authorization': f'Bearer {empleador_token}'},
+            json={'persona_id': str(vinc_data['user']['persona_id']),
+                  'turno_id': str(t.get_json()['id'])})
+
+        vinc_token = vinc_data['token']
+        resp = client.get('/api/turnos',
+            headers={'Authorization': f'Bearer {vinc_token}'})
+        assert resp.status_code == 200
+        turnos = resp.get_json()
+        assert len(turnos) == 1
+        assert turnos[0]['nombre'] == 'Turno Vinc'
+
 
 class TestRoutesAsignaciones:
     """Tests para /api/asignaciones — CRUD de asignaciones persona-turno."""
@@ -271,3 +329,51 @@ class TestRoutesAsignaciones:
             headers={'Authorization': f'Bearer {trabajador_token}'})
         asignaciones = resp.get_json()
         assert len(asignaciones) >= 1
+
+    def test_crear_asignacion_por_rut(self, client, admin_token):
+        client.post('/api/personas',
+            headers={'Authorization': f'Bearer {admin_token}'},
+            json={'nombre': 'RUT Persona', 'rut': '77.777.777-7'})
+        t = client.post('/api/turnos',
+            headers={'Authorization': f'Bearer {admin_token}'},
+            json={'nombre': 'T-RUT', 'inicio': '08:00', 'fin': '17:00', 'dias': 'L'})
+        resp = client.post('/api/asignaciones',
+            headers={'Authorization': f'Bearer {admin_token}'},
+            json={'rut': '77.777.777-7', 'turno_id': str(t.get_json()['id'])})
+        assert resp.status_code == 200
+        data = resp.get_json()
+        assert data['ok'] is True
+        assert 'id' in data
+
+    def test_crear_asignacion_por_rut_no_existente(self, client, admin_token):
+        t = client.post('/api/turnos',
+            headers={'Authorization': f'Bearer {admin_token}'},
+            json={'nombre': 'T-RUT2', 'inicio': '08:00', 'fin': '17:00', 'dias': 'L'})
+        resp = client.post('/api/asignaciones',
+            headers={'Authorization': f'Bearer {admin_token}'},
+            json={'rut': '88.888.888-8', 'turno_id': str(t.get_json()['id'])})
+        assert resp.status_code == 404
+
+    def test_crear_asignacion_db_error(self, client, admin_token):
+        from unittest.mock import patch, MagicMock
+        mock_conn = MagicMock()
+        mock_cur = MagicMock()
+        mock_conn.cursor.return_value = mock_cur
+        mock_cur.execute.side_effect = Exception('DB error')
+        with patch('routes.asignaciones.get_connection', return_value=mock_conn):
+            resp = client.post('/api/asignaciones',
+                headers={'Authorization': f'Bearer {admin_token}'},
+                json={'persona_id': '1', 'turno_id': '1'})
+            assert resp.status_code == 500
+            mock_conn.rollback.assert_called_once()
+
+    def test_delete_asignacion_db_error(self, client, admin_token):
+        from unittest.mock import patch, MagicMock
+        mock_conn = MagicMock()
+        mock_cur = MagicMock()
+        mock_conn.cursor.return_value = mock_cur
+        mock_cur.execute.side_effect = Exception('DB error')
+        with patch('routes.asignaciones.get_connection', return_value=mock_conn):
+            resp = client.delete('/api/asignaciones/1',
+                headers={'Authorization': f'Bearer {admin_token}'})
+            assert resp.status_code == 500

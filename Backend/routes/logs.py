@@ -1,6 +1,6 @@
 from flask import Blueprint, jsonify, request
 from database import get_connection
-from routes.auth import requiere_rol, requiere_login
+from routes.auth import requiere_rol
 
 logs_bp = Blueprint('logs', __name__)
 

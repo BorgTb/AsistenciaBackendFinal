@@ -15,8 +15,4 @@ export interface AuthUser {
   empresas?: EmpresaVinculada[];
 }
 
-export interface AuthState {
-  token: string | null;
-  user: AuthUser | null;
-  loading: boolean;
-}
+

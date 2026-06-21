@@ -1,5 +1,42 @@
 import bcrypt
-from database import get_connection
+from database import get_connection, resolver_rut_a_id
+
+
+class TestResolverRut:
+    """Tests para resolver_rut_a_id."""
+
+    def test_rut_vacio_retorna_none(self, app):
+        assert resolver_rut_a_id('') is None
+        assert resolver_rut_a_id(None) is None
+
+    def test_rut_no_existente_retorna_none(self, app):
+        assert resolver_rut_a_id('99.999.999-9') is None
+
+    def test_rut_existente_retorna_id(self, app):
+        conn = get_connection()
+        cur = conn.cursor()
+        cur.execute(
+            "INSERT INTO personas (nombre, rut, email, empresa_id) "
+            "VALUES ('Test Persona', '12.345.678-9', 'test@test.cl', 1) "
+            "RETURNING id"
+        )
+        persona_id = cur.fetchone()[0]
+        conn.commit()
+        cur.close()
+        conn.close()
+
+        result = resolver_rut_a_id('12.345.678-9')
+        assert result == persona_id
+
+    def test_rut_excepcion_db_retorna_none(self, app):
+        from unittest.mock import patch, MagicMock
+        mock_conn = MagicMock()
+        mock_cur = MagicMock()
+        mock_conn.cursor.return_value = mock_cur
+        mock_cur.execute.side_effect = Exception('DB error')
+        with patch('database.get_connection', return_value=mock_conn):
+            result = resolver_rut_a_id('12.345.678-9')
+            assert result is None
 
 
 class TestDatabase:
@@ -141,3 +178,17 @@ class TestDatabase:
         assert turnos == 0
         assert dispositivos == 0
         assert erps == 0
+
+    def test_init_db_exception_handler(self, app):
+        """Cubre el except block de init_db que imprime traceback y relanza."""
+        from unittest.mock import patch, MagicMock
+        import pytest
+        mock_conn = MagicMock()
+        mock_cur = MagicMock()
+        mock_conn.cursor.return_value = mock_cur
+        mock_cur.execute.side_effect = Exception('Schema creation error')
+        with patch('database.get_connection', return_value=mock_conn):
+            with pytest.raises(Exception, match='Schema creation error'):
+                from database import init_db
+                init_db()
+            mock_conn.rollback.assert_not_called()  # init_db no usa rollback, solo propaga

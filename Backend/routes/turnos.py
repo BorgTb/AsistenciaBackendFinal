@@ -1,6 +1,6 @@
 from flask import Blueprint, request, jsonify
 from database import get_connection
-from routes.auth import token_opcional, requiere_rol
+from routes.auth import token_opcional
 
 
 turnos_bp = Blueprint('turnos', __name__)

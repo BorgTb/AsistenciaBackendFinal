@@ -5,7 +5,7 @@ from datetime import datetime
 import requests
 from flask import Blueprint, jsonify, request
 from database import get_connection, resolver_rut_a_id
-from routes.auth import requiere_rol, requiere_login, token_opcional
+from routes.auth import requiere_rol, token_opcional
 
 erp_bp = Blueprint('erp', __name__)
 

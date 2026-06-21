@@ -307,3 +307,162 @@ class TestRoutesAuth:
             headers={'Authorization': f'Bearer {admin_token}'},
             json={'password_actual': 'admin123', 'password_nueva': 'ab'})
         assert resp.status_code == 400
+
+    # ── Login edge cases ──────────────────────────────────
+    def test_login_usuario_desactivado(self, client, admin_token):
+        from database import get_connection
+        client.post('/api/auth/register',
+            headers={'Authorization': f'Bearer {admin_token}'},
+            json={'nombre': 'Desactivar', 'email': 'desact@test.cl',
+                  'password': 'test1234', 'rol': 'empleador', 'empresa_id': 1})
+        conn = get_connection()
+        cur = conn.cursor()
+        cur.execute("UPDATE usuarios_web SET activo = FALSE WHERE email = 'desact@test.cl'")
+        conn.commit()
+        cur.close()
+        conn.close()
+        resp = client.post('/api/auth/login', json={
+            'email': 'desact@test.cl', 'password': 'test1234', 'empresa_id': 1})
+        assert resp.status_code == 403
+
+    def test_login_need_empresa_multi_empresa(self, client, admin_token):
+        create = client.post('/api/auth/empresas',
+            headers={'Authorization': f'Bearer {admin_token}'},
+            json={'nombre': 'Empresa B', 'rut_empresa': '88.888.888-8'})
+        emp_id = create.get_json()['id']
+        client.post('/api/auth/asignar-usuario',
+            headers={'Authorization': f'Bearer {admin_token}'},
+            json={'usuario_id': 1, 'empresa_id': emp_id, 'rol': 'admin'})
+        resp = client.post('/api/auth/login', json={
+            'email': 'admin@empresa.cl', 'password': 'admin123'})
+        assert resp.status_code == 200
+        data = resp.get_json()
+        assert data['ok'] is False
+        assert data['need_empresa'] is True
+        assert len(data['empresas']) >= 2
+
+    def test_login_empresa_no_valida(self, client, admin_token):
+        create = client.post('/api/auth/empresas',
+            headers={'Authorization': f'Bearer {admin_token}'},
+            json={'nombre': 'Empresa X', 'rut_empresa': '66.666.666-6'})
+        emp_id = create.get_json()['id']
+        client.post('/api/auth/asignar-usuario',
+            headers={'Authorization': f'Bearer {admin_token}'},
+            json={'usuario_id': 1, 'empresa_id': emp_id, 'rol': 'admin'})
+        resp = client.post('/api/auth/login', json={
+            'email': 'admin@empresa.cl', 'password': 'admin123', 'empresa_id': 99999})
+        assert resp.status_code == 403
+
+    # ── Register validation errors ────────────────────────
+    def test_register_faltan_campos(self, client, admin_token):
+        resp = client.post('/api/auth/register',
+            headers={'Authorization': f'Bearer {admin_token}'},
+            json={'nombre': 'X'})
+        assert resp.status_code == 400
+
+    def test_register_rol_invalido(self, client, admin_token):
+        resp = client.post('/api/auth/register',
+            headers={'Authorization': f'Bearer {admin_token}'},
+            json={'nombre': 'X', 'email': 'x@x.cl',
+                  'password': 'test1234', 'rol': 'superadmin', 'empresa_id': 1})
+        assert resp.status_code == 400
+
+    def test_register_sin_permisos_rol(self, client, empleador_token):
+        resp = client.post('/api/auth/register',
+            headers={'Authorization': f'Bearer {empleador_token}'},
+            json={'nombre': 'X', 'email': 'x2@x.cl',
+                  'password': 'test1234', 'rol': 'admin', 'empresa_id': 2})
+        assert resp.status_code == 403
+
+    def test_register_admin_sin_empresa_id(self, client, admin_token):
+        resp = client.post('/api/auth/register',
+            headers={'Authorization': f'Bearer {admin_token}'},
+            json={'nombre': 'X', 'email': 'x3@x.cl',
+                  'password': 'test1234', 'rol': 'trabajador'})
+        assert resp.status_code == 400
+
+    # ── Register company duplicate email ──────────────────
+    def test_register_company_email_duplicado(self, client):
+        resp = client.post('/api/auth/register-company', json={
+            'empresa_nombre': 'Duplicado',
+            'admin_nombre': 'Admin Dup',
+            'admin_email': 'admin@empresa.cl',
+            'admin_password': 'test1234'
+        })
+        assert resp.status_code == 409
+
+    # ── Delete user edge cases ────────────────────────────
+    def test_admin_se_remueve_de_empresa(self, client, admin_token):
+        create = client.post('/api/auth/empresas',
+            headers={'Authorization': f'Bearer {admin_token}'},
+            json={'nombre': 'Temporary', 'rut_empresa': '77.777.777-7'})
+        emp_id = create.get_json()['id']
+        client.post('/api/auth/asignar-usuario',
+            headers={'Authorization': f'Bearer {admin_token}'},
+            json={'usuario_id': 1, 'empresa_id': emp_id, 'rol': 'admin'})
+        resp = client.delete('/api/auth/usuarios/1',
+            headers={'Authorization': f'Bearer {admin_token}'},
+            json={'empresa_id': emp_id})
+        assert resp.status_code == 200
+
+    def test_delete_usuario_sin_permisos(self, client, empleador_token):
+        resp = client.delete('/api/auth/usuarios/1',
+            headers={'Authorization': f'Bearer {empleador_token}'},
+            json={'empresa_id': 1})
+        assert resp.status_code in (403, 404)
+
+    # ── Edit user edge cases ──────────────────────────────
+    def test_edit_usuario_sin_permisos(self, client, empleador_token):
+        resp = client.put('/api/auth/usuarios/1',
+            headers={'Authorization': f'Bearer {empleador_token}'},
+            json={'nombre': 'Hack', 'empresa_id': 1})
+        assert resp.status_code in (403, 404)
+
+    def test_edit_usuario_password_y_activo(self, client, admin_token):
+        client.post('/api/auth/register',
+            headers={'Authorization': f'Bearer {admin_token}'},
+            json={'nombre': 'Full Edit', 'email': 'full@test.cl',
+                  'password': 'test1234', 'rol': 'empleador', 'empresa_id': 1})
+        resp = client.put('/api/auth/usuarios/2',
+            headers={'Authorization': f'Bearer {admin_token}'},
+            json={'email': 'full2@test.cl', 'password': 'newpass456',
+                  'activo': True, 'empresa_id': 1})
+        assert resp.status_code == 200
+        data = resp.get_json()
+        assert data['ok'] is True
+
+    # ── Create empresa edge cases ─────────────────────────
+    def test_crear_empresa_sin_nombre(self, client, admin_token):
+        resp = client.post('/api/auth/empresas',
+            headers={'Authorization': f'Bearer {admin_token}'},
+            json={'rut_empresa': '66.666.666-6'})
+        assert resp.status_code == 400
+
+    # ── Assign usuario edge cases ─────────────────────────
+    def test_asignar_faltan_campos(self, client, admin_token):
+        resp = client.post('/api/auth/asignar-usuario',
+            headers={'Authorization': f'Bearer {admin_token}'},
+            json={'usuario_id': 1})
+        assert resp.status_code == 400
+
+    def test_asignar_rol_invalido(self, client, admin_token):
+        resp = client.post('/api/auth/asignar-usuario',
+            headers={'Authorization': f'Bearer {admin_token}'},
+            json={'usuario_id': 1, 'empresa_id': 1, 'rol': 'owner'})
+        assert resp.status_code == 400
+
+    # ── Device PIN edge cases ─────────────────────────────
+    def test_enrolar_pin_ya_usado(self, client, empleador_token):
+        pin_resp = client.post('/api/auth/dispositivos/generar-pin',
+            headers={'Authorization': f'Bearer {empleador_token}'},
+            json={'nombre': 'Reloj 1'})
+        pin = pin_resp.get_json()['pin']
+        client.post('/api/auth/dispositivos/enrolar',
+            headers={'Authorization': f'Bearer {empleador_token}'},
+            json={'codigo': pin, 'mac': 'AA:BB:CC:DD:EE:11', 'ip': '10.0.0.1'})
+        resp = client.post('/api/auth/dispositivos/enrolar',
+            headers={'Authorization': f'Bearer {empleador_token}'},
+            json={'codigo': pin, 'mac': 'AA:BB:CC:DD:EE:22', 'ip': '10.0.0.2'})
+        assert resp.status_code != 200
+
+

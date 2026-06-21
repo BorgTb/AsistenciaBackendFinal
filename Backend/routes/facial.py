@@ -383,9 +383,6 @@ def verificar_facial():
             return jsonify({'error': msg_calidad}), 400
 
         file_path = guardar_imagen_temporal(imagen_b64)
-        copia_debug = f"./static/capturas_prueba/debug_live_{datetime.now().strftime('%H%M%S')}.jpg"
-        shutil.copyfile(file_path, copia_debug)
-        print(f"Imagen en vivo interceptada y guardada en: {copia_debug}")
 
         conn = get_connection()
         cur = conn.cursor()

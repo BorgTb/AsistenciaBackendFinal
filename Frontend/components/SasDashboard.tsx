@@ -15,7 +15,7 @@ import {
   verificarDispositivo,
   enviarErp,
   registrarRostro,
-  actualizarRostro,
+
   generarPinEnrolamiento,
   generarPasswordDispositivo,
   eliminarPasswordDispositivo,
@@ -26,7 +26,6 @@ import {
   type UsuarioWeb
 } from '@/lib/auth-api';
 import {
-  apiBaseUrl,
   clearLogs,
   createAsignacion,
   createErp,
@@ -47,7 +46,7 @@ import {
   registrarConsentimiento,
   eliminarDatosBiometricos,
   testErp,
-  setPersonaHuella
+
 } from '@/lib/api';
 import type { Asignacion, Asistencia, DeviceStatus, ErpIntegration, LogEntry, Persona, Turno } from '@/lib/types';
 
@@ -190,8 +189,6 @@ export function SasDashboard({ initialSection = 'dashboard' }: { initialSection?
   const [passwordForm, setPasswordForm] = useState({ passwordActual: '', passwordNueva: '', confirmacion: '' });
   const [generatedPin, setGeneratedPin] = useState('');
   const [deviceForm, setDeviceForm] = useState({ nombre: '', ip: '' });
-  const [deviceVerify, setDeviceVerify] = useState<'idle' | 'checking' | 'ok' | 'fail'>('idle');
-  const [deviceVerifyMsg, setDeviceVerifyMsg] = useState('');
   const [editingDeviceId, setEditingDeviceId] = useState<string | null>(null);
   const [editDeviceName, setEditDeviceName] = useState('');
   const [generatedDevicePassword, setGeneratedDevicePassword] = useState<string | null>(null);
@@ -384,8 +381,6 @@ export function SasDashboard({ initialSection = 'dashboard' }: { initialSection?
     setModal(null);
     setFormError('');
     setDeviceForm({ nombre: '', ip: '' });
-    setDeviceVerify('idle');
-    setDeviceVerifyMsg('');
     setEditingUsuario(null);
     setRegisterForm({ nombre: '', email: '', password: '', rol: 'trabajador', empresa_id: undefined });
   }
@@ -867,17 +862,11 @@ export function SasDashboard({ initialSection = 'dashboard' }: { initialSection?
       showToast('error', 'Ingresa una IP para verificar');
       return;
     }
-    setDeviceVerify('checking');
-    setDeviceVerifyMsg('');
     const result = await verificarDispositivo(ip);
     if (result && 'ok' in result && result.ok) {
-      setDeviceVerify('ok');
-      setDeviceVerifyMsg(`Dispositivo responde · MAC: ${result.datos?.mac || 'N/D'}`);
       showToast('success', 'Dispositivo verificado');
     } else {
-      setDeviceVerify('fail');
       const mensaje = result && 'error' in result ? String(result.error) : 'No responde';
-      setDeviceVerifyMsg(mensaje);
       showToast('error', mensaje);
     }
   }

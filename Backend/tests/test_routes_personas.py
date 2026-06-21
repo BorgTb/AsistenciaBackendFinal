@@ -211,3 +211,32 @@ class TestRoutesPersonas:
     def test_eliminar_biometricos_sin_auth(self, client):
         resp = client.delete('/api/personas/1/datos-biometricos')
         assert resp.status_code in (401, 403)
+
+    def test_update_persona_email_invalido(self, client, admin_token):
+        client.post('/api/personas',
+            headers={'Authorization': f'Bearer {admin_token}'},
+            json={'nombre': 'Update Me', 'rut': '44.444.444-4'})
+        resp = client.put('/api/personas/1',
+            headers={'Authorization': f'Bearer {admin_token}'},
+            json={'email': 'not-an-email'})
+        assert resp.status_code == 400
+
+    def test_update_persona_not_found(self, client, admin_token):
+        resp = client.put('/api/personas/99999',
+            headers={'Authorization': f'Bearer {admin_token}'},
+            json={'nombre': 'Ghost'})
+        assert resp.status_code == 404
+
+    def test_delete_persona_db_error(self, client, admin_token):
+        from unittest.mock import patch, MagicMock
+        client.post('/api/personas',
+            headers={'Authorization': f'Bearer {admin_token}'},
+            json={'nombre': 'ToDelete', 'rut': '55.555.555-5'})
+        mock_conn = MagicMock()
+        mock_cur = MagicMock()
+        mock_conn.cursor.return_value = mock_cur
+        mock_cur.execute.side_effect = Exception('DB error')
+        with patch('routes.personas.get_connection', return_value=mock_conn):
+            resp = client.delete('/api/personas/3',
+                headers={'Authorization': f'Bearer {admin_token}'})
+            assert resp.status_code == 500

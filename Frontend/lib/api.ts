@@ -23,10 +23,6 @@ async function request<T>(path: string, init?: RequestInit): Promise<T | null> {
   }
 }
 
-export function apiBaseUrl() {
-  return 'Next API proxy -> Flask';
-}
-
 export async function getPersonas() {
   return request<Persona[]>('/api/personas');
 }
@@ -41,13 +37,6 @@ export async function createPersona(payload: { nombre: string; rut: string; emai
 export async function deletePersona(personaId: string) {
   return request<{ ok: boolean } | { error: string }>(`/api/personas/${personaId}`, {
     method: 'DELETE'
-  });
-}
-
-export async function setPersonaHuella(personaId: string, huellaId: number) {
-  return request<{ ok: boolean } | { error: string }>(`/api/personas/${personaId}/huella`, {
-    method: 'PUT',
-    body: JSON.stringify({ huella_id: huellaId })
   });
 }
 
@@ -146,9 +135,3 @@ export async function testErp(erpId: string) {
   });
 }
 
-export async function syncAsistencias(registros: Array<Record<string, unknown>>) {
-  return request<{ ok: boolean; insertados: number; errores: number }>('/api/asistencias/sync', {
-    method: 'POST',
-    body: JSON.stringify({ registros })
-  });
-}

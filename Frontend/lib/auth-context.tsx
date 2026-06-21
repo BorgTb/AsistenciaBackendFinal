@@ -2,7 +2,7 @@
 
 import type { ReactNode } from 'react';
 import { createContext, useCallback, useContext, useEffect, useState } from 'react';
-import type { AuthUser, EmpresaVinculada } from '@/lib/auth-types';
+import type { AuthUser } from '@/lib/auth-types';
 import { clearToken, fetchMe, hasToken, loginRequest, saveToken, type LoginNeedEmpresa, type LoginSuccess } from '@/lib/auth-api';
 
 interface AuthContextValue {
