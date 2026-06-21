@@ -7,7 +7,7 @@ export async function POST(request: Request) {
 
   const body = await request.text();
 
-  return proxyJsonRequest('/api/dispositivos/generar-pin', {
+  return proxyJsonRequest('/api/auth/dispositivos/generar-pin', {
     method: 'POST',
     headers,
     body: body || undefined

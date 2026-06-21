@@ -627,7 +627,7 @@ void enrolarDispositivo() {
   if (pinEnrol.length() == 0 || estaEnrolado) return;
   addLog("Enrolando dispositivo con PIN: " + pinEnrol);
   HTTPClient http;
-  beginHttp(http, backendURL + "/api/dispositivos/enrolar");
+  beginHttp(http, backendURL + "/api/auth/dispositivos/enrolar");
   http.addHeader("Content-Type", "application/json");
   
 
@@ -785,19 +785,51 @@ void sincronizarPersonasDesdeBackend() {
     return;
   }
   addLog("Fetcheando lista de personas desde Backend...");
+
+  DynamicJsonDocument docLocal(8192);
+  JsonArray locales = loadArray("/personas.json", docLocal);
+
+  bool hayLocalesPendientes = false;
+  for (JsonObject p : locales) {
+    if (!p["sincronizado"].as<bool>()) {
+      hayLocalesPendientes = true;
+      break;
+    }
+  }
+
   HTTPClient http;
   beginHttp(http, backendURL + "/api/personas");
 
   int httpCode = http.GET();
   if (httpCode == 200) {
-    DynamicJsonDocument doc(8192); 
-    DeserializationError error = deserializeJson(doc, http.getStream());
+    DynamicJsonDocument docBackend(8192);
+    DeserializationError error = deserializeJson(docBackend, http.getStream());
 
     if (!error) {
+      JsonArray backendArr = docBackend.as<JsonArray>();
+      for (JsonObject p : backendArr) {
+        p["sincronizado"] = true;
+      }
+      int localesReagregadas = 0;
+      if (hayLocalesPendientes) {
+        for (JsonObject p : locales) {
+          if (!p["sincronizado"].as<bool>()) {
+            JsonObject obj = backendArr.createNestedObject();
+            obj["id"] = p["id"];
+            obj["nombre"] = p["nombre"];
+            obj["rut"] = p["rut"];
+            if (p.containsKey("email")) obj["email"] = p["email"];
+            if (p.containsKey("huella_id")) obj["huella_id"] = p["huella_id"];
+            if (p.containsKey("fecha_registro")) obj["fecha_registro"] = p["fecha_registro"];
+            obj["sincronizado"] = false;
+            localesReagregadas++;
+          }
+        }
+      }
       File file = LittleFS.open("/personas.json", "w");
-      serializeJson(doc, file);
+      serializeJson(docBackend, file);
       file.close();
-      addLog("Personas fetcheadas y guardadas. Total: " + String(doc.size()));
+      addLog("Personas sincronizadas. Backend: " + String(backendArr.size()) + " + locales pendientes: " + String(localesReagregadas));
     } else {
       addLog("Error parseando JSON de personas.");
     }
@@ -983,7 +1015,7 @@ bool crearTurnoEnBackend(const String& nombre, const String& inicio, const Strin
 bool crearAsignacionEnBackend(const String& personaId, const String& turnoIdBackend, String& idBackend) {
   idBackend = "";
   if (!isOnline || WiFi.status() != WL_CONNECTED) return false;
-  if (personaId.startsWith("local-") || turnoIdBackend.length() == 0) return false;
+  if (turnoIdBackend.length() == 0) return false;
 
   HTTPClient http;
   beginHttp(http, backendURL + "/api/asignaciones");
@@ -991,7 +1023,13 @@ bool crearAsignacionEnBackend(const String& personaId, const String& turnoIdBack
   
 
   DynamicJsonDocument payloadDoc(512);
-  payloadDoc["persona_id"] = personaId;
+  if (personaId.startsWith("local-")) {
+    String rut = buscarRutPersona(personaId);
+    if (rut.length() == 0) { http.end(); return false; }
+    payloadDoc["rut"] = rut;
+  } else {
+    payloadDoc["persona_id"] = personaId;
+  }
   payloadDoc["turno_id"] = turnoIdBackend;
   String payload;
   serializeJson(payloadDoc, payload);
@@ -1257,10 +1295,13 @@ void sincronizarAsignacionesPendientes() {
     if (sincronizado) continue;
 
     String personaId = a["persona_id"].as<String>();
-    if (personaId.startsWith("local-")) continue;
-
     String turnoBackendId = obtenerTurnoBackendId(a["turno_id"].as<String>());
     if (turnoBackendId.length() == 0) continue;
+
+    if (personaId.startsWith("local-")) {
+      String rut = buscarRutPersona(personaId);
+      if (rut.length() == 0) continue;
+    }
 
     String asigBackendId = "";
     if (crearAsignacionEnBackend(personaId, turnoBackendId, asigBackendId)) {
@@ -1473,7 +1514,52 @@ String buscarRutPersona(const String& personaId) {
   return "";
 }
 
+void sincronizarPersonasPendientes() {
+  if (!isOnline || WiFi.status() != WL_CONNECTED) return;
+
+  DynamicJsonDocument doc(8192);
+  JsonArray personas = loadArray("/personas.json", doc);
+  bool huboCambios = false;
+
+  for (JsonObject p : personas) {
+    bool sincronizado = p.containsKey("sincronizado") ? p["sincronizado"].as<bool>() : false;
+    if (sincronizado) continue;
+    if (!p["id"].as<String>().startsWith("local-")) continue;
+
+    HTTPClient http;
+    beginHttp(http, backendURL + "/api/personas");
+    http.addHeader("Content-Type", "application/json");
+    DynamicJsonDocument bodyDoc(512);
+    bodyDoc["nombre"] = p["nombre"];
+    bodyDoc["rut"] = p["rut"];
+    if (p.containsKey("email")) bodyDoc["email"] = p["email"];
+    if (p.containsKey("huella_id")) bodyDoc["huella_id"] = p["huella_id"];
+    String payload;
+    serializeJson(bodyDoc, payload);
+    int code = http.POST(payload);
+    if (code == 200 || code == 201) {
+      String response = http.getString();
+      DynamicJsonDocument respDoc(256);
+      DeserializationError err = deserializeJson(respDoc, response);
+      if (!err && respDoc.containsKey("id")) {
+        p["backend_id"] = respDoc["id"].as<String>();
+      }
+      p["sincronizado"] = true;
+      huboCambios = true;
+      addLog("Persona local sync en backend: " + p["nombre"].as<String>());
+    } else {
+      addLog("Error sync persona local: HTTP " + String(code));
+    }
+    http.end();
+  }
+
+  if (huboCambios) {
+    saveArray("/personas.json", doc);
+  }
+}
+
 void sincronizarPendientes() {
+  sincronizarPersonasPendientes();
   sincronizarTurnosPendientes();
   sincronizarAsignacionesPendientes();
   sincronizarAsistencias();
