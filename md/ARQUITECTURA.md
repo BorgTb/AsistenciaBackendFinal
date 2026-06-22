@@ -78,7 +78,7 @@ cryptography      ← añadido para cifrado AES de embeddings biométricos
 
 ```
 Backend/
-├── app.py                      # Entry point Flask + arranque MQTT
+├── app.py                      # Entry point Flask + arranque MQTT + SSE streaming de dispositivos
 ├── database.py                 # Conexión psycopg2 + init_db() (crea/evoluciona esquema)
 ├── encryption.py               # ⭐ Cifrado AES de embeddings biométricos
 ├── mqtt_handler.py             # Cliente MQTT: recepción de imágenes del ESP32
@@ -231,20 +231,26 @@ Presets soportados: **generic, odoo, defontana, buk, sap**.
 
 ### 2.8 Cliente MQTT embebido (`Backend/mqtt_handler.py`)
 
-El backend se conecta al broker Mosquitto como **cliente** (no publica, solo recibe).
+El backend se conecta al broker Mosquitto como **cliente bidireccional**: recibe heartbeats/LWT y **publica pings activos**.
 
-- **Tópico de suscripción**: `esp32/imagen/#` (en particular `esp32/imagen/registrar`).
-- **Otros tópicos escuchados**:
-  - `esp32/heartbeat/<mac>` → actualiza `dispositivos.ultimo_heartbeat` y `estado=activo`
-  - `esp32/lwt/<mac>` → marca `estado=inactivo`
+- **Tópicos escuchados**:
+  - `esp32/imagen/registrar` → recibe imágenes faciales para enrolamiento (QoS 1)
+  - `esp32/heartbeat/<mac>` → actualiza `dispositivos.ultimo_heartbeat`, `estado=activo` e IP
+  - `esp32/lwt/<mac>` → marca `estado=inactivo` (desconexión abrupta detectada por el broker)
   - `esp32/asistencia/#` → informativo
-  - `esp32/imagen/eco` → debug
+  - `esp32/imagen/eco` → debug de conectividad bidireccional
+  - `esp32/ping/<mac>` → **publicado** por el backend cada 30 s (ver `device_pinger()`)
 - **Flujo de enrolamiento facial**:
   1. ESP32 publica payload JSON `{persona_id, imagen_b64}` en `esp32/imagen/registrar` (un solo mensaje, no fragmentado en la versión actual).
   2. `procesar_imagen_facial()` valida consentimiento, decodifica, guarda en `static/previews/{persona_id}.jpg`, extrae embedding con DeepFace, **lo cifra** y lo guarda.
   3. Responde en `esp32/respuesta/facial` con `{status, mensaje}` o `{status, file_name}`.
+- **Ping activo** (`device_pinger()`): hilo que publica `esp32/ping/<MAC>` cada 30 s. Si el ESP32 no responde con un heartbeat (con `"pong":true`) en 60 s, se marca como `inactivo`. Es la **tercera capa** de detección de desconexión:
+  1. LWT (instantáneo, si el broker alcanza a publicarlo)
+  2. Pinger activo (30-60 s, detecta silencios incluso sin LWT)
+  3. Watchdog pasivo (60-90 s, verifica heartbeats vencidos)
 - **Watchdog** (`device_watchdog`): corre cada 60 s, marca `inactivo` a dispositivos sin heartbeat >90 s.
-- **Inicialización**: `start_mqtt()` se invoca en `app.py` al arrancar el backend.
+- **Inicialización**: `start_mqtt()` se invoca en `app.py` al arrancar el backend. Almacena el cliente globalmente (`_mqtt_client`) para que `device_pinger()` pueda publicar pings.
+- **Broadcasting de estado**: cada vez que un dispositivo cambia de estado (heartbeat, LWT, watchdog, pinger), se llama a `broadcast_device_update()` que envía el cambio a todos los clientes SSE conectados.
 
 ### 2.9 Despacho asíncrono a ERPs (`asistencias.py`)
 
@@ -320,7 +326,9 @@ Frontend/
 
 ### 3.3 Patrón Proxy
 
-El frontend **nunca** llama directamente al backend Flask. Todas las llamadas van a `/api/...` dentro del propio Next.js, que las re-envía al backend.
+El frontend llama al backend Flask de dos formas:
+
+**API REST (proxy)**: Todas las llamadas REST van a `/api/...` dentro del propio Next.js, que las re-envía al backend mediante `proxyJsonRequest()`. Esto evita problemas de CORS y mantiene la seguridad del token JWT.
 
 `Frontend/app/api/_proxy.ts`:
 - Lee `FLASK_API_BASE_URL` o `NEXT_PUBLIC_API_BASE_URL` (default `http://localhost:5000`).
@@ -329,6 +337,8 @@ El frontend **nunca** llama directamente al backend Flask. Todas las llamadas va
 - Detección básica de bloqueo Cloudflare (status 403 con HTML) → 502 con mensaje accionable.
 
 Cada `route.ts` es un wrapper mínimo (1-8 líneas) que llama a `proxyJsonRequest(path, init, request)`.
+
+**SSE streaming (directo)**: El hook `useDeviceWebSocket` conecta `EventSource` directamente al backend Flask (`http://localhost:5000/sse/devices`). No pasa por el proxy de Next.js porque SSE requiere una conexión persistente `text/event-stream` que el proxy no soporta. Los eventos contienen `{id, nombre, ip, estado, online, ultimo_heartbeat}` y se comparan por `contentKey` para evitar re-renders infinitos.
 
 ### 3.4 Autenticación del frontend
 
@@ -366,6 +376,12 @@ Características clave:
 - Verificación de dispositivo por IP (`GET http://<ip>/estado` vía `/api/dispositivos/verificar`).
 - Export CSV de asistencias.
 - Subida de rostro vía file picker → Base64 → `POST /api/facial/registrar`.
+- **Estado de dispositivos en tiempo real** vía SSE (`useDeviceWebSocket` hook):
+  - Conexión directa a `GET /sse/devices` (backend Flask, puerto 5000, no proxy)
+  - Cada tarjeta de dispositivo muestra: IP clickable (enlace a `http://<ip>/`), indicador animado verde/rojo (`live-dot`), tooltip "Misma red requerida"
+  - `online = estado === 'activo'` AND `ultimo_heartbeat` dentro de los últimos 5 minutos
+  - Fallback con polling REST cada 15 s si SSE se desconecta
+  - Guard de re-render infinito mediante comparación por `contentKey`
 
 ### 3.6 Roles y UI
 
@@ -508,13 +524,19 @@ Los IDs locales tienen el prefijo `local-` cuando aún no se sincronizaron con e
 | `esp32/heartbeat/<mac>` | ESP32 → broker → backend | Heartbeat cada X segundos |
 | `esp32/lwt/<mac>` | broker → backend | Last Will: dispositivo desconectado |
 | `esp32/asistencia/#` | ESP32 → broker | Marcajes (informativo) |
+| `esp32/ping/<mac>` | backend → broker → ESP32 | Ping activo cada 30s (device_pinger) |
 | `esp32/imagen/start` / `part` / `end` | ESP32 → broker | Protocolo de fragmentación legacy (ya no se usa, se envía un solo mensaje) |
 | `esp32/imagen/eco` | backend → broker | Test bidireccional al conectar |
 
-### 4.9 Watchdog de dispositivo
+### 4.9 Watchdog y ping activo de dispositivo
 
-- Marca inicial: todos los dispositivos `inactivo` esperando heartbeat.
-- Cada 60 s: si `tiempo_actual - ultimo_heartbeat > 90 s` para alguna MAC → marca `inactivo`.
+Tres capas de detección de desconexión:
+
+1. **LWT (instantáneo)**: Al conectarse al broker, el ESP32 configura un mensaje Last Will en `esp32/lwt/<MAC>`. Si se desconecta abruptamente, el broker lo publica automáticamente y el backend marca `inactivo`.
+2. **Ping activo** (`device_pinger`): El backend publica `esp32/ping/<MAC>` cada 30 s. Si el ESP32 no responde con un heartbeat (con `"pong":true`) dentro de 60 s, se marca `inactivo`. Detecta desconexiones incluso sin LWT.
+3. **Watchdog pasivo** (`device_watchdog`): Corre cada 60 s. Si `tiempo_actual - ultimo_heartbeat > 90 s` → marca `inactivo`.
+
+- Al arrancar, todos los dispositivos se marcan `inactivo` hasta que envíen su primer heartbeat.
 - Si 5 reconexiones WiFi fallan → modo AP fallback.
 
 ---

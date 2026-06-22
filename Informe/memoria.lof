@@ -36,6 +36,6 @@
 \contentsline {figure}{\numberline {4.29}{\ignorespaces Pipeline de cifrado biométrico}}{82}{}%
 \contentsline {figure}{\numberline {4.30}{\ignorespaces Diagrama de secuencia del login multi-empresa con JWT.}}{87}{}%
 \contentsline {figure}{\numberline {4.31}{\ignorespaces Diagrama de secuencia de la integración ERP — push asíncrono con field mapping.}}{99}{}%
-\contentsline {figure}{\numberline {4.32}{\ignorespaces Diagrama de actividad: sincronización bidireccional entre los modos online y offline del ESP32-CAM.}}{105}{}%
+\contentsline {figure}{\numberline {4.32}{\ignorespaces Diagrama de actividad: sincronización bidireccional entre los modos online y offline del ESP32-CAM.}}{106}{}%
 \addvspace {10\p@ }
 \addvspace {10\p@ }

@@ -518,7 +518,7 @@ La Figura~\ref{fig:db-er} presenta el diagrama entidad-relación correspondiente
 
 La comunicación MQTT se diseña para transmitir imágenes faciales de \textbf{registro} desde el ESP32-CAM hacia el backend en un único mensaje JSON por el tópico \texttt{esp32/imagen/registrar}, conteniendo el \texttt{rut} y la imagen codificada en Base64. El backend, mediante un cliente MQTT (librería \texttt{paho-mqtt} de Python), se suscribe a este tópico, decodifica la imagen y procesa el enrolamiento facial. Es importante destacar que las imágenes de \textbf{identificación} (consulta 1:N durante la marcación) \textbf{no viajan por MQTT}, sino por HTTP al endpoint \texttt{POST /api/facial/identificar} como JPEG crudo en formato \texttt{application/octet-stream}.
 
-Adicionalmente, se definen los tópicos \texttt{esp32/heartbeat/<MAC>} para monitorizar la actividad de los dispositivos y \texttt{esp32/lwt/<MAC>} para detectar desconexiones mediante el mecanismo de Last Will Testament (LWT). El backend recibe las respuestas del procesamiento facial por el tópico \texttt{esp32/respuesta/facial}, que el ESP32-CAM escucha para confirmar el éxito o fallo del registro. La Figura~\ref{fig:flujo_mqtt} resume la topología de publicación y suscripción.
+Adicionalmente, se definen los tópicos \texttt{esp32/heartbeat/<MAC>} para monitorizar la actividad de los dispositivos y \texttt{esp32/lwt/<MAC>} para detectar desconexiones mediante el mecanismo de Last Will Testament (LWT). El backend recibe las respuestas del procesamiento facial por el tópico \texttt{esp32/respuesta/facial}, que el ESP32-CAM escucha para confirmar el éxito o fallo del registro. Para la detección activa de desconexión, se implementó el tópico \texttt{esp32/ping/<MAC>}: el backend publica un ping cada 30 segundos; si el ESP32-CAM no responde con un heartbeat dentro de 60 segundos, se marca como inactivo. La Figura~\ref{fig:flujo_mqtt} resume la topología de publicación y suscripción.
 
 \begin{figure}[H]
   \centering
@@ -555,11 +555,11 @@ En contraste, durante la \textbf{identificación facial} (consulta 1:N al moment
 
 El backend implementa un cliente MQTT mediante la librería \texttt{paho-mqtt} en el módulo \texttt{mqtt\_handler.py}. Al recibir un mensaje en \texttt{esp32/imagen/registrar}, la función \texttt{on\_message} decodifica el JSON, extrae el \texttt{rut} y la imagen Base64, verifica que exista consentimiento biométrico registrado en la base de datos, resuelve el \texttt{rut} al \texttt{id} interno, decodifica la imagen, la guarda en \texttt{static/previews/<id>.jpg} y extrae el embedding facial. Si el procesamiento es exitoso, publica en \texttt{esp32/respuesta/facial} un JSON con \texttt{status: "ok"} y el nombre del archivo; en caso de error, publica \texttt{status: "error"} con el detalle.
 
-Adicionalmente, el cliente MQTT procesa los heartbeats (\texttt{esp32/heartbeat/<MAC>}) actualizando el estado y la IP del dispositivo en la base de datos, y los mensajes LWT (\texttt{esp32/lwt/<MAC>}) marcando el dispositivo como inactivo.
+Adicionalmente, el cliente MQTT procesa los heartbeats (\texttt{esp32/heartbeat/<MAC>}) actualizando el estado y la IP del dispositivo en la base de datos, y los mensajes LWT (\texttt{esp32/lwt/<MAC>}) marcando el dispositivo como inactivo. También se implementó un hilo \texttt{device\_pinger()} que publica pings en el tópico \texttt{esp32/ping/<MAC>} cada 30 segundos como mecanismo de verificación activa de conectividad. Cada cambio de estado (heartbeat, LWT, ping, watchdog) se difunde a los clientes web mediante el streaming SSE (\texttt{/sse/devices}) para actualizar el panel en tiempo real.
 
 \paragraph{Mantenimiento de la conexión MQTT en el ESP32-CAM}
 
-La función \texttt{mantenerConexionMQTT()} se encarga de iniciar el cliente MQTT en el ESP32-CAM si el broker está configurado y hay conectividad. Soporta URLs con esquema \texttt{mqtt://}, \texttt{ws://} o \texttt{wss://} (WebSockets seguros con TLS mediante \texttt{esp\_crt\_bundle\_attach}). Configura un mensaje LWT para que el backend sea notificado si el dispositivo se desconecta abruptamente, y se suscribe al tópico \texttt{esp32/respuesta/facial} para recibir confirmaciones del backend.
+La función \texttt{mantenerConexionMQTT()} se encarga de iniciar el cliente MQTT en el ESP32-CAM si el broker está configurado y hay conectividad. Soporta URLs con esquema \texttt{mqtt://}, \texttt{ws://} o \texttt{wss://} (WebSockets seguros con TLS mediante \texttt{esp\_crt\_bundle\_attach}). Configura un mensaje LWT para que el backend sea notificado si el dispositivo se desconecta abruptamente, y se suscribe al tópico \texttt{esp32/respuesta/facial} para recibir confirmaciones del backend, así como al tópico \texttt{esp32/ping/<MAC>} para responder a los pings de conectividad activa del backend. Al recibir un ping, el ESP32-CAM responde publicando inmediatamente un heartbeat con el campo \texttt{{"pong": true}}, lo que permite al backend verificar que el dispositivo sigue en línea.
 
 \paragraph{Envío de datos mediante HTTP desde el ESP32-CAM}
 
@@ -612,6 +612,8 @@ Se diseñaron las siguientes pruebas para validar la comunicación y el backend:
     \item \textbf{Prueba de envío MQTT}: Capturar una imagen desde el ESP32-CAM y publicarla en el tópico \texttt{esp32/imagen/registrar}. Verificar que el backend reciba el mensaje, decodifique la imagen, la guarde en disco y publique una respuesta en \texttt{esp32/respuesta/facial} que el ESP32-CAM reciba correctamente.
 
     \item \textbf{Prueba de heartbeat y LWT}: Verificar que, estando el ESP32-CAM conectado, el backend reciba heartbeats periódicos (cada 30 segundos) y actualice el campo \texttt{ultimo\_heartbeat} en la tabla \texttt{dispositivos}. Desconectar el dispositivo abruptamente y verificar que el mensaje LWT se publique y el backend marque el dispositivo como \texttt{inactivo} en menos de 10 segundos.
+
+    \item \textbf{Prueba de ping/pong activo}: Conectar el ESP32-CAM al broker MQTT. Verificar que el backend publique \texttt{esp32/ping/<MAC>} periódicamente (cada 30 segundos) y que el ESP32-CAM responda con un heartbeat que contenga el campo \texttt{"pong": true}. Detener la conectividad del ESP32-CAM y verificar que, tras 60 segundos sin respuesta, el backend marque el dispositivo como \texttt{inactivo}.
 
     \item \textbf{Prueba de recepción de datos en backend vía HTTP}: Enviar solicitudes POST a \texttt{/api/personas}, \texttt{/api/turnos}, \texttt{/api/asignaciones} y \texttt{/api/asistencias} desde el ESP32-CAM. Verificar que cada solicitud sea procesada correctamente por el backend (código HTTP 200/201) y que los datos queden persistidos en PostgreSQL.
 
@@ -847,7 +849,9 @@ Se implementan dos niveles de protección para los endpoints:
 
 \paragraph{Heartbeat y Last Will Testament (LWT)}
 
-El ESP32-CAM publica periódicamente (cada 30 segundos) un mensaje JSON en el tópico \texttt{esp32/heartbeat/<MAC>} con su MAC, timestamp e IP. El backend actualiza el campo \texttt{ultimo\_heartbeat} y marca el estado como \texttt{activo}. Al conectarse al broker MQTT, el ESP32-CAM configura un mensaje LWT en el tópico \texttt{esp32/lwt/<MAC>} con \texttt{\{"estado": "inactivo"\}}. Si el dispositivo se desconecta abruptamente, el broker publica automáticamente el LWT, y el backend marca el dispositivo como \texttt{inactivo}. Adicionalmente, un hilo \texttt{device\_watchdog} ejecutado cada 60 segundos verifica qué dispositivos no han enviado heartbeat en más de 90 segundos y los marca como inactivos.
+El ESP32-CAM publica periódicamente (cada 30 segundos) un mensaje JSON en el tópico \texttt{esp32/heartbeat/<MAC>} con su MAC, timestamp e IP. El backend actualiza el campo \texttt{ultimo\_heartbeat} y marca el estado como \texttt{activo}. Al conectarse al broker MQTT, el ESP32-CAM configura un mensaje LWT en el tópico \texttt{esp32/lwt/<MAC>} con \texttt{\{"estado": "inactivo"\}}. Si el dispositivo se desconecta abruptamente, el broker publica automáticamente el LWT, y el backend marca el dispositivo como \texttt{inactivo}.
+
+Además del LWT y el watchdog pasivo, se implementó un \textbf{ping activo} como tercera capa de detección: un hilo \texttt{device\_pinger()} publica periódicamente (cada 30 segundos) un mensaje en el tópico \texttt{esp32/ping/<MAC>}. El ESP32-CAM, al recibirlo, responde inmediatamente publicando un heartbeat con el campo \texttt{"pong": true}. Si el backend no recibe respuesta dentro de 60 segundos, marca el dispositivo como inactivo. Este mecanismo permite detectar desconexiones incluso cuando el mensaje LWT no llega al broker (por ejemplo, por pérdida abrupta de conectividad de red). Adicionalmente, un hilo \texttt{device\_watchdog} ejecutado cada 60 segundos verifica qué dispositivos no han enviado heartbeat en más de 90 segundos y los marca como inactivos, constituyendo una capa de respaldo adicional.
 
 \subsubsection{Implementación}
 
@@ -1129,7 +1133,7 @@ El field mapping permite adaptar el formato de salida sin modificar el código d
 Para complementar el backend, se desarrolló un panel web independiente (Next.js 16 con React 19 y TypeScript) cuyo módulo principal es la gestión del dispositivo IoT. Este panel, accesible desde cualquier navegador moderno, permite al administrador:
 
 \begin{itemize}
-    \item Visualizar el estado online/offline de cada dispositivo enrolado mediante tarjetas con código de colores.
+    \item Visualizar el estado online/offline de cada dispositivo enrolado en tiempo real mediante tarjetas con código de colores, indicador animado (live-dot) y la IP como enlace clickable con la leyenda ``Misma red requerida''.
     \item Generar el PIN de 8 caracteres necesario para enrolar un nuevo ESP32-CAM.
     \item Probar la conectividad activa con un dispositivo específico consultando su endpoint \texttt{/estado} (variable \texttt{NEXT\_PUBLIC\_DEVICE\_BASE\_URL}, por defecto \texttt{http://192.168.4.1}).
     \item Renombrar y eliminar dispositivos registrados.
@@ -1137,7 +1141,11 @@ Para complementar el backend, se desarrolló un panel web independiente (Next.js
     \item Acceder a las funcionalidades complementarias de gestión: personas, turnos, asignaciones, asistencias, integración ERP, usuarios y empresas.
 \end{itemize}
 
-El panel web se comunica con el backend Flask mediante un proxy interno (\texttt{app/api/\_proxy.ts}) que reenvía las peticiones a la API REST, evitando problemas de CORS. La aplicación está protegida por un middleware de autenticación que valida el token JWT y restringe el acceso según el rol del usuario (admin, empleador, trabajador). El frontend se compila con Docker en un build multi-etapa usando \texttt{output: 'standalone'} para producir una imagen optimizada lista para producción.
+El estado en tiempo real se obtiene mediante dos mecanismos complementarios. El principal es un hook \texttt{useDeviceWebSocket} que utiliza \texttt{EventSource} para conectarse directamente al endpoint SSE del backend (\texttt{http://localhost:5000/sse/devices}), recibiendo eventos con el id, nombre, IP, estado y timestamp del último heartbeat de cada dispositivo. Este streaming sustituye la antigua dependencia de \texttt{flask-socketio} por una conexión nativa del navegador, sin necesidad de librerías adicionales. Como respaldo, un temporizador ejecuta una consulta REST cada 15 segundos (\texttt{GET /api/dispositivos}) para actualizar el estado si la conexión SSE se interrumpe. El estado \texttt{online} se calcula verificando que el campo \texttt{estado} sea \texttt{'activo'} y que el \texttt{ultimo\_heartbeat} esté dentro de los últimos 5 minutos; si alguna condición falla, el dispositivo se considera offline.
+
+El panel web se comunica con el backend Flask mediante un proxy interno (\texttt{app/api/\_proxy.ts}) que reenvía las peticiones REST a la API, evitando problemas de CORS. La conexión SSE, por su parte, se realiza directamente al backend en el puerto 5000 sin pasar por el proxy, ya que requiere una conexión persistente \texttt{text/event-stream}. La aplicación está protegida por un middleware de autenticación que valida el token JWT y restringe el acceso según el rol del usuario (admin, empleador, trabajador). El frontend se compila con Docker en un build multi-etapa usando \texttt{output: 'standalone'} para producir una imagen optimizada lista para producción.
+
+Para mantener la consistencia visual entre el panel web y la interfaz embebida del ESP32-CAM, las 9 vistas HTML del dispositivo (\texttt{index.html}, \texttt{register.html}, \texttt{gestion.html}, \texttt{personas.html}, \texttt{turnos.html}, \texttt{asignaciones.html}, \texttt{asistencias.html}, \texttt{logs.html} y \texttt{wifi-setup.html}) fueron actualizadas para adoptar la misma paleta oscura, tipografía y sistema de componentes del panel SAS. Se utilizaron variables CSS para la paleta cromática, diseño basado en tarjetas (cards) para la disposición del contenido, y componentes reutilizables para botones, tablas y formularios, logrando que ambas interfaces presenten una experiencia de usuario unificada.
 
 Adicionalmente, el panel web incorpora las siguientes funcionalidades complementarias:
 
@@ -1187,6 +1195,12 @@ El módulo \texttt{routes/erp.py} implementa:
 Se diseñaron las siguientes pruebas para validar el panel web para la gestión del dispositivo y la integración ERP:
 
 \begin{itemize}
+    \item \textbf{Prueba de streaming SSE}: Conectar el navegador a \texttt{http://localhost:5000/sse/devices} y verificar que se reciban eventos \texttt{text/event-stream} con datos JSON de los dispositivos. Simular un heartbeat desde un ESP32-CAM y verificar que el evento SSE refleje el cambio a estado activo. Desconectar el dispositivo y verificar que el evento SSE refleje el estado inactivo.
+
+    \item \textbf{Prueba de fallback polling}: Interrumpir la conexión SSE (deteniendo el servidor backend momentáneamente). Verificar que el panel web continúe mostrando el estado de los dispositivos mediante las consultas REST periódicas (cada 15 segundos) y que al restaurar la conexión SSE se retome el streaming.
+
+    \item \textbf{Prueba de indicador visual de dispositivo}: Verificar que cada tarjeta de dispositivo en el panel web muestre: la dirección IP como enlace clickable que abre \texttt{http://<ip>/} en una nueva pestaña, un indicador animado verde/rojo (live-dot) que refleje el estado online/offline, y la leyenda ``Misma red requerida'' como sugerencia contextual.
+
     \item \textbf{Prueba de navegación en panel web}: Acceder a las rutas principales del backend (\texttt{/health}, \texttt{/api/personas}, \texttt{/api/asistencias}) sin autenticación y verificar que respondan correctamente (HTTP 200 con acceso público o HTTP 401 cuando se requiera token).
 
     \item \textbf{Prueba de creación de integración ERP}: Autenticarse como empleador y enviar \texttt{POST /api/erp} con nombre, tipo, webhook URL (usando un servidor de prueba como \texttt{https://webhook.site}) y field mapping. Verificar que la integración se cree con \texttt{activo = TRUE} y \texttt{envio\_auto = TRUE}.
@@ -1310,14 +1324,17 @@ La función \texttt{sincronizarAsistencias()} en el ESP32-CAM es especialmente r
 
 El endpoint \texttt{POST /api/asistencias/sync} en \texttt{routes/asistencias.py} recibe el lote e itera sobre cada registro, aplicando la verificación de duplicados y realizando la inserción. También dispara el envío a ERP para cada asistencia nueva.
 
-\paragraph{Watchdog de dispositivos}
+\paragraph{Watchdog y ping activo de dispositivos}
 
-El hilo \texttt{device\_watchdog} en \texttt{mqtt\_handler.py} ejecuta dos funciones:
+La detección de desconexión de dispositivos se implementó con tres capas complementarias:
 
-\begin{itemize}
-    \item \textbf{Barrido inicial}: Al arrancar el backend, marca todos los dispositivos como \texttt{inactivo}. Esto es conservador: un dispositivo debe demostrar que está vivo enviando un heartbeat.
-    \item \textbf{Verificación periódica}: Cada 60 segundos, revisa los heartbeats. Los dispositivos que no han enviado heartbeat en más de 90 segundos se marcan como \texttt{inactivo}. Esto permite detectar desconexiones incluso si el mensaje LWT no fue entregado (por ejemplo, si el ESP32-CAM se queda sin alimentación de forma abrupta y el broker no alcanza a publicar el LWT).
-\end{itemize}
+\begin{enumerate}
+    \item \textbf{LWT (instantáneo)}: Al conectarse al broker MQTT, el ESP32-CAM configura un mensaje Last Will en \texttt{esp32/lwt/<MAC>}. Si el dispositivo se desconecta abruptamente, el broker publica automáticamente el LWT y el backend marca el dispositivo como \texttt{inactivo} de inmediato.
+    \item \textbf{Ping activo (\texttt{device\_pinger})}: Un hilo separado publica periódicamente (cada 30 segundos) un mensaje en el tópico \texttt{esp32/ping/<MAC>}. El ESP32-CAM, al recibirlo, responde publicando un heartbeat con el campo \texttt{"pong": true}. Si el backend no recibe respuesta dentro de 60 segundos, marca el dispositivo como inactivo. Este mecanismo funciona incluso si el mensaje LWT no fue entregado.
+    \item \textbf{Watchdog pasivo (\texttt{device\_watchdog})}: Un hilo ejecutado cada 60 segundos realiza un barrido inicial al arrancar el backend (todos los dispositivos se marcan \texttt{inactivo}) y luego verifica periódicamente qué dispositivos no han enviado heartbeat en más de 90 segundos, marcándolos como inactivos.
+\end{enumerate}
+
+Esta arquitectura de tres capas asegura que ninguna desconexión pase desapercibida: el LWT atrapa las desconexiones abruptas detectadas por el broker; el ping activo detecta silencios de red donde el LWT no alcanza a publicarse; y el watchdog pasivo actúa como respaldo final para cualquier caso no cubierto por las capas anteriores.
 
 \paragraph{Herramienta de simulación facial}
 
@@ -1344,6 +1361,8 @@ Se diseñaron las siguientes pruebas para validar la sincronización diferida, l
 
     \item \textbf{Prueba de watchdog}: Iniciar el backend, verificar que todos los dispositivos se marquen como inactivos. Conectar un ESP32-CAM, verificar que tras el primer heartbeat cambie a activo. Desconectar el ESP32-CAM y verificar que tras 90 segundos el watchdog lo marque como inactivo.
 
+    \item \textbf{Prueba de ping activo}: Conectar un ESP32-CAM, verificar que el backend publique pings en \texttt{esp32/ping/<MAC>} y que el dispositivo responda. Detener el ESP32-CAM (corte de red) y verificar que el ping activo marque el dispositivo como inactivo antes de que el watchdog de 90 segundos actúe (tiempo de espera de 60 segundos).
+
     \item \textbf{Prueba de simulación facial automatizada}: Utilizar la suite de pruebas \texttt{test\_routes\_facial.py} y el emulador \texttt{test\_identificacion\_facial.py} para simular el flujo completo de identificación 1:N con imágenes sintéticas generadas en memoria, cubriendo casos de coincidencia exitosa, rostro no registrado y calidad insuficiente de imagen.
 
     \item \textbf{Prueba de flujo completo punta a punta}: Ejecutar el flujo completo: registrar persona con huella y rostro en el ESP32-CAM $\rightarrow$ sincronizar con backend $\rightarrow$ verificar que la persona aparezca en el panel web $\rightarrow$ marcar asistencia por huella offline $\rightarrow$ reconectar y sincronizar $\rightarrow$ verificar que la asistencia aparezca en el panel web y se envíe al ERP de prueba.
@@ -1358,6 +1377,6 @@ Las pruebas cubren los flujos de todas las iteraciones: inicialización de la ap
 
 %% ============================================================
 \section{Resumen del capítulo}
-El capítulo 4 presenta el desarrollo completo del prototipo a lo largo de ocho iteraciones, siguiendo la metodología de prototipado evolutivo incremental. Se documenta la integración del hardware (ESP32-CAM, lector AS608, sensor PIR, cámara OV2640), la implementación del almacenamiento local con LittleFS y JSON, el desarrollo del backend con Flask y PostgreSQL (14 tablas con soporte multi-tenant), la comunicación mediante HTTP y MQTT, el reconocimiento facial con DeepFace (modelo Facenet, detector configurable MTCNN/RetinaFace y anti-spoofing), el cifrado de embeddings biométricos con Fernet, la autenticación JWT con roles jerárquicos, el enrolamiento seguro de dispositivos mediante PIN, el sistema antifraude multicapa (PIR + flash PWM + anti-spoofing + cooldown), el panel web para la gestión del dispositivo, la integración con ERP externos vía webhooks con field mapping, y los mecanismos de sincronización diferida con logs de auditoría.
+El capítulo 4 presenta el desarrollo completo del prototipo a lo largo de ocho iteraciones, siguiendo la metodología de prototipado evolutivo incremental. Se documenta la integración del hardware (ESP32-CAM, lector AS608, sensor PIR, cámara OV2640), la implementación del almacenamiento local con LittleFS y JSON, el desarrollo del backend con Flask y PostgreSQL (14 tablas con soporte multi-tenant), la comunicación mediante HTTP y MQTT, el reconocimiento facial con DeepFace (modelo Facenet, detector configurable MTCNN/RetinaFace y anti-spoofing), el cifrado de embeddings biométricos con Fernet, la autenticación JWT con roles jerárquicos, el enrolamiento seguro de dispositivos mediante PIN, el sistema antifraude multicapa (PIR + flash PWM + anti-spoofing + cooldown), el panel web para la gestión del dispositivo con streaming SSE de estado en tiempo real, la integración con ERP externos vía webhooks con field mapping, los mecanismos de sincronización diferida con logs de auditoría, y la detección de desconexión mediante un sistema de tres capas (LWT, ping activo y watchdog pasivo).
 
 Cada iteración incluyó su respectivo análisis de requisitos, diseño de la solución, implementación detallada y un plan de pruebas de integración para validar el correcto funcionamiento de los componentes desarrollados. Adicionalmente, se documenta la suite de 284 pruebas unitarias automatizadas con pytest, que alcanzó una cobertura de código del 90\% sobre 3.925 líneas del backend, incluyendo pruebas de caja negra sobre los 28 endpoints de la API REST y verificación exhaustiva de todos los caminos de error.

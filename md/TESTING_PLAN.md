@@ -345,6 +345,21 @@ Las lineas no cubiertas tipicas corresponden a:
 - Codigo legacy de fragmentacion MQTT (`mqtt_handler.py:128-172`)
 - Ramas de debug/print que no afectan logica de negocio
 
+## Pendiente: SSE streaming + MQTT ping/pong
+
+Los siguientes mecanismos implementados recientemente **aún no tienen cobertura automatizada**:
+
+| Feature | Componente | Archivos clave | Tests existentes |
+|---------|-----------|----------------|-----------------|
+| SSE endpoint `/sse/devices` | Backend (app.py) | `app.py` — `queue.Queue` + `threading.Lock` | ❌ Ninguno |
+| `broadcast_device_update()` | Backend (app.py) | `app.py` — broadcasting a SSE clients | ❌ Ninguno |
+| `device_pinger()` + ping/pong | Backend (mqtt_handler.py) | `mqtt_handler.py` — publica `esp32/ping/<MAC>` cada 30s | ❌ Ninguno |
+| `useDeviceWebSocket` hook | Frontend (lib/) | `useDeviceWebSocket.ts` — EventSource a /sse/devices | ❌ Ninguno |
+| Polling REST 15s + online calc | Frontend (SasDashboard.tsx) | `setInterval(pollDevices, 15000)`, `online = estado + heartbeat < 5min` | ❌ Ninguno |
+| ESP32 ping handler | Firmware (esp32.ino) | Suscripción `esp32/ping/<MAC>` + respuesta pong | ❌ Ninguno |
+
+**Prioridad**: Media-Alta. Se recomienda agregar tests en la próxima iteración.
+
 ## Feature: Contraseñas para dispositivos
 
 Agregado en Iteracion 9. Permite generar contraseñas desde el backend para ESP32.

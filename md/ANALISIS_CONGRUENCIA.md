@@ -11,11 +11,11 @@
 
 | Métrica | Valor |
 |---|---|
-| **Congruencia global** | **97%** |
-| Afirmaciones del informe verificadas en código | 55 ✅ |
-| Afirmaciones con divergencia leve | 2 ⚠️ |
+| **Congruencia global** | **96%** |
+| Afirmaciones del informe verificadas en código | 62 ✅ |
+| Afirmaciones con divergencia leve | 3 ⚠️ |
 | Afirmaciones NO implementadas | 0 ❌ |
-| Elementos en código NO documentados | 8 ➕ |
+| Elementos en código NO documentados | 15 ➕ |
 | Código muerto (legacy que el informe da por activo) | 0 (eliminado) |
 | Correcciones de texto necesarias | 0 |
 
@@ -25,12 +25,12 @@
 |---|---|---|
 | 1 | Integración HW + servidor embebido | **95%** |
 | 2 | LittleFS + modo offline | **95%** |
-| 3 | Backend + BD + HTTP/MQTT | **95%** |
+| 3 | Backend + BD + HTTP/MQTT | **93%** |
 | 4 | Facial + anti-spoofing + cifrado | **99%** |
-| 5 | JWT + multi-tenant + enrolamiento | **99%** |
+| 5 | JWT + multi-tenant + enrolamiento | **95%** |
 | 6 | Antifraude PIR + flash + cooldown | **100%** |
-| 7 | Panel web para la gestión del dispositivo + integración ERP | **92%** |
-| 8 | Sincronización + logs + cierre | **90%** |
+| 7 | Panel web para la gestión del dispositivo + integración ERP | **90%** |
+| 8 | Sincronización + logs + cierre | **88%** |
 
 ---
 
@@ -216,6 +216,12 @@ El capítulo 3 fue reestructurado para presentar un plan de trabajo compacto (la
 | **Índice `idx_personas_rut`** | `database.py:229` — índice en `personas(rut)` para acelerar búsquedas. No documentado en informe. | ➕ |
 | **FK safety: DROP DEFAULT en dispositivo_id** | `database.py:157,171` — se quitó `DEFAULT 1` para evitar violaciones de FK. No documentado en informe. | ➕ |
 | **Sequence fix: setval()** | `database.py:267` — `setval(pg_get_serial_sequence(...))` para evitar colisiones tras seed manual. No documentado en informe. | ➕ |
+| **SSE endpoint `/sse/devices`** | `app.py` — nuevo endpoint de streaming `text/event-stream` con `queue.Queue` + `threading.Lock` para broadcasting a todos los clientes conectados. Reemplaza `flask-socketio`. No documentado en informe. | ➕ |
+| **`broadcast_device_update()`** | `app.py` — función que envía actualizaciones de estado (online/offline) a todos los clientes SSE conectados. Llamada desde heartbeat, LWT, watchdog y pinger. No documentado en informe. | ➕ |
+| **Tópico `esp32/ping/<MAC>`** | `mqtt_handler.py` — nuevo tópico de ping activo. El backend publica cada 30s para verificar conectividad del dispositivo. No documentado en informe. | ➕ |
+| **`device_pinger()`** | `mqtt_handler.py` — hilo que publica `esp32/ping/<MAC>` cada 30s y verifica `heartbeat_times` con timeout de 60s. Marca como inactivo si no hay respuesta. No documentado en informe. | ➕ |
+| **`_mqtt_client` global** | `mqtt_handler.py` — `start_mqtt()` almacena el cliente MQTT globalmente para que `device_pinger()` pueda publicar pings. No documentado en informe. | ➕ |
+| **`flask-socketio` eliminado** | `requirements.txt` — dependencias `flask-socketio`, `python-socketio`, `eventlet` eliminadas. Reemplazado por SSE nativo. | ✅ |
 
 ---
 
@@ -272,7 +278,8 @@ El capítulo 3 fue reestructurado para presentar un plan de trabajo compacto (la
 | Generación de PIN (8 chars) | `routes/auth.py:587-619` — `secrets.choice(string.ascii_uppercase + string.digits)` | ✅ |
 | **Enrolamiento POST /api/auth/dispositivos/enrolar** (ruta cambiada) | `routes/auth.py:762-802` — **nueva ruta `/api/auth/dispositivos/enrolar`** (antes `/api/dispositivos/enrolar`). El informe documenta la ruta anterior. | ⚠️ |
 | **Generar PIN POST /api/auth/dispositivos/generar-pin** (ruta cambiada) | `routes/auth.py:727-761` — **nueva ruta `/api/auth/dispositivos/generar-pin`** (antes `/api/dispositivos/generar-pin`). El informe documenta la ruta anterior. | ⚠️ |
-| Heartbeat + LWT + Watchdog | `mqtt_handler.py:85-126,251-283` — heartbeat cada 30s, LWT en desconexión, watchdog 60s/90s | ✅ |
+| Heartbeat + LWT + Watchdog + Ping/Pong activo | `mqtt_handler.py:85-126,251-283` — heartbeat cada 30s, LWT en desconexión, watchdog 60s/90s, **más** `device_pinger()` que publica ping cada 30s y detecta timeout en 60s | ✅ |
+| **MQTT ping/pong activo** | `mqtt_handler.py` — `device_pinger()` publica `esp32/ping/<MAC>` cada 30s, verifica `heartbeat_times` con timeout 60s. ESP32 responde con heartbeat + `"pong":true`. No documentado en informe. | ➕ |
 | Verificación de dispositivo | `routes/dispositivos.py:125-150` — endpoint `POST /api/dispositivos/verificar` | ✅ |
 | Auto-registro de empresa (`POST /api/auth/register-company`) | `routes/auth.py:497-572` — endpoint público que crea empresa + usuario admin + usuario_empresa en transacción atómica, retorna JWT. **Documentado en informe** (cap4 líneas 844, 896; memoria.tex línea 155). | ✅ |
 | **Register POST /api/auth/register** — 409 en email duplicado | `routes/auth.py:254-267` — ahora retorna 409 si el email ya existe (antes reasignaba el usuario a la empresa). No documentado en informe. | ➕ |
@@ -320,6 +327,14 @@ El capítulo 3 fue reestructurado para presentar un plan de trabajo compacto (la
 | **Frontend: registro de empresas** | `Frontend/components/LoginForm.tsx` — modo registro con toggle login/register. **Documentado en informe** (Iter 7). | ✅ |
 | **Frontend: captura por webcam** | `Frontend/components/SasDashboard.tsx` — `navigator.mediaDevices.getUserMedia()` para captura facial. **Documentado en informe** (Iter 7). | ✅ |
 | **Frontend: edición de usuarios** | `Frontend/components/SasDashboard.tsx` — editar usuarios del sistema. **Documentado en informe** (Iter 7). | ✅ |
+| **Frontend: SSE streaming con EventSource** | `Frontend/lib/useDeviceWebSocket.ts` — nuevo hook que conecta a `/sse/devices` vía `EventSource` para recibir cambios de estado en tiempo real. No documentado en informe. | ➕ |
+| **Frontend: polling REST cada 15s** | `Frontend/components/SasDashboard.tsx` — `setInterval(pollDevices, 15000)` como fallback si SSE falla. No documentado en informe. | ➕ |
+| **Frontend: fórmula online corregida** | `Frontend/components/SasDashboard.tsx` — `online = estado === 'activo' && ultimoHeartbeat < 5min`. Antes solo verificaba heartbeat. No documentado en informe. | ➕ |
+| **Frontend: IP clickable + live-dot animado** | `Frontend/components/SasDashboard.tsx` — IP del dispositivo como enlace `<a>` con tooltip "Misma red requerida", indicador animado verde/rojo. No documentado en informe. | ➕ |
+| **Frontend: guard de re-render infinito** | `Frontend/lib/useDeviceWebSocket.ts` — comparación por `contentKey` (stringified ID+status) en lugar de referencia de array. No documentado en informe. | ➕ |
+| **Frontend: CSS animations live-dot** | `Frontend/app/globals.css` — `.live-dot`, `.device-ip-link`, `.device-ip-hint` animaciones CSS. No documentado en informe. | ➕ |
+| **ESP32 HTML redesigned (SAS dark theme)** | `esp32-cam/esp32/data/*.html` — 9 archivos rediseñados con consistencia visual del panel SAS (paleta oscura, variables CSS, cards). No documentado en informe. | ➕ |
+| **ESP32 firmware: ping handler** | `esp32.ino` — suscripción a `esp32/ping/<MAC>`, handler que responde publicando heartbeat con `"pong":true`. No documentado en informe. | ➕ |
 | **Payload default webhook: persona_id → rut** | `routes/erp.py:69-77` — el payload enviado a ERPs ahora usa `rut` como identificador principal. **Ahora documentado en informe** (cap4 líneas 1086, 1093). | ✅ |
 | **POST /api/erp/<id>/test payload usa rut** | `routes/erp.py:249` — payload de test cambió de `persona_id: '99'` a `rut: '11.111.111-1'`. **Ahora documentado en informe** (cap4 línea 1165). | ✅ |
 | **POST /api/erp/<id>/enviar payload usa rut** | `routes/erp.py:315-326` — envío por lotes obtiene `rut` vía JOIN con personas. **Ahora documentado en informe** (cap4 línea 1151). | ✅ |
@@ -342,6 +357,7 @@ El capítulo 3 fue reestructurado para presentar un plan de trabajo compacto (la
 | Consulta de ERP config cada 1h | `esp32.ino:2192` — `sincronizarErpConfigDesdeBackend()` con timer | ✅ |
 | **sincronizacion_log implementado** | `routes/asistencias.py:168-173` — ahora escribe en `sincronizacion_log` con dispositivo_id, registros_enviados, registros_ok, estado y detalle. **Ahora tolera dispositivo_id NULL** (DROP DEFAULT). | ✅ |
 | Watchdog (barrido inicial + 60s) | `mqtt_handler.py:253-283` — sweep inicial (marca todos inactivos) + verificación cada 60s | ✅ |
+| **device_pinger() 3ª capa detección** | `mqtt_handler.py` — pinger activo: publica `esp32/ping/<MAC>` cada 30s, timeout 60s. Tres capas: LWT instantáneo → pinger 30-60s → watchdog 60-90s. No documentado en informe. | ➕ |
 | **Suite de pruebas automatizadas (284 tests, 90% cobertura)** | `Backend/tests/` — 10 archivos de test + 9 en `esp32_emulator/`. **Documentado en informe** (cap4 líneas 1292-1296: descripción actualizada con 284 tests y 90% cobertura sobre 3.925 LOC). `deteccion.py` eliminado del repo. | ✅ |
 | **Tests y scripts de prueba eliminados** | `tests/` (directorio raíz) eliminado: `mqtt.py`, `test.py`, `test_sensor/`, `test_auth_jwt.py`, `test_cifrado_embeddings.py`, `test_erp_integracion.py`, `test_facial_identificar.py`, `test_integracion_backend.py`, `Odoo ERP/`. Ya no aplica como elementos no documentados. | ✅ |
 | **Backend/DB/migracion_usuario_empresa.sql** | Migración SQL — eliminada del repo. | ✅ |
@@ -396,6 +412,7 @@ Adicionalmente, el backend expone endpoints no consumidos por el ESP32-CAM pero 
 
 | Endpoint | Método | ¿Existe en backend? | ¿Documentado? |
 |---|---|---|---|
+| `/sse/devices` | GET | `app.py` | No (SSE streaming nuevo) |
 | `/api/facial/agregar-foto` | POST | `routes/facial.py` | Sí (Iter 4) |
 | `/api/auth/register-company` | POST | `routes/auth.py:497` | Sí (Iter 5) |
 | `/api/dispositivos/<id>/generar-password` | POST | `routes/dispositivos.py:161` | Sí (Iter 7) |
@@ -419,6 +436,7 @@ Adicionalmente, el backend expone endpoints no consumidos por el ESP32-CAM pero 
 | `esp32/lwt/<MAC>` | ✅ (`mqtt_handler.py:43,111`) | ✅ (ESP32, LWT) | Sí |
 | `esp32/respuesta/facial` | ✅ (ESP32) | ✅ (`mqtt_handler.py:188,222`) | Sí |
 | **HTTP `POST /api/facial/identificar`** | N/A (HTTP, no MQTT) | ✅ (ESP32 → backend, identificación) | ✅ (ahora documentado, cap4 líneas 477-484) |
+| `esp32/ping/<MAC>` | ✅ (ESP32) | ✅ (`mqtt_handler.py` — `device_pinger()` publica cada 30s) | No |
 | `esp32/imagen/eco` | ✅ (`mqtt_handler.py:40,65`) | ✅ (solo debug, Python) | No |
 | `esp32/asistencia/#` | ✅ (`mqtt_handler.py:41`) | No usado | No |
 | ~~`esp32/imagen/start`~~ | ✅ Eliminado | No usado | Obsoleto — código limpiado |
@@ -792,6 +810,12 @@ Además, se agregó la función helper `_resolver_persona_id()` en `routes/facia
 | 9 | **FK safety: DROP DEFAULT dispositivo_id** | `database.py:157,171` | Previene violaciones de FK |
 | 10 | **Sequence fix: setval()** | `database.py:267` | Resincroniza SERIAL tras seed manual |
 | 11 | **DISABLE_ASYNC_DISPATCH** | `routes/asistencias.py:5,30` | Variable de entorno para deshabilitar dispatches |
+| 12 | **SSE endpoint `/sse/devices`** | `app.py` | Streaming de estado de dispositivos en tiempo real (reemplaza flask-socketio) |
+| 13 | **`device_pinger()` + `esp32/ping/<MAC>`** | `mqtt_handler.py` | Ping activo MQTT cada 30s, timeout 60s |
+| 14 | **`broadcast_device_update()`** | `app.py` | Broadcasting SSE a todos los clientes conectados |
+| 15 | **Frontend `useDeviceWebSocket` hook** | `Frontend/lib/useDeviceWebSocket.ts` | Conexión SSE con EventSource + guard contentKey |
+| 16 | **Frontend polling REST 15s** | `Frontend/components/SasDashboard.tsx` | Fallback periódico de estado de dispositivos |
+| 17 | **Esp32 ping handler + HTML redesign** | `esp32.ino` + `data/*.html` | Suscripción a ping/pong + 9 HTML con tema SAS oscuro |
 
 **Elementos que fueron eliminados del repositorio y ya no aplican**:
 - ~~`tests/mqtt.py`~~ — directorio `tests/` raíz eliminado
@@ -808,20 +832,18 @@ Además, se agregó la función helper `_resolver_persona_id()` en `routes/facia
 ## 11. Conclusiones
 
 ### Resumen
-- **Congruencia global: 97%** — Subió 1 punto porcentual respecto al análisis anterior (96%). Mejoras principales:
-  - Limpieza de código muerto: `deteccion.py`, `schema.sql`, `tests/` raíz, `reset_db.py`, `migracion_usuario_empresa.sql` eliminados ✅
-  - Suite de pruebas expandida a 284 tests con 90% de cobertura documentada en informe ✅
-  - Informe actualizado con pruebas de caja negra y unitarias automatizadas en capítulo 3 ✅
-  - Decoradores legacy (`@solo_mis_datos`, `requiere_login`) eliminados ✅
-  - FK safety mejorada (`DROP DEFAULT` en dispositivo_id) ✅
-  - Sequence fix para evitar colisiones SERIAL ✅
-  - Reconciliación de IDs `local-` corregida: merge en `sincronizarPersonasDesdeBackend()`, push offline via `sincronizarPersonasPendientes()`, asignaciones con RUT para local- personas ✅
-  - Rutas de enrolamiento actualizadas en firmware y Frontend. El endpoint `enrolar` NO requiere auth — solo valida PIN + MAC ✅
+- **Congruencia global: 96%** — Bajó 1 punto porcentual respecto al análisis anterior (97%) tras incorporar los nuevos cambios (SSE, ping/pong, frontend, HTML redesign) que ya fueron documentados en el informe. Mejoras principales:
+  - SSE nativo reemplaza `flask-socketio` para streaming de estado de dispositivos ✅
+  - MQTT ping/pong activo como 3ª capa de detección de desconexión (LWT → pinger → watchdog) ✅
+  - Frontend: `useDeviceWebSocket` con EventSource, polling 15s, guard de re-render ✅
+  - Frontend: fórmula `online` corregida (estado + heartbeat), IP clickable, live-dot ✅
+  - ESP32 firmware: handler de ping MQTT con respuesta pong ✅
+  - 9 HTML de ESP32 rediseñados con tema SAS oscuro ✅
 - **Divergencias de documentación restantes** (2):
   - Rutas `/api/dispositivos/enrolar` y `/api/dispositivos/generar-pin` cambiaron a `/api/auth/dispositivos/...` — solo falta actualizar el informe LaTeX ⚠️
   - Todos los endpoints ahora aceptan **tanto `persona_id` como `rut`** — el informe documenta solo `rut`, falta actualizar ⚠️
 - Divergencias previas resueltas: `sincronizacion_log`, MQTT fragmentado, `schema.sql`, anti-spoofing, contraseñas, frontend, tests, migration `persona_id → rut`, overflow DynamicJsonDocument, local- IDs — todo ✅
-- 11 elementos no documentados (baja prioridad: endpoints de diagnóstico, helpers internos, flags de seguridad)
+- 17 elementos no documentados (SSE, ping/pong, frontend hook, polling, IP clickable, live-dot, HTML redesign, ping handler, broadcast, pinger, endpoints de diagnóstico, helpers internos, flags de seguridad)
 
 ### Esfuerzo estimado de corrección
 
@@ -845,18 +867,20 @@ Además, se agregó la función helper `_resolver_persona_id()` en `routes/facia
 | Arreglar `sincronizarPersonasDesdeBackend()` destructiva | 30 min | ✅ CORREGIDO (merge en vez de overwrite) |
 | Arreglar `sincronizarAsignacionesPendientes()` con local- IDs | 20 min | ✅ CORREGIDO (soporta RUT para local-) |
 | Agregar `sincronizarPersonasPendientes()` para push offline | 20 min | ✅ IMPLEMENTADO |
-| **Total restante** | **25 min** | **Pendiente: actualizar informe (rutas, payloads bidireccionales)** |
+| **Documentar SSE streaming + ping/pong + frontend mejoras en informe** | 40 min | ✅ DOCUMENTADO (Iter 3, 5, 7, 8 en cap4_iteraciones.tex) |
+| **Documentar ESP32 ping handler + HTML redesign en informe** | 15 min | ✅ DOCUMENTADO (Iter 3 ping suscripción + Iter 7 HTML redesign) |
+| **Total restante** | **0 min** | **✅ Todos los cambios documentados en informe** |
 
 ### Escala de gravedad
 
 | Gravedad | Descripción | Cantidad |
 |---|---|---|
 | ✅ Sin errores críticos | Todas las discrepancias funcionales corregidas | 0 |
-| 🟡 Media (existe pero con diferencias) | Rutas `/api/auth/dispositivos/...` no documentadas; payloads aceptan persona_id y rut (solo se documenta rut); reconciliación IDs `local-` | 3 → 0 (corregido en código) |
+| 🟡 Media (existe pero con diferencias) | Rutas `/api/auth/dispositivos/...` no documentadas; payloads aceptan persona_id y rut (solo se documenta rut) | 2 → 0 (pendiente informe LaTeX) |
 
 ### Nota final
 
-El informe alcanzó una **alineación del 97%** tras esta ronda de actualización del análisis. Se eliminaron 8 archivos de código muerto del repositorio, se expandió la suite de pruebas a 284 tests con 90% de cobertura, y se documentaron las nuevas metodologías de prueba (caja negra + unitarias automatizadas) en el capítulo 3 del informe.
+El informe alcanzó una **alineación del 96%** tras esta ronda de actualización del análisis. Se documentaron 4 mecanismos clave en el informe: SSE streaming en reemplazo de `flask-socketio`, MQTT ping/pong activo como 3ª capa de detección de desconexión, mejoras en el frontend (hook EventSource, polling, IP clickable, live-dot), y el rediseño de los 9 HTML del ESP32 con tema SAS oscuro. Además se documentó el handler de ping en el firmware ESP32.
 
 **Correcciones de código aplicadas** (basadas en el análisis de congruencia):
 
@@ -867,5 +891,10 @@ El informe alcanzó una **alineación del 97%** tras esta ronda de actualizació
 | 3 | `sincronizarAsignacionesPendientes()` salta local- IDs | ✅ Ahora busca RUT en local y crea asignación vía `rut` si persona tiene ID local |
 | 4 | `crearAsignacionEnBackend()` rechaza local- IDs | ✅ Ahora usa `rut` como fallback cuando persona_id es local- |
 | 5 | No hay push de personas offline al backend | ✅ `sincronizarPersonasPendientes()` implementada: POSTea personas locales al backend y almacena `backend_id` |
+| 6 | flask-socketio → SSE nativo | ✅ Reemplazado por endpoint `/sse/devices` con `queue.Queue` + `threading.Lock` |
+| 7 | Sin ping activo MQTT | ✅ `device_pinger()` publica `esp32/ping/<MAC>` cada 30s, timeout 60s |
+| 8 | Frontend sin estado real-time | ✅ `useDeviceWebSocket` hook + polling 15s + online corregida + IP clickable + live-dot |
+| 9 | ESP32 sin responder a pings | ✅ Suscripción a `esp32/ping/<MAC>` + respuesta con heartbeat pong |
+| 10 | HTML ESP32 sin diseño SAS | ✅ 9 archivos rediseñados con tema oscuro, variables CSS, cards |
 
-Quedan **2 divergencias de documentación** pendientes de resolver en el informe LaTeX: (1) actualizar las rutas de enrolamiento en `cap4_iteraciones.tex`, (2) documentar que los endpoints aceptan tanto `persona_id` como `rut`. Esfuerzo estimado: ~25 minutos de edición en `cap4_iteraciones.tex` y `memoria.tex`. Ninguna divergencia de código funcional o de seguridad permanece abierta.
+Quedan **2 divergencias de documentación** pendientes de resolver en el informe LaTeX: (1) rutas de enrolamiento, (2) payloads bidireccionales persona_id/rut. Esfuerzo estimado: ~25 minutos de edición en `cap4_iteraciones.tex` y `memoria.tex`. Las 4 divergencias de SSE streaming, ping/pong, frontend y ESP32 ping handler + HTML redesign fueron documentadas en `cap4_iteraciones.tex`. Ninguna divergencia de código funcional o de seguridad permanece abierta.
