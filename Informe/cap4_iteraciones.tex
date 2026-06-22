@@ -40,11 +40,11 @@ Es este apartado se procederá a explicar como se llevaron a cabo las iteracione
 %% ============================================================
 %% ITERACIÓN 1: Diseño y planificación inicial
 %% ============================================================
-\section{Iteración 1: Integración de hardware y servidor embebido}
+\subsection{Iteración 1: Integración de hardware y servidor embebido}
 
 La primera iteración corresponde al diseño conceptual del sistema y a la preparación del entorno de desarrollo, incluyendo la integración inicial del hardware biométrico seleccionado. Esta etapa establece la base funcional sobre la cual se construirán las iteraciones posteriores.
 
-\subsection{Análisis}
+\subsubsection{Análisis}
 
 En esta iteración se definieron los requisitos mínimos para validar la viabilidad técnica del sistema, analizando los componentes del hardware y las funcionalidades necesarias para las iteraciones siguientes.
 
@@ -63,7 +63,7 @@ El análisis se centró en tres ejes principales:
 
 Como resultado del análisis, se establecieron los criterios de diseño que guiarían el desarrollo de esta iteración: simplicidad, bajo consumo de recursos, modularidad de componentes y autonomía operativa.
 
-\subsection{Diseño}
+\subsubsection{Diseño}
 
 En esta iteración se elaboraron los primeros elementos arquitectónicos del sistema:
 
@@ -151,7 +151,7 @@ En esta iteración se elaboraron los primeros elementos arquitectónicos del sis
 
 Estos elementos permiten visualizar el flujo básico del dispositivo antes de incorporar funcionalidades adicionales como turnos, sincronización o panel web backend, los cuales se desarrollarán en iteraciones posteriores.
 
-\subsection{Implementación}
+\subsubsection{Implementación}
 
 En esta etapa se integró tanto el hardware principal del prototipo como el desarrollo de las vistas web embebidas que permiten la interacción del usuario con el dispositivo. Para ello se utilizaron las siguientes librerías:
 
@@ -162,7 +162,7 @@ En esta etapa se integró tanto el hardware principal del prototipo como el desa
     \item \texttt{LittleFS} y \texttt{ArduinoJson}, empleadas para almacenamiento persistente en memoria flash y manipulación estructurada de datos JSON.
 \end{itemize}
 
-\subsubsection{Integración del lector de huellas AS608}
+\paragraph{Integración del lector de huellas AS608}
 
 El lector biométrico AS608 fue conectado directamente al ESP32-CAM mediante la interfaz UART secundaria (HardwareSerial 2), utilizando los pines GPIO14 (RX) y GPIO15 (TX). Esta conexión, que emplea pines distintos a los documentados inicialmente, fue forzada por la escasez de GPIO libres tras la asignación del bus de cámara. La velocidad de comunicación se estableció en 57600 baudios, y la librería \texttt{Adafruit\_Fingerprint} se vincula a dicho puerto serial. La Figura~\ref{fig:conexioneshuella} presenta la conexión física entre ambos dispositivos.
 
@@ -193,15 +193,15 @@ El fragmento de código que se ve en la Figura 4.12 es un ejemplo que se constru
 \label{fig:codigo_huella}
 \end{figure}
 
-\subsubsection{Configuración de la cámara y el flash PWM}
+\paragraph{Configuración de la cámara y el flash PWM}
 
 La cámara OV2640 se configuró con resolución VGA (640×480) y compresión JPEG con calidad 8 (escala 0-63, donde valores bajos indican mayor calidad). La frecuencia del reloj externo (XCLK) se fijó en 20 MHz. Para evitar el parpadeo visible y las caídas de tensión provocadas por el flash LED durante la captura, se implementó un control PWM a 5 kHz con resolución de 8 bits, aplicando un ciclo de trabajo del 50\% (duty 128 de 255) durante la iluminación. Esto permite encender el flash con brillo suficiente sin sobrecargar la fuente de alimentación del ESP32-CAM.
 
-\subsubsection{Calibración del sensor PIR}
+\paragraph{Calibración del sensor PIR}
 
 Se integró un sensor PIR (Passive Infrared) conectado al GPIO12 configurado con resistencia de pull-down interna. El sensor PIR actúa como detector de presencia: cuando una persona se sitúa frente al dispositivo, el PIR detecta el cambio de radiación infrarroja y activa el modo de captura. El setup incluye una fase de calibración de 3 segundos para estabilizar la lectura del sensor antes de iniciar el bucle principal. La lógica de uso del PIR como control de activación se detalla en la iteración 6.
 
-\subsubsection{Montaje del servidor web embebido}
+\paragraph{Montaje del servidor web embebido}
 
 Para habilitar la interacción local con el dispositivo, se implementó un servidor web mediante la librería \texttt{WebServer} en el puerto 80. Este servidor permite entregar páginas HTML, datos JSON y recursos estáticos. Cuando no hay conectividad a una red externa, el ESP32-CAM activa automáticamente un Access Point con SSID \texttt{ESP32-ASISTENCIA} y contraseña \texttt{Asistencia2026}, sirviendo las mismas páginas sin depender de internet.
 
@@ -228,11 +228,11 @@ Para la implementación del servidor HTTP embebido, se utilizó el módulo \text
 \label{fig:rutas_servidor}
 \end{figure}
 
-\subsubsection{Creación de vistas HTML embebidas}
+\paragraph{Creación de vistas HTML embebidas}
 
 Las vistas fueron desarrolladas como archivos \texttt{.html} independientes almacenados en el sistema de archivos LittleFS del ESP32-CAM, conteniendo HTML, CSS y JavaScript autónomo, sin dependencias de CDN externas. El servidor web embebido las sirve mediante la función \texttt{servirArchivo()}, que lee el archivo solicitado desde LittleFS y lo envía al cliente. Esto garantiza que el ESP32-CAM sirva cada página incluso en modo Access Point sin conexión a internet.
 
-\subsubsection{Menú principal}
+\paragraph{Menú principal}
 
 La Figura~\ref{fig:menu_principal} presenta la vista principal accesible en la ruta \texttt{/}. Desde esta interfaz el usuario puede visualizar el estado del dispositivo (online/offline, sensor activo, enrolado), registrar personas, ver asistencias, gestionar turnos, ver asignaciones, acceder a la configuración de red, sincronizar con el backend y limpiar datos del dispositivo.
 
@@ -245,7 +245,7 @@ La Figura~\ref{fig:menu_principal} presenta la vista principal accesible en la r
 \label{fig:menu_principal}
 \end{figure}
 
-\subsubsection{Vista de configuración Wi-Fi}
+\paragraph{Vista de configuración Wi-Fi}
 
 Mediante la ruta \texttt{/wifi-setup}, el dispositivo ofrece un formulario para actualizar las credenciales de la red local (SSID, contraseña), la URL del backend, la dirección del broker MQTT y el PIN de enrolamiento. Estos valores se persisten en SPIFFS mediante el archivo \texttt{wifi.json}. La Figura~\ref{fig:wifi_config} muestra esta interfaz.
 
@@ -258,7 +258,7 @@ Mediante la ruta \texttt{/wifi-setup}, el dispositivo ofrece un formulario para 
 \label{fig:wifi_config}
 \end{figure}
 
-\subsubsection{Vista de registro de personas}
+\paragraph{Vista de registro de personas}
 
 La ruta \texttt{/register} despliega una vista que combina un formulario para ingresar el nombre del usuario, RUT y correo electrónico, y muestra indicadores visuales del estado del proceso de enrolamiento (huella, rostro). La Figura~\ref{fig:registro_personas} lo muestra.
 
@@ -271,7 +271,7 @@ La ruta \texttt{/register} despliega una vista que combina un formulario para in
 \label{fig:registro_personas}
 \end{figure}
 
-\subsubsection{Vista de asistencias}
+\paragraph{Vista de asistencias}
 
 Para visualizar registros de asistencia tanto locales como sincronizados, se implementó la vista en la ruta \texttt{/asistencias}. Esta consulta archivos JSON almacenados en LittleFS. La Figura~\ref{fig:vista_asistencias} lo ejemplifica.
 
@@ -284,7 +284,7 @@ Para visualizar registros de asistencia tanto locales como sincronizados, se imp
 \label{fig:vista_asistencias}
 \end{figure}
 
-\subsubsection{Vista de Personas registradas}
+\paragraph{Vista de Personas registradas}
 
 Para visualizar las personas registradas, se implementó la vista en la ruta \texttt{/personas}. Esta consulta archivos JSON almacenados en LittleFS y permite editar nombre/correo, actualizar huella o rostro, y eliminar personas. La Figura~\ref{fig:personas_registradas} lo ejemplifica.
 
@@ -297,7 +297,7 @@ Para visualizar las personas registradas, se implementó la vista en la ruta \te
 \label{fig:personas_registradas}
 \end{figure}
 
-\subsubsection{Vista de Crear Turnos}
+\paragraph{Vista de Crear Turnos}
 
 Para la creación de turnos y visualización de los existentes, se implementó la vista en la ruta \texttt{/gestion}, complementada con \texttt{/turnos}. Estas consultan archivos JSON almacenados en LittleFS. La Figura~\ref{fig:gestion_turnos} lo ejemplifica.
 
@@ -310,7 +310,7 @@ Para la creación de turnos y visualización de los existentes, se implementó l
 \label{fig:gestion_turnos}
 \end{figure}
 
-\subsubsection{Vista de asignación de turnos}
+\paragraph{Vista de asignación de turnos}
 
 Para visualizar las asignaciones de turnos y realizar la acción de asignar un turno a una persona, se implementó la vista en la ruta \texttt{/asignaciones}. La Figura~\ref{fig:asignacion_turnos} lo ejemplifica.
 
@@ -323,7 +323,7 @@ Para visualizar las asignaciones de turnos y realizar la acción de asignar un t
 \label{fig:asignacion_turnos}
 \end{figure}
 
-\subsection{Pruebas}
+\subsubsection{Pruebas}
 
 Para validar el funcionamiento del prototipo y comprobar la correcta integración entre los distintos módulos del sistema, se diseñaron pruebas de integración enfocadas exclusivamente en los componentes implementados durante esta iteración:
 
@@ -344,11 +344,11 @@ Para validar el funcionamiento del prototipo y comprobar la correcta integració
 %% ITERACIÓN 2: Almacenamiento local y modo offline
 %% ============================================================
 
-\section{Iteración 2: Almacenamiento local y modo offline}
+\subsection{Iteración 2: Almacenamiento local y modo offline}
 
 La segunda iteración se centra en habilitar el funcionamiento autónomo del dispositivo sin conexión a internet, integrando un sistema de almacenamiento persistente basado en LittleFS (sucesor moderno de SPIFFS para ESP32) y los mecanismos de captura biométrica offline. Esta etapa materializa lo definido en el apartado 3.1.2 del capítulo anterior.
 
-\subsection{Análisis}
+\subsubsection{Análisis}
 
 Para el correcto funcionamiento offline del prototipo se identificaron los siguientes requerimientos:
 
@@ -362,7 +362,7 @@ Para el correcto funcionamiento offline del prototipo se identificaron los sigui
 
 Para cumplir estos requisitos se seleccionó el sistema de archivos \textbf{LittleFS} y el formato \textbf{JSON} debido a su bajo peso, facilidad de manipulación mediante la librería \texttt{ArduinoJson} y compatibilidad con las capacidades del ESP32-CAM (4 MB de flash, de los cuales aproximadamente 1.5 MB están disponibles para LittleFS). Adicionalmente, se definió un archivo de configuración, \texttt{wifi.json}, destinado a almacenar credenciales Wi-Fi, URL del backend, dirección del broker MQTT y PIN de enrolamiento.
 
-\subsection{Diseño}
+\subsubsection{Diseño}
 
 Considerando la arquitectura establecida, se diseñaron las siguientes estructuras de almacenamiento en formato JSON:
 
@@ -377,11 +377,11 @@ Considerando la arquitectura establecida, se diseñaron las siguientes estructur
 
 El campo \texttt{sincronizado} (booleano) en cada entidad actúa como bandera para el proceso de sincronización diferida: cuando el dispositivo recupera conectividad, itera sobre los registros con \texttt{sincronizado = false} y los envía al backend. Una vez confirmada la recepción, se marca \texttt{sincronizado = true}.
 
-\subsection{Implementación}
+\subsubsection{Implementación}
 
 En esta iteración se integraron las librerías \texttt{LittleFS}, \texttt{ArduinoJson}, \texttt{HardwareSerial} y \texttt{Adafruit\_Fingerprint}. Las dos primeras permiten gestionar archivos JSON alojados en la memoria flash del ESP32-CAM, mientras que las dos últimas habilitan la comunicación UART con el lector biométrico AS608 para el registro y verificación de huellas digitales.
 
-\subsubsection{Inicialización del sistema de archivos y persistencia}
+\paragraph{Inicialización del sistema de archivos y persistencia}
 
 El primer componente de la implementación consiste en montar LittleFS mediante \texttt{LittleFS.begin(true)} y verificar la existencia de los archivos necesarios. En caso de no existir, el sistema los crea con una estructura inicial vacía (arreglo \texttt{[]} para las colecciones, objeto con valores por defecto para \texttt{wifi.json}), asegurando que el dispositivo pueda operar incluso tras un primer arranque sin configuración previa.
 
@@ -402,7 +402,7 @@ El tamaño de cada \texttt{DynamicJsonDocument} se dimensionó según el volumen
     \caption{Funciones para lectura y escritura de archivos JSON en LittleFS.}
 \end{figure}
 
-\subsubsection{Registro de usuarios con huella digital}
+\paragraph{Registro de usuarios con huella digital}
 
 El registro de usuarios se implementó mediante un flujo que combina la captura biométrica gestionada por el lector AS608 con el almacenamiento en \texttt{personas.json}. El lector administra internamente modelos de huellas mediante \textit{slots} numerados del 1 al 127. Por ello, antes del enrolamiento es necesario identificar un slot disponible dentro del sensor. La función \texttt{encontrarSlotLibre()} recorre el arreglo de personas, determina el ID de huella más alto registrado y retorna el siguiente disponible.
 
@@ -415,7 +415,7 @@ Una vez encontrado un slot, se ejecuta el proceso de enrolamiento en dos fases:
 
 Luego del enrolamiento exitoso, se almacena un nuevo objeto dentro de \texttt{personas.json} con un identificador único (generado localmente con prefijo \texttt{local-} o provisto por el backend si hay conectividad), el nombre, RUT, correo electrónico y el slot asignado.
 
-\subsubsection{Registro de asistencia en modo offline}
+\paragraph{Registro de asistencia en modo offline}
 
 El registro de asistencia se realiza completamente en el dispositivo, sin necesidad de conexión externa. El flujo implementado consiste en:
 
@@ -430,11 +430,11 @@ El registro de asistencia se realiza completamente en el dispositivo, sin necesi
 
 El manejador \texttt{handleMarcarAsistencia()} expone esta funcionalidad a través de la interfaz web, permitiendo también marcaciones manuales. El escaneo automático continuo se controla mediante intervalos configurables: 2 segundos entre verificaciones de huella y 6 segundos entre verificaciones faciales.
 
-\subsubsection{Gestión de turnos y asignaciones}
+\paragraph{Gestión de turnos y asignaciones}
 
 Además del registro de asistencias, el sistema permite crear turnos (\texttt{handleCreateTurn()}) y asignarlos a personas (\texttt{handleAssignTurn()}) desde la interfaz web. Cada operación persiste los datos en sus archivos JSON correspondientes y, si hay conectividad, intenta replicar la operación en el backend mediante HTTP POST.
 
-\subsubsection{Operación offline del dispositivo}
+\paragraph{Operación offline del dispositivo}
 
 Con el objetivo de asegurar autonomía total, el ESP32-CAM fue configurado para operar en dos modos:
 
@@ -443,7 +443,7 @@ Con el objetivo de asegurar autonomía total, el ESP32-CAM fue configurado para 
     \item \textbf{Modo Access Point}: El punto de acceso utiliza el SSID \texttt{ESP32-ASISTENCIA} y contraseña \texttt{Asistencia2026}, permitiendo que un administrador se conecte directamente al dispositivo en la IP 192.168.4.1 para realizar todas las operaciones mediante la interfaz web embebida.
 \end{itemize}
 
-\subsection{Pruebas}
+\subsubsection{Pruebas}
 
 Se diseñaron las siguientes pruebas para validar el correcto funcionamiento del almacenamiento local y el modo offline:
 
@@ -468,11 +468,11 @@ Se diseñaron las siguientes pruebas para validar el correcto funcionamiento del
 %% ITERACIÓN 3: Backend, base de datos, HTTP y MQTT
 %% ============================================================
 
-\section{Iteración 3: Backend, base de datos y comunicación}
+\subsection{Iteración 3: Backend, base de datos y comunicación}
 
 El propósito de esta iteración consiste en implementar un backend centralizado que permita procesar la información enviada por el ESP32-CAM, administrar la base de datos, gestionar registros de trabajadores y turnos, y habilitar la comunicación bidireccional mediante MQTT y HTTP. Esta etapa corresponde a la construcción del servidor del sistema, incorporando funcionalidades que serán extendidas en iteraciones posteriores.
 
-\subsection{Análisis}
+\subsubsection{Análisis}
 
 En esta iteración se realiza el estudio de los mecanismos de comunicación necesarios para establecer el flujo de datos entre el dispositivo ESP32-CAM y el backend del sistema, considerando tanto la operación en línea como escenarios donde la conectividad es limitada o intermitente.
 
@@ -489,7 +489,7 @@ Asimismo, se analizó la \textbf{conectividad Wi-Fi} como medio de enlace princi
 
 Finalmente, se evaluó la compatibilidad del flujo de datos con la arquitectura general definida en el apartado 4.1.1, determinando que esta iteración corresponde a la habilitación de la capa de comunicación que enlaza el dispositivo con el backend.
 
-\subsection{Diseño}
+\subsubsection{Diseño}
 
 El diseño de esta iteración se centra en la definición detallada de los mecanismos de comunicación y conectividad, así como en la arquitectura de la base de datos que soportará todas las funcionalidades del sistema.
 
@@ -529,6 +529,8 @@ Todos estos endpoints operan sobre una base de datos relacional PostgreSQL. El d
     \item \texttt{encodings\_faciales}: Almacena múltiples embeddings faciales cifrados por persona (FOREIGN KEY con eliminación en cascada), permitiendo que un trabajador tenga varias fotos de referencia con distintos ángulos e iluminación para mejorar la precisión del reconocimiento.
 \end{itemize}
 
+La Figura~\ref{fig:db-er} presenta el diagrama entidad-relación correspondiente. En él se visualizan las 14 tablas que componen el esquema, organizadas en torno a tres dominios principales: \textbf{gestión de personas y turnos} (personas, turnos, asignaciones), \textbf{registro biométrico y de asistencia} (asistencias, encodings\_faciales, logs\_biometricos, consentimientos, eliminaciones\_biometricas), y \textbf{administración del sistema} (empresas, dispositivos, usuarios\_web, usuario\_empresa, integraciones\_erp, sincronizacion\_log). Las flechas indican las relaciones de clave foránea entre tablas, destacando cómo la entidad \texttt{empresas} actúa como raíz del modelo multi-tenant, la tabla \texttt{personas} como eje central que conecta la información laboral con los datos biométricos, y las tablas \texttt{asistencias} y \texttt{sincronizacion\_log} como destino final del flujo de datos operacional.
+
 \begin{figure}[H]
     \centering
     \input{../diagrams/db_er_fig.tikz}
@@ -542,21 +544,21 @@ Adicionalmente, se definen los tópicos \texttt{esp32/heartbeat/<MAC>} para moni
 
 La infraestructura se complementa con \textbf{Docker Compose}, que levanta el broker Mosquitto en un contenedor independiente, exponiendo el puerto \textbf{1884} (externo, mapeado al 1883 interno del contenedor) para MQTT nativo y el puerto 9001 para WebSockets.
 
-\subsection{Implementación}
+\subsubsection{Implementación}
 
 La implementación de la Iteración 3 se centró en habilitar la comunicación entre el dispositivo ESP32-CAM y el backend desarrollado en Python con Flask, así como en construir la base de datos PostgreSQL que soporta todo el sistema.
 
-\subsubsection{Inicialización de la base de datos}
+\paragraph{Inicialización de la base de datos}
 
 Se implementó el módulo \texttt{database.py} con una función \texttt{init\_db()} que crea todas las tablas del sistema utilizando sentencias \texttt{CREATE TABLE IF NOT EXISTS}, asegurando idempotencia en los despliegues. Adicionalmente, se aplican sentencias \texttt{ALTER TABLE ADD COLUMN IF NOT EXISTS} para garantizar migraciones no destructivas. La función incluye la creación de índices sobre columnas frecuentemente consultadas (\texttt{persona\_id}, \texttt{dispositivo\_id}, \texttt{fecha\_hora}, \texttt{empresa\_id}) y la inserción de datos semilla (empresa por defecto, usuario administrador con contraseña hasheada).
 
-\subsubsection{Conexión Wi-Fi del ESP32-CAM y gestión de conectividad}
+\paragraph{Conexión Wi-Fi del ESP32-CAM y gestión de conectividad}
 
 Para permitir la operación en red, el dispositivo implementa un mecanismo de conexión automática a Wi-Fi mediante la función \texttt{tryConnectWiFi()}. Esta función lee las credenciales desde \texttt{wifi.json}, configura el modo STA y deshabilita el ahorro de energía Wi-Fi (\texttt{WIFI\_PS\_NONE}) para mantener una conexión estable. La verificación continua de conectividad se realiza en \texttt{verificarConexionWiFi()}, que implementa un mecanismo de reintentos con backoff progresivo: tras detectar una desconexión, espera un tiempo creciente antes de reintentar (3s, 6s, 9s, 12s, 15s). Si tras 5 intentos fallidos no se logra reconectar, el dispositivo activa el Access Point como fallback.
 
 El evento \texttt{ARDUINO\_EVENT\_WIFI\_STA\_DISCONNECTED} queda registrado con su código de razón y un contador de desconexiones, información expuesta a través del endpoint \texttt{/wifi-diag} para diagnóstico remoto.
 
-\subsubsection{Envío de imágenes faciales: MQTT para registro, HTTP para identificación}
+\paragraph{Envío de imágenes faciales: MQTT para registro, HTTP para identificación}
 
 Siguiendo el diseño establecido, durante el \textbf{registro facial} la imagen es capturada, codificada en Base64 mediante una implementación optimizada que evita el uso de buffers intermedios, y enviada como un único mensaje JSON al tópico \texttt{esp32/imagen/registrar} con QoS 1 (entrega garantizada). El payload contiene dos campos: \texttt{rut} y \texttt{imagen} (string Base64). Este enfoque evita la complejidad de la fragmentación en múltiples mensajes y es factible porque el ESP32-CAM puede manejar cadenas de hasta ~80 KB en memoria con calidad JPEG reducida (q=10 para registro).
 
@@ -564,17 +566,17 @@ La función \texttt{registrarRostroEnBackend()} encapsula este flujo y retorna \
 
 En contraste, durante la \textbf{identificación facial} (consulta 1:N al momento de marcar asistencia), el flujo es diferente: la imagen se envía por \textbf{HTTP} y no por MQTT. La función \texttt{identificarPorRostro()} reduce la calidad JPEG a 10, captura el frame directamente del buffer de la cámara (\texttt{camera\_fb\_t}) y lo transmite como \texttt{application/octet-stream} mediante un \texttt{HTTPClient.POST(fb->buf, fb->len)} al endpoint \texttt{POST /api/facial/identificar}, evitando la sobrecarga de codificación Base64. El backend responde sincrónicamente con el \texttt{rut} identificado (o HTTP 404 si el rostro no coincide). Esta decisión se tomó porque la marcación requiere respuesta inmediata para validar la identidad y proceder con el registro de asistencia en el mismo flujo.
 
-\subsubsection{Recepción de imágenes en el backend vía MQTT}
+\paragraph{Recepción de imágenes en el backend vía MQTT}
 
 El backend implementa un cliente MQTT mediante la librería \texttt{paho-mqtt} en el módulo \texttt{mqtt\_handler.py}. Al recibir un mensaje en \texttt{esp32/imagen/registrar}, la función \texttt{on\_message} decodifica el JSON, extrae el \texttt{rut} y la imagen Base64, verifica que exista consentimiento biométrico registrado en la base de datos, resuelve el \texttt{rut} al \texttt{id} interno, decodifica la imagen, la guarda en \texttt{static/previews/<id>.jpg} y extrae el embedding facial. Si el procesamiento es exitoso, publica en \texttt{esp32/respuesta/facial} un JSON con \texttt{status: "ok"} y el nombre del archivo; en caso de error, publica \texttt{status: "error"} con el detalle.
 
 Adicionalmente, el cliente MQTT procesa los heartbeats (\texttt{esp32/heartbeat/<MAC>}) actualizando el estado y la IP del dispositivo en la base de datos, y los mensajes LWT (\texttt{esp32/lwt/<MAC>}) marcando el dispositivo como inactivo.
 
-\subsubsection{Mantenimiento de la conexión MQTT en el ESP32-CAM}
+\paragraph{Mantenimiento de la conexión MQTT en el ESP32-CAM}
 
 La función \texttt{mantenerConexionMQTT()} se encarga de iniciar el cliente MQTT en el ESP32-CAM si el broker está configurado y hay conectividad. Soporta URLs con esquema \texttt{mqtt://}, \texttt{ws://} o \texttt{wss://} (WebSockets seguros con TLS mediante \texttt{esp\_crt\_bundle\_attach}). Configura un mensaje LWT para que el backend sea notificado si el dispositivo se desconecta abruptamente, y se suscribe al tópico \texttt{esp32/respuesta/facial} para recibir confirmaciones del backend.
 
-\subsubsection{Envío de datos mediante HTTP desde el ESP32-CAM}
+\paragraph{Envío de datos mediante HTTP desde el ESP32-CAM}
 
 Se implementó la capacidad del ESP32-CAM para comunicarse con la API REST del backend mediante solicitudes HTTP usando la librería \texttt{HTTPClient}. La función auxiliar \texttt{beginHttp()} configura cada petición con timeout de 10 segundos y el header \texttt{X-Device-MAC} para que el backend pueda identificar al dispositivo emisor. Esta función es utilizada por todos los handlers que requieren comunicación con el backend:
 
@@ -587,7 +589,7 @@ Se implementó la capacidad del ESP32-CAM para comunicarse con la API REST del b
     \item \texttt{sincronizarAsistencias()}: Envía un lote de asistencias pendientes vía \texttt{POST /api/asistencias/sync}.
 \end{itemize}
 
-\subsubsection{Implementación de la API REST del backend}
+\paragraph{Implementación de la API REST del backend}
 
 El backend se implementó con Flask, organizando las rutas en blueprints independientes por dominio:
 \begin{itemize}
@@ -604,11 +606,11 @@ El backend se implementó con Flask, organizando las rutas en blueprints indepen
 
 Cada blueprint se registra en la aplicación Flask principal (\texttt{app.py}), junto con la configuración de CORS para permitir peticiones desde cualquier origen. El backend se ejecuta en el puerto 5000 con modo debug activado y recarga automática deshabilitada para evitar conflictos con el cliente MQTT.
 
-\subsubsection{Infraestructura con Docker Compose}
+\paragraph{Infraestructura con Docker Compose}
 
 Para garantizar un entorno reproducible, se definió un archivo \texttt{docker-compose.yml} que levanta el broker Mosquitto (imagen \texttt{eclipse-mosquitto:latest}) con el puerto \textbf{1884} (externo, mapeado al 1883 interno) para MQTT nativo y el puerto 9001 para WebSockets expuestos, volúmenes para configuración, datos y logs persistentes, y una red bridge dedicada llamada \texttt{teleasist\_network}. El backend Flask y la base de datos PostgreSQL pueden ejecutarse en el host o en contenedores adicionales según la configuración de despliegue.
 
-\subsection{Pruebas}
+\subsubsection{Pruebas}
 
 Se diseñaron las siguientes pruebas para validar la comunicación y el backend:
 
@@ -633,11 +635,11 @@ Se diseñaron las siguientes pruebas para validar la comunicación y el backend:
 %% ITERACIÓN 4: Reconocimiento facial, anti-spoofing y cifrado
 %% ============================================================
 
-\section{Iteración 4: Reconocimiento facial, anti-spoofing y cifrado biométrico}
+\subsection{Iteración 4: Reconocimiento facial, anti-spoofing y cifrado biométrico}
 
 Esta iteración incorpora el procesamiento biométrico en el backend: reconocimiento facial con DeepFace, validación anti-spoofing y cifrado de embeddings faciales. El sistema pasa de solo transmitir imágenes a realizar verificación e identificación biométrica.
 
-\subsection{Análisis}
+\subsubsection{Análisis}
 
 Para incorporar el reconocimiento facial al sistema, se evaluaron diversas librerías y modelos de \textit{deep learning}. Se seleccionó \textbf{DeepFace} por las siguientes razones:
 
@@ -659,7 +661,7 @@ Se identificaron los siguientes requisitos funcionales para esta iteración:
     \item \textbf{Consentimiento biométrico}: Todo registro facial debe estar precedido por la aceptación explícita de una política de privacidad por parte del trabajador, en cumplimiento de la normativa de protección de datos.
 \end{itemize}
 
-\subsection{Diseño}
+\subsubsection{Diseño}
 
 El flujo de procesamiento facial se divide en tres operaciones principales:
 
@@ -696,9 +698,9 @@ El modelo seleccionado es \textbf{Facenet} por su equilibrio entre precisión y 
 
 Para el cifrado de embeddings se utiliza el algoritmo \textbf{Fernet} (AES-128 en modo CBC con HMAC-SHA256 para autenticación), parte de la librería \texttt{cryptography} de Python. La clave de cifrado se deriva aplicando SHA-256 a una variable de entorno (\texttt{BIOMETRIC\_KEY}), garantizando que los embeddings nunca se almacenen en texto plano en la base de datos.
 
-\subsection{Implementación}
+\subsubsection{Implementación}
 
-\subsubsection{Procesamiento de imágenes en el backend}
+\paragraph{Procesamiento de imágenes en el backend}
 
 El módulo \texttt{routes/facial.py} implementa los tres endpoints descritos en el diseño. Las funciones auxiliares incluyen:
 
@@ -712,11 +714,11 @@ El módulo \texttt{routes/facial.py} implementa los tres endpoints descritos en 
 
 Además, para optimizar el rendimiento, el modelo \textbf{Facenet se precarga al iniciar el servidor} mediante \texttt{DeepFace.build\_model('Facenet', task='facial\_recognition')}, eliminando la latencia de carga de pesos en la primera solicitud. Los embeddings almacenados en la base de datos se mantienen en una \textbf{caché en memoria} con tiempo de vida configurable (por defecto 60 segundos, mediante \texttt{FACIAL\_CACHE\_TTL}), evitando consultas repetitivas y descifrados a la base de datos en cada identificación. La caché se invalida automáticamente al registrar una nueva foto o al eliminar datos biométricos, garantizando consistencia.
 
-\subsubsection{Procesamiento facial vía MQTT}
+\paragraph{Procesamiento facial vía MQTT}
 
 El módulo \texttt{mqtt\_handler.py} complementa los endpoints REST con un canal de procesamiento asíncrono. La función \texttt{procesar\_imagen\_facial(client, persona\_id, imagen\_b64)} implementa el mismo flujo de registro facial pero activado por la recepción de un mensaje MQTT en \texttt{esp32/imagen/registrar}. Publica el resultado en \texttt{esp32/respuesta/facial} para que el ESP32-CAM pueda reaccionar en tiempo real (confirmación con flash LED verde o error con flash rojo).
 
-\subsubsection{Cifrado y descifrado de embeddings}
+\paragraph{Cifrado y descifrado de embeddings}
 
 El módulo \texttt{encryption.py} proporciona dos funciones:
 
@@ -725,13 +727,13 @@ El módulo \texttt{encryption.py} proporciona dos funciones:
     \item \texttt{descifrar\_embedding(cifrado\_str)}: Decodifica el Base64, descifra con Fernet y deserializa el JSON para obtener el vector original.
 \end{itemize}
 
-\subsubsection{Actualización y eliminación de datos faciales}
+\paragraph{Actualización y eliminación de datos faciales}
 
 Se implementó el endpoint \texttt{PUT /api/facial/actualizar/<persona\_id>} que permite reemplazar el embedding y la foto de una persona existente. También se implementó \texttt{DELETE /api/personas/<id>/datos-biometricos} que elimina el embedding facial, la huella asociada, la foto en disco y el consentimiento, pero conserva los registros de asistencia históricos. La eliminación queda registrada en la tabla \texttt{eliminaciones\_biometricas} para trazabilidad.
 
 Se implementó además el endpoint \texttt{POST /api/facial/agregar-foto} que permite \textbf{agregar fotos de referencia adicionales} a una persona ya registrada, sin reemplazar las existentes. Cada nueva foto pasa por el mismo filtro de calidad Laplacian y se almacena como un nuevo registro en \texttt{encodings\_faciales}. Esta funcionalidad de enrolamiento progresivo permite mejorar la precisión del sistema a lo largo del tiempo: si un trabajador experimenta falsos rechazos, se le pueden agregar más fotos de referencia con distintos ángulos o condiciones de iluminación, aumentando la robustez del reconocimiento sin necesidad de rehacer el registro completo.
 
-\subsection{Pruebas}
+\subsubsection{Pruebas}
 
 Se diseñaron las siguientes pruebas para validar el módulo de reconocimiento facial:
 
@@ -766,11 +768,11 @@ Se diseñaron las siguientes pruebas para validar el módulo de reconocimiento f
 %% ITERACIÓN 5: Autenticación, multi-tenant y enrolamiento
 %% ============================================================
 
-\section{Iteración 5: Autenticación, multi-tenant y enrolamiento de dispositivos}
+\subsection{Iteración 5: Autenticación, multi-tenant y enrolamiento de dispositivos}
 
 La quinta iteración incorpora la capa de seguridad y administración del sistema: autenticación de usuarios del panel web mediante JWT, un modelo multi-tenant que permite a múltiples empresas operar sobre la misma instancia del backend con datos aislados, y un mecanismo seguro de enrolamiento de dispositivos ESP32-CAM mediante PIN de un solo uso.
 
-\subsection{Análisis}
+\subsubsection{Análisis}
 
 El sistema, al estar orientado a un entorno empresarial, requiere que diferentes organizaciones puedan utilizar la misma plataforma sin que sus datos se mezclen. Asimismo, el panel web administrativo debe restringir el acceso según el rol del usuario. Finalmente, cada dispositivo ESP32-CAM debe ser vinculado de forma segura a una empresa específica, evitando que dispositivos no autorizados inyecten datos en el sistema.
 
@@ -790,13 +792,13 @@ Los requisitos identificados son:
     \item \textbf{Monitorización de dispositivos}: Una vez enrolado, el ESP32-CAM envía heartbeats periódicos vía MQTT. El backend actualiza el estado del dispositivo (\texttt{activo}) y registra su última actividad. Un proceso watchdog marca como \texttt{inactivo} a los dispositivos que no han enviado heartbeat en más de 90 segundos.
 \end{itemize}
 
-\subsection{Diseño}
+\subsubsection{Diseño}
 
-\subsubsection{Modelo de datos multi-tenant}
+\paragraph{Modelo de datos multi-tenant}
 
 La estrategia multi-tenant se implementa a nivel de base de datos mediante una columna \texttt{empresa\_id} en las tablas \texttt{personas}, \texttt{turnos}, \texttt{dispositivos}, \texttt{integraciones\_erp} y \texttt{asistencias} (esta última a través de la relación con \texttt{personas}). La tabla \texttt{empresas} actúa como entidad raíz del tenant. La tabla asociativa \texttt{usuario\_empresa} vincula usuarios con empresas y define el rol que cada usuario tiene en cada empresa, permitiendo que un mismo usuario tenga roles distintos en diferentes organizaciones.
 
-\subsubsection{Flujo de autenticación}
+\paragraph{Flujo de autenticación}
 
 \begin{enumerate}
     \item El usuario envía email y contraseña al endpoint \texttt{POST /api/auth/login}.
@@ -814,7 +816,7 @@ Se implementan dos niveles de protección para los endpoints:
     \item \texttt{@token\_opcional}: Intenta extraer el token si está presente; si no, permite el acceso sin autenticación (útil para endpoints consumidos por el ESP32-CAM, que en su lugar envían el header \texttt{X-Device-MAC} para identificar la empresa).
 \end{itemize}
 
-\subsubsection{Flujo de enrolamiento de dispositivos}
+\paragraph{Flujo de enrolamiento de dispositivos}
 
 \begin{enumerate}
     \item Un administrador o empleador accede a \texttt{POST /api/dispositivos/generar-pin} desde el panel web, especificando un nombre para el dispositivo. El backend genera un PIN alfanumérico de 8 caracteres (ej. \texttt{A3B9XK2M}) usando \texttt{secrets.choice()} y lo inserta en la tabla \texttt{dispositivos} con \texttt{enrolado = FALSE}.
@@ -824,13 +826,13 @@ Se implementan dos niveles de protección para los endpoints:
     \item A partir de este momento, el ESP32-CAM envía heartbeats periódicos y el backend lo reconoce como dispositivo autorizado de la empresa.
 \end{enumerate}
 
-\subsubsection{Heartbeat y Last Will Testament (LWT)}
+\paragraph{Heartbeat y Last Will Testament (LWT)}
 
 El ESP32-CAM publica periódicamente (cada 30 segundos) un mensaje JSON en el tópico \texttt{esp32/heartbeat/<MAC>} con su MAC, timestamp e IP. El backend actualiza el campo \texttt{ultimo\_heartbeat} y marca el estado como \texttt{activo}. Al conectarse al broker MQTT, el ESP32-CAM configura un mensaje LWT en el tópico \texttt{esp32/lwt/<MAC>} con \texttt{\{"estado": "inactivo"\}}. Si el dispositivo se desconecta abruptamente, el broker publica automáticamente el LWT, y el backend marca el dispositivo como \texttt{inactivo}. Adicionalmente, un hilo \texttt{device\_watchdog} ejecutado cada 60 segundos verifica qué dispositivos no han enviado heartbeat en más de 90 segundos y los marca como inactivos.
 
-\subsection{Implementación}
+\subsubsection{Implementación}
 
-\subsubsection{Módulo de autenticación}
+\paragraph{Módulo de autenticación}
 
 El módulo \texttt{routes/auth.py} implementa:
 
@@ -847,7 +849,7 @@ El módulo \texttt{routes/auth.py} implementa:
 
 Los decoradores \texttt{@token\_required}, \texttt{@token\_opcional} y \texttt{@requiere\_rol} se definen en el mismo módulo. El decorador \texttt{@token\_opcional} incluye lógica para inferir la empresa a partir del header \texttt{X-Device-MAC} cuando no hay token JWT presente, buscando la MAC en la tabla de dispositivos.
 
-\subsubsection{Gestión de dispositivos}
+\paragraph{Gestión de dispositivos}
 
 El módulo \texttt{routes/dispositivos.py} implementa:
 
@@ -858,7 +860,7 @@ El módulo \texttt{routes/dispositivos.py} implementa:
     \item \texttt{POST /api/dispositivos/verificar}: Prueba conectividad con un dispositivo dada su IP, consultando el endpoint \texttt{/estado} del ESP32-CAM.
 \end{itemize}
 
-\subsubsection{Monitorización vía MQTT}
+\paragraph{Monitorización vía MQTT}
 
 En el módulo \texttt{mqtt\_handler.py}, la función \texttt{on\_message} maneja los tópicos de heartbeat y LWT:
 
@@ -869,7 +871,7 @@ En el módulo \texttt{mqtt\_handler.py}, la función \texttt{on\_message} maneja
 
 El watchdog (\texttt{device\_watchdog}) ejecuta un barrido inicial al arrancar (todos los dispositivos se marcan inactivos hasta que envíen su primer heartbeat) y luego verifica cada 60 segundos los heartbeats vencidos.
 
-\subsection{Pruebas}
+\subsubsection{Pruebas}
 
 Se diseñaron las siguientes pruebas para validar la autenticación, el multi-tenant y el enrolamiento:
 
@@ -902,11 +904,11 @@ Se diseñaron las siguientes pruebas para validar la autenticación, el multi-te
 %% ITERACIÓN 6: Módulo antifraude y validación previa a la captura
 %% ============================================================
 
-\section{Iteración 6: Módulo antifraude y validación previa a la captura}
+\subsection{Iteración 6: Módulo antifraude y validación previa a la captura}
 
 Esta iteración implementa la prevención de suplantación de identidad en el ESP32-CAM mediante detección física de presencia, control de iluminación y procesamiento biométrico. Si bien el plan original contemplaba un sensor infrarrojo (IR) dedicado para detectar intentos de suplantación con fotografías, el enfoque implementado evolucionó hacia una solución de múltiples capas que resultó más robusta y prescindió del sensor IR adicional.
 
-\subsection{Análisis}
+\subsubsection{Análisis}
 
 El análisis de escenarios de suplantación identificó los siguientes vectores de ataque potenciales contra el sistema de reconocimiento facial del ESP32-CAM:
 
@@ -932,9 +934,9 @@ En consecuencia, se adoptó un enfoque de múltiples capas que combina:
     \item \textbf{Anti-spoofing por software (DeepFace)}: La capa más potente, que analiza la imagen capturada con un modelo entrenado para detectar intentos de suplantación. Las imágenes que no superan esta validación son rechazadas con una excepción \texttt{ValueError} que el backend traduce en un mensaje de error al ESP32-CAM.
 \end{enumerate}
 
-\subsection{Diseño}
+\subsubsection{Diseño}
 
-\subsubsection{Sensor PIR como portero del sistema}
+\paragraph{Sensor PIR como portero del sistema}
 
 El PIR conectado al GPIO12 actúa como ``portero'': el sistema permanece en reposo hasta que el sensor detecta movimiento (cambio en la radiación infrarroja del entorno). Una vez activado, se inicia un período de ``alerta'' de 15 segundos durante el cual:
 
@@ -946,7 +948,7 @@ El PIR conectado al GPIO12 actúa como ``portero'': el sistema permanece en repo
 
 Esta arquitectura reduce drásticamente el consumo energético y el desgaste del sensor de huellas, ya que el AS608 solo se activa cuando hay una alta probabilidad de que haya una persona frente al dispositivo.
 
-\subsubsection{Control de acceso con cooldown y bloqueo}
+\paragraph{Control de acceso con cooldown y bloqueo}
 
 Para evitar marcaciones múltiples accidentales y garantizar que cada interacción sea deliberada, se implementan tres mecanismos de control:
 
@@ -956,7 +958,7 @@ Para evitar marcaciones múltiples accidentales y garantizar que cada interacci�
     \item \textbf{Bloqueo por menú} (\texttt{BLOQUEO\_MENU\_MS = 30000 ms}): Cuando se utiliza la interfaz web para operaciones administrativas (registro, edición, configuración), se activa un bloqueo de 30 segundos que impide la marcación automática, evitando que la persona que está operando el menú sea registrada inadvertidamente.
 \end{enumerate}
 
-\subsubsection{Firma de movimiento}
+\paragraph{Firma de movimiento}
 
 Para detectar si la escena frente a la cámara cambió entre dos capturas consecutivas (lo que indicaría una persona real moviéndose versus una foto estática), se implementa una \textbf{firma de movimiento} que calcula un hash reducido del buffer JPEG:
 
@@ -966,9 +968,9 @@ Para detectar si la escena frente a la cámara cambió entre dos capturas consec
     \item Si la diferencia entre la firma actual y la anterior supera un umbral (\texttt{UMBRAL\_MOVIMIENTO = 1800}), se considera que hubo movimiento real en la escena.
 \end{itemize}
 
-\subsection{Implementación}
+\subsubsection{Implementación}
 
-\subsubsection{Integración del PIR}
+\paragraph{Integración del PIR}
 
 El sensor PIR se conecta al GPIO12 del ESP32-CAM, configurado con resistencia de pull-down interna para evitar lecturas flotantes. En el \texttt{setup()} se incluye una fase de calibración de 3 segundos (\texttt{delay(3000)}) para estabilizar el sensor antes de comenzar el bucle principal.
 
@@ -980,7 +982,7 @@ En el \texttt{loop()}, la lógica de detección sigue el siguiente flujo:
     \item Si pasan más de 15 segundos sin detección, se desactiva el modo alerta y se retorna a reposo.
 \end{itemize}
 
-\subsubsection{Flash PWM para iluminación facial}
+\paragraph{Flash PWM para iluminación facial}
 
 El flash LED integrado del ESP32-CAM se controla mediante PWM en el GPIO4, configurado como salida LED PWM con frecuencia de 5 kHz y resolución de 8 bits. Durante la captura de una imagen (tanto para registro como para identificación), el flash se activa con un duty cycle del 50\% (\texttt{FLASH\_PWM\_DUTY\_50 = 128}) durante 150-200 milisegundos, tiempo suficiente para que el sensor OV2640 ajuste su exposición.
 
@@ -995,7 +997,7 @@ La secuencia de captura es la siguiente:
 
 Este enfoque minimiza el tiempo total de encendido del flash y, por tanto, el consumo eléctrico y la molestia para el usuario.
 
-\subsubsection{Señalización mediante flash}
+\paragraph{Señalización mediante flash}
 
 Además de la iluminación para captura, el flash se utiliza para señalizar el resultado de las operaciones:
 
@@ -1006,11 +1008,11 @@ Además de la iluminación para captura, el flash se utiliza para señalizar el 
 
 Esta señalización permite al usuario recibir retroalimentación inmediata sin necesidad de mirar una pantalla.
 
-\subsubsection{Validación anti-spoofing en el backend}
+\paragraph{Validación anti-spoofing en el backend}
 
 La validación anti-spoofing se ejecuta en el backend, no en el ESP32-CAM, debido a las limitaciones de procesamiento del microcontrolador. La función \texttt{extraer\_embedding()} en \texttt{routes/facial.py} recibe el parámetro \texttt{anti\_spoofing=True} para los endpoints de identificación y verificación, lo que activa el detector de suplantación de DeepFace. Si la imagen no supera la validación (por ser una foto, pantalla o carecer de características faciales reales), DeepFace lanza una excepción \texttt{ValueError} que el backend captura y traduce en una respuesta HTTP 400 con el mensaje ``Spoof detected''.
 
-\subsection{Pruebas}
+\subsubsection{Pruebas}
 
 Se diseñaron las siguientes pruebas para validar el módulo antifraude:
 
@@ -1039,11 +1041,11 @@ Se diseñaron las siguientes pruebas para validar el módulo antifraude:
 %% ITERACIÓN 7: Panel web backend e integración con ERP
 %% ============================================================
 
-\section{Iteración 7: Panel web backend e integración con ERP}
+\subsection{Iteración 7: Panel web backend e integración con ERP}
 
 La séptima iteración incorpora el panel de administración web del backend y el módulo de integración con sistemas ERP externos, permitiendo que los datos de asistencia capturados por el dispositivo IoT sean automáticamente transmitidos a plataformas empresariales de recursos humanos o nómina.
 
-\subsection{Análisis}
+\subsubsection{Análisis}
 
 El sistema, hasta esta iteración, permite registrar asistencias y almacenarlas en la base de datos, pero carece de una interfaz administrativa centralizada y de un mecanismo para integrar los datos con sistemas ERP existentes. Se identificaron los siguientes requisitos:
 
@@ -1055,9 +1057,9 @@ El sistema, hasta esta iteración, permite registrar asistencias y almacenarlas 
     \item \textbf{Test de conectividad}: Cada integración ERP debe poder probarse manualmente desde el panel web antes de activar el envío automático.
 \end{itemize}
 
-\subsection{Diseño}
+\subsubsection{Diseño}
 
-\subsubsection{Arquitectura del backend}
+\paragraph{Arquitectura del backend}
 
 El backend se organiza en 9 blueprints de Flask, cada uno con responsabilidades bien definidas:
 
@@ -1073,7 +1075,7 @@ El backend se organiza en 9 blueprints de Flask, cada uno con responsabilidades 
     \item \texttt{erp\_bp}: CRUD de integraciones ERP, envío de datos y test de conectividad.
 \end{enumerate}
 
-\subsubsection{Diseño del módulo ERP}
+\paragraph{Diseño del módulo ERP}
 
 La integración con ERP se basa en el patrón \textbf{webhook saliente}: cuando se registra una asistencia, el backend notifica a cada ERP configurado mediante una solicitud HTTP POST al webhook correspondiente, con los datos de la marcación en el cuerpo JSON.
 
@@ -1094,9 +1096,9 @@ El field mapping permite adaptar el formato de salida sin modificar el código d
 {"rut": "employee_id", "fecha_hora": "timestamp", "tipo": "event_type"}
 \end{verbatim}
 
-\subsection{Implementación}
+\subsubsection{Implementación}
 
-\subsubsection{Panel web del backend}
+\paragraph{Panel web del backend}
 
 Para complementar el backend, se desarrolló un panel web independiente (Next.js 16 con React 19 y TypeScript) cuyo módulo principal es la gestión del dispositivo IoT. Este panel, accesible desde cualquier navegador moderno, permite al administrador:
 
@@ -1119,11 +1121,11 @@ Adicionalmente, el panel web incorpora las siguientes funcionalidades complement
     \item \textbf{Edición de usuarios del sistema}: Los administradores y empleadores pueden editar los datos de los usuarios del sistema (nombre, email, rol, contraseña, estado activo/inactivo) mediante un formulario modal que reutiliza la interfaz de registro en modo edición. Las actualizaciones son parciales: solo se envían los campos modificados.
 \end{itemize}
 
-\subsubsection{Endpoint de configuración ERP para el ESP32-CAM}
+\paragraph{Endpoint de configuración ERP para el ESP32-CAM}
 
 Para que el ESP32-CAM pueda notificar asistencias directamente a los ERP configurados (incluso si el backend central no está disponible), se implementó el endpoint \texttt{GET /api/dispositivos/erp-config}, que retorna la lista de integraciones ERP activas con envío automático habilitado. El ESP32-CAM consulta este endpoint cada hora y almacena la configuración en \texttt{/erp-config.json}, permitiéndole enviar marcaciones a los ERP incluso durante desconexiones parciales.
 
-\subsubsection{Contraseñas para autenticación de dispositivos}
+\paragraph{Contraseñas para autenticación de dispositivos}
 
 Para reforzar la seguridad en la comunicación entre el backend y los ESP32-CAM enrolados, se implementó un sistema de contraseñas de dispositivo que permite al administrador generar, gestionar y verificar credenciales específicas para cada terminal IoT. El flujo contempla cuatro operaciones:
 
@@ -1136,7 +1138,7 @@ Para reforzar la seguridad en la comunicación entre el backend y los ESP32-CAM 
 
 En el panel web, la sección de gestión de dispositivos incorpora botones para generar, regenerar y eliminar contraseñas, así como indicadores visuales del estado de la contraseña (tiene o no tiene, pendiente o confirmada).
 
-\subsubsection{Módulo de integración ERP}
+\paragraph{Módulo de integración ERP}
 
 El módulo \texttt{routes/erp.py} implementa:
 
@@ -1154,7 +1156,7 @@ El módulo \texttt{routes/erp.py} implementa:
     \item \textbf{Estado de integración} (\texttt{GET /api/erp/<id>/estado}): Retorna el último envío y su estado.
 \end{itemize}
 
-\subsection{Pruebas}
+\subsubsection{Pruebas}
 
 Se diseñaron las siguientes pruebas para validar el panel web para la gestión del dispositivo y la integración ERP:
 
@@ -1183,11 +1185,11 @@ Se diseñaron las siguientes pruebas para validar el panel web para la gestión 
 %% ITERACIÓN 8: Sincronización diferida, logs y cierre del proyecto
 %% ============================================================
 
-\section{Iteración 8: Sincronización diferida, logs y cierre del proyecto}
+\subsection{Iteración 8: Sincronización diferida, logs y cierre del proyecto}
 
 Esta iteración integra la sincronización diferida entre el ESP32-CAM y el backend, la capa de auditoría y logs del sistema, y las herramientas de diagnóstico.
 
-\subsection{Análisis}
+\subsubsection{Análisis}
 
 Para que el prototipo sea viable en entornos reales, debe garantizar que ningún dato se pierda durante períodos de desconexión y que todas las operaciones críticas queden registradas para auditoría. Los requisitos identificados son:
 
@@ -1201,9 +1203,9 @@ Para que el prototipo sea viable en entornos reales, debe garantizar que ningún
     \item \textbf{Herramientas de diagnóstico}: Se requiere un script de prueba que permita simular asistencias faciales usando fotos almacenadas, facilitando las pruebas del sistema sin necesidad del hardware.
 \end{itemize}
 
-\subsection{Diseño}
+\subsubsection{Diseño}
 
-\subsubsection{Proceso de sincronización diferida}
+\paragraph{Proceso de sincronización diferida}
 
 El ESP32-CAM ejecuta la sincronización en dos momentos:
 \begin{enumerate}
@@ -1218,11 +1220,11 @@ El ESP32-CAM ejecuta la sincronización en dos momentos:
 
 Además, el ESP32-CAM consulta \texttt{GET /api/dispositivos/erp-config} cada hora (360,000 ms) para mantener actualizada su configuración local de webhooks ERP.
 
-\subsubsection{Deduplicación en el backend}
+\paragraph{Deduplicación en el backend}
 
 El endpoint \texttt{POST /api/asistencias/sync} implementa una verificación previa a la inserción: para cada registro del lote, consulta si ya existe una asistencia de la misma persona con el mismo tipo en una ventana de 60 segundos. Si existe, omite la inserción. Esto garantiza idempotencia ante reenvíos.
 
-\subsubsection{Tablas de auditoría}
+\paragraph{Tablas de auditoría}
 
 \begin{itemize}
     \item \texttt{sincronizacion\_log}: Registra cada operación de sincronización con: dispositivo de origen, cantidad de registros enviados, cantidad procesada correctamente, estado y detalle.
@@ -1230,7 +1232,7 @@ El endpoint \texttt{POST /api/asistencias/sync} implementa una verificación pre
     \item \texttt{eliminaciones\_biometricas}: Registra cada eliminación de datos biométricos con: persona, embedding anterior (cifrado), ruta de la foto eliminada y usuario solicitante.
 \end{itemize}
 
-\subsubsection{Panel de visualización de logs}
+\paragraph{Panel de visualización de logs}
 
 El backend expone dos conjuntos de endpoints para consulta de logs:
 \begin{itemize}
@@ -1239,13 +1241,13 @@ El backend expone dos conjuntos de endpoints para consulta de logs:
     \item El ESP32-CAM expone \texttt{GET /api/logs} que retorna el buffer de logs en formato HTML, y \texttt{/api/logs/clear} para limpiarlo.
 \end{itemize}
 
-\subsubsection{Script de simulación de asistencia facial}
+\paragraph{Script de simulación de asistencia facial}
 
 Se desarrolló \texttt{deteccion.py}, un script de línea de comandos que permite probar el flujo de reconocimiento facial sin necesidad del ESP32-CAM. El script escanea la carpeta \texttt{static/capturas\_prueba/}, presenta un menú interactivo para seleccionar una foto, ejecuta el proceso de identificación 1:N contra la base de datos y registra la asistencia correspondiente. Es útil para pruebas de regresión rápida y demostraciones.
 
-\subsection{Implementación}
+\subsubsection{Implementación}
 
-\subsubsection{Sincronización en el ESP32-CAM}
+\paragraph{Sincronización en el ESP32-CAM}
 
 Las funciones de sincronización siguen un patrón común:
 
@@ -1260,7 +1262,7 @@ Las funciones de sincronización siguen un patrón común:
 
 Para las personas, además del envío de pendientes, se implementa la descarga completa desde el backend (\texttt{sincronizarPersonasDesdeBackend()}) que sobrescribe el archivo local si no hay registros locales pendientes, manteniendo el ESP32-CAM actualizado con los datos del servidor.
 
-\subsubsection{Sincronización de asistencias por lote}
+\paragraph{Sincronización de asistencias por lote}
 
 La función \texttt{sincronizarAsistencias()} en el ESP32-CAM es especialmente relevante porque maneja el caso más frecuente de datos offline: un trabajador marcó entrada y salida durante el día sin conexión. La función:
 
@@ -1271,11 +1273,11 @@ La función \texttt{sincronizarAsistencias()} en el ESP32-CAM es especialmente r
     \item Si el backend retorna HTTP 200, marca todos los registros enviados como sincronizados.
 \end{enumerate}
 
-\subsubsection{Sincronización en el backend}
+\paragraph{Sincronización en el backend}
 
 El endpoint \texttt{POST /api/asistencias/sync} en \texttt{routes/asistencias.py} recibe el lote e itera sobre cada registro, aplicando la verificación de duplicados y realizando la inserción. También dispara el envío a ERP para cada asistencia nueva.
 
-\subsubsection{Watchdog de dispositivos}
+\paragraph{Watchdog de dispositivos}
 
 El hilo \texttt{device\_watchdog} en \texttt{mqtt\_handler.py} ejecuta dos funciones:
 
@@ -1284,11 +1286,11 @@ El hilo \texttt{device\_watchdog} en \texttt{mqtt\_handler.py} ejecuta dos funci
     \item \textbf{Verificación periódica}: Cada 60 segundos, revisa los heartbeats. Los dispositivos que no han enviado heartbeat en más de 90 segundos se marcan como \texttt{inactivo}. Esto permite detectar desconexiones incluso si el mensaje LWT no fue entregado (por ejemplo, si el ESP32-CAM se queda sin alimentación de forma abrupta y el broker no alcanza a publicar el LWT).
 \end{itemize}
 
-\subsubsection{Herramienta de simulación facial}
+\paragraph{Herramienta de simulación facial}
 
 Como complemento durante el desarrollo se implementó \texttt{deteccion.py}, un script de línea de comandos que permitió probar el flujo de reconocimiento facial sin necesidad del ESP32-CAM. El script se conectaba directamente a PostgreSQL, ejecutaba DeepFace (Facenet + detector configurable + anti-spoofing) sobre imágenes almacenadas en \texttt{static/capturas\_prueba/}, y registraba asistencias de prueba en la base de datos. En las etapas finales del proyecto, esta funcionalidad de simulación fue absorbida por la suite de pruebas automatizadas (con mocks de DeepFace, OpenCV y PostgreSQL en Docker), que ofrece mayor repetibilidad y cobertura sin dependencia del sistema de archivos local.
 
-\subsection{Pruebas}
+\subsubsection{Pruebas}
 
 Se diseñaron las siguientes pruebas para validar la sincronización diferida, los logs y la integración final:
 
@@ -1314,7 +1316,7 @@ Se diseñaron las siguientes pruebas para validar la sincronización diferida, l
     \item \textbf{Prueba de flujo completo punta a punta}: Ejecutar el flujo completo: registrar persona con huella y rostro en el ESP32-CAM $\rightarrow$ sincronizar con backend $\rightarrow$ verificar que la persona aparezca en el panel web $\rightarrow$ marcar asistencia por huella offline $\rightarrow$ reconectar y sincronizar $\rightarrow$ verificar que la asistencia aparezca en el panel web y se envíe al ERP de prueba.
 \end{itemize}
 
-\subsubsection{Pruebas automatizadas}
+\paragraph{Pruebas automatizadas}
 
 Además de las pruebas funcionales descritas, se implementó una suite de \textbf{284 pruebas automatizadas} para el backend y el firmware, utilizando pytest con PostgreSQL en Docker y mocks para DeepFace, OpenCV y MQTT. La suite se organiza en 19 archivos de prueba (10 en \texttt{Backend/tests/} y 9 en \texttt{Backend/tests/esp32\_emulator/}) y alcanza una cobertura de código del \textbf{90\%} sobre 3.925 líneas de código fuente, sin fallos en ninguna de las 284 pruebas.
 
