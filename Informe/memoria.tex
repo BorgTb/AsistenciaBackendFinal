@@ -231,22 +231,21 @@ En consecuencia de lo comentado anteriormente, se evidencia una falta de solucio
 En este apartado se presentan las metodologías de desarrollo y evaluación que serán utilizadas para este proyecto.
 
 \subsection{Metodologia de desarrollo}
-Considerando que el proyecto esta relacionado con el desarrollo de un prototipo de IoT, y pensado en su futura implementación en un entorno real, se identificaron distintos tipos de metodologías de desarrollo que permitan desarrollar el prototipo de manera que cada iteración, ciclo, o tarea sea una funcionalidad nueva que se adhiera al prototipo. Dado lo anterior se ha realizado una busqueda para identificar la metodología que más acorde esté para este proyecto. Dentro de las metodologías que si encajaban, dado el contexto del proyecto se encontraron las siguientes metodologías: Scrum,  y el modelo de prototipado evolutivo incremental. Dado que Scrum requiere de más actores que estén presentes en el proyecto y al adaptarla para un trabajo en solitario se perderian elementos de esta metodología tales como los roles, como así las revisión colaborativa que son parte de la estructura de la metodología[24]. Es por esta razon se descarto esta metodología y se opto por emplear una metodología de prototipado evolutivo incremental adaptandola a un proyecto en solitario, es decir, se reemplaza lo que seria el cliente, que es quien solicita los requisitos, por el profesor guía quien guiará y entregara retroalimentación de las iteraciones  Esta metodología se adecúa para este proyecto al tratarse de una metodología más apta y preparada para lo que es el desarrollo de prototipos y de mejoras e integraciones continuas[25][26].
 
-La metodología de prototipado evolutivo con un enfoque incremental propone un desarrollo basado en versiones sucesivas del prototipo, en la que cada iteración incorpora nuevas funcionalidades y mejoras sobre el anterior, de esta forma se puede probar, evaluar y ajustar continuamente el sistema a medida que va evolucionando. La estructura de la metodología es la siguiente:
+Considerando que el proyecto está relacionado con el desarrollo de un prototipo IoT que integra hardware, firmware y software, y pensando en su futura implementación en un entorno real, se identificaron y evaluaron distintos modelos del ciclo de vida de desarrollo. Para el contexto específico de este trabajo, se contrastó el enfoque tradicional del Modelo en Cascada (Lineal Secuencial) frente al modelo de Prototipado Evolutivo Incremental.
+
+El Modelo en Cascada exige definir la totalidad de los requerimientos y diseñar el sistema completo de forma estricta antes de comenzar cualquier implementación. En proyectos IoT, este enfoque presenta un alto riesgo: las restricciones técnicas del hardware (como las limitaciones de memoria del ESP32-CAM o la disponibilidad de pines GPIO para los sensores) a menudo se descubren durante la etapa de construcción. Esperar hasta las fases finales del proyecto para integrar y probar la comunicación entre los componentes físicos, el backend y la base de datos podría resultar en fallas críticas y la necesidad de rediseñar el sistema completo de forma tardía [27].
+
+Por esta razón, se descartó el enfoque secuencial y se optó por emplear una metodología de prototipado evolutivo incremental, adaptándola a la dinámica de un proyecto en solitario. En este esquema, el profesor guía asume el rol de contraparte o cliente, entregando retroalimentación técnica al final de cada ciclo. Esta metodología es la más indicada para el proyecto, ya que permite mitigar riesgos técnicos construyendo, probando y validando módulos independientes de manera progresiva [25][26].
+
+La metodología de prototipado evolutivo con un enfoque incremental propone un desarrollo basado en versiones sucesivas del prototipo, en la que cada iteración incorpora nuevas funcionalidades y mejoras sobre el anterior. De esta forma se puede probar, evaluar y ajustar continuamente el sistema a medida que va evolucionando. Como se ilustra en la Figura X, la estructura de la metodología se compone de cuatro fases principales:
 \begin{itemize}
     \item Diseño y planificación: Se definen los objetivos específicos de cada iteración, se seleccionan componentes y se diseña la arquitectura.
     \item Implementación y prueba: Se desarrolla la funcionalidad planificada, se integra con los módulos que ya existen y se verifica su correcto funcionamiento
     \item Evaluación y mejora: Una vez desarrollado los procesos anteriores se analizan los resultados obtenidos identificación errores y planificando ajustes para la siguiente iteración.
 \end{itemize} [27] 
 
-Cada una de estas fases termina con un incremento funcional validado, lo que permite mantener un progreso controlado y documentado del prototipo. A continuación se presenta un diagrama en la cual representamos la metodología propuesta.
-
-\begin{figure}[H]
-    \centering
-    \includegraphics[width=0.7\linewidth]{Imagenes/metodologia (1).png}
-    \caption{Metodología prototipado evolutivo con enfoque incremental}
-\end{figure}
+Cada una de estas fases termina con un incremento funcional validado, lo que permite mantener un progreso controlado y documentado del prototipo.
 
 \subsection{Metodología de evaluación}
 Para la evaluación del proyecto se deben considerar 5 aspectos claves
@@ -294,32 +293,34 @@ A continuación se procederá a explicar las distintas fases del proceso y como 
 
 \subsection{Protipado Evolutivo Incremental}
 
-La metodología de prototipado evolutivo incremental se aplica en este proyecto como un enfoque de desarrollo iterativo cuyo objetivo principal es construir el prototipo del sistema de manera progresiva, mediante versiones funcionales que incorporan nuevas capacidades en cada iteración. A diferencia de modelos secuenciales como el modelo en cascada, este enfoque permite validar tempranamente el funcionamiento real del dispositivo IoT, ajustar sus componentes según las pruebas realizadas y asegurar que cada incremento aporte mejoras concretas sobre el prototipo anterior.
+La metodología de prototipado evolutivo con un enfoque incremental propone un desarrollo basado en versiones sucesivas del prototipo, en la que cada iteración incorpora nuevas funcionalidades y mejoras sobre el anterior. De esta forma se puede probar, evaluar y ajustar continuamente el sistema a medida que va evolucionando. Como se ilustra en la Figura X, la estructura de la metodología se compone de cuatro fases principales:
 
-Esta metodología se adecúa debido a que la propuesta de proyecto combina hardware (ESP32-CAM, lector de huella AS608 y sensor PIR), software embebido, almacenamiento local, backend, mecanismos biométricos y una interfaz web. Dado que estos elementos funcionan como módulos independientes que deben integrarse correctamente, un modelo basado en incrementos funcionales permite validar cada módulo antes de avanzar al siguiente nivel de complejidad.
+\begin{itemize}
+    \item \textbf{Requerimientos Iniciales:} Se identifica la problemática a resolver, se definen los objetivos específicos del prototipo para la iteración actual y se establecen las restricciones operativas y el alcance.
+    \item \textbf{Diseño del Prototipo:} Se define la arquitectura preliminar y la funcionalidad mínima esperada, seleccionando las tecnologías y componentes de hardware o software necesarios.
+    \item \textbf{Implementación Incremental:} Se construyen las versiones funcionales, programando e integrando progresivamente los componentes hasta obtener un prototipo ejecutable.
+    \item \textbf{Pruebas y Validación:} El prototipo ejecutable se somete a pruebas funcionales. Se realizan los ajustes y correcciones pertinentes, y la retroalimentación obtenida retroalimenta directamente a la etapa de diseño para iniciar la siguiente iteración.
+\end{itemize}
 
-El proceso de prototipado evolutivo incremental se aplica siguiendo tres fases principales diseño y planificación, implementación y prueba, y evaluación y mejora las cuales se repiten en cada iteración del proyecto. A continuación, se explica cómo se aplican estas fases dentro del desarrollo del prototipo.
+Cada uno de estos ciclos termina con un incremento funcional validado, lo que permite mantener un progreso controlado y documentado del prototipo a lo largo del tiempo. A continuación, se presenta el diagrama que representa este flujo de trabajo.
 
-\subsubsection*{1. Fase de diseño y planificación}
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.8\linewidth]{Imagenes/metodologia (1).png}
+    \caption{Metodología prototipado evolutivo con enfoque incremental}
+\end{figure}
 
-En la fase de diseño y planificación se definen los objetivos específicos de la iteración correspondiente, así como los módulos que se incorporarán al prototipo. Para cada ciclo se identifican los componentes de hardware y software involucrados, los flujos de datos necesarios y la arquitectura parcial que debe soportar la nueva funcionalidad.
+\subsubsection*{1. Requerimientos Iniciales}
+En esta fase de arranque se definen los objetivos específicos de la iteración correspondiente. Para cada ciclo se identifican las necesidades puntuales, como las limitaciones de memoria del ESP32-CAM o la necesidad de aislar datos por empresa. Esta etapa garantiza que cada iteración tenga un alcance claro y responda a una problemática técnica o funcional bien delimitada, estableciendo las bases para el trabajo posterior.
 
-Durante esta fase se desarrollan diagramás preliminares, modelos de datos, mockups y definiciones de comunicación entre módulos. Asimismo, se determinan las dependencias entre componentes, lo que permite asegurar que el incremento se pueda integrar adecuadamente con los elementos ya existentes. Esta etapa garantiza que cada iteración tenga un alcance claro, siguiendo un orden lógico de complejidad creciente.
+\subsubsection*{2. Diseño del Prototipo}
+A partir de los requerimientos, se definen los módulos que se incorporarán al prototipo. Se desarrollan diagramas preliminares, modelos de datos, mockups de interfaz y definiciones de comunicación entre módulos (HTTP o MQTT). Asimismo, se determinan las dependencias entre componentes, lo que permite asegurar que el incremento planificado se pueda integrar de manera fluida y coherente con la arquitectura de las iteraciones anteriores.
 
-\subsubsection*{2. Fase de implementación y prueba}
+\subsubsection*{3. Implementación Incremental}
+En esta fase se procede a construir la funcionalidad definida en el diseño. La implementación incluye tareas prácticas como el desarrollo del firmware del ESP32-CAM, la programación del lector de huellas AS608, la gestión del almacenamiento en LittleFS, el desarrollo del backend en Flask y la integración de modelos biométricos. El objetivo es materializar el diseño en un bloque de código y hardware real, logrando un componente ejecutable.
 
-En esta fase se procede a construir la funcionalidad definida en el diseño de la iteración. La implementación incluye el desarrollo del firmware del ESP32-CAM, la programación del lector de huellas AS608, la gestión del almacenamiento en SPIFFS, el desarrollo del backend o la implementación de los modelos biométricos, según corresponda al incremento.
-
-Paralelamente, se realizan pruebas integradas para verificar que la nueva funcionalidad opere correctamente en conjunto con las versiones anteriores del prototipo. Estas pruebas incluyen verificaciones de comunicación entre módulos, consistencia de datos, estabilidad del firmware, validación de imágenes capturadas, o evaluación de la sincronización con el servidor.
-
-El objetivo es garantizar que el incremento sea plenamente funcional antes de ser incorporado como parte estable del prototipo.
-
-\subsubsection*{3. Fase de evaluación y mejora}
-
-Finalizada la implementación, cada incremento es sometido a una fase de evaluación donde se analizan los resultados obtenidos. En esta etapa se identifican errores, limitaciones y posibles mejoras, considerando el funcionamiento real del dispositivo tanto en escenarios conectados como offline.
-
-Cuando corresponde, se realizan ajustes al diseño, se corrigen fallas detectadas y se optimiza el desempeño de los componentes integrados. Esta fase también permite preparar la entrada para la siguiente iteración, asegurando que el prototipo evolucione de manera controlada y mantenga coherencia con los objetivos del proyecto.
-
+\subsubsection*{4. Pruebas y Validación}
+Finalizada la implementación, el incremento es sometido a pruebas integradas para verificar su correcto funcionamiento. Se evalúa tanto el comportamiento individual del módulo como su interacción con los componentes ya existentes. Si se detectan errores, se documentan y se corrigen antes de cerrar la iteración. Esta fase es fundamental para asegurar la calidad del prototipo y validar que cumple con los requerimientos definidos al inicio del ciclo antes de pasar al siguiente incremento.
 \section{Plan de trabajo}
 
 La planificación del proyecto se estructura mediante la metodología de prototipado evolutivo con enfoque incremental descrita en la sección 3.1. Cada iteración incorpora nuevas funcionalidades sobre el prototipo anterior, permitiendo evaluar, corregir y fortalecer el sistema progresivamente. A continuación se presenta la carta Gantt con las 8 iteraciones planificadas, sus objetivos generales, duración estimada y avance acumulado.

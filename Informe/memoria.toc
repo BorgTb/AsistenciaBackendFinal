@@ -49,140 +49,140 @@
 \contentsline {section}{\numberline {3.1}Metodologia de desarrollo}{27}{}%
 \contentsline {subsection}{\numberline {3.1.1}Protipado Evolutivo Incremental}{27}{}%
 \contentsline {section}{\numberline {3.2}Plan de trabajo}{29}{}%
-\contentsline {section}{\numberline {3.3}Metodología de evaluación}{29}{}%
+\contentsline {section}{\numberline {3.3}Metodología de evaluación}{30}{}%
 \contentsline {subsection}{\numberline {3.3.1}Pruebas de integración}{30}{}%
 \contentsline {subsection}{\numberline {3.3.2}Pruebas de usabilidad}{31}{}%
 \contentsline {subsubsection}{Cuestionario SUS estándar}{31}{}%
 \contentsline {subsection}{\numberline {3.3.3}Pruebas de confiabilidad y disponibilidad}{32}{}%
-\contentsline {subsection}{\numberline {3.3.4}Pruebas de caja negra}{32}{}%
+\contentsline {subsection}{\numberline {3.3.4}Pruebas de caja negra}{33}{}%
 \contentsline {subsection}{\numberline {3.3.5}Pruebas unitarias automatizadas}{33}{}%
 \contentsline {subsection}{\numberline {3.3.6}Resultados esperados de las pruebas}{34}{}%
-\contentsline {subsubsection}{Pruebas de integración}{34}{}%
+\contentsline {subsubsection}{Pruebas de integración}{35}{}%
 \contentsline {subsubsection}{Pruebas de usabilidad (SUS)}{35}{}%
-\contentsline {subsubsection}{Pruebas de confiabilidad y disponibilidad}{35}{}%
+\contentsline {subsubsection}{Pruebas de confiabilidad y disponibilidad}{36}{}%
 \contentsline {subsubsection}{Pruebas de caja negra}{36}{}%
 \contentsline {subsubsection}{Pruebas unitarias automatizadas}{37}{}%
-\contentsline {section}{\numberline {3.4}Resultados Esperados de los Objetivos Específicos}{37}{}%
+\contentsline {section}{\numberline {3.4}Resultados Esperados de los Objetivos Específicos}{38}{}%
 \contentsline {section}{\numberline {3.5}Resumen del capítulo}{38}{}%
-\contentsline {chapter}{\numberline {4}Desarrollo e implementación}{39}{}%
-\contentsline {section}{\numberline {4.1}Diseño de software}{39}{}%
-\contentsline {subsection}{\numberline {4.1.1}Arquitectura física}{39}{}%
-\contentsline {subsection}{\numberline {4.1.2}Arquitectura lógica}{39}{}%
-\contentsline {section}{\numberline {4.2}Implementación}{40}{}%
-\contentsline {subsection}{\numberline {4.2.1}Iteración 1: Integración de hardware y servidor embebido}{40}{}%
-\contentsline {subsubsection}{Análisis}{40}{}%
+\contentsline {chapter}{\numberline {4}Desarrollo e implementación}{40}{}%
+\contentsline {section}{\numberline {4.1}Diseño de software}{40}{}%
+\contentsline {subsection}{\numberline {4.1.1}Arquitectura física}{40}{}%
+\contentsline {subsection}{\numberline {4.1.2}Arquitectura lógica}{41}{}%
+\contentsline {section}{\numberline {4.2}Implementación}{41}{}%
+\contentsline {subsection}{\numberline {4.2.1}Iteración 1: Integración de hardware y servidor embebido}{41}{}%
+\contentsline {subsubsection}{Análisis}{42}{}%
 \contentsline {subsubsection}{Diseño}{42}{}%
-\contentsline {subsubsection}{Implementación}{46}{}%
-\contentsline {paragraph}{Integración del lector de huellas AS608}{47}{}%
-\contentsline {paragraph}{Configuración de la cámara y el flash PWM}{48}{}%
-\contentsline {paragraph}{Calibración del sensor PIR}{48}{}%
-\contentsline {paragraph}{Montaje del servidor web embebido}{49}{}%
-\contentsline {paragraph}{Creación de vistas HTML embebidas}{50}{}%
-\contentsline {paragraph}{Menú principal}{50}{}%
-\contentsline {paragraph}{Vista de configuración Wi-Fi}{51}{}%
-\contentsline {paragraph}{Vista de registro de personas}{51}{}%
-\contentsline {paragraph}{Vista de asistencias}{52}{}%
-\contentsline {paragraph}{Vista de Personas registradas}{53}{}%
-\contentsline {paragraph}{Vista de Crear Turnos}{53}{}%
-\contentsline {paragraph}{Vista de asignación de turnos}{54}{}%
-\contentsline {subsubsection}{Pruebas}{54}{}%
-\contentsline {subsection}{\numberline {4.2.2}Iteración 2: Almacenamiento local y modo offline}{55}{}%
-\contentsline {subsubsection}{Análisis}{55}{}%
-\contentsline {subsubsection}{Diseño}{56}{}%
-\contentsline {subsubsection}{Implementación}{56}{}%
-\contentsline {paragraph}{Inicialización del sistema de archivos y persistencia}{56}{}%
-\contentsline {paragraph}{Registro de usuarios con huella digital}{57}{}%
-\contentsline {paragraph}{Registro de asistencia en modo offline}{58}{}%
-\contentsline {paragraph}{Gestión de turnos y asignaciones}{59}{}%
-\contentsline {paragraph}{Operación offline del dispositivo}{59}{}%
-\contentsline {subsubsection}{Pruebas}{59}{}%
-\contentsline {subsection}{\numberline {4.2.3}Iteración 3: Backend, base de datos y comunicación}{60}{}%
-\contentsline {subsubsection}{Análisis}{60}{}%
-\contentsline {subsubsection}{Diseño}{61}{}%
-\contentsline {subsubsection}{Implementación}{65}{}%
-\contentsline {paragraph}{Inicialización de la base de datos}{65}{}%
-\contentsline {paragraph}{Conexión Wi-Fi del ESP32-CAM y gestión de conectividad}{65}{}%
-\contentsline {paragraph}{Envío de imágenes faciales: MQTT para registro, HTTP para identificación}{65}{}%
-\contentsline {paragraph}{Recepción de imágenes en el backend vía MQTT}{66}{}%
-\contentsline {paragraph}{Mantenimiento de la conexión MQTT en el ESP32-CAM}{66}{}%
-\contentsline {paragraph}{Envío de datos mediante HTTP desde el ESP32-CAM}{67}{}%
-\contentsline {paragraph}{Implementación de la API REST del backend}{67}{}%
-\contentsline {paragraph}{Infraestructura con Docker Compose}{68}{}%
-\contentsline {subsubsection}{Pruebas}{68}{}%
-\contentsline {subsection}{\numberline {4.2.4}Iteración 4: Reconocimiento facial, anti-spoofing y cifrado biométrico}{69}{}%
-\contentsline {subsubsection}{Análisis}{69}{}%
-\contentsline {subsubsection}{Diseño}{70}{}%
-\contentsline {subsubsection}{Implementación}{72}{}%
-\contentsline {paragraph}{Procesamiento de imágenes en el backend}{72}{}%
-\contentsline {paragraph}{Procesamiento facial vía MQTT}{73}{}%
-\contentsline {paragraph}{Cifrado y descifrado de embeddings}{73}{}%
-\contentsline {paragraph}{Actualización y eliminación de datos faciales}{73}{}%
-\contentsline {subsubsection}{Pruebas}{73}{}%
-\contentsline {subsection}{\numberline {4.2.5}Iteración 5: Autenticación, multi-tenant y enrolamiento de dispositivos}{75}{}%
-\contentsline {subsubsection}{Análisis}{75}{}%
-\contentsline {subsubsection}{Diseño}{76}{}%
-\contentsline {paragraph}{Modelo de datos multi-tenant}{76}{}%
-\contentsline {paragraph}{Flujo de autenticación}{77}{}%
-\contentsline {paragraph}{Flujo de enrolamiento de dispositivos}{77}{}%
-\contentsline {paragraph}{Heartbeat y Last Will Testament (LWT)}{78}{}%
-\contentsline {subsubsection}{Implementación}{78}{}%
-\contentsline {paragraph}{Módulo de autenticación}{78}{}%
-\contentsline {paragraph}{Gestión de dispositivos}{79}{}%
-\contentsline {paragraph}{Monitorización vía MQTT}{79}{}%
-\contentsline {subsubsection}{Pruebas}{79}{}%
-\contentsline {subsection}{\numberline {4.2.6}Iteración 6: Módulo antifraude y validación previa a la captura}{81}{}%
-\contentsline {subsubsection}{Análisis}{81}{}%
-\contentsline {subsubsection}{Diseño}{82}{}%
-\contentsline {paragraph}{Sensor PIR como portero del sistema}{82}{}%
-\contentsline {paragraph}{Control de acceso con cooldown y bloqueo}{82}{}%
-\contentsline {paragraph}{Firma de movimiento}{83}{}%
-\contentsline {subsubsection}{Implementación}{83}{}%
-\contentsline {paragraph}{Integración del PIR}{83}{}%
-\contentsline {paragraph}{Flash PWM para iluminación facial}{84}{}%
-\contentsline {paragraph}{Señalización mediante flash}{84}{}%
-\contentsline {paragraph}{Validación anti-spoofing en el backend}{84}{}%
-\contentsline {subsubsection}{Pruebas}{85}{}%
-\contentsline {subsection}{\numberline {4.2.7}Iteración 7: Panel web backend e integración con ERP}{86}{}%
-\contentsline {subsubsection}{Análisis}{86}{}%
-\contentsline {subsubsection}{Diseño}{86}{}%
-\contentsline {paragraph}{Arquitectura del backend}{86}{}%
-\contentsline {paragraph}{Diseño del módulo ERP}{87}{}%
-\contentsline {subsubsection}{Implementación}{88}{}%
-\contentsline {paragraph}{Panel web del backend}{88}{}%
-\contentsline {paragraph}{Endpoint de configuración ERP para el ESP32-CAM}{89}{}%
-\contentsline {paragraph}{Contraseñas para autenticación de dispositivos}{89}{}%
-\contentsline {paragraph}{Módulo de integración ERP}{90}{}%
-\contentsline {subsubsection}{Pruebas}{90}{}%
-\contentsline {subsection}{\numberline {4.2.8}Iteración 8: Sincronización diferida, logs y cierre del proyecto}{92}{}%
-\contentsline {subsubsection}{Análisis}{92}{}%
-\contentsline {subsubsection}{Diseño}{93}{}%
-\contentsline {paragraph}{Proceso de sincronización diferida}{93}{}%
-\contentsline {paragraph}{Deduplicación en el backend}{93}{}%
-\contentsline {paragraph}{Tablas de auditoría}{93}{}%
-\contentsline {paragraph}{Panel de visualización de logs}{94}{}%
-\contentsline {paragraph}{Script de simulación de asistencia facial}{94}{}%
-\contentsline {subsubsection}{Implementación}{94}{}%
-\contentsline {paragraph}{Sincronización en el ESP32-CAM}{94}{}%
-\contentsline {paragraph}{Sincronización de asistencias por lote}{95}{}%
-\contentsline {paragraph}{Sincronización en el backend}{95}{}%
-\contentsline {paragraph}{Watchdog de dispositivos}{95}{}%
-\contentsline {paragraph}{Herramienta de simulación facial}{95}{}%
-\contentsline {subsubsection}{Pruebas}{96}{}%
-\contentsline {paragraph}{Pruebas automatizadas}{97}{}%
-\contentsline {section}{\numberline {4.3}Resumen del capítulo}{97}{}%
-\contentsline {chapter}{\numberline {5}Análisis de resultados}{99}{}%
-\contentsline {section}{\numberline {5.1}Costo total del prototipo}{99}{}%
-\contentsline {section}{\numberline {5.2}Resultados de encuestas SUS}{99}{}%
-\contentsline {subsection}{\numberline {5.2.1}Usuarios no técnicos}{100}{}%
-\contentsline {subsection}{\numberline {5.2.2}Usuarios técnicos}{101}{}%
-\contentsline {subsection}{\numberline {5.2.3}Análisis comparativo}{101}{}%
-\contentsline {section}{\numberline {5.3}Métricas de reconocimiento facial}{101}{}%
-\contentsline {subsection}{\numberline {5.3.1}Tiempo de respuesta del ESP32-CAM}{101}{}%
-\contentsline {subsection}{\numberline {5.3.2}Precisión del reconocimiento}{102}{}%
-\contentsline {section}{\numberline {5.4}Resultados de pruebas de estrés offline}{102}{}%
-\contentsline {subsection}{\numberline {5.4.1}Escenario 1: Desconexión total}{102}{}%
-\contentsline {subsection}{\numberline {5.4.2}Escenario 2: Conectividad intermitente}{102}{}%
-\contentsline {subsection}{\numberline {5.4.3}Escenario 3: Reconexión prolongada}{103}{}%
-\contentsline {section}{\numberline {5.5}Resumen del capítulo}{103}{}%
-\contentsline {chapter}{\numberline {6}Bibliografía}{104}{}%
-\contentsline {chapter}{Anexo A: Preguntas complementarias de usabilidad}{108}{}%
+\contentsline {subsubsection}{Implementación}{47}{}%
+\contentsline {paragraph}{Integración del lector de huellas AS608}{48}{}%
+\contentsline {paragraph}{Configuración de la cámara y el flash PWM}{49}{}%
+\contentsline {paragraph}{Calibración del sensor PIR}{49}{}%
+\contentsline {paragraph}{Montaje del servidor web embebido}{50}{}%
+\contentsline {paragraph}{Creación de vistas HTML embebidas}{51}{}%
+\contentsline {paragraph}{Menú principal}{51}{}%
+\contentsline {paragraph}{Vista de configuración Wi-Fi}{52}{}%
+\contentsline {paragraph}{Vista de registro de personas}{52}{}%
+\contentsline {paragraph}{Vista de asistencias}{53}{}%
+\contentsline {paragraph}{Vista de Personas registradas}{54}{}%
+\contentsline {paragraph}{Vista de Crear Turnos}{54}{}%
+\contentsline {paragraph}{Vista de asignación de turnos}{55}{}%
+\contentsline {subsubsection}{Pruebas}{55}{}%
+\contentsline {subsection}{\numberline {4.2.2}Iteración 2: Almacenamiento local y modo offline}{56}{}%
+\contentsline {subsubsection}{Análisis}{56}{}%
+\contentsline {subsubsection}{Diseño}{57}{}%
+\contentsline {subsubsection}{Implementación}{57}{}%
+\contentsline {paragraph}{Inicialización del sistema de archivos y persistencia}{57}{}%
+\contentsline {paragraph}{Registro de usuarios con huella digital}{58}{}%
+\contentsline {paragraph}{Registro de asistencia en modo offline}{59}{}%
+\contentsline {paragraph}{Gestión de turnos y asignaciones}{60}{}%
+\contentsline {paragraph}{Operación offline del dispositivo}{60}{}%
+\contentsline {subsubsection}{Pruebas}{60}{}%
+\contentsline {subsection}{\numberline {4.2.3}Iteración 3: Backend, base de datos y comunicación}{61}{}%
+\contentsline {subsubsection}{Análisis}{61}{}%
+\contentsline {subsubsection}{Diseño}{62}{}%
+\contentsline {subsubsection}{Implementación}{66}{}%
+\contentsline {paragraph}{Inicialización de la base de datos}{66}{}%
+\contentsline {paragraph}{Conexión Wi-Fi del ESP32-CAM y gestión de conectividad}{66}{}%
+\contentsline {paragraph}{Envío de imágenes faciales: MQTT para registro, HTTP para identificación}{66}{}%
+\contentsline {paragraph}{Recepción de imágenes en el backend vía MQTT}{67}{}%
+\contentsline {paragraph}{Mantenimiento de la conexión MQTT en el ESP32-CAM}{67}{}%
+\contentsline {paragraph}{Envío de datos mediante HTTP desde el ESP32-CAM}{68}{}%
+\contentsline {paragraph}{Implementación de la API REST del backend}{68}{}%
+\contentsline {paragraph}{Infraestructura con Docker Compose}{69}{}%
+\contentsline {subsubsection}{Pruebas}{69}{}%
+\contentsline {subsection}{\numberline {4.2.4}Iteración 4: Reconocimiento facial, anti-spoofing y cifrado biométrico}{70}{}%
+\contentsline {subsubsection}{Análisis}{70}{}%
+\contentsline {subsubsection}{Diseño}{71}{}%
+\contentsline {subsubsection}{Implementación}{73}{}%
+\contentsline {paragraph}{Procesamiento de imágenes en el backend}{73}{}%
+\contentsline {paragraph}{Procesamiento facial vía MQTT}{74}{}%
+\contentsline {paragraph}{Cifrado y descifrado de embeddings}{74}{}%
+\contentsline {paragraph}{Actualización y eliminación de datos faciales}{74}{}%
+\contentsline {subsubsection}{Pruebas}{74}{}%
+\contentsline {subsection}{\numberline {4.2.5}Iteración 5: Autenticación, multi-tenant y enrolamiento de dispositivos}{76}{}%
+\contentsline {subsubsection}{Análisis}{76}{}%
+\contentsline {subsubsection}{Diseño}{77}{}%
+\contentsline {paragraph}{Modelo de datos multi-tenant}{77}{}%
+\contentsline {paragraph}{Flujo de autenticación}{78}{}%
+\contentsline {paragraph}{Flujo de enrolamiento de dispositivos}{78}{}%
+\contentsline {paragraph}{Heartbeat y Last Will Testament (LWT)}{79}{}%
+\contentsline {subsubsection}{Implementación}{79}{}%
+\contentsline {paragraph}{Módulo de autenticación}{79}{}%
+\contentsline {paragraph}{Gestión de dispositivos}{80}{}%
+\contentsline {paragraph}{Monitorización vía MQTT}{80}{}%
+\contentsline {subsubsection}{Pruebas}{80}{}%
+\contentsline {subsection}{\numberline {4.2.6}Iteración 6: Módulo antifraude y validación previa a la captura}{82}{}%
+\contentsline {subsubsection}{Análisis}{82}{}%
+\contentsline {subsubsection}{Diseño}{83}{}%
+\contentsline {paragraph}{Sensor PIR como portero del sistema}{83}{}%
+\contentsline {paragraph}{Control de acceso con cooldown y bloqueo}{83}{}%
+\contentsline {paragraph}{Firma de movimiento}{84}{}%
+\contentsline {subsubsection}{Implementación}{84}{}%
+\contentsline {paragraph}{Integración del PIR}{84}{}%
+\contentsline {paragraph}{Flash PWM para iluminación facial}{85}{}%
+\contentsline {paragraph}{Señalización mediante flash}{85}{}%
+\contentsline {paragraph}{Validación anti-spoofing en el backend}{85}{}%
+\contentsline {subsubsection}{Pruebas}{86}{}%
+\contentsline {subsection}{\numberline {4.2.7}Iteración 7: Panel web backend e integración con ERP}{87}{}%
+\contentsline {subsubsection}{Análisis}{87}{}%
+\contentsline {subsubsection}{Diseño}{87}{}%
+\contentsline {paragraph}{Arquitectura del backend}{87}{}%
+\contentsline {paragraph}{Diseño del módulo ERP}{88}{}%
+\contentsline {subsubsection}{Implementación}{89}{}%
+\contentsline {paragraph}{Panel web del backend}{89}{}%
+\contentsline {paragraph}{Endpoint de configuración ERP para el ESP32-CAM}{90}{}%
+\contentsline {paragraph}{Contraseñas para autenticación de dispositivos}{90}{}%
+\contentsline {paragraph}{Módulo de integración ERP}{91}{}%
+\contentsline {subsubsection}{Pruebas}{91}{}%
+\contentsline {subsection}{\numberline {4.2.8}Iteración 8: Sincronización diferida, logs y cierre del proyecto}{93}{}%
+\contentsline {subsubsection}{Análisis}{93}{}%
+\contentsline {subsubsection}{Diseño}{94}{}%
+\contentsline {paragraph}{Proceso de sincronización diferida}{94}{}%
+\contentsline {paragraph}{Deduplicación en el backend}{94}{}%
+\contentsline {paragraph}{Tablas de auditoría}{94}{}%
+\contentsline {paragraph}{Panel de visualización de logs}{95}{}%
+\contentsline {paragraph}{Script de simulación de asistencia facial}{95}{}%
+\contentsline {subsubsection}{Implementación}{95}{}%
+\contentsline {paragraph}{Sincronización en el ESP32-CAM}{95}{}%
+\contentsline {paragraph}{Sincronización de asistencias por lote}{96}{}%
+\contentsline {paragraph}{Sincronización en el backend}{96}{}%
+\contentsline {paragraph}{Watchdog de dispositivos}{96}{}%
+\contentsline {paragraph}{Herramienta de simulación facial}{96}{}%
+\contentsline {subsubsection}{Pruebas}{97}{}%
+\contentsline {paragraph}{Pruebas automatizadas}{98}{}%
+\contentsline {section}{\numberline {4.3}Resumen del capítulo}{98}{}%
+\contentsline {chapter}{\numberline {5}Análisis de resultados}{100}{}%
+\contentsline {section}{\numberline {5.1}Costo total del prototipo}{100}{}%
+\contentsline {section}{\numberline {5.2}Resultados de encuestas SUS}{100}{}%
+\contentsline {subsection}{\numberline {5.2.1}Usuarios no técnicos}{101}{}%
+\contentsline {subsection}{\numberline {5.2.2}Usuarios técnicos}{102}{}%
+\contentsline {subsection}{\numberline {5.2.3}Análisis comparativo}{102}{}%
+\contentsline {section}{\numberline {5.3}Métricas de reconocimiento facial}{102}{}%
+\contentsline {subsection}{\numberline {5.3.1}Tiempo de respuesta del ESP32-CAM}{102}{}%
+\contentsline {subsection}{\numberline {5.3.2}Precisión del reconocimiento}{103}{}%
+\contentsline {section}{\numberline {5.4}Resultados de pruebas de estrés offline}{103}{}%
+\contentsline {subsection}{\numberline {5.4.1}Escenario 1: Desconexión total}{103}{}%
+\contentsline {subsection}{\numberline {5.4.2}Escenario 2: Conectividad intermitente}{103}{}%
+\contentsline {subsection}{\numberline {5.4.3}Escenario 3: Reconexión prolongada}{104}{}%
+\contentsline {section}{\numberline {5.5}Resumen del capítulo}{104}{}%
+\contentsline {chapter}{\numberline {6}Bibliografía}{105}{}%
+\contentsline {chapter}{Anexo A: Preguntas complementarias de usabilidad}{109}{}%

@@ -12,11 +12,11 @@ Esta sección está destinada a presentar las arquitecturas desarrolladas para e
 
 \subsection{Arquitectura física}
 La arquitectura física propuesta se basa en una arquitectura basada en microservicios. En la figura 4.1 se puede presenciar como sería la comunicación entre el dispositivo IoT que emite el evento para realizar el registro, para luego que el servidor con el broker MQTT reciba las imágenes y utilice el servicio de reconocimiento facial, para luego enviarlas al servidor backend en donde se distribuyen para el sistema ERP y para la registrarlo en la base de datos, además de disponer del panel web para la visualización de los datos de manera remota.
-\begin{figure}[h]
+\begin{figure}[H]
   \centering
-  \vspace*{1cm}
-  \includegraphics[ width=.8\linewidth]{Imagenes/arqui2.drawio.png}
-  \vspace*{1cm}
+  \vspace*{0.5cm}
+  \includegraphics[ width=.7\linewidth]{Imagenes/arqui2.drawio.png}
+  \vspace*{0.3cm}
   \caption{Arquitectura física}
 \end{figure}
 
@@ -25,11 +25,11 @@ La arquitectura lógica del sistema organiza los módulos de software que permit
 
 El backend recibe la información enviada por el dispositivo, procesa las imágenes, administra la base de datos y expone una API que permite la integración con sistemas externos como ERP. Finalmente, la arquitectura lógica contempla la comunicación entre cada módulo mediante protocolos HTTP o MQTT, lo que posibilita el funcionamiento offline, la sincronización posterior y la consulta remota de los datos desde el panel web.
 
-\begin{figure}[h]
+\begin{figure}[H]
   \centering
-  \vspace*{1cm}
-  \includegraphics[ width=.8\linewidth]{Imagenes/arquilogica.png}
-  \vspace*{1cm}
+  \vspace*{0.5cm}
+  \includegraphics[ width=.7\linewidth]{Imagenes/arquilogica.png}
+  \vspace*{0.3cm}
   \caption{Arquitectura lógica}
 \end{figure}
 
