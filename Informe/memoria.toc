@@ -11,14 +11,12 @@
 \contentsline {section}{\numberline {1.4}Objetivos}{10}{}%
 \contentsline {subsection}{\numberline {1.4.1}Objetivo general}{11}{}%
 \contentsline {subsection}{\numberline {1.4.2}Objetivos específicos}{11}{}%
-\contentsline {subsubsection}{Objetivo especifico 1}{11}{}%
-\contentsline {subsubsection}{Objetivo especifico 2}{11}{}%
-\contentsline {subsubsection}{Objetivo especifico 3}{11}{}%
-\contentsline {subsubsection}{Objetivo especifico 4}{11}{}%
-\contentsline {subsubsection}{Objetivo especifico 5}{11}{}%
-\contentsline {subsubsection}{Objetivo especifico 6}{11}{}%
-\contentsline {subsubsection}{Objetivo especifico 7}{11}{}%
-\contentsline {subsubsection}{Objetivo especifico 8}{12}{}%
+\contentsline {subsubsection}{Objetivo específico 1}{11}{}%
+\contentsline {subsubsection}{Objetivo específico 2}{11}{}%
+\contentsline {subsubsection}{Objetivo específico 3}{11}{}%
+\contentsline {subsubsection}{Objetivo específico 4}{11}{}%
+\contentsline {subsubsection}{Objetivo específico 5}{11}{}%
+\contentsline {subsubsection}{Objetivo específico 6}{12}{}%
 \contentsline {section}{\numberline {1.5}Alcances}{12}{}%
 \contentsline {section}{\numberline {1.6}Resumen capítulo}{13}{}%
 \contentsline {chapter}{\numberline {2}Marco teórico}{14}{}%

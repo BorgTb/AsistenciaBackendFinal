@@ -82,30 +82,30 @@ El prototipo contará además con una interfaz web integrada, accesible desde la
 Finalmente, para mejorar la seguridad en el proceso de marcación, se incorporarán métodos que eviten la suplantación de identidad, impidiendo que se utilicen fotografías o imágenes impresas para registrar asistencias falsas.
 
 \section{Objetivos}
-En el siguiente apartado se procederá a presentar el objetivo general del proyecto, junto con los objetivos específicos.
+En el siguiente apartado se procederá a presentar el objetivo general del proyecto, junto con los objetivos específicos que guiarán el desarrollo y evaluación del prototipo.
 
 \subsection{Objetivo general}
-Probar la utilidad de un sistema de control de asistencia IoT de bajo costo y código abierto, desarrollado con un ESP32-CAM, que permita optimizar la gestión de asistencia laboral en pequeñas y medianas empresas mediante integración con ERP y funcionamiento offline. 
+Desarrollar y validar un prototipo funcional de sistema IoT de control de asistencia de código abierto, basado en un microcontrolador ESP32-CAM, que permita evaluar la viabilidad del registro laboral autónomo (offline) y la sincronización automatizada con plataformas empresariales en pequeñas y medianas empresas.
 
 \subsection{Objetivos específicos}
-\subsubsection{Objetivo especifico 1}
-Diseñar la arquitectura general del sistema IoT, definiendo componentes y flujos de datos.
-\subsubsection{Objetivo especifico 2}
-Implementar el módulo biométrico de registro de asistencia mediante 
-reconocimiento facial y huella digital.
-\subsubsection{Objetivo especifico 3}
-Incorporar capacidad de funcionamiento offline con almacenamiento local y sincronización posterior.
-\subsubsection{Objetivo especifico 4}
-Desarrollar una interfaz web embebida para la configuración y administración del dispositivo.
-\subsubsection{Objetivo especifico 5}
-Implementar una API de comunicación para la integración con servidores o sistemas ERP externos.
-\subsubsection{Objetivo especifico 6}
-Integrar y validar el funcionamiento conjunto del hardware y software desarrollado.
-\subsubsection{Objetivo especifico 7}
-Evaluar el desempeño, confiabilidad y usabilidad del sistema en escenarios de prueba reales.
-\subsubsection{Objetivo especifico 8}
-Analizar los resultados obtenidos para determinar la viabilidad.
 
+\subsubsection{Objetivo específico 1}
+Diseñar la arquitectura física y lógica del prototipo IoT, seleccionando componentes que garanticen el funcionamiento autónomo y demostrando su viabilidad económica mediante un presupuesto de hardware total que no supere los \textbf{50 USD}.
+
+\subsubsection{Objetivo específico 2}
+Implementar el módulo de autenticación biométrica híbrida, logrando un tiempo de procesamiento inferior a \textbf{5 segundos} por marcación facial (incluyendo transmisión y respuesta del servidor) y garantizando una precisión superior al \textbf{90\%} en la identificación correcta durante las pruebas de laboratorio.
+
+\subsubsection{Objetivo específico 3}
+Integrar el sistema de archivos local (LittleFS) para la operación offline, asegurando una capacidad de almacenamiento segura de al menos \textbf{1.000 registros} de asistencia en formato JSON, sin pérdida de datos ante simulaciones de corte de energía o desconexión de red.
+
+\subsubsection{Objetivo específico 4}
+Construir una interfaz web embebida y un panel de administración para la configuración del sistema, validando su facilidad de uso mediante la obtención de un puntaje igual o superior a \textbf{68 puntos} en la evaluación de usabilidad SUS (System Usability Scale) aplicada a un grupo de usuarios de prueba.
+
+\subsubsection{Objetivo específico 5}
+Desarrollar una API RESTful que permita la integración automatizada con sistemas ERP externos, verificando que el sistema logre sincronizar y transmitir el \textbf{100\%} de los paquetes de datos generados en modo offline una vez restablecida la conectividad.
+
+\subsubsection{Objetivo específico 6}
+Evaluar la robustez y disponibilidad del prototipo integrado en escenarios de conectividad intermitente, comprobando la correcta ejecución de los mecanismos de reintento automático y analizando técnicamente las limitaciones del dispositivo para su futura escalabilidad comercial.
 
 \section{Alcances}
 A continuación se presentarán los alcances propuestos para este proyecto.

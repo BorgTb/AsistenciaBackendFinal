@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.141592653-2.6-1.40.28 (MiKTeX 25.12) (preloaded format=pdflatex 2026.6.21)  21 JUN 2026 20:35
+This is pdfTeX, Version 3.141592653-2.6-1.40.28 (MiKTeX 25.12) (preloaded format=pdflatex 2026.6.21)  21 JUN 2026 20:46
 entering extended mode
  restricted \write18 enabled.
  file:line:error style messages enabled.
@@ -512,12 +512,12 @@ Underfull \hbox (badness 10000) in paragraph at lines 21--21
  []
 
 [0] (memoria.toc [1]
-Overfull \hbox (0.9855pt too wide) in paragraph at lines 114--114
+Overfull \hbox (0.9855pt too wide) in paragraph at lines 112--112
  [][] []\T1/lmr/m/n/12 (-20) Iteración 4: Reconocimiento facial, anti-spoofing y cifrado biométrico [][]  
  []
 
 
-Overfull \hbox (9.22934pt too wide) in paragraph at lines 123--123
+Overfull \hbox (9.22934pt too wide) in paragraph at lines 121--121
  [][] []\T1/lmr/m/n/12 (-20) Iteración 5: Autenticación, multi-tenant y enrolamiento de dispositivos [][]  
  []
 
@@ -556,17 +556,7 @@ Overfull \hbox (13.09453pt too wide) in paragraph at lines 53--54
 
 [8
 
-] [9]
-Overfull \hbox (3.92714pt too wide) in paragraph at lines 88--89
-\T1/lmr/m/n/12 (-20) laboral en pequeñas y medianas empresas mediante integración con ERP y funcionamiento
- []
-
-[10]
-Overfull \hbox (1.88141pt too wide) in paragraph at lines 97--98
-\T1/lmr/m/n/12 (-20) Incorporar capacidad de funcionamiento offline con almacenamiento local y sincronización
- []
-
-[11]
+] [9] [10] [11]
 Overfull \hbox (1.76286pt too wide) in paragraph at lines 115--116
 \T1/lmr/m/n/12 (-20) reconocimiento facial y huella digital, operando en modo offline con almacenamiento
  []
@@ -1364,15 +1354,15 @@ LaTeX Warning: There were undefined references.
 
  ) 
 Here is how much of TeX's memory you used:
- 17628 strings out of 467871
- 346657 string characters out of 5435692
+ 17632 strings out of 467871
+ 346705 string characters out of 5435692
  832160 words of memory out of 5000000
  45918 multiletter control sequences out of 15000+600000
- 713995 words of font info for 218 fonts, out of 8000000 for 9000
+ 714189 words of font info for 220 fonts, out of 8000000 for 9000
  1141 hyphenation exceptions out of 8191
  84i,11n,104p,1576b,826s stack positions out of 10000i,1000n,20000p,200000b,200000s
 <D:/Latex/fonts/type1/public/lm/lmbx10.pfb><D:/Latex/fonts/type1/public/lm/lmbx12.pfb><D:/Latex/fonts/type1/public/lm/lmmi10.pfb><D:/Latex/fonts/type1/public/lm/lmmi12.pfb><D:/Latex/fonts/type1/public/lm/lmr10.pfb><D:/Latex/fonts/type1/public/lm/lmr12.pfb><D:/Latex/fonts/type1/public/lm/lmri12.pfb><D:/Latex/fonts/type1/public/lm/lmro12.pfb><D:/Latex/fonts/type1/public/lm/lmss8.pfb><D:/Latex/fonts/type1/public/lm/lmssbx10.pfb><D:/Latex/fonts/type1/public/lm/lmsy10.pfb><D:/Latex/fonts/type1/public/lm/lmsy6.pfb><D:/Latex/fonts/type1/public/lm/lmtk10.pfb><D:/Latex/fonts/type1/public/lm/lmtt10.pfb><D:/Latex/fonts/type1/public/lm/lmtt12.pfb><D:/Latex/fonts/type1/public/amsfonts/symbols/msam10.pfb>
-Output written on memoria.pdf (112 pages, 1840007 bytes).
+Output written on memoria.pdf (112 pages, 1840958 bytes).
 PDF statistics:
  493 PDF objects out of 1000 (max. 8388607)
  0 named destinations out of 1000 (max. 500000)
