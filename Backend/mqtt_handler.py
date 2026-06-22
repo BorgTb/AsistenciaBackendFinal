@@ -96,17 +96,27 @@ def on_message(client, userdata, msg):
             cur = conn.cursor()
             if ip:
                 cur.execute(
-                    "UPDATE dispositivos SET ultimo_heartbeat = NOW(), estado = 'activo', ip_local = %s WHERE REPLACE(mac_address, ':', '') = %s",
+                    "UPDATE dispositivos SET ultimo_heartbeat = NOW(), estado = 'activo', ip_local = %s WHERE REPLACE(mac_address, ':', '') = %s RETURNING id, nombre, ip_local, estado, ultimo_heartbeat",
                     (ip, mac)
                 )
             else:
                 cur.execute(
-                    "UPDATE dispositivos SET ultimo_heartbeat = NOW(), estado = 'activo' WHERE REPLACE(mac_address, ':', '') = %s",
+                    "UPDATE dispositivos SET ultimo_heartbeat = NOW(), estado = 'activo' WHERE REPLACE(mac_address, ':', '') = %s RETURNING id, nombre, ip_local, estado, ultimo_heartbeat",
                     (mac,)
                 )
+            row = cur.fetchone()
             conn.commit()
             cur.close()
             conn.close()
+            if row:
+                broadcast_device_update({
+                    'id': str(row[0]),
+                    'nombre': row[1],
+                    'ip': row[2] or '',
+                    'estado': 'activo',
+                    'ultimo_heartbeat': str(row[4]) if row[4] else None,
+                    'online': True
+                })
         except Exception as e:
             print(f"❌ Error heartbeat DB: {e}", flush=True)
         return
@@ -118,12 +128,23 @@ def on_message(client, userdata, msg):
             conn = get_connection()
             cur = conn.cursor()
             cur.execute(
-                "UPDATE dispositivos SET estado = 'inactivo' WHERE REPLACE(mac_address, ':', '') = %s",
+                "UPDATE dispositivos SET estado = 'inactivo' WHERE REPLACE(mac_address, ':', '') = %s RETURNING id, nombre, ip_local, estado",
                 (mac,)
             )
+            row = cur.fetchone()
             conn.commit()
             cur.close()
             conn.close()
+            if row:
+                broadcast_device_update({
+                    'id': str(row[0]),
+                    'nombre': row[1],
+                    'ip': row[2] or '',
+                    'estado': 'inactivo',
+                    'ultimo_heartbeat': None,
+                    'online': False
+                })
+                print(f"📡 Broadcast WebSocket: {row[1]} desconectado", flush=True)
         except Exception as e:
             print(f"❌ Error LWT DB: {e}", flush=True)
         return
@@ -193,7 +214,67 @@ def procesar_imagen_facial(client, persona_id, imagen_b64):
             "status": "error", "mensaje": str(e)
         }))
 
-def start_mqtt():
+_broadcast_callback = None
+_mqtt_client = None
+
+def broadcast_device_update(data: dict):
+    try:
+        if _broadcast_callback:
+            _broadcast_callback(data)
+    except Exception as e:
+        print(f"⚠️ Error broadcasting SSE: {e}", flush=True)
+
+def device_pinger():
+    while True:
+        time.sleep(30)
+        if _mqtt_client is None:
+            continue
+        try:
+            conn = get_connection()
+            cur = conn.cursor()
+            cur.execute(
+                "SELECT REPLACE(mac_address, ':', '') as mac FROM dispositivos WHERE enrolado = TRUE AND mac_address IS NOT NULL AND mac_address != ''"
+            )
+            rows = cur.fetchall()
+            cur.close()
+            conn.close()
+            ahora = time.time()
+            with heartbeat_lock:
+                for (mac,) in rows:
+                    topic = f"esp32/ping/{mac}"
+                    _mqtt_client.publish(topic, f"{{\"t\":{ahora}}}")
+                    if mac not in heartbeat_times:
+                        heartbeat_times[mac] = 0
+                vencidos = [mac for mac, t in heartbeat_times.items() if t > 0 and (ahora - t) > HEARTBEAT_TIMEOUT]
+            for mac in vencidos:
+                try:
+                    conn2 = get_connection()
+                    cur2 = conn2.cursor()
+                    cur2.execute(
+                        "UPDATE dispositivos SET estado = 'inactivo' WHERE REPLACE(mac_address, ':', '') = %s RETURNING id, nombre, ip_local, estado",
+                        (mac,)
+                    )
+                    row = cur2.fetchone()
+                    conn2.commit()
+                    cur2.close()
+                    conn2.close()
+                    if row:
+                        broadcast_device_update({
+                            'id': str(row[0]),
+                            'nombre': row[1],
+                            'ip': row[2] or '',
+                            'estado': 'inactivo',
+                            'ultimo_heartbeat': None,
+                            'online': False
+                        })
+                        print(f"⏱ Pinger: dispositivo {row[1]} sin respuesta, marcado inactivo", flush=True)
+                except Exception as e:
+                    print(f"❌ Error pinger DB: {e}", flush=True)
+        except Exception as e:
+            print(f"❌ Error pinger: {e}", flush=True)
+
+def start_mqtt(broadcast_callback=None):
+    global _broadcast_callback, _mqtt_client
     try:
         print(f"🚀 Conectando MQTT a {BROKER_HOST}:{BROKER_PORT}...", flush=True)
         client = mqtt.Client(client_id="python-backend", clean_session=True)
@@ -201,13 +282,19 @@ def start_mqtt():
         client.on_message = on_message
         client.connect(BROKER_HOST, BROKER_PORT, 60)
         client.loop_start()
+        _mqtt_client = client
+        if broadcast_callback:
+            _broadcast_callback = broadcast_callback
+            print("🔌 SSE broadcast vinculado", flush=True)
         threading.Thread(target=device_watchdog, daemon=True).start()
+        threading.Thread(target=device_pinger, daemon=True).start()
+        print("📡 Pinger MQTT activo (ping cada 30s)", flush=True)
         return client
     except Exception as e:
         print(f"❌ ERROR CRITICO MQTT: {e}", flush=True)
         return None
 
-HEARTBEAT_TIMEOUT = 90
+HEARTBEAT_TIMEOUT = 60
 
 def device_watchdog():
     try:
@@ -232,11 +319,21 @@ def device_watchdog():
                 conn = get_connection()
                 cur = conn.cursor()
                 cur.execute(
-                    "UPDATE dispositivos SET estado = 'inactivo' WHERE REPLACE(mac_address, ':', '') = %s",
+                    "UPDATE dispositivos SET estado = 'inactivo' WHERE REPLACE(mac_address, ':', '') = %s RETURNING id, nombre, ip_local, estado",
                     (mac,)
                 )
+                row = cur.fetchone()
                 conn.commit()
                 cur.close()
                 conn.close()
+                if row:
+                    broadcast_device_update({
+                        'id': str(row[0]),
+                        'nombre': row[1],
+                        'ip': row[2] or '',
+                        'estado': 'inactivo',
+                        'ultimo_heartbeat': None,
+                        'online': False
+                    })
             except Exception as e:
                 print(f"❌ Error watchdog DB: {e}", flush=True)

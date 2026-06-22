@@ -2,41 +2,45 @@
 <html>
 <head>
 <meta charset="utf-8">
-<title>Logs del Sistema</title>
-<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>SAS · Logs</title>
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
 <style>
+:root{--bg:#0f172a;--surface:#1e293b;--surface-2:#334155;--border:#475569;--primary:#1d4ed8;--primary-light:#1e40af;--success:#16a34a;--warning:#d97706;--danger:#dc2626;--text:#f1f5f9;--muted:#94a3b8;--muted-2:#64748b;--line:rgba(255,255,255,.08);--radius:8px;--radius-lg:12px}
 *{margin:0;padding:0;box-sizing:border-box}
-:root{--bg:#0f172a;--s:#1e293b;--s2:#334155;--b:#475569;--a:#3b82f6;--g:#22c55e;--w:#f59e0b;--d:#ef4444;--t:#f1f5f9;--dim:#94a3b8;--r:8px}
-body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:var(--bg);color:var(--t);height:100vh;display:flex;flex-direction:column;font-size:14px}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Oxygen,sans-serif;background:var(--bg);color:var(--text);height:100vh;display:flex;flex-direction:column;font-size:14px;-webkit-font-smoothing:antialiased}
 .wrap{max-width:700px;margin:0 auto;width:100%;padding:16px 12px;flex:1;display:flex;flex-direction:column;overflow:hidden}
-header{display:flex;align-items:center;gap:10px;margin-bottom:10px;flex-shrink:0}
-.back{background:var(--s);border:1px solid var(--b);color:var(--t);padding:7px 14px;border-radius:6px;font-family:inherit;font-size:12px;font-weight:500;cursor:pointer;white-space:nowrap}
-.back:hover{background:var(--s2)}
-h1{font-size:15px;font-weight:600;flex:1;text-align:center}
+
+.top{display:flex;align-items:center;gap:10px;margin-bottom:10px;flex-shrink:0}
+.back{background:var(--surface);border:1px solid var(--border);color:var(--text);padding:8px 14px;border-radius:6px;font-family:inherit;font-size:12px;font-weight:500;cursor:pointer;white-space:nowrap;transition:.15s}
+.back:hover{background:var(--surface-2)}
+.top h1{font-size:15px;font-weight:700;flex:1;text-align:center;letter-spacing:-.3px}
+
 .toolbar{display:flex;gap:6px;margin-bottom:8px;flex-shrink:0}
-.tbtn{flex:1;padding:8px;border:1px solid var(--b);border-radius:6px;font-family:inherit;font-size:11px;font-weight:600;cursor:pointer;background:var(--s);color:var(--dim);transition:.15s}
-.tbtn:hover{color:var(--t)}
-.tbtn-r:hover{border-color:var(--d);color:var(--d)}
-.tbtn-a:hover{border-color:var(--a);color:var(--a)}
-.logbox{flex:1;overflow-y:auto;background:var(--s);border:1px solid var(--b);border-radius:var(--r);padding:12px 14px;font-family:'SF Mono','Cascadia Code','Consolas',monospace;font-size:12px;line-height:1.6;white-space:pre-wrap;word-break:break-all;color:#cbd5e1;min-height:0}
-.logbox::-webkit-scrollbar{width:5px}.logbox::-webkit-scrollbar-track{background:var(--s)}.logbox::-webkit-scrollbar-thumb{background:var(--b);border-radius:3px}
-.statusbar{font-size:10px;color:var(--dim);padding:6px 0 0;flex-shrink:0;display:flex;align-items:center;gap:6px}
-.dot{width:6px;height:6px;border-radius:50%;background:var(--g);animation:blink 1.5s ease infinite}
-@keyframes blink{0%,100%{opacity:1}50%{opacity:.2}}
+.tbtn{flex:1;padding:9px;border:1px solid var(--border);border-radius:6px;font-family:inherit;font-size:11px;font-weight:600;cursor:pointer;background:var(--surface);color:var(--muted);transition:.15s;text-align:center;text-decoration:none}
+.tbtn:hover{color:var(--text)}
+.tbtn-reload:hover{border-color:var(--primary);color:var(--primary)}
+.tbtn-clear:hover{border-color:var(--danger);color:var(--danger)}
+
+.logbox{flex:1;overflow-y:auto;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:12px 14px;font-family:'SF Mono','Cascadia Code','Consolas',monospace;font-size:12px;line-height:1.6;white-space:pre-wrap;word-break:break-all;color:#cbd5e1;min-height:0}
+.logbox::-webkit-scrollbar{width:5px}.logbox::-webkit-scrollbar-track{background:var(--surface)}.logbox::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
+
+.statusbar{font-size:10px;color:var(--muted-2);padding:8px 0 0;flex-shrink:0;display:flex;align-items:center;gap:6px}
+.live-dot{width:7px;height:7px;border-radius:50%;background:var(--success);flex-shrink:0;animation:live-pulse 1.8s ease infinite}
+@keyframes live-pulse{0%{opacity:1}50%{opacity:.2}100%{opacity:1}}
 </style>
 </head>
 <body>
 <div class="wrap">
-  <header>
+  <div class="top">
     <button class="back" onclick="location.href='/'">← Volver</button>
     <h1>Logs del Sistema</h1>
-  </header>
+  </div>
   <div class="toolbar">
-    <button class="tbtn tbtn-a" onclick="cargarLogs()">Actualizar</button>
-    <button class="tbtn tbtn-r" onclick="limpiarLogs()">Limpiar Buffer</button>
+    <button class="tbtn tbtn-reload" onclick="cargarLogs()">Actualizar</button>
+    <button class="tbtn tbtn-clear" onclick="limpiarLogs()">Limpiar Buffer</button>
   </div>
   <div id="logs" class="logbox">Cargando logs...</div>
-  <div id="status" class="statusbar"><span class="dot"></span>Auto-refresh cada 2 s</div>
+  <div id="status" class="statusbar"><span class="live-dot"></span>Auto-refresh cada 2 s</div>
 </div>
 
 <script>
@@ -50,7 +54,7 @@ async function mostrarModalPassword(errorMsg){
       +'<h2 style="color:#f1f5f9;margin:0 0 16px;font-size:16px">&#x1F512; Contrase&ntilde;a requerida</h2>'
       +'<input type="password" id="apw" style="width:100%;padding:10px;border:1px solid #475569;border-radius:6px;background:#0f172a;color:#f1f5f9;font-size:14px;margin-bottom:12px;box-sizing:border-box" placeholder="Ingrese contrase&ntilde;a"'+(errorMsg?'':' autofocus')+'>'
       +(errorMsg?'<div style="color:#ef4444;font-size:12px;margin-bottom:8px">'+errorMsg+'</div>':'')
-      +'<button id="apb" style="width:100%;padding:10px;background:#3b82f6;color:#fff;border:none;border-radius:6px;font-size:14px;cursor:pointer">Ingresar</button>'
+      +'<button id="apb" style="width:100%;padding:10px;background:#1d4ed8;color:#fff;border:none;border-radius:6px;font-size:14px;cursor:pointer">Ingresar</button>'
       +'<button id="apc" style="width:100%;padding:8px;background:transparent;color:#94a3b8;border:none;border-radius:6px;font-size:12px;cursor:pointer;margin-top:6px">Cancelar</button></div>';
     document.body.appendChild(ov);
     const inp=ov.querySelector('#apw'),btn=ov.querySelector('#apb'),can=ov.querySelector('#apc');
@@ -60,7 +64,6 @@ async function mostrarModalPassword(errorMsg){
     inp.onkeydown=e=>{if(e.key==='Enter')btn.onclick();};
   });
 }
-
 async function verificarAcceso(){
   try{
     const e=await fetch('/estado').then(r=>r.json());
@@ -82,7 +85,6 @@ async function verificarAcceso(){
     return false;
   }catch(e){return true;}
 }
-
 async function fetchProtegido(url){
   if(!adminHabilitado)return fetch(url);
   let pw=sessionStorage.getItem(ADMIN_PW_KEY);
@@ -98,7 +100,7 @@ async function cargarLogs(){
     const box=document.getElementById('logs');
     box.textContent=html||'Sin logs disponibles';
     box.scrollTop=box.scrollHeight;
-    document.getElementById('status').innerHTML='<span class="dot"></span>Actualizado: '+new Date().toLocaleTimeString();
+    document.getElementById('status').innerHTML='<span class="live-dot"></span>Actualizado: '+new Date().toLocaleTimeString();
   }catch(e){document.getElementById('status').textContent='Error: '+e.message;}
 }
 async function limpiarLogs(){

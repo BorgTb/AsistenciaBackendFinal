@@ -23,7 +23,8 @@ def get_dispositivos():
             SELECT d.id, d.empresa_id, d.nombre, d.mac_address, d.ip_local, d.estado,
                    d.ultimo_heartbeat, d.created_at, d.enrolado,
                    e.nombre as empresa_nombre,
-                   d.password_hash, d.password_pendiente
+                   d.password_hash, d.password_pendiente,
+                   d.codigo_enrol
             FROM dispositivos d
             JOIN empresas e ON e.id = d.empresa_id
             ORDER BY d.id
@@ -33,7 +34,8 @@ def get_dispositivos():
             SELECT d.id, d.empresa_id, d.nombre, d.mac_address, d.ip_local, d.estado,
                    d.ultimo_heartbeat, d.created_at, d.enrolado,
                    e.nombre as empresa_nombre,
-                   d.password_hash, d.password_pendiente
+                   d.password_hash, d.password_pendiente,
+                   d.codigo_enrol
             FROM dispositivos d
             JOIN empresas e ON e.id = d.empresa_id
             WHERE d.empresa_id = %s
@@ -44,7 +46,8 @@ def get_dispositivos():
             SELECT d.id, d.empresa_id, d.nombre, d.mac_address, d.ip_local, d.estado,
                    d.ultimo_heartbeat, d.created_at, d.enrolado,
                    e.nombre as empresa_nombre,
-                   d.password_hash, d.password_pendiente
+                   d.password_hash, d.password_pendiente,
+                   d.codigo_enrol
             FROM dispositivos d
             JOIN empresas e ON e.id = d.empresa_id
             ORDER BY d.id
@@ -67,7 +70,8 @@ def get_dispositivos():
             'enrolado': r[8],
             'empresa_nombre': r[9],
             'tiene_password': r[10] is not None,
-            'password_pendiente': r[11] if len(r) > 11 else False
+            'password_pendiente': r[11] if len(r) > 11 else False,
+            'codigo_enrol': r[12] if len(r) > 12 else None
         }
         for r in rows
     ])
@@ -148,7 +152,8 @@ def verificar_dispositivo():
                 'datos': {
                     'mac': estado_data.get('mac', ''),
                     'ssid': estado_data.get('ssid', ''),
-                    'enrolado': estado_data.get('enrolado', False)
+                    'enrolado': estado_data.get('enrolado', False),
+                    'pin': estado_data.get('pin', '')
                 }
             })
         return jsonify({'ok': False, 'error': f'HTTP {resp.status_code}'}), 200

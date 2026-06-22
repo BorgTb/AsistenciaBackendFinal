@@ -2,40 +2,63 @@
 <html>
 <head>
 <meta charset="utf-8">
-<title>Sistema de Asistencia · ESP32</title>
-<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>SAS · ESP32-CAM</title>
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
 <style>
+:root{--bg:#0f172a;--surface:#1e293b;--surface-2:#334155;--border:#475569;--primary:#1d4ed8;--primary-light:#1e40af;--success:#16a34a;--warning:#d97706;--danger:#dc2626;--text:#f1f5f9;--muted:#94a3b8;--muted-2:#64748b;--line:rgba(255,255,255,.08);--radius:8px;--radius-lg:12px}
 *{margin:0;padding:0;box-sizing:border-box}
-:root{--bg:#0f172a;--s:#1e293b;--s2:#334155;--b:#475569;--a:#3b82f6;--g:#22c55e;--w:#f59e0b;--d:#ef4444;--t:#f1f5f9;--dim:#94a3b8;--r:8px}
-body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:var(--bg);color:var(--t);min-height:100vh;font-size:14px}
-.wrap{max-width:440px;margin:0 auto;padding:16px 12px}
-header{display:flex;align-items:center;gap:10px;margin-bottom:20px}
-.logo{width:36px;height:36px;background:linear-gradient(135deg,var(--a),#8b5cf6);border-radius:8px;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:13px;letter-spacing:-.5px}
-h1{font-size:15px;font-weight:600;letter-spacing:-.3px;color:var(--t)}
-h1 em{display:block;font-size:10px;font-weight:400;color:var(--dim);font-style:normal;letter-spacing:0}
-.stats{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:18px}
-.stat{background:var(--s);border:1px solid var(--b);border-radius:var(--r);padding:10px;text-align:center}
-.stat-label{font-size:9px;color:var(--dim);text-transform:uppercase;letter-spacing:.5px;margin-bottom:3px}
-.stat-val{font-size:13px;font-weight:700}
-.on{color:var(--g)}.off{color:var(--d)}.pend{color:var(--w)}
-h2{font-size:10px;text-transform:uppercase;letter-spacing:1px;color:var(--dim);margin:16px 0 6px;padding-left:10px;border-left:3px solid var(--a)}
-.btn{display:flex;align-items:center;gap:8px;width:100%;padding:10px 14px;border:1px solid var(--b);border-radius:var(--r);background:var(--s);color:var(--t);font-family:inherit;font-size:13px;font-weight:500;cursor:pointer;margin-bottom:6px;transition:.15s;text-align:left}
-.btn:hover{background:var(--s2);border-color:var(--a)}
-.btn svg{width:16px;height:16px;flex-shrink:0;opacity:.7}
-.btn .txt{flex:1}.btn .arr{opacity:.3;font-size:16px}
-.btn-a{border-color:rgba(59,130,246,.4)}.btn-a:hover{background:rgba(59,130,246,.1)}
-.btn-r{border-color:rgba(239,68,68,.4)}.btn-r:hover{background:rgba(239,68,68,.1);border-color:var(--d)}
-.toast{margin-top:14px;padding:10px 14px;background:var(--s);border:1px solid var(--b);border-radius:var(--r);font-size:11px;color:var(--dim);display:flex;align-items:center;gap:8px;line-height:1.5}
-.dot{width:7px;height:7px;border-radius:50%;background:var(--g);flex-shrink:0;animation:blink 1.5s ease infinite}
-@keyframes blink{0%,100%{opacity:1}50%{opacity:.25}}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Oxygen,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;font-size:14px;-webkit-font-smoothing:antialiased}
+.wrap{max-width:480px;margin:0 auto;padding:16px 12px}
+
+.brand{display:flex;align-items:center;gap:12px;padding:8px 4px 16px;border-bottom:1px solid var(--line);margin-bottom:16px}
+.brand-mark{width:38px;height:38px;border-radius:var(--radius);display:grid;place-items:center;font-weight:800;font-size:12px;letter-spacing:-.5px;color:#fff;background:linear-gradient(135deg,var(--primary),#7c3aed);flex-shrink:0}
+.brand h1{font-size:15px;font-weight:700;letter-spacing:-.3px}
+.brand em{display:block;font-size:10px;font-weight:400;color:var(--muted-2);font-style:normal;letter-spacing:0;margin-top:1px}
+
+.stats{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:16px}
+.stat{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:12px 8px;text-align:center}
+.stat-label{font-size:9px;color:var(--muted-2);text-transform:uppercase;letter-spacing:.6px;margin-bottom:4px;font-weight:600}
+.stat-val{font-size:14px;font-weight:700;font-family:'SF Mono',Monaco,monospace}
+.on{color:var(--success)}.off{color:var(--danger)}.pend{color:var(--warning)}
+
+.nav-section{display:grid;gap:6px;margin-bottom:16px}
+.nav-label{font-size:9px;color:var(--muted-2);text-transform:uppercase;letter-spacing:1px;font-weight:600;padding:8px 0 4px 10px;border-left:3px solid var(--primary)}
+
+.btn{display:flex;align-items:center;gap:10px;width:100%;padding:12px 14px;border:1px solid var(--border);border-radius:var(--radius);background:var(--surface);color:var(--text);font-family:inherit;font-size:13px;font-weight:500;cursor:pointer;transition:all .15s ease;text-align:left;text-decoration:none}
+.btn:hover{background:var(--surface-2);border-color:var(--primary)}
+.btn .icon{width:18px;height:18px;flex-shrink:0;opacity:.6}
+.btn .label{flex:1}
+.btn .arrow{opacity:.3;font-size:15px;font-weight:300}
+.btn-primary{border-color:rgba(29,78,216,.4)}
+.btn-primary:hover{background:rgba(29,78,216,.12);border-color:var(--primary)}
+.btn-danger{border-color:rgba(220,38,38,.3)}
+.btn-danger:hover{background:rgba(220,38,38,.1);border-color:var(--danger)}
+.btn-success{border-color:rgba(22,163,74,.3)}
+.btn-success:hover{background:rgba(22,163,74,.1);border-color:var(--success)}
+.btn-warning{border-color:rgba(217,119,6,.3)}
+.btn-warning:hover{background:rgba(217,119,6,.1);border-color:var(--warning)}
+
+.badge{display:inline-flex;align-items:center;gap:5px;padding:3px 8px;border-radius:999px;font-size:10px;font-weight:600;border:1px solid transparent;white-space:nowrap}
+.badge-success{color:var(--success);background:rgba(22,163,74,.1);border-color:rgba(22,163,74,.2)}
+.badge-warning{color:var(--warning);background:rgba(217,119,6,.1);border-color:rgba(217,119,6,.2)}
+.badge-danger{color:var(--danger);background:rgba(220,38,38,.1);border-color:rgba(220,38,38,.2)}
+
+.danger-zone{margin-top:16px;padding:16px;border-radius:var(--radius-lg);background:rgba(220,38,38,.04);border:1px solid rgba(220,38,38,.15)}
+.danger-zone .nav-label{border-left-color:var(--danger);color:var(--danger)}
+
+.toast{margin-top:16px;padding:12px 14px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);font-size:12px;color:var(--muted);display:flex;align-items:center;gap:10px;line-height:1.5}
+.toast .dot{width:8px;height:8px;border-radius:50%;background:var(--success);flex-shrink:0;animation:pulse 1.8s ease infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+
+#adminBadge{display:none;font-size:10px;color:var(--warning);margin-bottom:8px;padding:6px 10px;background:rgba(217,119,6,.08);border:1px solid rgba(217,119,6,.2);border-radius:6px}
 </style>
 </head>
 <body>
 <div class="wrap">
-  <header>
-    <div class="logo">SA</div>
+  <div class="brand">
+    <div class="brand-mark">SA</div>
     <h1>Sistema de Asistencia<em>ESP32-CAM · Control Biométrico</em></h1>
-  </header>
+  </div>
 
   <div class="stats">
     <div class="stat"><div class="stat-label">Modo</div><div class="stat-val off" id="modoEstado">OFFLINE</div></div>
@@ -43,46 +66,64 @@ h2{font-size:10px;text-transform:uppercase;letter-spacing:1px;color:var(--dim);m
     <div class="stat"><div class="stat-label">Enrolado</div><div class="stat-val pend" id="enrolEstado">PEND.</div></div>
   </div>
 
-  <h2>Registro</h2>
-  <button class="btn btn-a" onclick="location.href='/register'">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
-    <span class="txt">Registrar Persona</span><span class="arr">→</span>
-  </button>
+  <div class="pin-card" id="pinSection" style="display:none;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:12px 14px;margin-bottom:16px">
+    <div style="display:flex;align-items:center;justify-content:space-between">
+      <div style="font-size:9px;color:var(--muted-2);text-transform:uppercase;letter-spacing:.6px;font-weight:600">PIN de Enrolamiento</div>
+      <button id="pinToggle" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:11px;padding:4px 8px;border-radius:4px;font-family:inherit" onclick="togglePin()">Mostrar</button>
+    </div>
+    <div id="pinValue" style="font-size:22px;letter-spacing:6px;font-weight:700;font-family:'SF Mono',Monaco,monospace;color:var(--primary);margin-top:6px;cursor:pointer;user-select:all" onclick="togglePin()">••••••</div>
+  </div>
 
-  <h2>Gestión</h2>
-  <button class="btn btn-a" onclick="location.href='/gestion'">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-    <span class="txt">Gestión de Turnos</span><span class="arr">→</span>
-  </button>
-  <button class="btn btn-a" onclick="location.href='/asistencias'">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/><path d="M9 14l2 2 4-4"/></svg>
-    <span class="txt">Registro de Asistencias</span><span class="arr">→</span>
-  </button>
-  <button class="btn btn-a" onclick="location.href='/personas'">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-    <span class="txt">Listado de Personas</span><span class="arr">→</span>
-  </button>
-  <button class="btn btn-a" onclick="location.href='/logs'">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
-    <span class="txt">Ver Logs del Sistema</span><span class="arr">→</span>
-  </button>
-  <button class="btn btn-a" onclick="sincronizarTodo()">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
-    <span class="txt">Sincronizar con Backend</span><span class="arr">→</span>
-  </button>
-  <button class="btn btn-a" onclick="location.href='/wifi-setup'">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 1l22 22"/><path d="M16.72 11.06A10.94 10.94 0 0 1 19 12.55"/><path d="M5 12.55a10.94 10.94 0 0 1 5.17-2.39"/><path d="M10.71 5.05A16 16 0 0 1 22.58 9"/><path d="M1.42 9a15.91 15.91 0 0 1 4.7-2.88"/><path d="M8.53 16.11a6 6 0 0 1 6.95 0"/><circle cx="12" cy="20" r="1"/></svg>
-    <span class="txt">Configurar WiFi</span><span class="arr">→</span>
-  </button>
+  <div class="nav-section">
+    <div class="nav-label">Registro</div>
+    <button class="btn btn-primary" onclick="location.href='/register'">
+      <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+      <span class="label">Registrar Persona</span><span class="arrow">→</span>
+    </button>
+  </div>
 
-  <h2>Zona de Peligro</h2>
-  <div id="adminBadge" style="display:none;font-size:10px;color:var(--w);margin-bottom:6px;padding:4px 8px;background:rgba(245,158,11,.1);border:1px solid rgba(245,158,11,.3);border-radius:4px">&#128274; Admin: Contrase\u00f1a requerida para acciones protegidas</div>
-  <button class="btn btn-r" onclick="limpiarDatos()">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
-    <span class="txt">Limpiar Todos los Datos</span><span class="arr">→</span>
-  </button>
+  <div class="nav-section">
+    <div class="nav-label">Gestión</div>
+    <button class="btn" onclick="location.href='/gestion'">
+      <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+      <span class="label">Gestión de Turnos</span><span class="arrow">→</span>
+    </button>
+    <button class="btn" onclick="location.href='/asistencias'">
+      <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/><path d="M9 14l2 2 4-4"/></svg>
+      <span class="label">Registro de Asistencias</span><span class="arrow">→</span>
+    </button>
+    <button class="btn" onclick="location.href='/personas'">
+      <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+      <span class="label">Listado de Personas</span><span class="arrow">→</span>
+    </button>
+    <button class="btn" onclick="location.href='/logs'">
+      <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+      <span class="label">Ver Logs del Sistema</span><span class="arrow">→</span>
+    </button>
+  </div>
 
-  <div class="toast" id="status"><span class="dot"></span><span id="statusMsg">Sistema listo</span></div>
+  <div class="nav-section">
+    <div class="nav-label">Sincronización</div>
+    <button class="btn btn-success" onclick="sincronizarTodo()">
+      <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+      <span class="label">Sincronizar con Backend</span><span class="arrow">→</span>
+    </button>
+    <button class="btn btn-warning" onclick="location.href='/wifi-setup'">
+      <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12.55a10.94 10.94 0 0 1 5.17-2.39"/><path d="M10.71 5.05A16 16 0 0 1 22.58 9"/><path d="M1.42 9a15.91 15.91 0 0 1 4.7-2.88"/><path d="M8.53 16.11a6 6 0 0 1 6.95 0"/><circle cx="12" cy="20" r="1"/></svg>
+      <span class="label">Configurar WiFi</span><span class="arrow">→</span>
+    </button>
+  </div>
+
+  <div class="danger-zone">
+    <div class="nav-label">Zona de Peligro</div>
+    <div id="adminBadge">&#128274; Admin: Contraseña requerida para acciones protegidas</div>
+    <button class="btn btn-danger" onclick="limpiarDatos()">
+      <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+      <span class="label">Limpiar Todos los Datos</span><span class="arrow">→</span>
+    </button>
+  </div>
+
+  <div class="toast"><span class="dot"></span><span id="statusMsg">Sistema listo</span></div>
 </div>
 
 <script>
@@ -93,10 +134,10 @@ async function mostrarModalPassword(errorMsg){
     const ov=document.createElement('div');
     ov.style.cssText='position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.7);z-index:9999;display:flex;align-items:center;justify-content:center;font-family:sans-serif';
     ov.innerHTML='<div style="background:#1e293b;padding:24px;border-radius:8px;max-width:320px;width:90%;text-align:center;border:1px solid #475569">'
-      +'<h2 style="color:#f1f5f9;margin:0 0 16px;font-size:16px">\uD83D\uDD12 Contrase\u00f1a requerida</h2>'
-      +'<input type="password" id="apw" style="width:100%;padding:10px;border:1px solid #475569;border-radius:6px;background:#0f172a;color:#f1f5f9;font-size:14px;margin-bottom:12px;box-sizing:border-box" placeholder="Ingrese contrase\u00f1a"'+(errorMsg?'':' autofocus')+'>'
+      +'<h2 style="color:#f1f5f9;margin:0 0 16px;font-size:16px">&#x1F512; Contrase&ntilde;a requerida</h2>'
+      +'<input type="password" id="apw" style="width:100%;padding:10px;border:1px solid #475569;border-radius:6px;background:#0f172a;color:#f1f5f9;font-size:14px;margin-bottom:12px;box-sizing:border-box" placeholder="Ingrese contrase&ntilde;a"'+(errorMsg?'':' autofocus')+'>'
       +(errorMsg?'<div style="color:#ef4444;font-size:12px;margin-bottom:8px">'+errorMsg+'</div>':'')
-      +'<button id="apb" style="width:100%;padding:10px;background:#3b82f6;color:#fff;border:none;border-radius:6px;font-size:14px;cursor:pointer">Ingresar</button>'
+      +'<button id="apb" style="width:100%;padding:10px;background:#1d4ed8;color:#fff;border:none;border-radius:6px;font-size:14px;cursor:pointer">Ingresar</button>'
       +'<button id="apc" style="width:100%;padding:8px;background:transparent;color:#94a3b8;border:none;border-radius:6px;font-size:12px;cursor:pointer;margin-top:6px">Cancelar</button></div>';
     document.body.appendChild(ov);
     const inp=ov.querySelector('#apw'),btn=ov.querySelector('#apb'),can=ov.querySelector('#apc');
@@ -106,7 +147,6 @@ async function mostrarModalPassword(errorMsg){
     inp.onkeydown=e=>{if(e.key==='Enter')btn.onclick();};
   });
 }
-
 async function verificarAcceso(){
   try{
     const e=await fetch('/estado').then(r=>r.json());
@@ -122,21 +162,32 @@ async function verificarAcceso(){
     while(pw){
       const t=await fetch('/api/logs?admin_password='+encodeURIComponent(pw));
       if(t.ok){sessionStorage.setItem(ADMIN_PW_KEY,pw);return true;}
-      pw=await mostrarModalPassword('Contrase\u00f1a incorrecta');
+      pw=await mostrarModalPassword('Contrase&ntilde;a incorrecta');
     }
-    document.body.innerHTML='<div style="padding:2em;text-align:center;font-family:sans-serif"><h2>\uD83D\uDD12 Acceso denegado</h2><p>Se requiere contrase\u00f1a de administrador para ver esta p\u00e1gina.</p></div>';
+    document.body.innerHTML='<div style="padding:2em;text-align:center;font-family:sans-serif"><h2>&#x1F512; Acceso denegado</h2><p>Se requiere contrase&ntilde;a de administrador para ver esta p&aacute;gina.</p></div>';
     return false;
   }catch(e){return true;}
 }
-
 async function fetchProtegido(url){
   if(!adminHabilitado)return fetch(url);
   let pw=sessionStorage.getItem(ADMIN_PW_KEY);
   if(!pw)return null;
   const sep=url.includes('?')?'&':'?';
   const r=await fetch(url+sep+'admin_password='+encodeURIComponent(pw));
-  if(r.status===401){sessionStorage.removeItem(ADMIN_PW_KEY);alert('Contrase\u00f1a incorrecta. Recargue la p\u00e1gina.');return null;}
+  if(r.status===401){sessionStorage.removeItem(ADMIN_PW_KEY);alert('Contrase&ntilde;a incorrecta. Recargue la p&aacute;gina.');return null;}
   return r;
+}
+let pinActual='';
+function togglePin(){
+  const el=document.getElementById('pinValue');
+  const btn=document.getElementById('pinToggle');
+  if(el.textContent==='••••••'){
+    el.textContent=pinActual;
+    btn.textContent='Ocultar';
+  }else{
+    el.textContent='••••••';
+    btn.textContent='Mostrar';
+  }
 }
 function traducirMotivo(m){
   const map={habilitada:'ACTIVA',sistema_ocupado:'OCUPADO',cooldown:'COOLDOWN',bloqueo_menu:'BLOQUEADO',sin_personas_locales:'SIN PERSONAS',sin_asignaciones_locales:'SIN ASIGNAC.'};
@@ -154,15 +205,23 @@ async function actualizarEstado(){
     if(e.admin_protegido){
       document.getElementById('adminBadge').style.display='block';
     }
+    if(e.pin&&e.pin.length>0){
+      pinActual=e.pin;
+      document.getElementById('pinSection').style.display='block';
+      document.getElementById('pinValue').textContent='••••••';
+      document.getElementById('pinToggle').textContent='Mostrar';
+    }else{
+      document.getElementById('pinSection').style.display='none';
+    }
   }catch(err){}
 }
 function setStatus(msg,ok=true){
-  const el=document.getElementById('status');
+  const el=document.querySelector('.toast');
   const sp=el.querySelector('.dot');
   const sm=document.getElementById('statusMsg');
   sm.innerHTML=msg.replace(/\n/g,'<br>');
-  sp.style.background=ok?'var(--g)':'var(--w)';
-  setTimeout(()=>{sm.textContent='Sistema listo';sp.style.background='var(--g)';},5000);
+  sp.style.background=ok?'var(--success)':'var(--warning)';
+  setTimeout(()=>{sm.textContent='Sistema listo';sp.style.background='var(--success)';},5000);
 }
 async function limpiarDatos(){
   const codigo=prompt('ADVERTENCIA: Se eliminarán TODOS los datos.\nIngrese el código de seguridad:');

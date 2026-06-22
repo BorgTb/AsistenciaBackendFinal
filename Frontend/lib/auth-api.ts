@@ -121,7 +121,7 @@ export async function updateDispositivo(dispositivoId: string, nombre: string) {
 }
 
 export async function verificarDispositivo(ip: string) {
-  return request<{ ok: boolean; error?: string; mensaje?: string; datos?: { mac: string; ssid: string; enrolado: boolean } }>('/api/dispositivos/verificar', {
+  return request<{ ok: boolean; error?: string; mensaje?: string; datos?: { mac: string; ssid: string; enrolado: boolean; pin?: string } }>('/api/dispositivos/verificar', {
     method: 'POST',
     body: JSON.stringify({ ip })
   });

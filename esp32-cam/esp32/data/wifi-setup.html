@@ -2,61 +2,95 @@
 <html>
 <head>
 <meta charset="utf-8">
-<title>Configuración de Red</title>
-<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>SAS · Configuración de Red</title>
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
 <style>
+:root{--bg:#0f172a;--surface:#1e293b;--surface-2:#334155;--border:#475569;--primary:#1d4ed8;--primary-light:#1e40af;--success:#16a34a;--warning:#d97706;--danger:#dc2626;--text:#f1f5f9;--muted:#94a3b8;--muted-2:#64748b;--line:rgba(255,255,255,.08);--radius:8px;--radius-lg:12px}
 *{margin:0;padding:0;box-sizing:border-box}
-:root{--bg:#0f172a;--s:#1e293b;--s2:#334155;--b:#475569;--a:#3b82f6;--g:#22c55e;--w:#f59e0b;--d:#ef4444;--t:#f1f5f9;--dim:#94a3b8;--r:8px}
-body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:var(--bg);color:var(--t);min-height:100vh;font-size:14px}
-.wrap{max-width:420px;margin:0 auto;padding:16px 12px}
-header{display:flex;align-items:center;gap:10px;margin-bottom:18px}
-.back{background:var(--s);border:1px solid var(--b);color:var(--t);padding:7px 14px;border-radius:6px;font-family:inherit;font-size:12px;font-weight:500;cursor:pointer;white-space:nowrap}
-.back:hover{background:var(--s2)}
-h1{font-size:15px;font-weight:600;flex:1;text-align:center}
-h2{font-size:10px;text-transform:uppercase;letter-spacing:1px;color:var(--dim);margin:16px 0 6px;padding-left:10px;border-left:3px solid var(--a)}
-label{display:block;font-size:10px;color:var(--dim);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px}
-input{width:100%;padding:10px 14px;background:var(--s);border:1px solid var(--b);border-radius:6px;color:var(--t);font-family:inherit;font-size:13px;margin-bottom:12px;transition:.15s}
-input:focus{outline:none;border-color:var(--a);box-shadow:0 0 0 3px rgba(59,130,246,.15)}
-.btn{width:100%;padding:12px;border:none;border-radius:6px;font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;margin-bottom:8px;transition:.15s}
-.btn-go{background:var(--a);color:#fff}.btn-go:hover{background:#2563eb}
-.btn-sec{background:var(--s);border:1px solid var(--b);color:var(--dim)}.btn-sec:hover{color:var(--t)}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Oxygen,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;font-size:14px;-webkit-font-smoothing:antialiased}
+.wrap{max-width:440px;margin:0 auto;padding:16px 12px}
+
+.top{display:flex;align-items:center;gap:10px;margin-bottom:18px}
+.back{background:var(--surface);border:1px solid var(--border);color:var(--text);padding:8px 14px;border-radius:6px;font-family:inherit;font-size:12px;font-weight:500;cursor:pointer;white-space:nowrap;transition:.15s}
+.back:hover{background:var(--surface-2)}
+.top h1{font-size:15px;font-weight:700;flex:1;text-align:center;letter-spacing:-.3px}
+
+.section-label{font-size:9px;color:var(--muted-2);text-transform:uppercase;letter-spacing:1px;font-weight:600;margin:16px 0 8px;padding-left:10px;border-left:3px solid var(--primary)}
+
+.form-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:16px;margin-bottom:14px}
+.field{margin-bottom:12px}
+.field label{display:block;font-size:10px;color:var(--muted-2);text-transform:uppercase;letter-spacing:.6px;margin-bottom:4px;font-weight:600}
+.field input{width:100%;padding:10px 14px;background:var(--surface-2);border:1px solid var(--border);border-radius:6px;color:var(--text);font-family:inherit;font-size:13px;transition:.15s;outline:none}
+.field input:focus{border-color:var(--primary);box-shadow:0 0 0 3px rgba(29,78,216,.15)}
+
+.btn{width:100%;padding:12px;border:none;border-radius:6px;font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;margin-bottom:8px;transition:.15s;text-align:center}
+.btn-primary{background:var(--primary);color:#fff}
+.btn-primary:hover{background:var(--primary-light)}
+.btn-secondary{background:var(--surface);border:1px solid var(--border);color:var(--muted)}
+.btn-secondary:hover{color:var(--text);background:var(--surface-2)}
+
 .msg{padding:10px 14px;border-radius:6px;font-size:12px;margin-top:8px;display:none;font-weight:500}
 .msg.show{display:block}
-.msg.ok{background:rgba(34,197,94,.1);border:1px solid var(--g);color:var(--g)}
-.msg.err{background:rgba(239,68,68,.1);border:1px solid var(--d);color:var(--d)}
+.msg.ok{background:rgba(22,163,74,.1);border:1px solid var(--success);color:var(--success)}
+.msg.err{background:rgba(220,38,38,.1);border:1px solid var(--danger);color:var(--danger)}
+
+.warning-text{font-size:11px;color:var(--warning);margin-bottom:8px;padding:6px 10px;background:rgba(217,119,6,.08);border:1px solid rgba(217,119,6,.2);border-radius:6px}
 </style>
 </head>
 <body>
 <div class="wrap">
-  <header>
+  <div class="top">
     <button class="back" onclick="location.href='/'">← Volver</button>
     <h1>Configuración de Red</h1>
-  </header>
+  </div>
 
-  <h2>Conexión Wi-Fi</h2>
-  <label>SSID (Nombre de red)</label>
-  <input type="text" id="ssid" placeholder="Mi Red WiFi">
-  <label>Contraseña</label>
-  <input type="password" id="password" placeholder="········">
+  <div class="section-label">Conexión Wi-Fi</div>
+  <div class="form-card">
+    <div class="field">
+      <label>SSID (Nombre de red)</label>
+      <input type="text" id="ssid" placeholder="Mi Red WiFi">
+    </div>
+    <div class="field">
+      <label>Contraseña</label>
+      <input type="password" id="password" placeholder="········">
+    </div>
+  </div>
 
-  <h2>Servidores (Opcional)</h2>
-  <label>URL Backend HTTP</label>
-  <input type="text" id="backend" placeholder="http://192.168.1.X:5000">
-  <label>IP Broker MQTT</label>
-  <input type="text" id="mqtt" placeholder="192.168.1.X">
+  <div class="section-label">Servidores (Opcional)</div>
+  <div class="form-card">
+    <div class="field">
+      <label>URL Backend HTTP</label>
+      <input type="text" id="backend" placeholder="http://192.168.1.X:5000">
+    </div>
+    <div class="field">
+      <label>IP Broker MQTT</label>
+      <input type="text" id="mqtt" placeholder="192.168.1.X">
+    </div>
+  </div>
 
-  <h2>PIN de Enrolamiento</h2>
-  <label>Código de enrolamiento (opcional)</label>
-  <input type="text" id="pin" placeholder="Código de 6 dígitos" maxlength="8" pattern="[A-Za-z0-9]*" style="font-size:22px;letter-spacing:6px;text-align:center;font-weight:600">
+  <div class="section-label">PIN de Enrolamiento</div>
+  <div class="form-card">
+    <div class="field">
+      <label>Código de enrolamiento (opcional)</label>
+      <input type="text" id="pin" placeholder="Código de 6 dígitos" maxlength="8" pattern="[A-Za-z0-9]*" style="font-size:22px;letter-spacing:6px;text-align:center;font-weight:600;font-family:'SF Mono',Monaco,monospace">
+    </div>
+  </div>
 
-  <h2>Seguridad</h2>
-  <label>Contraseña de Administrador</label>
-  <input type="password" id="adminPasswordNew" placeholder="Nueva contraseña (dejar vacío para no cambiar)">
-  <input type="password" id="adminPasswordOld" placeholder="Contraseña actual (requerido si ya existe)" style="display:none">
-  <div id="adminStatus" style="font-size:11px;color:var(--w);margin-bottom:10px"></div>
+  <div class="section-label">Seguridad</div>
+  <div class="form-card">
+    <div class="field">
+      <label>Contraseña de Administrador</label>
+      <input type="password" id="adminPasswordNew" placeholder="Nueva contraseña (dejar vacío para no cambiar)">
+    </div>
+    <div class="field">
+      <label>Contraseña Actual</label>
+      <input type="password" id="adminPasswordOld" placeholder="Contraseña actual (requerido si ya existe)" style="display:none">
+    </div>
+    <div id="adminStatus" class="warning-text" style="display:none">⚠️ Ya hay una contraseña configurada</div>
+  </div>
 
-  <button class="btn btn-go" onclick="guardar()">Guardar y Reiniciar</button>
-  <button class="btn btn-sec" onclick="location.href='/'">Cancelar</button>
+  <button class="btn btn-primary" onclick="guardar()">Guardar y Reiniciar</button>
+  <button class="btn btn-secondary" onclick="location.href='/'">Cancelar</button>
 
   <div id="status" class="msg"></div>
 </div>
@@ -66,12 +100,12 @@ fetch('/estado').then(r=>r.json()).then(data=>{
   if(data.ssid)document.getElementById('ssid').value=data.ssid;
   if(data.backend)document.getElementById('backend').value=data.backend;
   if(data.mqtt)document.getElementById('mqtt').value=data.mqtt;
+  if(data.pin)document.getElementById('pin').value=data.pin;
   if(data.admin_protegido){
     document.getElementById('adminPasswordOld').style.display='block';
-    document.getElementById('adminStatus').textContent='\u26a0\uFE0F Ya hay una contrase\u00f1a configurada';
+    document.getElementById('adminStatus').style.display='block';
   }
 });
-
 async function guardar(){
   const ssid=document.getElementById('ssid').value.trim();
   const pass=document.getElementById('password').value.trim();

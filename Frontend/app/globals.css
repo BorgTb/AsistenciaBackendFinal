@@ -1024,6 +1024,55 @@ tbody tr:hover td {
   font-weight: 500;
 }
 
+/* ===== LIVE DOT ===== */
+
+.live-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  display: inline-block;
+  position: relative;
+}
+
+.live-dot.online {
+  background: var(--success);
+  box-shadow: 0 0 0 0 rgba(22, 163, 74, 0.5);
+  animation: live-pulse 1.8s ease-out infinite;
+}
+
+.live-dot.offline {
+  background: var(--muted-2);
+}
+
+@keyframes live-pulse {
+  0% { box-shadow: 0 0 0 0 rgba(22, 163, 74, 0.5); }
+  70% { box-shadow: 0 0 0 8px rgba(22, 163, 74, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(22, 163, 74, 0); }
+}
+
+.device-ip-link {
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  color: var(--primary);
+  text-decoration: none;
+  border-bottom: 1px dashed var(--primary);
+  transition: border-color 150ms ease;
+}
+
+.device-ip-link:hover {
+  border-bottom-style: solid;
+  color: #1e40af;
+  border-color: #1e40af;
+}
+
+.device-ip-hint {
+  font-size: 0.65rem;
+  color: var(--warning);
+  margin-top: 1px;
+  font-weight: 500;
+}
+
 /* ===== ANIMATIONS ===== */
 
 @keyframes pulse {

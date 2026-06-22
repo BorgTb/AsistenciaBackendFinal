@@ -2,57 +2,76 @@
 <html>
 <head>
 <meta charset="utf-8">
-<title>Registro de Trabajador</title>
-<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>SAS · Registro Biométrico</title>
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
 <style>
+:root{--bg:#0f172a;--surface:#1e293b;--surface-2:#334155;--border:#475569;--primary:#1d4ed8;--primary-light:#1e40af;--success:#16a34a;--warning:#d97706;--danger:#dc2626;--text:#f1f5f9;--muted:#94a3b8;--muted-2:#64748b;--line:rgba(255,255,255,.08);--radius:8px;--radius-lg:12px}
 *{margin:0;padding:0;box-sizing:border-box}
-:root{--bg:#0f172a;--s:#1e293b;--s2:#334155;--b:#475569;--a:#3b82f6;--g:#22c55e;--w:#f59e0b;--d:#ef4444;--t:#f1f5f9;--dim:#94a3b8;--r:8px}
-body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:var(--bg);color:var(--t);min-height:100vh;font-size:14px}
-.wrap{max-width:440px;margin:0 auto;padding:16px 12px}
-header{display:flex;align-items:center;gap:10px;margin-bottom:18px}
-.back{background:var(--s);border:1px solid var(--b);color:var(--t);padding:7px 14px;border-radius:6px;font-family:inherit;font-size:12px;font-weight:500;cursor:pointer;white-space:nowrap}
-.back:hover{background:var(--s2)}
-h1{font-size:15px;font-weight:600;flex:1;text-align:center}
-label{display:block;font-size:10px;color:var(--dim);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px}
-input{width:100%;padding:10px 14px;background:var(--s);border:1px solid var(--b);border-radius:6px;color:var(--t);font-family:inherit;font-size:13px;margin-bottom:12px;transition:.15s}
-input:focus{outline:none;border-color:var(--a);box-shadow:0 0 0 3px rgba(59,130,246,.15)}
-.btn{width:100%;padding:12px;border:none;border-radius:6px;font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;margin-bottom:6px;transition:.15s}
-.btn-go{background:var(--a);color:#fff}.btn-go:hover{background:#2563eb}
-.btn-sec{background:var(--s);border:1px solid var(--b);color:var(--dim)}.btn-sec:hover{color:var(--t)}
-.btn-fin{background:var(--g);color:#fff}.btn-fin:hover{background:#16a34a}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Oxygen,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;font-size:14px;-webkit-font-smoothing:antialiased}
+.wrap{max-width:480px;margin:0 auto;padding:16px 12px}
+
+.top{display:flex;align-items:center;gap:10px;margin-bottom:18px}
+.back{background:var(--surface);border:1px solid var(--border);color:var(--text);padding:8px 14px;border-radius:6px;font-family:inherit;font-size:12px;font-weight:500;cursor:pointer;white-space:nowrap;transition:.15s}
+.back:hover{background:var(--surface-2)}
+.top h1{font-size:15px;font-weight:700;flex:1;text-align:center;letter-spacing:-.3px}
+
+.field{margin-bottom:14px}
+.field label{display:block;font-size:10px;color:var(--muted-2);text-transform:uppercase;letter-spacing:.6px;margin-bottom:5px;font-weight:600}
+.field input{width:100%;padding:11px 14px;background:var(--surface);border:1px solid var(--border);border-radius:6px;color:var(--text);font-family:inherit;font-size:13px;transition:.15s;outline:none}
+.field input:focus{border-color:var(--primary);box-shadow:0 0 0 3px rgba(29,78,216,.15)}
+
+.btn{width:100%;padding:12px;border:none;border-radius:6px;font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;margin-bottom:6px;transition:.15s;text-align:center}
+.btn-primary{background:var(--primary);color:#fff}
+.btn-primary:hover{background:var(--primary-light)}
+.btn-secondary{background:var(--surface);border:1px solid var(--border);color:var(--muted)}
+.btn-secondary:hover{color:var(--text);border-color:var(--muted-2)}
+.btn-success{background:var(--success);color:#fff}
+.btn-success:hover{background:#15803d}
+
 #bp{display:none}
-.steps{display:flex;gap:8px;margin-bottom:16px;padding:14px;background:var(--s);border:1px solid var(--b);border-radius:var(--r)}
-.step{flex:1;text-align:center;opacity:.25;transition:.3s}
+
+.steps{display:flex;gap:8px;margin-bottom:16px;padding:16px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius)}
+.step{flex:1;text-align:center;opacity:.2;transition:all .3s ease}
 .step.on{opacity:1}
-.step.ok{opacity:.6}
-.step .n{width:28px;height:28px;border-radius:50%;border:2px solid var(--b);display:flex;align-items:center;justify-content:center;margin:0 auto 6px;font-size:12px;font-weight:700;transition:.3s}
-.step.on .n{border-color:var(--a);color:var(--a)}
-.step.ok .n{border-color:var(--g);background:var(--g);color:#fff}
-.step .l{font-size:9px;text-transform:uppercase;letter-spacing:.5px;color:var(--dim)}
-.step.on .l{color:var(--t)}
-.detail{background:var(--s);border:1px solid var(--b);border-radius:var(--r);padding:20px 14px;text-align:center;margin-bottom:12px}
-.detail .icon{font-size:36px;margin-bottom:8px;color:var(--a)}
-.detail .title{font-size:14px;font-weight:600;color:var(--t);margin-bottom:4px}
-.detail .desc{font-size:12px;color:var(--dim)}
-#camPreview{max-width:200px;border-radius:6px;margin:10px auto 0;border:2px solid var(--a);display:none}
+.step.ok{opacity:.5}
+.step .n{width:30px;height:30px;line-height:28px;border-radius:50%;border:2px solid var(--border);margin:0 auto 6px;font-size:12px;font-weight:700;transition:all .3s}
+.step.on .n{border-color:var(--primary);color:var(--primary)}
+.step.ok .n{border-color:var(--success);background:var(--success);color:#fff}
+.step .l{font-size:9px;text-transform:uppercase;letter-spacing:.6px;color:var(--muted-2)}
+.step.on .l{color:var(--text)}
+.step.ok .l{color:var(--muted)}
+
+.detail{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:24px 14px;text-align:center;margin-bottom:12px}
+.detail .icon{font-size:40px;margin-bottom:8px}
+.detail .title{font-size:14px;font-weight:600;color:var(--text);margin-bottom:4px}
+.detail .desc{font-size:12px;color:var(--muted)}
+#camPreview{max-width:200px;border-radius:6px;margin:10px auto 0;border:2px solid var(--primary);display:none}
+
+.badge-warning{display:inline-block;padding:4px 10px;border-radius:999px;font-size:10px;font-weight:600;color:var(--warning);background:rgba(217,119,6,.1);border:1px solid rgba(217,119,6,.2)}
 </style>
 </head>
 <body>
 <div class="wrap">
-  <header>
+  <div class="top">
     <button class="back" onclick="location.href='/'">← Volver</button>
-    <h1>Registro de Trabajador</h1>
-  </header>
+    <h1>Registro Biométrico</h1>
+  </div>
 
   <div id="form-container">
-    <label>Nombre Completo</label>
-    <input type="text" id="personName" placeholder="Juan Pérez" required>
-    <label>RUT</label>
-    <input type="text" id="personRut" placeholder="12345678-9" required>
-    <label>Email Corporativo</label>
-    <input type="email" id="personEmail" placeholder="juan@empresa.com" required>
-    <button class="btn btn-go" onclick="iniciarRegistro()">Iniciar Escaneo Biométrico</button>
-    <button class="btn btn-sec" onclick="location.href='/'">Cancelar</button>
+    <div class="field">
+      <label>Nombre Completo</label>
+      <input type="text" id="personName" placeholder="Juan Pérez" required>
+    </div>
+    <div class="field">
+      <label>RUT</label>
+      <input type="text" id="personRut" placeholder="12.345.678-9" required>
+    </div>
+    <div class="field">
+      <label>Email Corporativo</label>
+      <input type="email" id="personEmail" placeholder="juan@empresa.com" required>
+    </div>
+    <button class="btn btn-primary" onclick="iniciarRegistro()">Iniciar Escaneo Biométrico</button>
+    <button class="btn btn-secondary" onclick="location.href='/'">Cancelar</button>
   </div>
 
   <div id="bp">
@@ -67,8 +86,8 @@ input:focus{outline:none;border-color:var(--a);box-shadow:0 0 0 3px rgba(59,130,
       <div class="title" id="step3-title">Coloque el dedo en el sensor</div>
       <div class="desc" id="step3-desc">Mantenga presionado firmemente sobre el lector</div>
     </div>
-    <button class="btn btn-fin" id="btn-finish" style="display:none" onclick="location.reload()">Registrar Otra Persona</button>
-    <button class="btn btn-sec" onclick="location.href='/'">Volver al Inicio</button>
+    <button class="btn btn-success" id="btn-finish" style="display:none" onclick="location.reload()">Registrar Otra Persona</button>
+    <button class="btn btn-secondary" onclick="location.href='/'">Volver al Inicio</button>
   </div>
 </div>
 
@@ -84,7 +103,7 @@ async function mostrarModalPassword(errorMsg){
       +'<h2 style="color:#f1f5f9;margin:0 0 16px;font-size:16px">&#x1F512; Contrase&ntilde;a requerida</h2>'
       +'<input type="password" id="apw" style="width:100%;padding:10px;border:1px solid #475569;border-radius:6px;background:#0f172a;color:#f1f5f9;font-size:14px;margin-bottom:12px;box-sizing:border-box" placeholder="Ingrese contrase&ntilde;a"'+(errorMsg?'':' autofocus')+'>'
       +(errorMsg?'<div style="color:#ef4444;font-size:12px;margin-bottom:8px">'+errorMsg+'</div>':'')
-      +'<button id="apb" style="width:100%;padding:10px;background:#3b82f6;color:#fff;border:none;border-radius:6px;font-size:14px;cursor:pointer">Ingresar</button>'
+      +'<button id="apb" style="width:100%;padding:10px;background:#1d4ed8;color:#fff;border:none;border-radius:6px;font-size:14px;cursor:pointer">Ingresar</button>'
       +'<button id="apc" style="width:100%;padding:8px;background:transparent;color:#94a3b8;border:none;border-radius:6px;font-size:12px;cursor:pointer;margin-top:6px">Cancelar</button></div>';
     document.body.appendChild(ov);
     const inp=ov.querySelector('#apw'),btn=ov.querySelector('#apb'),can=ov.querySelector('#apc');
@@ -94,7 +113,6 @@ async function mostrarModalPassword(errorMsg){
     inp.onkeydown=e=>{if(e.key==='Enter')btn.onclick();};
   });
 }
-
 async function verificarAcceso(){
   try{
     const e=await fetch('/estado').then(r=>r.json());
@@ -116,7 +134,6 @@ async function verificarAcceso(){
     return false;
   }catch(e){return true;}
 }
-
 async function fetchProtegido(url){
   if(!adminHabilitado)return fetch(url);
   let pw=sessionStorage.getItem(ADMIN_PW_KEY);
@@ -126,7 +143,6 @@ async function fetchProtegido(url){
   if(r.status===401){sessionStorage.removeItem(ADMIN_PW_KEY);alert('Contrase&ntilde;a incorrecta. Recargue la p&aacute;gina.');return null;}
   return r;
 }
-
 async function iniciarRegistro(){
   const nombre=document.getElementById('personName').value.trim();
   const rut=document.getElementById('personRut').value.trim();
@@ -143,7 +159,6 @@ async function iniciarRegistro(){
     }else{alert('Error: '+(await r.text()));}
   }catch(e){alert('Error conectando con el reloj.');}
 }
-
 async function monitorearHardware(){
   try{
     const data=await fetch('/estado').then(r=>r.json());
@@ -154,7 +169,6 @@ async function monitorearHardware(){
     if(data.rostro_ok===true&&data.codigo_paso===0){registroFinalizado=true;marcarExito();}
   }catch(e){}
 }
-
 async function obtenerVistaPrevia(){
   try{
     const data=await fetchProtegido('/ultimo_registro').then(r=>r.json());
@@ -166,7 +180,6 @@ async function obtenerVistaPrevia(){
     }
   }catch(e){}
 }
-
 function marcarPasoActivo(paso){
   stepActual=paso;
   ['step1','step2','step3'].forEach(id=>document.getElementById(id).className='step');
@@ -180,12 +193,11 @@ function marcarPasoActivo(paso){
   else if(paso===2){document.getElementById('step1').className='step ok';document.getElementById('step2').className='step on';}
   else if(paso===3){document.getElementById('step1').className='step ok';document.getElementById('step2').className='step ok';document.getElementById('step3').className='step on';}
 }
-
 function marcarExito(){
   clearInterval(checkInterval);if(previewInterval)clearInterval(previewInterval);
   ['step1','step2','step3'].forEach(id=>document.getElementById(id).className='step ok');
   const icon=document.getElementById('camIcon');
-  icon.innerHTML='&#10003;';icon.style.display='block';icon.style.color='var(--g)';
+  icon.innerHTML='&#10003;';icon.style.display='block';icon.style.color='var(--success)';
   document.getElementById('camPreview').style.display='none';
   document.getElementById('step3-title').textContent='¡Registro Completo!';
   document.getElementById('step3-desc').textContent='Rostro y huellas sincronizados correctamente.';

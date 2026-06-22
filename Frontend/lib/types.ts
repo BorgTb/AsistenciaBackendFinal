@@ -53,6 +53,7 @@ export interface DeviceStatus {
   tienePassword?: boolean;
   passwordPendiente?: boolean;
   ultimoHeartbeat?: string | null;
+  codigoEnrol?: string | null;
 }
 
 export interface ErpIntegration {

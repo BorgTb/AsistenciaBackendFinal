@@ -1,7 +1,7 @@
 'use client';
 
 import type { ReactNode } from 'react';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useAuth } from '@/lib/auth-context';
 import {
@@ -49,6 +49,7 @@ import {
 
 } from '@/lib/api';
 import type { Asignacion, Asistencia, DeviceStatus, ErpIntegration, LogEntry, Persona, Turno } from '@/lib/types';
+import { useDeviceWebSocket } from '@/lib/useDeviceWebSocket';
 
 type Section = 'dashboard' | 'asistencias' | 'personas' | 'turnos' | 'asignaciones' | 'dispositivos' | 'erp' | 'logs' | 'usuarios' | 'empresas';
 type ToastState = { kind: 'success' | 'error'; message: string } | null;
@@ -198,6 +199,9 @@ export function SasDashboard({ initialSection = 'dashboard' }: { initialSection?
   const [webcamActive, setWebcamActive] = useState(false);
   const [capturedImage, setCapturedImage] = useState<string | null>(null);
   const [captureStream, setCaptureStream] = useState<MediaStream | null>(null);
+  const liveDevices = useDeviceWebSocket();
+  const devicesRef = useRef(devices);
+  devicesRef.current = devices;
   const [personaActual, setPersonaActual] = useState<{ id: string; nombre: string; rut: string; email: string; huella_id: number | null; encoding_facial: string | null; fecha_registro: string; activo: boolean } | null>(null);
   const [consentimientoActivo, setConsentimientoActivo] = useState(false);
   const [guardandoConsentimiento, setGuardandoConsentimiento] = useState(false);
@@ -273,11 +277,9 @@ export function SasDashboard({ initialSection = 'dashboard' }: { initialSection?
         const fiveMinutes = 5 * 60 * 1000;
         setDevices(devicesRes.map((item) => {
           const ultimoHeartbeat = (item as Record<string, unknown>).ultimo_heartbeat as string | null | undefined;
-          let online = (item.estado || '').toLowerCase() === 'activo';
-          if (ultimoHeartbeat) {
-            const heartbeatTime = new Date(ultimoHeartbeat).getTime();
-            online = (now - heartbeatTime) < fiveMinutes;
-          }
+          const online = item.estado === 'activo' && ultimoHeartbeat
+            ? (Date.now() - new Date(ultimoHeartbeat).getTime()) < fiveMinutes
+            : false;
           return {
             id: item.id,
             nombre: item.nombre,
@@ -288,6 +290,7 @@ export function SasDashboard({ initialSection = 'dashboard' }: { initialSection?
             camara: false,
             estado: item.estado,
             tienePassword: (item as Record<string, unknown>).tiene_password as boolean,
+            codigoEnrol: (item as Record<string, unknown>).codigo_enrol as string | null | undefined,
             passwordPendiente: (item as Record<string, unknown>).password_pendiente as boolean,
             ultimoHeartbeat
           };
@@ -334,6 +337,73 @@ export function SasDashboard({ initialSection = 'dashboard' }: { initialSection?
     const timer = window.setTimeout(() => setToast(null), 3200);
     return () => window.clearTimeout(timer);
   }, [toast]);
+
+  const sseKeyRef = useRef('');
+  useEffect(() => {
+    if (liveDevices.length === 0) return;
+    const key = liveDevices.map((d) => `${d.id}:${d.online}:${d.estado}:${d.ultimo_heartbeat ?? ''}`).join('|');
+    if (key === sseKeyRef.current) return;
+    sseKeyRef.current = key;
+    setDevices((current) => {
+      const map = new Map(current.map((d) => [d.id, d]));
+      for (const live of liveDevices) {
+        const existing = map.get(live.id);
+        if (existing) {
+          map.set(live.id, {
+            ...existing,
+            ip: live.ip || existing.ip,
+            online: live.online,
+            estado: live.estado,
+            ultimoHeartbeat: live.ultimo_heartbeat !== undefined ? live.ultimo_heartbeat : existing.ultimoHeartbeat,
+          });
+        }
+      }
+      return Array.from(map.values());
+    });
+  }, [liveDevices]);
+
+  const pollRef = useRef<ReturnType<typeof setInterval> | undefined>(undefined);
+  useEffect(() => {
+    if (user?.rol === 'trabajador') return;
+    async function pollDevices() {
+      try {
+        const res = await getDispositivos();
+        if (!res) return;
+        const fiveMinutes = 5 * 60 * 1000;
+        setDevices((current) => {
+          const map = new Map(current.map((d) => [d.id, d]));
+          for (const item of res) {
+            const ultimoHeartbeat = (item as Record<string, unknown>).ultimo_heartbeat as string | null | undefined;
+            const online = item.estado === 'activo' && ultimoHeartbeat
+              ? (Date.now() - new Date(ultimoHeartbeat).getTime()) < fiveMinutes
+              : false;
+            const existing = map.get(item.id);
+            if (existing) {
+              map.set(item.id, { ...existing, online, estado: item.estado, ultimoHeartbeat });
+            } else {
+              map.set(item.id, {
+                id: item.id,
+                nombre: item.nombre,
+                ip: item.ip_local || '—',
+                online,
+                marcajes: 0,
+                mem: 0,
+                camara: false,
+                estado: item.estado,
+                tienePassword: (item as Record<string, unknown>).tiene_password as boolean,
+                passwordPendiente: (item as Record<string, unknown>).password_pendiente as boolean,
+                ultimoHeartbeat,
+              });
+            }
+          }
+          return Array.from(map.values());
+        });
+      } catch { /* ignore */ }
+    }
+    pollDevices();
+    pollRef.current = setInterval(pollDevices, 15000);
+    return () => { if (pollRef.current) clearInterval(pollRef.current); };
+  }, [user]);
 
   const stats = useMemo(() => {
     const today = new Date().toDateString();
@@ -419,15 +489,12 @@ export function SasDashboard({ initialSection = 'dashboard' }: { initialSection?
     if (view === 'dashboard' || view === 'dispositivos') {
       const devicesRes = await getDispositivos();
       if (devicesRes) {
-        const now = Date.now();
         const fiveMinutes = 5 * 60 * 1000;
         setDevices(devicesRes.map((item) => {
           const ultimoHeartbeat = (item as Record<string, unknown>).ultimo_heartbeat as string | null | undefined;
-          let online = (item.estado || '').toLowerCase() === 'activo';
-          if (ultimoHeartbeat) {
-            const heartbeatTime = new Date(ultimoHeartbeat).getTime();
-            online = (now - heartbeatTime) < fiveMinutes;
-          }
+          const online = item.estado === 'activo' && ultimoHeartbeat
+            ? (Date.now() - new Date(ultimoHeartbeat).getTime()) < fiveMinutes
+            : false;
           return {
             id: item.id,
             nombre: item.nombre,
@@ -437,6 +504,7 @@ export function SasDashboard({ initialSection = 'dashboard' }: { initialSection?
             mem: 0,
             camara: false,
             estado: item.estado,
+            codigoEnrol: (item as Record<string, unknown>).codigo_enrol as string | null | undefined,
             ultimoHeartbeat
           };
         }));
@@ -1622,9 +1690,9 @@ export function SasDashboard({ initialSection = 'dashboard' }: { initialSection?
 
             <div className="device-grid">
               {dashboardDevices.map((item) => (
-                <article className="device-card" key={item.ip}>
+                <article className="device-card" key={item.id}>
                   <div className="device-head">
-                    <div style={{ flex: 1 }}>
+                    <div style={{ flex: 1, minWidth: 0 }}>
                       {editingDeviceId === item.id ? (
                         <div className="status-row" style={{ gap: 8 }}>
                           <input
@@ -1641,20 +1709,94 @@ export function SasDashboard({ initialSection = 'dashboard' }: { initialSection?
                         </div>
                       ) : (
                         <>
-                          <div className="device-name">{item.nombre}</div>
-                          <div className="device-ip">{item.ip}</div>
+                          <div className="status-row" style={{ gap: 10 }}>
+                            <span className={`live-dot ${item.online ? 'online' : 'offline'}`} />
+                            <div>
+                              <div className="device-name">{item.nombre}</div>
+                              {item.ip && item.ip !== '—' ? (
+                                <>
+                                  <a
+                                    href={`http://${item.ip}`}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    className="device-ip-link"
+                                    title="Abrir interfaz del dispositivo (misma red)"
+                                  >
+                                    {item.ip}
+                                  </a>
+                                  <div className="device-ip-hint">Misma red requerida</div>
+                                </>
+                              ) : (
+                                <div className="device-ip">IP no disponible</div>
+                              )}
+                            </div>
+                          </div>
                         </>
                       )}
                     </div>
-                    <Badge tone={item.online ? 'success' : 'warning'}>{item.online ? 'online' : 'offline'}</Badge>
-                    {item.tienePassword ? (
-                      <span title={item.passwordPendiente ? 'Contraseña pendiente de aplicar en el dispositivo' : 'Con contraseña'} style={{ fontSize: '1.1rem', marginLeft: 4 }}>
-                        {item.passwordPendiente ? '🔑' : '🔒'}
-                      </span>
-                    ) : (
-                      <span title="Sin contraseña" style={{ fontSize: '1.1rem', marginLeft: 4, opacity: 0.5 }}>🔓</span>
-                    )}
+                    <div className="status-row" style={{ gap: 6 }}>
+                      <Badge tone={item.online ? 'success' : 'warning'}>{item.online ? 'online' : 'offline'}</Badge>
+                      {item.tienePassword ? (
+                        <span title={item.passwordPendiente ? 'Contraseña pendiente de aplicar en el dispositivo' : 'Con contraseña'} style={{ fontSize: '1.1rem' }}>
+                          {item.passwordPendiente ? '🔑' : '🔒'}
+                        </span>
+                      ) : (
+                        <span title="Sin contraseña" style={{ fontSize: '1.1rem', opacity: 0.5 }}>🔓</span>
+                      )}
+                    </div>
                   </div>
+
+                  {item.codigoEnrol && (
+                    <div className="card" style={{ marginTop: 12, padding: '10px 14px', borderLeft: '4px solid var(--primary)' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                        <span className="muted" style={{ fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.5px' }}>PIN de enrolamiento</span>
+                        <button
+                          className="btn btn-secondary"
+                          type="button"
+                          style={{ fontSize: '0.7rem', padding: '2px 10px' }}
+                          onClick={() => {
+                            const el = document.getElementById(`pin-${item.id}`) as HTMLSpanElement | null;
+                            const btn = document.getElementById(`pin-btn-${item.id}`) as HTMLButtonElement | null;
+                            if (el && btn) {
+                              if (el.dataset.revealed === 'true') {
+                                el.textContent = '••••••';
+                                el.dataset.revealed = 'false';
+                                btn.textContent = 'Mostrar';
+                              } else {
+                                el.textContent = item.codigoEnrol!;
+                                el.dataset.revealed = 'true';
+                                btn.textContent = 'Ocultar';
+                              }
+                            }
+                          }}
+                        >
+                          Mostrar
+                        </button>
+                      </div>
+                      <span
+                        id={`pin-${item.id}`}
+                        data-revealed="false"
+                        style={{ fontSize: '1.4rem', letterSpacing: '4px', fontWeight: 700, fontFamily: 'var(--font-mono)', color: 'var(--primary)', marginTop: 6, display: 'inline-block', cursor: 'pointer', userSelect: 'all' }}
+                        onClick={() => {
+                          const el = document.getElementById(`pin-${item.id}`) as HTMLSpanElement | null;
+                          const btn = document.getElementById(`pin-btn-${item.id}`) as HTMLButtonElement | null;
+                          if (el && btn) {
+                            if (el.dataset.revealed === 'true') {
+                              el.textContent = '••••••';
+                              el.dataset.revealed = 'false';
+                              btn.textContent = 'Mostrar';
+                            } else {
+                              el.textContent = item.codigoEnrol!;
+                              el.dataset.revealed = 'true';
+                              btn.textContent = 'Ocultar';
+                            }
+                          }
+                        }}
+                      >
+                        ••••••
+                      </span>
+                    </div>
+                  )}
 
                   <div className="device-grid" style={{ gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', marginTop: 16 }}>
                     <div className="card">
@@ -1671,8 +1813,11 @@ export function SasDashboard({ initialSection = 'dashboard' }: { initialSection?
 
                   <div className="device-actions">
                     <button className="btn btn-secondary" type="button" onClick={() => { setEditingDeviceId(item.id); setEditDeviceName(item.nombre); }}>Renombrar</button>
+                    {item.ip && item.ip !== '—' && (
+                      <a className="btn btn-primary" href={`http://${item.ip}`} target="_blank" rel="noreferrer" title="Abrir interfaz del dispositivo (requiere estar en la misma red local)">Conectar</a>
+                    )}
                     <button
-                      className="btn btn-primary"
+                      className="btn btn-secondary"
                       type="button"
                       disabled={generatingPasswordFor === item.id}
                       onClick={() => handleGenerarPassword(item.id, item.nombre, !!item.tienePassword)}
@@ -1684,7 +1829,7 @@ export function SasDashboard({ initialSection = 'dashboard' }: { initialSection?
                         Quitar contraseña
                       </button>
                     )}
-                    <a className="btn btn-secondary" href={`${deviceBase}/logs`} target="_blank" rel="noreferrer">Logs</a>
+                    <a className="btn btn-secondary" href={`http://${item.ip || deviceBase}/logs`} target="_blank" rel="noreferrer">Logs</a>
                     <button className="btn btn-secondary" type="button" onClick={() => handleDeviceSync(item.ip)}>Sync</button>
                     <button className="btn btn-danger" type="button" onClick={() => handleDeleteDispositivo(item.id, item.nombre)}>Eliminar</button>
                   </div>

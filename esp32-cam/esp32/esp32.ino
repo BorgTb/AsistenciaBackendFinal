@@ -199,6 +199,8 @@ static void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_
       mqttConnected = true;
       esp_mqtt_client_subscribe(mqtt_client, "esp32/respuesta/facial", 0);
       esp_mqtt_client_subscribe(mqtt_client, "esp32/respuesta/identificar", 0);
+      String pingTopic = "esp32/ping/" + deviceMAC;
+      esp_mqtt_client_subscribe(mqtt_client, pingTopic.c_str(), 0);
       break;
     case MQTT_EVENT_DISCONNECTED:
       mqttConnected = false;
@@ -248,6 +250,13 @@ static void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_
         mqttSuccess = (doc["success"] == true);
         mqttPersonaId = doc["persona_id"].as<String>();
         addLog(mqttSuccess ? "Respuesta MQTT: Rostro identificado" : "Respuesta MQTT: Rostro NO reconocido");
+      }
+      if (topic.startsWith("esp32/ping/")) {
+        addLog("Ping recibido, respondiendo heartbeat");
+        String hbTopic = "esp32/heartbeat/" + deviceMAC;
+        String hbPayload = "{\"mac\":\"" + deviceMAC + "\",\"t\":" + String(millis()) + ",\"ip\":\"" + WiFi.localIP().toString() + "\",\"pong\":true}";
+        esp_mqtt_client_publish(mqtt_client, hbTopic.c_str(), hbPayload.c_str(), 0, 0, 0);
+        lastHeartbeat = millis();
       }
       break;
     }
@@ -412,14 +421,14 @@ String capturarImagenBase64() {
   if (!camaraIniciada) return "";
 
   // 1. ILUMINACIÓN (Consumo alto: Flash ON al 50%)
-  ledcWrite(FLASH_PWM_CH, FLASH_DUTY_LOW);
+  ledcWrite(FLASH_PIN, FLASH_DUTY_LOW);
   delay(200); // Damos tiempo al sensor OV2640 para ajustar brillo y enfoque
 
   // 2. CAPTURA DE HARDWARE (Guardamos la foto en la RAM)
   camera_fb_t* fb = esp_camera_fb_get();
 
   // 3. APAGADO INMEDIATO (Liberamos carga eléctrica de la fuente)
-  ledcWrite(FLASH_PWM_CH, 0);
+  ledcWrite(FLASH_PIN, 0);
   delay(150);
   if (!fb) {
     addLog("Error: Falla al capturar frame");
@@ -477,6 +486,8 @@ void tryConnectWiFi() {
   WiFi.mode(WIFI_STA);
   WiFi.setSleep(false);
   esp_wifi_set_ps(WIFI_PS_NONE);
+  esp_wifi_set_protocol(WIFI_IF_STA, WIFI_PROTOCOL_11B | WIFI_PROTOCOL_11G);
+  esp_wifi_set_max_tx_power(78); // ~20dBm estable
 
   IPAddress dns(8, 8, 8, 8);
   WiFi.config(INADDR_NONE, INADDR_NONE, INADDR_NONE, dns);
@@ -508,13 +519,17 @@ void tryConnectWiFi() {
 
 int reintentosWifi = 0;
 unsigned long ultimoIntentoWifi = 0;
+unsigned long ultimaConexionExitosa = 0;
 
 void verificarConexionWiFi() {
   if (savedSSID.length() == 0) return;
 
   if (WiFi.status() == WL_CONNECTED) {
     isOnline = true;
-    reintentosWifi = 0;
+    if (ultimaConexionExitosa == 0 || millis() - ultimaConexionExitosa > 30000) {
+      reintentosWifi = 0; // Solo resetear si la conexión duró >30s
+    }
+    ultimaConexionExitosa = millis();
     return;
   }
 
@@ -522,7 +537,7 @@ void verificarConexionWiFi() {
 
   isOnline = false;
   unsigned long ahora = millis();
-  if (reintentosWifi > 0 && (ahora - ultimoIntentoWifi) < (reintentosWifi * 3000UL)) return;
+  if (reintentosWifi > 0 && (ahora - ultimoIntentoWifi) < 10000) return; // Mínimo 10s entre intentos
 
   reintentosWifi++;
   ultimoIntentoWifi = ahora;
@@ -554,7 +569,7 @@ void verificarConexionWiFi() {
     addLog("5 intentos fallidos. Activando AP para reconfigurar...");
     WiFi.disconnect(true);
     delay(500);
-    WiFi.mode(WIFI_AP_STA);
+    WiFi.mode(WIFI_AP);
     WiFi.softAP(apSSID, apPASS, 6, 0, 4);
     Serial.println("AP SSID: " + String(apSSID));
     Serial.println("AP PASS: " + String(apPASS));
@@ -562,8 +577,7 @@ void verificarConexionWiFi() {
     Serial.println("AP Canal: " + String(WiFi.channel()));
     WiFi.softAPConfig(IPAddress(192, 168, 4, 1), IPAddress(192, 168, 4, 1), IPAddress(255, 255, 255, 0));
     addLog("AP activo: 192.168.4.1 - PASS=" + String(apPASS));
-    // NO reseteamos wifiEstabaConectado para que el watchdog
-    // pueda reintentar si el router vuelve a estar disponible.
+    wifiEstabaConectado = false; // Detiene reconexiones STA, ahorra corriente
     reintentosWifi = 0;
   }
 }
@@ -1606,7 +1620,11 @@ void loadWiFiConfig() {
     if (doc.containsKey("ssid")) savedSSID = doc["ssid"].as<String>();
     if (doc.containsKey("pass")) savedPASS = doc["pass"].as<String>();
     if (doc.containsKey("backend")) backendURL = doc["backend"].as<String>();
-    if (doc.containsKey("mqtt")) mqttBroker = doc["mqtt"].as<String>();
+    if (doc.containsKey("mqtt")) {
+      mqttBroker = doc["mqtt"].as<String>();
+      mqttBroker.trim();
+      while (mqttBroker.startsWith(":")) mqttBroker = mqttBroker.substring(1);
+    }
     if (doc.containsKey("pin")) pinEnrol = doc["pin"].as<String>();
     file.close();
   }
@@ -2218,9 +2236,8 @@ void setup() {
   pinMode(13, INPUT_PULLUP);
   pinMode(FLASH_PIN, OUTPUT);
   digitalWrite(FLASH_PIN, LOW);
-  ledcSetup(FLASH_PWM_CH, FLASH_PWM_FREQ, FLASH_PWM_RES);
-  ledcAttachPin(FLASH_PIN, FLASH_PWM_CH);
-  ledcWrite(FLASH_PWM_CH, 0);
+  ledcAttach(FLASH_PIN, FLASH_PWM_FREQ, FLASH_PWM_RES);
+  ledcWrite(FLASH_PIN, 0);
   if (digitalRead(13) == LOW) {
     delay(1000);
     if (digitalRead(13) == LOW) {
@@ -2345,6 +2362,7 @@ void setup() {
     json += "\"ssid\":\""    + jsonEscape(savedSSID) + "\",";
     json += "\"enrolado\":"  + String(estaEnrolado ? "true" : "false") + ",";
     json += "\"admin_protegido\":" + String(adminHash.length() > 0 ? "true" : "false") + ",";
+    json += "\"pin\":\""     + jsonEscape(pinEnrol) + "\",";
     json += "\"mac\":\""     + deviceMAC + "\"";
     json += "}";
     server.send(200, "application/json", json);
@@ -2395,7 +2413,7 @@ void loop() {
   
   if (estadoActual != ESTADO_IDLE && estadoActual != ESTADO_PROCESANDO_ASISTENCIA && (ahora - tiempoUltimoEstado) > TIMEOUT_REGISTRO) {
     addLog("Timeout de registro. Volviendo a inactivo.");
-    ledcWrite(FLASH_PWM_CH, 0);
+    ledcWrite(FLASH_PIN, 0);
     estadoActual = ESTADO_IDLE;
   }
 
@@ -2420,7 +2438,7 @@ void loop() {
         hayAlguienFrenteAlSensor = true;
         inicioPIR = ahora;
         tiempoUltimoMovimiento = ahora;
-        ledcWrite(FLASH_PWM_CH, FLASH_DUTY_LOW); // Flash ON al detectar
+        ledcWrite(FLASH_PIN, FLASH_DUTY_LOW); // Flash ON al detectar
         return;
       }
       tiempoUltimoMovimiento = ahora;
@@ -2439,7 +2457,7 @@ void loop() {
       // asumimos que fue una falsa alarma o la persona se retiró.
       if (ahora - tiempoUltimoMovimiento > 15000) {
           addLog("Sin movimiento 15s. Flash OFF, sistema a reposo.");
-          ledcWrite(FLASH_PWM_CH, 0); // Flash OFF al expirar
+          ledcWrite(FLASH_PIN, 0); // Flash OFF al expirar
           hayAlguienFrenteAlSensor = false;
           return;
       }
@@ -2463,7 +2481,7 @@ void loop() {
                     if (resultadoAsistenciaExitosa(res)) flashExito();
                     else flashError();
                     cooldownAsistencia = millis();
-                    ledcWrite(FLASH_PWM_CH, 0);
+                    ledcWrite(FLASH_PIN, 0);
                     hayAlguienFrenteAlSensor = false;
                     asistenciaProcesada = true;
                 } else {
@@ -2498,7 +2516,7 @@ void loop() {
             addLog(res);
             if (resultadoAsistenciaExitosa(res)) flashExito(); else flashError();
             cooldownAsistencia = millis();
-            ledcWrite(FLASH_PWM_CH, 0);
+            ledcWrite(FLASH_PIN, 0);
             hayAlguienFrenteAlSensor = false;
             estadoActual = ESTADO_IDLE;
         } else {
@@ -2554,7 +2572,7 @@ void loop() {
       bool excedido = (fotosTomadas >= FOTOS_REQUERIDAS) || (intentosFacial > 15);
       
       if (excedido && fotosTomadas == 0) {
-        ledcWrite(FLASH_PWM_CH, 0);
+        ledcWrite(FLASH_PIN, 0);
         flashError();
         addLog("No se pudo registrar rostro tras multiples intentos");
         ultimoErrorRegistro = "No se pudo registrar rostro tras multiples intentos";
@@ -2565,7 +2583,7 @@ void loop() {
         personaEditandoId = "";
         fotosTomadas = 0;
       } else if (excedido && fotosTomadas > 0) {
-        ledcWrite(FLASH_PWM_CH, 0);
+        ledcWrite(FLASH_PIN, 0);
         flashExito();
         addLog("Registro completo: " + String(fotosTomadas) + " foto(s) de referencia guardada(s)");
         rostroRegistroExitoso = true;
@@ -2588,7 +2606,7 @@ void loop() {
         if (agregarFotoEnBackend(idParaRostro)) {
           fotosTomadas++;
           if (fotosTomadas >= FOTOS_REQUERIDAS) {
-            ledcWrite(FLASH_PWM_CH, 0);
+            ledcWrite(FLASH_PIN, 0);
             flashExito();
             addLog("Registro completo: " + String(fotosTomadas) + " fotos de referencia guardadas");
             rostroRegistroExitoso = true;
