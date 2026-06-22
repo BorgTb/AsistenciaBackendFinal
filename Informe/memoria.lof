@@ -3,29 +3,39 @@
 \addvspace {10\p@ }
 \addvspace {10\p@ }
 \addvspace {10\p@ }
-\contentsline {figure}{\numberline {3.1}{\ignorespaces Metodología prototipado evolutivo con enfoque incremental}}{28}{}%
+\contentsline {figure}{\numberline {3.1}{\ignorespaces Metodología prototipado evolutivo con enfoque incremental}}{29}{}%
 \addvspace {10\p@ }
-\contentsline {figure}{\numberline {4.1}{\ignorespaces Arquitectura física}}{40}{}%
-\contentsline {figure}{\numberline {4.2}{\ignorespaces Arquitectura lógica}}{41}{}%
-\contentsline {figure}{\numberline {4.3}{\ignorespaces Mockup menú principal en el ESP32-CAM}}{43}{}%
-\contentsline {figure}{\numberline {4.4}{\ignorespaces Mockup panel de configuración Wi-Fi}}{44}{}%
-\contentsline {figure}{\numberline {4.5}{\ignorespaces Mockup registro usuario en el ESP32-CAM}}{44}{}%
-\contentsline {figure}{\numberline {4.6}{\ignorespaces Mockup usuarios almacenados en el ESP32-CAM}}{45}{}%
-\contentsline {figure}{\numberline {4.7}{\ignorespaces Mockup visualización de turnos en el ESP32-CAM}}{45}{}%
-\contentsline {figure}{\numberline {4.8}{\ignorespaces Mockup creación de turnos en el ESP32-CAM}}{46}{}%
-\contentsline {figure}{\numberline {4.9}{\ignorespaces Mockup asignación de turnos en el ESP32-CAM}}{46}{}%
-\contentsline {figure}{\numberline {4.10}{\ignorespaces Flujo operacional para el registro de asistencia.}}{47}{}%
-\contentsline {figure}{\numberline {4.11}{\ignorespaces Conexiones entre el ESP32-CAM y el lector de huellas AS608.}}{48}{}%
-\contentsline {figure}{\numberline {4.12}{\ignorespaces Fragmento de código para inicializar el lector AS608 utilizando UART.}}{49}{}%
-\contentsline {figure}{\numberline {4.13}{\ignorespaces Asignación de rutas para el servidor web embebido.}}{51}{}%
-\contentsline {figure}{\numberline {4.14}{\ignorespaces Menú principal del sistema web embebido.}}{52}{}%
-\contentsline {figure}{\numberline {4.15}{\ignorespaces Interfaz de configuración Wi-Fi.}}{52}{}%
-\contentsline {figure}{\numberline {4.16}{\ignorespaces Vista para el registro de personas en el dispositivo.}}{53}{}%
-\contentsline {figure}{\numberline {4.17}{\ignorespaces Vista de asistencias locales almacenadas en el dispositivo.}}{53}{}%
-\contentsline {figure}{\numberline {4.18}{\ignorespaces Vista de personas registradas en el dispositivo.}}{54}{}%
-\contentsline {figure}{\numberline {4.19}{\ignorespaces Vista de gestión de turnos en el dispositivo.}}{54}{}%
-\contentsline {figure}{\numberline {4.20}{\ignorespaces Vista de gestión de asignaciones en el dispositivo.}}{55}{}%
-\contentsline {figure}{\numberline {4.21}{\ignorespaces Funciones para lectura y escritura de archivos JSON en LittleFS.}}{58}{}%
-\contentsline {figure}{\numberline {4.22}{\ignorespaces Diagrama entidad-relación de la base de datos.}}{65}{}%
+\contentsline {figure}{\numberline {4.1}{\ignorespaces Arquitectura física}}{42}{}%
+\contentsline {figure}{\numberline {4.2}{\ignorespaces Arquitectura lógica}}{43}{}%
+\contentsline {figure}{\numberline {4.3}{\ignorespaces Componentes del ESP32-CAM — hardware y firmware.}}{44}{}%
+\contentsline {figure}{\numberline {4.4}{\ignorespaces Mockup menú principal en el ESP32-CAM}}{46}{}%
+\contentsline {figure}{\numberline {4.5}{\ignorespaces Mockup panel de configuración Wi-Fi}}{46}{}%
+\contentsline {figure}{\numberline {4.6}{\ignorespaces Mockup registro usuario en el ESP32-CAM}}{47}{}%
+\contentsline {figure}{\numberline {4.7}{\ignorespaces Mockup usuarios almacenados en el ESP32-CAM}}{47}{}%
+\contentsline {figure}{\numberline {4.8}{\ignorespaces Mockup visualización de turnos en el ESP32-CAM}}{48}{}%
+\contentsline {figure}{\numberline {4.9}{\ignorespaces Mockup creación de turnos en el ESP32-CAM}}{48}{}%
+\contentsline {figure}{\numberline {4.10}{\ignorespaces Mockup asignación de turnos en el ESP32-CAM}}{49}{}%
+\contentsline {figure}{\numberline {4.11}{\ignorespaces Flujo operacional para el registro de asistencia.}}{50}{}%
+\contentsline {figure}{\numberline {4.12}{\ignorespaces Conexiones entre el ESP32-CAM y el lector de huellas AS608.}}{51}{}%
+\contentsline {figure}{\numberline {4.13}{\ignorespaces Fragmento de código para inicializar el lector AS608 utilizando UART.}}{52}{}%
+\contentsline {figure}{\numberline {4.14}{\ignorespaces Asignación de rutas para el servidor web embebido.}}{53}{}%
+\contentsline {figure}{\numberline {4.15}{\ignorespaces Menú principal del sistema web embebido.}}{54}{}%
+\contentsline {figure}{\numberline {4.16}{\ignorespaces Interfaz de configuración Wi-Fi.}}{55}{}%
+\contentsline {figure}{\numberline {4.17}{\ignorespaces Vista para el registro de personas en el dispositivo.}}{55}{}%
+\contentsline {figure}{\numberline {4.18}{\ignorespaces Vista de asistencias locales almacenadas en el dispositivo.}}{56}{}%
+\contentsline {figure}{\numberline {4.19}{\ignorespaces Vista de personas registradas en el dispositivo.}}{56}{}%
+\contentsline {figure}{\numberline {4.20}{\ignorespaces Vista de gestión de turnos en el dispositivo.}}{57}{}%
+\contentsline {figure}{\numberline {4.21}{\ignorespaces Vista de gestión de asignaciones en el dispositivo.}}{57}{}%
+\contentsline {figure}{\numberline {4.22}{\ignorespaces Funciones para lectura y escritura de archivos JSON en LittleFS.}}{61}{}%
+\contentsline {figure}{\numberline {4.23}{\ignorespaces Máquina de estados del registro biométrico en el ESP32-CAM.}}{62}{}%
+\contentsline {figure}{\numberline {4.24}{\ignorespaces Diagrama entidad-relación de la base de datos (14 tablas).}}{68}{}%
+\contentsline {figure}{\numberline {4.25}{\ignorespaces Flujo MQTT pub/sub — tópicos, direcciones y QoS entre el ESP32-CAM, el broker Mosquitto y el backend.}}{69}{}%
+\contentsline {figure}{\numberline {4.26}{\ignorespaces Arquitectura de despliegue Docker: servicios, puertos, volúmenes y dependencias en la red \texttt {teleasist\_network}.}}{73}{}%
+\contentsline {figure}{\numberline {4.27}{\ignorespaces Diagrama de secuencia del enrolamiento biométrico completo.}}{77}{}%
+\contentsline {figure}{\numberline {4.28}{\ignorespaces Marcaje automático — centinela facial con identificación 1:N y push asíncrono a ERP.}}{79}{}%
+\contentsline {figure}{\numberline {4.29}{\ignorespaces Pipeline de cifrado biométrico}}{82}{}%
+\contentsline {figure}{\numberline {4.30}{\ignorespaces Diagrama de secuencia del login multi-empresa con JWT.}}{87}{}%
+\contentsline {figure}{\numberline {4.31}{\ignorespaces Diagrama de secuencia de la integración ERP — push asíncrono con field mapping.}}{99}{}%
+\contentsline {figure}{\numberline {4.32}{\ignorespaces Diagrama de actividad: sincronización bidireccional entre los modos online y offline del ESP32-CAM.}}{105}{}%
 \addvspace {10\p@ }
 \addvspace {10\p@ }

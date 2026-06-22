@@ -1,0 +1,46 @@
+@startuml componentes_esp32
+title Componentes del ESP32 — hardware y software
+
+skinparam shadowing false
+skinparam componentStyle rectangle
+
+package "Hardware" #FFF8E1 {
+  component "ESP32-CAM\n(ESP32-S, 4 MB PSRAM)" as MCU
+  component "OV2640\n(cámara)" as CAM
+  component "AS608\n(lector huella óptico)" as FP
+  component "Sensor PIR" as PIR
+  component "LED indicador" as LED
+
+  CAM  --  MCU : SCCB / DVP
+  FP   --  MCU : UART2\n(GPIO16 RX / GPIO17 TX)
+  PIR  -->  MCU : GPIO12  (IN)
+  MCU  -->  LED : GPIO4   (OUT)
+}
+
+package "Firmware  (Arduino C++)" #E3F2FD {
+  component "WebServer\n(HTML + JSON API)" as WEB
+  component "MQTT Client\n(PubSubClient)" as MQ
+  component "HTTP Client\n(WiFiClient)" as HTTP
+  component "Storage\n(SPIFFS / LittleFS)" as FS
+  component "State Machine\n(registro · marcaje)" as SM
+  component "Captura biométrica\n(facial + huella)" as BIO
+
+  WEB  -->  FS  : read / write JSON
+  SM   -->  BIO
+  SM   -->  FS  : /asistencias.json
+  BIO  -->  MQ  : esp32/imagen/registrar
+  BIO  -->  HTTP : POST /api/facial/identificar
+  MQ   -->  SM  : respuestas async
+}
+
+MCU ..> WEB  : ejecuta
+MCU ..> MQ   : ejecuta
+MCU ..> SM   : ejecuta
+MCU ..> FS   : monta partición
+
+cloud "Wi-Fi" as WIFI
+MQ   ..>  WIFI
+HTTP ..>  WIFI
+WEB  ..>  WIFI
+
+@enduml

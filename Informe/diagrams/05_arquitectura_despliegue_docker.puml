@@ -1,0 +1,49 @@
+@startuml arquitectura_despliegue_docker
+title Despliegue Docker — teleasist_network
+
+skinparam shadowing false
+skinparam componentStyle rectangle
+
+actor "Cliente Web" as Cliente
+cloud "ESP32-CAM\n(red local)" as ESP
+
+node "Host docker-compose" {
+
+  frame "teleasist_network  (bridge)" {
+
+    node "postgres:15" as PG {
+      component "PostgreSQL\n:5432" as pg_svc
+      folder "volumen:\npostgres_data" as v_pg
+      pg_svc -- v_pg
+    }
+
+    node "eclipse-mosquitto" as MQTT {
+      component "Mosquitto\n:1884 (MQTT)\n:9001 (WebSocket)" as mq_svc
+      folder "volumen:\nmosquitto/{config,data,log}" as v_mq
+      mq_svc -- v_mq
+    }
+
+    node "backend (Flask)" as BE {
+      component "Flask + paho-mqtt\n:5000" as be_svc
+      folder "volumen:\n./backend:/app" as v_be
+      be_svc -- v_be
+    }
+
+    node "frontend (Next.js)" as FE {
+      component "Next.js\n:3000" as fe_svc
+      folder "volumen:\n./frontend:/app" as v_fe
+      fe_svc -- v_fe
+    }
+
+    be_svc --> pg_svc : depends_on\nDATABASE_URL
+    be_svc --> mq_svc : depends_on\nMQTT_BROKER
+    fe_svc --> be_svc : NEXT_PUBLIC_API_URL
+  }
+}
+
+Cliente ..> fe_svc : :3000
+Cliente ..> be_svc : :5000  (API directa)
+ESP ..> mq_svc : pub/sub  :1884
+ESP ..> be_svc : HTTP  :5000
+
+@enduml

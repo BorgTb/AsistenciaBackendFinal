@@ -12,7 +12,7 @@
 %% paquetes para diagramas
 \usepackage{amssymb}
 \usepackage{tikz}
-\usetikzlibrary{arrows.meta}
+\usetikzlibrary{arrows.meta, positioning, shapes.geometric, shadows}
 
 %% inicio de documento
 \begin{document}
@@ -238,7 +238,7 @@ El Modelo en Cascada exige definir la totalidad de los requerimientos y diseñar
 
 Por esta razón, se descartó el enfoque secuencial y se optó por emplear una metodología de prototipado evolutivo incremental, adaptándola a la dinámica de un proyecto en solitario. En este esquema, el profesor guía asume el rol de contraparte o cliente, entregando retroalimentación técnica al final de cada ciclo. Esta metodología es la más indicada para el proyecto, ya que permite mitigar riesgos técnicos construyendo, probando y validando módulos independientes de manera progresiva [25][26].
 
-La metodología de prototipado evolutivo con un enfoque incremental propone un desarrollo basado en versiones sucesivas del prototipo, en la que cada iteración incorpora nuevas funcionalidades y mejoras sobre el anterior. De esta forma se puede probar, evaluar y ajustar continuamente el sistema a medida que va evolucionando. Como se ilustra en la Figura X, la estructura de la metodología se compone de cuatro fases principales:
+La metodología de prototipado evolutivo con un enfoque incremental propone un desarrollo basado en versiones sucesivas del prototipo, en la que cada iteración incorpora nuevas funcionalidades y mejoras sobre el anterior. De esta forma se puede probar, evaluar y ajustar continuamente el sistema a medida que va evolucionando. La estructura de la metodología, representada más adelante en la Figura~\ref{fig:metodologia} del capítulo 3, se compone de cuatro fases principales:
 \begin{itemize}
     \item Diseño y planificación: Se definen los objetivos específicos de cada iteración, se seleccionan componentes y se diseña la arquitectura.
     \item Implementación y prueba: Se desarrolla la funcionalidad planificada, se integra con los módulos que ya existen y se verifica su correcto funcionamiento
@@ -293,7 +293,7 @@ A continuación se procederá a explicar las distintas fases del proceso y como 
 
 \subsection{Protipado Evolutivo Incremental}
 
-La metodología de prototipado evolutivo con un enfoque incremental propone un desarrollo basado en versiones sucesivas del prototipo, en la que cada iteración incorpora nuevas funcionalidades y mejoras sobre el anterior. De esta forma se puede probar, evaluar y ajustar continuamente el sistema a medida que va evolucionando. Como se ilustra en la Figura X, la estructura de la metodología se compone de cuatro fases principales:
+La metodología de prototipado evolutivo con un enfoque incremental propone un desarrollo basado en versiones sucesivas del prototipo, en la que cada iteración incorpora nuevas funcionalidades y mejoras sobre el anterior. De esta forma se puede probar, evaluar y ajustar continuamente el sistema a medida que va evolucionando. Como se ilustra en la Figura~\ref{fig:metodologia}, la estructura de la metodología se compone de cuatro fases principales:
 
 \begin{itemize}
     \item \textbf{Requerimientos Iniciales:} Se identifica la problemática a resolver, se definen los objetivos específicos del prototipo para la iteración actual y se establecen las restricciones operativas y el alcance.
@@ -308,6 +308,7 @@ Cada uno de estos ciclos termina con un incremento funcional validado, lo que pe
     \centering
     \includegraphics[width=0.8\linewidth]{Imagenes/metodologia (1).png}
     \caption{Metodología prototipado evolutivo con enfoque incremental}
+    \label{fig:metodologia}
 \end{figure}
 
 \subsubsection*{1. Requerimientos Iniciales}
@@ -593,18 +594,18 @@ La siguiente tabla desglosa los costos de los componentes utilizados en el proto
 \hline
 \textbf{Componente} & \textbf{Cantidad} & \textbf{Costo (USD)} \\
 \hline
-ESP32-CAM (cámara OV2640 + microcontrolador) & 1 & \\
-Lector de huellas AS608 & 1 & \\
-Sensor PIR HC-SR501 & 1 & \\
-Fuente de alimentación 5V / 2A & 1 & \\
-Cables y conectores Dupont & 1 kit & \\
-Placa de pruebas (protoboard) & 1 & \\
-Carcasa / soporte impreso en 3D & 1 & \\
+ESP32-CAM (cámara OV2640 + microcontrolador) & 1 & Pendiente \\
+Lector de huellas AS608 & 1 & Pendiente \\
+Sensor PIR HC-SR501 & 1 & Pendiente \\
+Fuente de alimentación 5V / 2A & 1 & Pendiente \\
+Cables y conectores Dupont & 1 kit & Pendiente \\
+Placa de pruebas (protoboard) & 1 & Pendiente \\
+Carcasa / soporte impreso en 3D & 1 & Pendiente \\
 \hline
-\textbf{Total} & & \\
+\textbf{Total} & & Pendiente \\
 \hline
 \end{tabular}
-\caption{Desglose de costos del prototipo}
+\caption{Desglose de costos del prototipo (pendiente de completar con precios de mercado)}
 \end{table}
 
 \section{Resultados de encuestas SUS}
@@ -617,21 +618,21 @@ Se aplicó el cuestionario System Usability Scale estándar a dos grupos de usua
 \hline
 \textbf{N.º} & \textbf{Pregunta} & \textbf{Promedio} & \textbf{Tipo} \\
 \hline
-1 & Creo que me gustaría usar este sistema con frecuencia. & & Positiva \\
-2 & Encontré el sistema innecesariamente complejo. & & Invertida \\
-3 & Pensé que el sistema era fácil de usar. & & Positiva \\
-4 & Creo que necesitaría apoyo de una persona técnica para poder usar este sistema. & & Invertida \\
-5 & Consideré que las funciones del sistema estaban bien integradas. & & Positiva \\
-6 & Pensé que había demasiada inconsistencia en el sistema. & & Invertida \\
-7 & Imagino que la mayoría de las personas aprenderían a usar este sistema rápidamente. & & Positiva \\
-8 & Encontré el sistema muy engorroso de usar. & & Invertida \\
-9 & Me sentí seguro al usar el sistema. & & Positiva \\
-10 & Necesité aprender muchas cosas antes de poder empezar a usar este sistema. & & Invertida \\
+1 & Creo que me gustaría usar este sistema con frecuencia. & Pendiente & Positiva \\
+2 & Encontré el sistema innecesariamente complejo. & Pendiente & Invertida \\
+3 & Pensé que el sistema era fácil de usar. & Pendiente & Positiva \\
+4 & Creo que necesitaría apoyo de una persona técnica para poder usar este sistema. & Pendiente & Invertida \\
+5 & Consideré que las funciones del sistema estaban bien integradas. & Pendiente & Positiva \\
+6 & Pensé que había demasiada inconsistencia en el sistema. & Pendiente & Invertida \\
+7 & Imagino que la mayoría de las personas aprenderían a usar este sistema rápidamente. & Pendiente & Positiva \\
+8 & Encontré el sistema muy engorroso de usar. & Pendiente & Invertida \\
+9 & Me sentí seguro al usar el sistema. & Pendiente & Positiva \\
+10 & Necesité aprender muchas cosas antes de poder empezar a usar este sistema. & Pendiente & Invertida \\
 \hline
-\multicolumn{3}{|l|}{\textbf{Puntuación SUS total}} & \\
+\multicolumn{3}{|l|}{\textbf{Puntuación SUS total}} & Pendiente \\
 \hline
 \end{tabular}
-\caption{Resultados de encuesta SUS - usuarios no técnicos}
+\caption{Resultados de encuesta SUS - usuarios no técnicos (pendiente de aplicar encuestas)}
 \end{table}
 
 \subsection{Usuarios técnicos}
@@ -641,21 +642,21 @@ Se aplicó el cuestionario System Usability Scale estándar a dos grupos de usua
 \hline
 \textbf{N.º} & \textbf{Pregunta} & \textbf{Promedio} & \textbf{Tipo} \\
 \hline
-1 & Creo que me gustaría usar este sistema con frecuencia. & & Positiva \\
-2 & Encontré el sistema innecesariamente complejo. & & Invertida \\
-3 & Pensé que el sistema era fácil de usar. & & Positiva \\
-4 & Creo que necesitaría apoyo de una persona técnica para poder usar este sistema. & & Invertida \\
-5 & Consideré que las funciones del sistema estaban bien integradas. & & Positiva \\
-6 & Pensé que había demasiada inconsistencia en el sistema. & & Invertida \\
-7 & Imagino que la mayoría de las personas aprenderían a usar este sistema rápidamente. & & Positiva \\
-8 & Encontré el sistema muy engorroso de usar. & & Invertida \\
-9 & Me sentí seguro al usar el sistema. & & Positiva \\
-10 & Necesité aprender muchas cosas antes de poder empezar a usar este sistema. & & Invertida \\
+1 & Creo que me gustaría usar este sistema con frecuencia. & Pendiente & Positiva \\
+2 & Encontré el sistema innecesariamente complejo. & Pendiente & Invertida \\
+3 & Pensé que el sistema era fácil de usar. & Pendiente & Positiva \\
+4 & Creo que necesitaría apoyo de una persona técnica para poder usar este sistema. & Pendiente & Invertida \\
+5 & Consideré que las funciones del sistema estaban bien integradas. & Pendiente & Positiva \\
+6 & Pensé que había demasiada inconsistencia en el sistema. & Pendiente & Invertida \\
+7 & Imagino que la mayoría de las personas aprenderían a usar este sistema rápidamente. & Pendiente & Positiva \\
+8 & Encontré el sistema muy engorroso de usar. & Pendiente & Invertida \\
+9 & Me sentí seguro al usar el sistema. & Pendiente & Positiva \\
+10 & Necesité aprender muchas cosas antes de poder empezar a usar este sistema. & Pendiente & Invertida \\
 \hline
-\multicolumn{3}{|l|}{\textbf{Puntuación SUS total}} & \\
+\multicolumn{3}{|l|}{\textbf{Puntuación SUS total}} & Pendiente \\
 \hline
 \end{tabular}
-\caption{Resultados de encuesta SUS - usuarios técnicos}
+\caption{Resultados de encuesta SUS - usuarios técnicos (pendiente de aplicar encuestas)}
 \end{table}
 
 \subsection{Análisis comparativo}
@@ -671,14 +672,14 @@ Se midió el tiempo total del ciclo de marcación facial: captura de imagen, cod
 \hline
 \textbf{Métrica} & \textbf{Valor} \\
 \hline
-Tiempo promedio de captura + codificación & \\
-Tiempo promedio de transmisión HTTP (POST octet-stream) & \\
-Tiempo promedio de procesamiento DeepFace (identificación 1:N) & \\
-Tiempo total promedio del ciclo & \\
-Desviación estándar & \\
+Tiempo promedio de captura + codificación & Pendiente \\
+Tiempo promedio de transmisión HTTP (POST octet-stream) & Pendiente \\
+Tiempo promedio de procesamiento DeepFace (identificación 1:N) & Pendiente \\
+Tiempo total promedio del ciclo & Pendiente \\
+Desviación estándar & Pendiente \\
 \hline
 \end{tabular}
-\caption{Tiempos de respuesta del ciclo de marcación facial}
+\caption{Tiempos de respuesta del ciclo de marcación facial (pendiente de medir)}
 \end{table}
 
 \subsection{Precisión del reconocimiento}
@@ -690,28 +691,28 @@ Se evaluó la precisión del sistema con un conjunto de pruebas de registro e id
 \hline
 \textbf{Métrica} & \textbf{Valor} \\
 \hline
-Tasa de reconocimiento exitoso (True Positive Rate) & \\
-Tasa de falsos positivos & \\
-Tasa de falsos negativos & \\
-Efectividad del anti-spoofing (fotografías / pantallas rechazadas) & \\
-Precisión con iluminación favorable & \\
-Precisión con iluminación desfavorable & \\
+Tasa de reconocimiento exitoso (True Positive Rate) & Pendiente \\
+Tasa de falsos positivos & Pendiente \\
+Tasa de falsos negativos & Pendiente \\
+Efectividad del anti-spoofing (fotografías / pantallas rechazadas) & Pendiente \\
+Precisión con iluminación favorable & Pendiente \\
+Precisión con iluminación desfavorable & Pendiente \\
 \hline
 \end{tabular}
-\caption{Métricas de precisión del reconocimiento facial}
+\caption{Métricas de precisión del reconocimiento facial (pendiente de evaluar)}
 \end{table}
 
 \section{Resultados de pruebas de estrés offline}
 Se sometió el dispositivo a tres escenarios de conectividad para evaluar la confiabilidad del almacenamiento local y la sincronización diferida.
 
 \subsection{Escenario 1: Desconexión total}
-El dispositivo operó sin conexión a internet durante \_\_ horas consecutivas, registrando \_\_ marcaciones. Al restablecer la conectividad, se verificó la sincronización del 100\% de los registros.
+El dispositivo operó sin conexión a internet durante un período Pendiente de definir, registrando Pendiente de definir marcaciones. Al restablecer la conectividad, se verificó la sincronización del 100\% de los registros.
 
 \subsection{Escenario 2: Conectividad intermitente}
-Se simularon \_\_ ciclos de conexión/desconexión con intervalos aleatorios. Se midió la cantidad de reintentos automáticos y la consistencia del log de eventos.
+Se simularon Pendiente de definir ciclos de conexión/desconexión con intervalos aleatorios. Se midió la cantidad de reintentos automáticos y la consistencia del log de eventos.
 
 \subsection{Escenario 3: Reconexión prolongada}
-Tras \_\_ días de operación offline, se reconectó el dispositivo y se midió el tiempo total de sincronización y la integridad de los datos transferidos.
+Tras Pendiente de definir días de operación offline, se reconectó el dispositivo y se midió el tiempo total de sincronización y la integridad de los datos transferidos.
 
 \begin{table}[H]
 \centering
@@ -720,14 +721,14 @@ Tras \_\_ días de operación offline, se reconectó el dispositivo y se midió 
 \hline
 \textbf{Métrica} & \textbf{Sin conexión} & \textbf{Intermitente} & \textbf{Reconexión} \\
 \hline
-Registros generados offline & & & \\
-Registros sincronizados correctamente & & & \\
-Porcentaje de sincronización & & & \\
-Tiempo de sincronización & & & \\
-Reintentos automáticos & N/A & & \\
+Registros generados offline & Pendiente & Pendiente & Pendiente \\
+Registros sincronizados correctamente & Pendiente & Pendiente & Pendiente \\
+Porcentaje de sincronización & Pendiente & Pendiente & Pendiente \\
+Tiempo de sincronización & Pendiente & Pendiente & Pendiente \\
+Reintentos automáticos & N/A & Pendiente & Pendiente \\
 \hline
 \end{tabular}
-\caption{Resultados de pruebas de estrés offline}
+\caption{Resultados de pruebas de estrés offline (pendiente de ejecutar)}
 \end{table}
 
 \section{Resumen del capítulo}
@@ -745,7 +746,7 @@ El capítulo 5 presentó los resultados obtenidos en las cuatro dimensiones de e
     \item Fernández, A. (2025, abril). Reloj control: Qué es, para qué sirve y qué debes tener en cuenta. Nubox Blog. https://blog.nubox.com/empresas/reloj-control
     \item Pachon Robayo, S. (s.f.). Monitoreo de transmisión de video en vivo utilizando ESP32-CAM y Ubidots. Ubidots Centro de Ayuda. Recuperado el 17 de octubre de 2025, de https://help.ubidots.com/es/articles/7156830-monitoreo-de-transmision-de-video-en-vivo-utilizando-ESP32-CAM-y-ubidots
     \item Amazon Web Services. (s.f.). ¿Qué es una API? Explicación de qué es una interfaz de programación de aplicaciones. Recuperado el 9 de noviembre de 2025, de https://aws.amazon.com/es/what-is/api
-    \item Ken, A. (2023, abril 10). Backend: ¿Qué es y para qué sirve? (Falta URL - agregar cuando la tengas)
+    \item Ken, A. (2023, abril 10). Backend: ¿Qué es y para qué sirve? Recuperado de https://blog.hubspot.es/website/backend
     \item IONOS. (s.f.). ¿Qué es un frontend? Definición y explicación. Recuperado el 28 de octubre de 2025, de https://www.ionos.com/es-us/digitalguide/paginas-web/creacion-de-paginas-web/que-es-el-frontend
     \item Amazon Web Services. (s.f.). ¿Qué es MQTT? Explicación del protocolo MQTT. Recuperado el 6 de octubre de 2025, de https://aws.amazon.com/es/what-is/mqtt
     \item Erickson, J. (2024, abril 4). ¿Qué es JSON? Oracle América Latina. Recuperado el 14 de noviembre de 2025, de https://www.oracle.com/latam/database/what-is-json

@@ -1,0 +1,49 @@
+@startuml flujo_enrolamiento_biometrico
+title Enrolamiento biométrico completo
+
+skinparam sequenceMessageAlign center
+skinparam shadowing false
+skinparam ParticipantPadding 15
+skinparam BoxPadding 10
+
+actor "Admin Web" as Admin
+actor "Trabajador" as Worker
+participant "ESP32-CAM" as ESP32
+queue "MQTT Broker\n(Mosquitto)" as MQTT
+participant "Backend Flask\n(REST + MQTT)" as Backend
+database "PostgreSQL" as DB
+
+== Creación de persona y consentimiento ==
+Admin -> Backend : POST /api/personas\n{rut, nombre, consentimiento}
+Backend -> DB : INSERT persona (consentimiento=true)
+DB --> Backend : persona_id
+Backend --> Admin : 201 Created
+
+note over Worker, ESP32 : Trabajador acude al dispositivo
+
+Worker -> ESP32 : Iniciar enrolamiento (UI embebida)
+ESP32 -> Backend : GET /api/personas/pendientes
+Backend --> ESP32 : lista personas a enrolar
+
+== Registro de huella (AS608, 2 pasos) ==
+ESP32 -> Worker : "Coloque dedo (1/2)"
+Worker -> ESP32 : huella capturada
+ESP32 -> ESP32 : generar template parcial
+ESP32 -> Worker : "Coloque dedo (2/2)"
+Worker -> ESP32 : huella confirmada
+ESP32 -> ESP32 : validar coincidencia\n→ template AS608 final
+
+== Registro facial ==
+ESP32 -> Worker : "Mire a la cámara"
+ESP32 -> ESP32 : capturar imagen (OV2640)
+ESP32 -> MQTT : PUBLISH esp32/imagen/registrar\n{persona_id, imagen_b64, mac}
+MQTT -> Backend : forward
+Backend -> Backend : DeepFace.represent(img)\n→ embedding[512]
+Backend -> Backend : cifrar_embedding(emb)\n→ Fernet (AES-128 + HMAC)
+Backend -> DB : UPDATE persona SET\n  embedding_facial = <cifrado>,\n  huella_template = <bytes>
+DB --> Backend : OK
+Backend -> MQTT : PUBLISH esp32/respuesta/registro\n{status: ok}
+MQTT -> ESP32 : confirmación
+ESP32 -> Worker : "Registro exitoso"
+
+@enduml

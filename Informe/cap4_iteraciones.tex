@@ -14,9 +14,7 @@ Esta sección está destinada a presentar las arquitecturas desarrolladas para e
 La arquitectura física propuesta se basa en una arquitectura basada en microservicios. En la figura 4.1 se puede presenciar como sería la comunicación entre el dispositivo IoT que emite el evento para realizar el registro, para luego que el servidor con el broker MQTT reciba las imágenes y utilice el servicio de reconocimiento facial, para luego enviarlas al servidor backend en donde se distribuyen para el sistema ERP y para la registrarlo en la base de datos, además de disponer del panel web para la visualización de los datos de manera remota.
 \begin{figure}[H]
   \centering
-  \vspace*{0.5cm}
-  \includegraphics[ width=.7\linewidth]{Imagenes/arqui2.drawio.png}
-  \vspace*{0.3cm}
+  \includegraphics[width=\linewidth]{Imagenes/arqui2.drawio.png}
   \caption{Arquitectura física}
 \end{figure}
 
@@ -27,10 +25,15 @@ El backend recibe la información enviada por el dispositivo, procesa las imáge
 
 \begin{figure}[H]
   \centering
-  \vspace*{0.5cm}
-  \includegraphics[ width=.7\linewidth]{Imagenes/arquilogica.png}
-  \vspace*{0.3cm}
+  \includegraphics[width=\linewidth]{Imagenes/arquilogica.png}
   \caption{Arquitectura lógica}
+\end{figure}
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=\linewidth]{diagrams/componentes_esp32.png}
+  \caption{Componentes del ESP32-CAM — hardware y firmware.}
+  \label{fig:componentes_esp32}
 \end{figure}
 
 \section{Implementación}
@@ -77,63 +80,49 @@ En esta iteración se elaboraron los primeros elementos arquitectónicos del sis
         \item Menú principal.
         \begin{figure}[H]
             \centering
-            \vspace*{1cm}
             \includegraphics[width=.8\linewidth]{Imagenes/menu.drawio.png}
-            \vspace*{1cm}
             \caption{Mockup menú principal en el ESP32-CAM}
         \end{figure}
 
         \item Panel de configuración de Wi-Fi.
         \begin{figure}[H]
             \centering
-            \vspace*{1cm}
             \includegraphics[width=.8\linewidth]{Imagenes/configwifi.drawio.png}
-            \vspace*{1cm}
             \caption{Mockup panel de configuración Wi-Fi}
         \end{figure}
 
         \item Vista de registro de usuario.
         \begin{figure}[H]
             \centering
-            \vspace*{1cm}
             \includegraphics[width=.8\linewidth]{Imagenes/registeruser.jpg}
-            \vspace*{1cm}
             \caption{Mockup registro usuario en el ESP32-CAM}
         \end{figure}
 
         \item Vista de usuarios almacenados localmente.
         \begin{figure}[H]
             \centering
-            \vspace*{1cm}
             \includegraphics[width=.8\linewidth]{Imagenes/lista user.jpg}
-            \vspace*{1cm}
             \caption{Mockup usuarios almacenados en el ESP32-CAM}
         \end{figure}
 
         \item Vista de turnos almacenados localmente.
         \begin{figure}[H]
             \centering
-            \vspace*{1cm}
             \includegraphics[width=.8\linewidth]{Imagenes/ver turnos.drawio.png}
-            \vspace*{1cm}
             \caption{Mockup visualización de turnos en el ESP32-CAM}
         \end{figure}
 
         \item Vista de crear turnos.
         \begin{figure}[H]
             \centering
-            \vspace*{1cm}
             \includegraphics[width=.8\linewidth]{Imagenes/crearturnosmockup.png}
-            \vspace*{1cm}
             \caption{Mockup creación de turnos en el ESP32-CAM}
         \end{figure}
 
         \item Vista de Asignación de turnos.
         \begin{figure}[H]
             \centering
-            \vspace*{1cm}
             \includegraphics[width=.8\linewidth]{Imagenes/asigncaiondeturnomockup2.png}
-            \vspace*{1cm}
             \caption{Mockup asignación de turnos en el ESP32-CAM}
         \end{figure}
     \end{itemize}
@@ -141,9 +130,7 @@ En esta iteración se elaboraron los primeros elementos arquitectónicos del sis
     \item \textbf{Diseño del flujo operacional}: Representa el flujo del proceso de marcación para los casos en se cuente con conexión a internet y sin internet.
     \begin{figure}[H]
         \centering
-        \vspace*{1cm}
         \includegraphics[width=.8\linewidth]{Imagenes/diagramaflujo2 (1).png}
-        \vspace*{1cm}
         \caption{Flujo operacional para el registro de asistencia.}
     \end{figure}
 
@@ -168,9 +155,7 @@ El lector biométrico AS608 fue conectado directamente al ESP32-CAM mediante la 
 
 \begin{figure}[H]
     \centering
-    \vspace*{1cm}
     \includegraphics[width=.8\linewidth]{Imagenes/conexiones.png}
-    \vspace*{1cm}
     \caption{Conexiones entre el ESP32-CAM y el lector de huellas AS608.}
     \label{fig:conexioneshuella}
 \end{figure}
@@ -238,9 +223,7 @@ La Figura~\ref{fig:menu_principal} presenta la vista principal accesible en la r
 
 \begin{figure}[H]
     \centering
-    \vspace*{1cm}
     \includegraphics[width=.8\linewidth]{Imagenes/menuimplementado.png}
-    \vspace*{1cm}
     \caption{Menú principal del sistema web embebido.}
 \label{fig:menu_principal}
 \end{figure}
@@ -251,9 +234,7 @@ Mediante la ruta \texttt{/wifi-setup}, el dispositivo ofrece un formulario para 
 
 \begin{figure}[H]
     \centering
-    \vspace*{1cm}
     \includegraphics[width=.8\linewidth]{Imagenes/menuwifiimplementado.png}
-    \vspace*{1cm}
     \caption{Interfaz de configuración Wi-Fi.}
 \label{fig:wifi_config}
 \end{figure}
@@ -264,9 +245,7 @@ La ruta \texttt{/register} despliega una vista que combina un formulario para in
 
 \begin{figure}[H]
     \centering
-    \vspace*{1cm}
     \includegraphics[width=.8\linewidth]{Imagenes/registroimplementado.png}
-    \vspace*{1cm}
     \caption{Vista para el registro de personas en el dispositivo.}
 \label{fig:registro_personas}
 \end{figure}
@@ -277,9 +256,7 @@ Para visualizar registros de asistencia tanto locales como sincronizados, se imp
 
 \begin{figure}[H]
     \centering
-    \vspace*{1cm}
     \includegraphics[width=.8\linewidth]{Imagenes/vistaasitenciasimplementado.png}
-    \vspace*{1cm}
     \caption{Vista de asistencias locales almacenadas en el dispositivo.}
 \label{fig:vista_asistencias}
 \end{figure}
@@ -290,9 +267,7 @@ Para visualizar las personas registradas, se implementó la vista en la ruta \te
 
 \begin{figure}[H]
     \centering
-    \vspace*{1cm}
     \includegraphics[width=.8\linewidth]{Imagenes/personasregistradasimplementada.png}
-    \vspace*{1cm}
     \caption{Vista de personas registradas en el dispositivo.}
 \label{fig:personas_registradas}
 \end{figure}
@@ -303,9 +278,7 @@ Para la creación de turnos y visualización de los existentes, se implementó l
 
 \begin{figure}[H]
     \centering
-    \vspace*{1cm}
     \includegraphics[width=.8\linewidth]{Imagenes/creacionturnos.png}
-    \vspace*{1cm}
     \caption{Vista de gestión de turnos en el dispositivo.}
 \label{fig:gestion_turnos}
 \end{figure}
@@ -316,9 +289,7 @@ Para visualizar las asignaciones de turnos y realizar la acción de asignar un t
 
 \begin{figure}[H]
     \centering
-    \vspace*{1cm}
     \includegraphics[width=.8\linewidth]{Imagenes/asignacionturnoimplementacion.png}
-    \vspace*{1cm}
     \caption{Vista de gestión de asignaciones en el dispositivo.}
 \label{fig:asignacion_turnos}
 \end{figure}
@@ -413,7 +384,14 @@ Una vez encontrado un slot, se ejecuta el proceso de enrolamiento en dos fases:
     \item \textbf{Espera y segunda captura} (\texttt{ESTADO\_REGISTRO\_SEGUNDA\_HUELLA}): Una vez que el sensor detecta que el dedo fue retirado (\texttt{FINGERPRINT\_NOFINGER}), el sistema solicita una segunda captura del mismo dedo. Al obtenerla, convierte a plantilla en el buffer 2, crea el modelo combinado (\texttt{finger.createModel()}) y lo almacena en el slot correspondiente (\texttt{finger.storeModel()}).
 \end{enumerate}
 
-Luego del enrolamiento exitoso, se almacena un nuevo objeto dentro de \texttt{personas.json} con un identificador único (generado localmente con prefijo \texttt{local-} o provisto por el backend si hay conectividad), el nombre, RUT, correo electrónico y el slot asignado.
+Luego del enrolamiento exitoso, se almacena un nuevo objeto dentro de \texttt{personas.json} con un identificador único (generado localmente con prefijo \texttt{local-} o provisto por el backend si hay conectividad), el nombre, RUT, correo electrónico y el slot asignado. La Figura~\ref{fig:maquina_estados_esp32} ilustra la máquina de estados que gobierna este proceso de enrolamiento.
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=\linewidth]{diagrams/maquina_estados_esp32.png}
+  \caption{Máquina de estados del registro biométrico en el ESP32-CAM.}
+  \label{fig:maquina_estados_esp32}
+\end{figure}
 
 \paragraph{Registro de asistencia en modo offline}
 
@@ -533,14 +511,21 @@ La Figura~\ref{fig:db-er} presenta el diagrama entidad-relación correspondiente
 
 \begin{figure}[H]
     \centering
-    \input{../diagrams/db_er_fig.tikz}
-    \caption{Diagrama entidad-relación de la base de datos.}
+    \includegraphics[width=\linewidth]{diagrams/diagrama_er_base_datos.png}
+    \caption{Diagrama entidad-relación de la base de datos (14 tablas).}
     \label{fig:db-er}
 \end{figure}
 
 La comunicación MQTT se diseña para transmitir imágenes faciales de \textbf{registro} desde el ESP32-CAM hacia el backend en un único mensaje JSON por el tópico \texttt{esp32/imagen/registrar}, conteniendo el \texttt{rut} y la imagen codificada en Base64. El backend, mediante un cliente MQTT (librería \texttt{paho-mqtt} de Python), se suscribe a este tópico, decodifica la imagen y procesa el enrolamiento facial. Es importante destacar que las imágenes de \textbf{identificación} (consulta 1:N durante la marcación) \textbf{no viajan por MQTT}, sino por HTTP al endpoint \texttt{POST /api/facial/identificar} como JPEG crudo en formato \texttt{application/octet-stream}.
 
-Adicionalmente, se definen los tópicos \texttt{esp32/heartbeat/<MAC>} para monitorizar la actividad de los dispositivos y \texttt{esp32/lwt/<MAC>} para detectar desconexiones mediante el mecanismo de Last Will Testament (LWT). El backend recibe las respuestas del procesamiento facial por el tópico \texttt{esp32/respuesta/facial}, que el ESP32-CAM escucha para confirmar el éxito o fallo del registro.
+Adicionalmente, se definen los tópicos \texttt{esp32/heartbeat/<MAC>} para monitorizar la actividad de los dispositivos y \texttt{esp32/lwt/<MAC>} para detectar desconexiones mediante el mecanismo de Last Will Testament (LWT). El backend recibe las respuestas del procesamiento facial por el tópico \texttt{esp32/respuesta/facial}, que el ESP32-CAM escucha para confirmar el éxito o fallo del registro. La Figura~\ref{fig:flujo_mqtt} resume la topología de publicación y suscripción.
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=\linewidth]{diagrams/flujo_mqtt_pub_sub.png}
+  \caption{Flujo MQTT pub/sub — tópicos, direcciones y QoS entre el ESP32-CAM, el broker Mosquitto y el backend.}
+  \label{fig:flujo_mqtt}
+\end{figure}
 
 La infraestructura se complementa con \textbf{Docker Compose}, que levanta el broker Mosquitto en un contenedor independiente, exponiendo el puerto \textbf{1884} (externo, mapeado al 1883 interno del contenedor) para MQTT nativo y el puerto 9001 para WebSockets.
 
@@ -608,7 +593,14 @@ Cada blueprint se registra en la aplicación Flask principal (\texttt{app.py}), 
 
 \paragraph{Infraestructura con Docker Compose}
 
-Para garantizar un entorno reproducible, se definió un archivo \texttt{docker-compose.yml} que levanta el broker Mosquitto (imagen \texttt{eclipse-mosquitto:latest}) con el puerto \textbf{1884} (externo, mapeado al 1883 interno) para MQTT nativo y el puerto 9001 para WebSockets expuestos, volúmenes para configuración, datos y logs persistentes, y una red bridge dedicada llamada \texttt{teleasist\_network}. El backend Flask y la base de datos PostgreSQL pueden ejecutarse en el host o en contenedores adicionales según la configuración de despliegue.
+Para garantizar un entorno reproducible, se definió un archivo \texttt{docker-compose.yml} que levanta el broker Mosquitto (imagen \texttt{eclipse-mosquitto:latest}) con el puerto \textbf{1884} (externo, mapeado al 1883 interno) para MQTT nativo y el puerto 9001 para WebSockets expuestos, volúmenes para configuración, datos y logs persistentes, y una red bridge dedicada llamada \texttt{teleasist\_network}. El backend Flask y la base de datos PostgreSQL pueden ejecutarse en el host o en contenedores adicionales según la configuración de despliegue. La Figura~\ref{fig:docker_despliegue} presenta el diagrama de despliegue completo.
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=\linewidth]{diagrams/arquitectura_despliegue_docker.png}
+  \caption{Arquitectura de despliegue Docker: servicios, puertos, volúmenes y dependencias en la red \texttt{teleasist\_network}.}
+  \label{fig:docker_despliegue}
+\end{figure}
 
 \subsubsection{Pruebas}
 
@@ -676,6 +668,15 @@ El flujo de procesamiento facial se divide en tres operaciones principales:
         \item Cifra el embedding con Fernet y lo almacena en la tabla \texttt{encodings\_faciales}, que permite acumular múltiples fotos de referencia por persona con distintos ángulos e iluminación, mejorando la precisión en subsecuentes identificaciones.
     \end{itemize}
 
+    La Figura~\ref{fig:flujo_enrolamiento} ilustra el flujo completo de enrolamiento biométrico, desde la creación de la persona en el panel web por parte del administrador, pasando por el registro de huella en dos pasos en el ESP32-CAM, hasta la captura facial enviada por MQTT al backend donde se extrae, cifra y almacena el embedding.
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=\linewidth]{diagrams/flujo_enrolamiento_biometrico.png}
+  \caption{Diagrama de secuencia del enrolamiento biométrico completo.}
+  \label{fig:flujo_enrolamiento}
+\end{figure}
+
     \item \textbf{Identificación 1:N} (\texttt{POST /api/facial/identificar}):
     \begin{itemize}
         \item Recibe la imagen como JPEG crudo (\texttt{application/octet-stream}) desde el ESP32-CAM, o como JSON con Base64 desde la web.
@@ -685,6 +686,15 @@ El flujo de procesamiento facial se divide en tres operaciones principales:
         \item Consulta una \textbf{caché en memoria} de embeddings (con TTL configurable, 60 segundos por defecto). Si la caché expiró, recarga todos los embeddings desde la base de datos. Para cada persona, compara contra \textbf{todos los embeddings} almacenados en \texttt{encodings\_faciales} (multi-encoding) y selecciona la menor distancia. Esto mejora la precisión porque el sistema puede reconocer a un trabajador aunque la captura en vivo tenga una iluminación o ángulo diferentes a los de su foto de registro.
         \item Si la menor distancia es inferior al umbral (10.0 para Facenet), retorna el \texttt{rut} correspondiente. En caso contrario, retorna HTTP 404.
     \end{itemize}
+
+    La Figura~\ref{fig:flujo_marcaje} presenta el ciclo de marcaje automático por centinela facial. Cada 6 segundos el ESP32-CAM evalúa el sensor PIR, captura una imagen, la envía por HTTP al endpoint de identificación, y según la respuesta del backend registra la asistencia y dispara el push asíncrono a los ERP configurados.
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=\linewidth]{diagrams/flujo_marcaje_automatico.png}
+  \caption{Marcaje automático — centinela facial con identificación 1:N y push asíncrono a ERP.}
+  \label{fig:flujo_marcaje}
+\end{figure}
 
     \item \textbf{Verificación 1:1} (\texttt{POST /api/facial/verificar}):
     \begin{itemize}
@@ -726,6 +736,8 @@ El módulo \texttt{encryption.py} proporciona dos funciones:
     \item \texttt{cifrar\_embedding(embedding)}: Serializa el embedding como JSON, lo cifra con Fernet y codifica el resultado en Base64 URL-safe.
     \item \texttt{descifrar\_embedding(cifrado\_str)}: Decodifica el Base64, descifra con Fernet y deserializa el JSON para obtener el vector original.
 \end{itemize}
+
+\input{diagrams/08_pipeline_cifrado_biometrico.tex}
 
 \paragraph{Actualización y eliminación de datos faciales}
 
@@ -815,6 +827,13 @@ Se implementan dos niveles de protección para los endpoints:
     \item \texttt{@requiere\_rol('admin', 'empleador')}: Además del token, exige que el rol del usuario esté en la lista permitida.
     \item \texttt{@token\_opcional}: Intenta extraer el token si está presente; si no, permite el acceso sin autenticación (útil para endpoints consumidos por el ESP32-CAM, que en su lugar envían el header \texttt{X-Device-MAC} para identificar la empresa).
 \end{itemize}
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.95\linewidth]{diagrams/flujo_login_jwt.png}
+  \caption{Diagrama de secuencia del login multi-empresa con JWT.}
+  \label{fig:flujo_login_jwt}
+\end{figure}
 
 \paragraph{Flujo de enrolamiento de dispositivos}
 
@@ -1096,6 +1115,13 @@ El field mapping permite adaptar el formato de salida sin modificar el código d
 {"rut": "employee_id", "fecha_hora": "timestamp", "tipo": "event_type"}
 \end{verbatim}
 
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.95\linewidth]{diagrams/flujo_integracion_erp.png}
+  \caption{Diagrama de secuencia de la integración ERP — push asíncrono con field mapping.}
+  \label{fig:flujo_erp}
+\end{figure}
+
 \subsubsection{Implementación}
 
 \paragraph{Panel web del backend}
@@ -1219,6 +1245,13 @@ El ESP32-CAM ejecuta la sincronización en dos momentos:
 \end{enumerate}
 
 Además, el ESP32-CAM consulta \texttt{GET /api/dispositivos/erp-config} cada hora (360,000 ms) para mantener actualizada su configuración local de webhooks ERP.
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.95\linewidth]{diagrams/flujo_sincronizacion_bidireccional.png}
+  \caption{Diagrama de actividad: sincronización bidireccional entre los modos online y offline del ESP32-CAM.}
+  \label{fig:flujo_sync}
+\end{figure}
 
 \paragraph{Deduplicación en el backend}
 

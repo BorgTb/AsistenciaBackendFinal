@@ -1,0 +1,55 @@
+@startuml flujo_sincronizacion_bidireccional
+title Sincronización bidireccional ESP32 ↔ Backend
+
+skinparam shadowing false
+skinparam ActivityBackgroundColor #F5F9FF
+skinparam ActivityBorderColor #2C5282
+
+start
+:Dispositivo inicia ciclo de operación;
+
+if (¿Wi-Fi disponible?) then (sí)
+  #E8F5E9:**MODO ONLINE**;
+  #E8F5E9:GET /api/sync/personas
+  GET /api/sync/turnos
+  GET /api/sync/erp-config;
+  note right
+    Caché en SPIFFS:
+    • /personas.json
+    • /turnos.json
+    • /erp-config.json
+  end note
+  #E8F5E9:Operación normal
+  (marcaje en tiempo real);
+  if (¿asistencia generada?) then (sí)
+    #E8F5E9:POST /api/asistencias;
+    if (HTTP 200?) then (sí)
+      #E8F5E9:Confirmar sincronizado;
+    else (fallo)
+      #FFE0B2:APPEND /asistencias.json
+      (cola local);
+    endif
+  endif
+else (no)
+  #FFF3E0:**MODO OFFLINE**;
+  #FFF3E0:Cargar caché SPIFFS
+  (/personas.json, /turnos.json);
+  #FFF3E0:Operar con datos locales
+  (huella + facial);
+  #FFF3E0:APPEND asistencias →
+  /asistencias.json;
+  #FFF3E0:Esperar reconexión Wi-Fi;
+  if (¿Wi-Fi restablecido?) then (sí)
+    repeat
+      #E8F5E9:POST asistencia pendiente
+      al backend;
+    repeat while (¿quedan registros?) is (sí) not (no)
+    #E8F5E9:Vaciar /asistencias.json;
+    #E8F5E9:Re-sync GET /api/sync/*;
+  else (no)
+    #FFF3E0:Mantener cola local;
+  endif
+endif
+
+stop
+@enduml

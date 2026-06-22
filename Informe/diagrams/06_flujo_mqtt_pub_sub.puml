@@ -1,0 +1,45 @@
+@startuml flujo_mqtt_pub_sub
+title Flujo MQTT pub/sub — tópicos y QoS
+
+skinparam shadowing false
+skinparam componentStyle rectangle
+
+component "ESP32-CAM\n(Publisher + Subscriber)" as ESP
+queue "Mosquitto Broker\n:1884" as Broker
+component "Backend Flask\n(paho-mqtt)" as BE
+
+note right of ESP
+  **Publica:**
+  • esp32/imagen/registrar      QoS 1
+  • esp32/asistencia/<mac>      QoS 1
+  • esp32/heartbeat/<mac>       QoS 0 (cada 30s)
+
+  **Suscrito a:**
+  • esp32/respuesta/facial
+  • esp32/respuesta/registro
+  • esp32/comandos/<mac>
+
+  **Last Will (LWT):**
+  • esp32/lwt/<mac> = "offline"
+    QoS 1, retained
+end note
+
+note left of BE
+  **Suscrito a:**
+  • esp32/imagen/registrar    QoS 1
+  • esp32/asistencia/#        QoS 1
+  • esp32/heartbeat/+         QoS 0
+  • esp32/lwt/+               QoS 1 (retained)
+
+  **Publica:**
+  • esp32/respuesta/facial
+  • esp32/respuesta/registro
+  • esp32/comandos/<mac>
+end note
+
+ESP    -[#2C5282]->     Broker : "1. PUBLISH"
+Broker -[#2C5282]->     BE     : "2. forward (match suscripción)"
+BE     -[#C53030]up->   Broker : "3. PUBLISH respuesta"
+Broker -[#C53030]up->   ESP    : "4. forward"
+
+@enduml

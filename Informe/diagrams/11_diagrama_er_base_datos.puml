@@ -1,0 +1,227 @@
+@startuml diagrama_er_base_datos
+title Modelo entidad-relación — Base de datos PostgreSQL
+
+' ============================================================
+'  Notación: pata de gallo (crow's foot)
+'  PK = Primary Key   FK = Foreign Key   UK = Unique Key
+' ============================================================
+
+skinparam shadowing false
+skinparam linetype ortho
+skinparam roundcorner 6
+skinparam class {
+  BackgroundColor #F5F9FF
+  BorderColor #2C5282
+  ArrowColor #2C5282
+  FontSize 11
+}
+hide circle
+hide methods
+
+entity "empresas" as empresas {
+  * **id** : SERIAL <<PK>>
+  --
+  * nombre : VARCHAR(100)
+    rut_empresa : VARCHAR(20)
+    email_contacto : VARCHAR(100)
+    telefono : VARCHAR(20)
+    direccion : VARCHAR(200)
+    created_at : TIMESTAMP
+}
+
+entity "dispositivos" as dispositivos {
+  * **id** : SERIAL <<PK>>
+  --
+    empresa_id : INTEGER <<FK>>
+    nombre : VARCHAR(100)
+    mac_address : VARCHAR(20)
+    ip_local : VARCHAR(20)
+    estado : VARCHAR(20)
+    ultimo_heartbeat : TIMESTAMP
+    codigo_enrol : VARCHAR(8)
+    enrolado : BOOLEAN
+    password_hash : VARCHAR(64)
+    password_plain : VARCHAR(20)
+    password_pendiente : BOOLEAN
+    created_at : TIMESTAMP
+}
+
+entity "usuarios_web" as usuarios_web {
+  * **id** : SERIAL <<PK>>
+  --
+  * nombre : VARCHAR(100)
+  * email : VARCHAR(100) <<UK>>
+  * password_hash : VARCHAR(200)
+    activo : BOOLEAN
+    empresa_id : INTEGER <<FK>>
+    created_at : TIMESTAMP
+}
+
+entity "usuario_empresa" as usuario_empresa {
+  * **id** : SERIAL <<PK>>
+  --
+  * usuario_id : INTEGER <<FK>>
+  * empresa_id : INTEGER <<FK>>
+  * rol : VARCHAR(20)
+    activo : BOOLEAN
+    created_at : TIMESTAMP
+  ..
+  <<UK>> (usuario_id, empresa_id)
+}
+
+entity "personas" as personas {
+  * **id** : SERIAL <<PK>>
+  --
+    empresa_id : INTEGER <<FK>>
+  * nombre : VARCHAR(100)
+  * rut : VARCHAR(20) <<UK>>
+    email : VARCHAR(100)
+    huella_id : INTEGER
+    encoding_facial : TEXT
+    activo : BOOLEAN
+    created_at : TIMESTAMP
+}
+
+entity "turnos" as turnos {
+  * **id** : SERIAL <<PK>>
+  --
+    empresa_id : INTEGER <<FK>>
+  * nombre : VARCHAR(100)
+  * hora_inicio : TIME
+  * hora_fin : TIME
+    dias : VARCHAR(50)
+    activo : BOOLEAN
+    created_at : TIMESTAMP
+}
+
+entity "asignaciones" as asignaciones {
+  * **id** : SERIAL <<PK>>
+  --
+    persona_id : INTEGER <<FK>>
+    turno_id : INTEGER <<FK>>
+    fecha_asignacion : TIMESTAMP
+    vigente : BOOLEAN
+  ..
+  <<UK>> (persona_id, turno_id, vigente)
+}
+
+entity "asistencias" as asistencias {
+  * **id** : SERIAL <<PK>>
+  --
+    persona_id : INTEGER <<FK>>
+    dispositivo_id : INTEGER <<FK>>
+    nombre : VARCHAR(100)
+    tipo : VARCHAR(20)
+    metodo : VARCHAR(50)
+    fecha_hora : TIMESTAMP
+    timestamp_local : VARCHAR(50)
+    origen : VARCHAR(20)
+    imagen_path : TEXT
+    sincronizado : BOOLEAN
+    sincronizado_at : TIMESTAMP
+}
+
+entity "sincronizacion_log" as sincronizacion_log {
+  * **id** : SERIAL <<PK>>
+  --
+    dispositivo_id : INTEGER <<FK>>
+    registros_enviados : INTEGER
+    registros_ok : INTEGER
+    estado : VARCHAR(20)
+    detalle : TEXT
+    fecha : TIMESTAMP
+}
+
+entity "integraciones_erp" as integraciones_erp {
+  * **id** : SERIAL <<PK>>
+  --
+    empresa_id : INTEGER <<FK>>
+  * nombre : VARCHAR(120)
+  * tipo : VARCHAR(40)
+  * webhook_url : TEXT
+    headers : TEXT (JSON)
+    field_map : TEXT (JSON)
+    envio_auto : BOOLEAN
+    activo : BOOLEAN
+    ultimo_envio : TIMESTAMP
+    ultimo_estado : VARCHAR(200)
+    created_at : TIMESTAMP
+}
+
+entity "consentimientos" as consentimientos {
+  * **id** : SERIAL <<PK>>
+  --
+  * persona_id : INTEGER <<FK, UK>>
+    fecha_aceptacion : TIMESTAMP
+    version_politica : VARCHAR(20)
+    ip_dispositivo : VARCHAR(45)
+    metodo_aceptacion : VARCHAR(30)
+}
+
+entity "logs_biometricos" as logs_biometricos {
+  * **id** : SERIAL <<PK>>
+  --
+    persona_id : INTEGER <<FK>>
+    dispositivo_id : INTEGER <<FK>>
+    timestamp : TIMESTAMP
+  * tipo_operacion : VARCHAR(30)
+  * resultado : VARCHAR(20)
+    ip_origen : VARCHAR(45)
+}
+
+entity "eliminaciones_biometricas" as eliminaciones_biometricas {
+  * **id** : SERIAL <<PK>>
+  --
+  * persona_id : INTEGER
+    embedding_anterior : TEXT
+    foto_path : VARCHAR(500)
+    usuario_solicitante : VARCHAR(100)
+    timestamp : TIMESTAMP
+}
+
+entity "encodings_faciales" as encodings_faciales {
+  * **id** : SERIAL <<PK>>
+  --
+  * persona_id : INTEGER <<FK>>
+  * encoding : TEXT
+    foto_path : VARCHAR(500)
+    quality_score : FLOAT
+    created_at : TIMESTAMP
+}
+
+' ============================================================
+'  Relaciones  (crow's foot: ||--o{  = 1 a N,  ||--|| = 1 a 1)
+' ============================================================
+
+' --- empresas como entidad maestra ---
+empresas ||--o{ dispositivos        : "agrupa"
+empresas ||--o{ personas            : "emplea"
+empresas ||--o{ turnos              : "define"
+empresas ||--o{ integraciones_erp   : "configura"
+empresas ||--o{ usuarios_web        : "tiene"
+
+' --- relación N a M usuario / empresa (con rol) ---
+usuarios_web    ||--o{ usuario_empresa : ""
+empresas        ||--o{ usuario_empresa : ""
+
+' --- asignaciones (N a M persona ↔ turno) ---
+personas  ||--o{ asignaciones : ""
+turnos    ||--o{ asignaciones : ""
+
+' --- asistencias ---
+personas      ||--o{ asistencias : "marca"
+dispositivos  ||--o{ asistencias : "registra"
+
+' --- sincronización ---
+dispositivos ||--o{ sincronizacion_log : "reporta"
+
+' --- biometría (relacionadas con personas) ---
+personas ||--|| consentimientos       : "otorga"
+personas ||--o{ encodings_faciales    : "almacena"
+personas ||--o{ logs_biometricos      : "audita"
+dispositivos ||--o{ logs_biometricos  : "audita"
+
+' --- eliminaciones (sin FK formal en el esquema) ---
+personas .o{ eliminaciones_biometricas : "respalda\n(sin FK)"
+
+@enduml

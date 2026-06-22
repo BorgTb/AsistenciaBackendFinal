@@ -1,0 +1,43 @@
+@startuml flujo_marcaje_automatico
+title Marcaje automático — centinela facial
+
+skinparam shadowing false
+skinparam sequenceMessageAlign center
+
+participant "ESP32-CAM" as ESP32
+participant "Backend Flask" as Backend
+database "PostgreSQL" as DB
+participant "Webhook ERP\n(Odoo/Buk/SAP/Defontana)" as ERP
+
+loop cada 6 segundos
+  ESP32 -> ESP32 : evaluar PIR (GPIO12)
+  alt movimiento detectado
+    ESP32 -> ESP32 : capturar imagen (OV2640)
+    ESP32 -> Backend : POST /api/facial/identificar\n{imagen_b64, mac}
+
+    Backend -> DB : SELECT embedding_facial\nFROM personas WHERE activo=TRUE
+    DB --> Backend : embeddings cifrados
+    Backend -> Backend : descifrar_embedding() ∀ registro
+    Backend -> Backend : DeepFace.verify()\ndistancia < umbral (0.4)
+
+    alt match encontrado
+      Backend -> DB : INSERT INTO asistencia\n(persona_id, tipo, timestamp, mac)
+      DB --> Backend : asistencia_id
+      Backend --> ESP32 : 200 OK\n{persona, tipo_marcaje}
+      ESP32 -> ESP32 : LED verde + mensaje en UI
+
+      note over Backend : Thread asíncrono\n(no bloquea respuesta)
+      Backend ->> Backend : Thread(target=push_erp,\n  args=(asistencia_id,)).start()
+      Backend -> DB : SELECT integraciones_erp\nWHERE envio_auto=TRUE
+      DB --> Backend : configuración + field_map
+      Backend -> ERP : POST webhook (payload mapeado)
+      ERP --> Backend : 200 OK
+      Backend -> DB : UPDATE integraciones_erp\nSET ultimo_envio=NOW(),\n    ultimo_estado='OK'
+    else sin match
+      Backend --> ESP32 : 404 {error: "no_match"}
+      ESP32 -> ESP32 : LED rojo + buzzer
+    end
+  end
+end
+
+@enduml

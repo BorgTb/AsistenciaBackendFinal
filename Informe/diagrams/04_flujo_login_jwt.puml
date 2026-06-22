@@ -1,0 +1,45 @@
+@startuml flujo_login_jwt
+title Login multi-empresa con JWT
+
+skinparam shadowing false
+skinparam sequenceMessageAlign center
+
+actor Usuario
+participant "Navegador" as Nav
+participant "Next.js\n(proxy /api/*)" as Next
+participant "Flask Backend" as Flask
+database "PostgreSQL" as DB
+
+Usuario -> Nav : ingresa email + password
+Nav -> Next : POST /api/auth/login\n{email, password}
+Next -> Flask : POST /api/auth/login (forward)
+Flask -> DB : SELECT usuario WHERE email = ?
+DB --> Flask : {id, password_hash, empresas[]}
+Flask -> Flask : bcrypt.checkpw()
+
+alt credenciales inválidas
+  Flask --> Next : 401 Unauthorized
+  Next --> Nav : mostrar error
+else credenciales OK
+  alt usuario en 1 sola empresa
+    Flask -> Flask : generar JWT\n(user_id, empresa_id, rol, exp)
+    Flask --> Next : 200 {token, user, empresa}
+    Next --> Nav : Set-Cookie httpOnly + Secure\n+ redirect /dashboard
+  else usuario en N empresas
+    Flask --> Next : 200 {requiere_seleccion: true,\n  empresas: [...]}
+    Next --> Nav : render selector de empresa
+    Usuario -> Nav : selecciona empresa
+    Nav -> Next : POST /api/auth/select-empresa\n{empresa_id} + cookie temporal
+    Next -> Flask : forward
+    Flask -> Flask : validar pertenencia\n+ generar JWT(empresa_id)
+    Flask --> Next : 200 {token}
+    Next --> Nav : Set-Cookie httpOnly\n+ redirect /dashboard
+  end
+end
+
+== Acceso posterior ==
+Nav -> Next : GET /dashboard (cookie JWT)
+Next -> Next : middleware: verificar firma\n+ exp + empresa_id
+Next --> Usuario : render dashboard
+
+@enduml

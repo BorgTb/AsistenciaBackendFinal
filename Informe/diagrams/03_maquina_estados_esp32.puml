@@ -1,0 +1,37 @@
+@startuml maquina_estados_esp32
+title Máquina de estados — Registro biométrico en ESP32
+
+skinparam shadowing false
+skinparam state {
+  BackgroundColor #E8F1FA
+  BorderColor #2C5282
+  FontStyle bold
+}
+
+[*] --> IDLE
+
+IDLE : Espera comando de\nenrolamiento o marcaje
+IDLE --> ESPERANDO_HUELLA_REGISTRO : iniciar_registro(persona_id)
+
+ESPERANDO_HUELLA_REGISTRO : Captura huella 1/2\n(AS608 — UART2)
+ESPERANDO_HUELLA_REGISTRO --> REGISTRO_SEGUNDA_HUELLA : huella_1_ok
+ESPERANDO_HUELLA_REGISTRO --> IDLE : timeout (30s)
+ESPERANDO_HUELLA_REGISTRO --> IDLE : cancelar_usuario
+ESPERANDO_HUELLA_REGISTRO --> IDLE : error_lectura\n(reintento > 3)
+
+REGISTRO_SEGUNDA_HUELLA : Captura huella 2/2\nvalida coincidencia
+REGISTRO_SEGUNDA_HUELLA --> REGISTRO_FACIAL : huella_2_ok\n(templates coinciden)
+REGISTRO_SEGUNDA_HUELLA --> ESPERANDO_HUELLA_REGISTRO : no_coinciden\n(reintentar paso 1)
+REGISTRO_SEGUNDA_HUELLA --> IDLE : timeout
+
+REGISTRO_FACIAL : Captura OV2640 + PUBLISH\nesp32/imagen/registrar
+REGISTRO_FACIAL --> IDLE : facial_ok\n(MQTT respuesta OK)
+REGISTRO_FACIAL --> IDLE : facial_error / timeout (15s)
+
+note right of REGISTRO_FACIAL
+  La respuesta llega vía
+  esp32/respuesta/registro
+  con status del backend
+end note
+
+@enduml

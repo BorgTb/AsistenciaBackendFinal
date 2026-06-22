@@ -1,0 +1,40 @@
+@startuml flujo_integracion_erp
+title Integración ERP — push asíncrono
+
+skinparam shadowing false
+skinparam sequenceMessageAlign center
+
+participant "Backend Flask\n(endpoint asistencia)" as BE
+participant "Thread async\n(threading.Thread)" as T
+database "PostgreSQL\n(integraciones_erp)" as DB
+participant "Webhook ERP\n(Odoo/Buk/SAP/Defontana)" as ERP
+
+BE -> DB : INSERT INTO asistencia
+DB --> BE : asistencia_id
+BE ->> T : Thread(target=push_erp,\n  args=(asistencia_id,)).start()
+BE --> "API caller" : 200 OK\n(respuesta inmediata, no bloquea)
+
+== Ejecución asíncrona ==
+note over T : corre en paralelo al request HTTP
+
+T -> DB : SELECT * FROM integraciones_erp\nWHERE empresa_id = ?\n  AND envio_auto = TRUE\n  AND activo = TRUE
+DB --> T : lista config\n(url, headers, token, field_map)
+
+loop por cada integración activa
+  T -> T : aplicar field_map\n(asistencia → payload ERP)
+  T -> ERP : POST <webhook_url>\nHeaders + JSON
+
+  alt 2xx OK
+    ERP --> T : 200 / 201
+    T -> DB : UPDATE integraciones_erp\nSET ultimo_envio = NOW(),\n    ultimo_estado = 'OK',\n    ultimo_error  = NULL
+  else 4xx / 5xx / timeout
+    ERP --> T : error
+    T -> DB : UPDATE integraciones_erp\nSET ultimo_estado = 'ERROR',\n    ultimo_error  = <mensaje>
+    note right
+      Disponible para reintento
+      manual desde el panel admin
+    end note
+  end
+end
+
+@enduml

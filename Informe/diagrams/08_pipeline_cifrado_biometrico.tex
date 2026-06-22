@@ -1,0 +1,59 @@
+% =====================================================================
+% Diagrama 8 — Pipeline de cifrado biométrico (TikZ)
+% Incluir en memoria.tex con:  \input{diagrams/08_pipeline_cifrado_biometrico.tex}
+% Requiere en el preámbulo: \usepackage{tikz}
+%                           \usetikzlibrary{arrows.meta, positioning, shapes.geometric}
+% =====================================================================
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}[
+  node distance=1.1cm and 1.3cm,
+  every node/.style={font=\small},
+  box/.style={draw, rounded corners=3pt, minimum height=1.1cm,
+              minimum width=2.7cm, align=center, fill=blue!8,
+              drop shadow={opacity=0.15}},
+  crypto/.style={draw, rounded corners=3pt, minimum height=1.1cm,
+                 minimum width=2.7cm, align=center, fill=orange!20,
+                 drop shadow={opacity=0.15}},
+  db/.style={draw, cylinder, shape border rotate=90, aspect=0.25,
+             minimum height=1.5cm, minimum width=2.5cm,
+             align=center, fill=gray!15},
+  fallback/.style={draw, dashed, rounded corners=3pt, minimum height=1.0cm,
+                   minimum width=2.7cm, align=center, fill=red!8},
+  arrow/.style={-{Stealth[length=2.5mm]}, thick},
+  darrow/.style={-{Stealth[length=2.5mm]}, thick, dashed, gray!70!black},
+  lbl/.style={font=\scriptsize\itshape, text=gray!50!black}
+]
+
+% --- Fila superior: cifrado ---
+\node[box]                       (emb)    {Embedding\\\scriptsize{\texttt{float[512]}}};
+\node[crypto, right=of emb]      (cif)    {\texttt{cifrar\_embedding()}};
+\node[crypto, right=of cif]      (fernet) {Fernet\\\scriptsize{AES-128-CBC + HMAC-SHA256}};
+\node[db,     right=of fernet]   (dbn)    {PostgreSQL\\\scriptsize{TEXT (base64)}};
+
+% --- Fila inferior: descifrado ---
+\node[crypto, below=1.7cm of fernet] (dcif)    {\texttt{descifrar\_embedding()}};
+\node[box,    left=of dcif]          (compare) {Comparación\\\scriptsize{DeepFace.verify}};
+
+% --- Fallback ---
+\node[fallback, below=0.7cm of dbn] (legacy) {Fallback legacy\\\scriptsize{embedding sin cifrar}};
+
+% --- Flechas principales ---
+\draw[arrow] (emb)    -- (cif);
+\draw[arrow] (cif)    -- (fernet);
+\draw[arrow] (fernet) -- (dbn);
+\draw[arrow] (dbn)    |- (dcif);
+\draw[arrow] (dcif)   -- (compare);
+
+% --- Camino fallback ---
+\draw[darrow] (legacy.west) -| ([xshift=-0.3cm]dcif.south)
+              node[pos=0.75, below, font=\scriptsize] {parse directo};
+
+% --- Etiquetas ---
+\node[lbl, above=0.1cm of cif] {clave Fernet (\texttt{.env})};
+\node[lbl, above=0.1cm of dcif] {misma clave (rotable)};
+
+\end{tikzpicture}
+\caption[Pipeline de cifrado biométrico]{Pipeline de cifrado biométrico — Fernet (AES-128-CBC + HMAC-SHA256) con fallback para embeddings legacy almacenados sin cifrar.}
+\label{fig:pipeline_cifrado_biometrico}
+\end{figure}
