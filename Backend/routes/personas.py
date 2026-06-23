@@ -1,6 +1,7 @@
 from flask import Blueprint, request, jsonify
 from database import get_connection
 from routes.auth import token_opcional, requiere_rol
+from eventos_mqtt import notificar_sincronizacion
 import os
 
 
@@ -97,6 +98,7 @@ def create_persona():
             )
 
         conn.commit()
+        notificar_sincronizacion(empresa_id, 'personas', 'crear', persona_id)
         return jsonify({'ok': True, 'id': persona_id, 'rut': data['rut']})
     except Exception as e:
         conn.rollback()
@@ -157,6 +159,8 @@ def update_persona(persona_id):
         cur.execute(query, tuple(valores))
         row = cur.fetchone()
         conn.commit()
+
+        notificar_sincronizacion(request.empresa_id, 'personas', 'actualizar', int(persona_id))
 
         return jsonify({
             'ok': True,
@@ -222,6 +226,8 @@ def update_huella_persona(persona_id):
         )
         row = cur.fetchone()
         conn.commit()
+
+        notificar_sincronizacion(request.empresa_id, 'personas', 'actualizar', int(persona_id))
 
         return jsonify({
             'ok': True,
@@ -300,6 +306,7 @@ def delete_persona(persona_id):
         if cur.rowcount == 0:
             return jsonify({'error': 'Persona no encontrada'}), 404
         conn.commit()
+        notificar_sincronizacion(request.empresa_id, 'personas', 'eliminar', int(persona_id))
         return jsonify({'ok': True})
     except Exception as e:
         conn.rollback()
@@ -352,6 +359,8 @@ def eliminar_datos_biometricos(persona_id):
         cur.execute("DELETE FROM encodings_faciales WHERE persona_id = %s", (persona_id_real,))
 
         conn.commit()
+
+        notificar_sincronizacion(request.empresa_id, 'personas', 'actualizar', int(persona_id))
 
         try:
             from routes.facial import _invalidar_cache

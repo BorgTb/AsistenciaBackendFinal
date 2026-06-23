@@ -1,6 +1,7 @@
 from flask import Blueprint, request, jsonify
 from database import get_connection, resolver_rut_a_id
 from routes.auth import token_opcional
+from eventos_mqtt import notificar_sincronizacion
 
 
 asignaciones_bp = Blueprint('asignaciones', __name__)
@@ -107,6 +108,7 @@ def create_asignacion():
         )
         asig_id = cur.fetchone()[0]
         conn.commit()
+        notificar_sincronizacion(empresa_id, 'asignaciones', 'crear', asig_id)
         return jsonify({'ok': True, 'id': asig_id, 'persona_id': str(persona_id)})
     except Exception as e:
         conn.rollback()
@@ -132,6 +134,7 @@ def delete_asignacion(asignacion_id):
         else:
             cur.execute("DELETE FROM asignaciones WHERE id::text = %s", (str(asignacion_id),))
         conn.commit()
+        notificar_sincronizacion(request.empresa_id, 'asignaciones', 'eliminar', int(asignacion_id))
         return jsonify({'ok': True})
     except Exception as e:
         conn.rollback()

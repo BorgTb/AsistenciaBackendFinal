@@ -1,6 +1,7 @@
 from flask import Blueprint, request, jsonify
 from database import get_connection
 from routes.auth import token_opcional
+from eventos_mqtt import notificar_sincronizacion
 
 
 turnos_bp = Blueprint('turnos', __name__)
@@ -72,6 +73,7 @@ def create_turno():
         )
         turno_id = cur.fetchone()[0]
         conn.commit()
+        notificar_sincronizacion(empresa_id, 'turnos', 'crear', turno_id)
         return jsonify({'ok': True, 'id': turno_id})
     except Exception as e:
         conn.rollback()
@@ -95,6 +97,7 @@ def delete_turno(turno_id):
         else:
             cur.execute("DELETE FROM turnos WHERE id::text = %s", (str(turno_id),))
         conn.commit()
+        notificar_sincronizacion(request.empresa_id, 'turnos', 'eliminar', int(turno_id))
         return jsonify({'ok': True})
     except Exception as e:
         conn.rollback()

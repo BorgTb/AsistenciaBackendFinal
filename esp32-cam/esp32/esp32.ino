@@ -197,6 +197,8 @@ static void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_
       esp_mqtt_client_subscribe(mqtt_client, "esp32/respuesta/facial", 0);
       String pingTopic = "esp32/ping/" + deviceMAC;
       esp_mqtt_client_subscribe(mqtt_client, pingTopic.c_str(), 0);
+      String notifTopic = "backend/notificacion/" + deviceMAC;
+      esp_mqtt_client_subscribe(mqtt_client, notifTopic.c_str(), 0);
       break;
     }
     case MQTT_EVENT_DISCONNECTED:
@@ -246,6 +248,18 @@ static void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_
         String hbPayload = "{\"mac\":\"" + deviceMAC + "\",\"t\":" + String(millis()) + ",\"ip\":\"" + WiFi.localIP().toString() + "\",\"pong\":true}";
         esp_mqtt_client_publish(mqtt_client, hbTopic.c_str(), hbPayload.c_str(), 0, 0, 0);
         lastHeartbeat = millis();
+      }
+
+      if (topic.startsWith("backend/notificacion/")) {
+        DynamicJsonDocument doc(256);
+        DeserializationError err = deserializeJson(doc, mensaje);
+        if (!err) {
+          String tipo = doc["tipo"] | "";
+          addLog("Notificacion MQTT recibida: " + tipo);
+          if (tipo == "personas" || tipo == "todas")    sincronizarPersonasDesdeBackend();
+          if (tipo == "turnos" || tipo == "todas")      sincronizarTurnosDesdeBackend();
+          if (tipo == "asignaciones" || tipo == "todas") sincronizarAsignacionesDesdeBackend();
+        }
       }
       break;
     }
