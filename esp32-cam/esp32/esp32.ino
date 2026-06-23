@@ -117,6 +117,8 @@ String personaEditandoId = "";
 int huellaAnteriorEditando = -1;
 bool modoRegistroRemoto = false;
 String personaRemotaId = "";
+volatile bool sincronizacionPendiente = false;
+bool enSync = false;
 unsigned long ultimoLogDiagnosticoOffline = 0;
 String wifiDisconnectReason = "";
 int wifiDisconnectCount = 0;
@@ -140,6 +142,7 @@ void sincronizarAsignacionesDesdeBackend();
 void sincronizarErpConfigDesdeBackend();
 void enviarAsistenciaAErp(const String& personaId, const String& rut, const String& nombre, const String& tipo, const String& metodo);
 void sincronizarPendientes();
+void sincronizarTodo();
 String procesarAsistencia(String personaId, String metodo);
 String buscarPersonaPorHuella(int huellaID);
 void addLog(String msg);
@@ -154,7 +157,7 @@ String motivoAsistenciaAutomatica(unsigned long ahora);
 void flashExito();
 void flashError();
 bool resultadoAsistenciaExitosa(const String& resultado);
-bool postAsistenciaEnBackend(const String& rut, const String& nombre, const String& tipo, const String& metodo);
+bool postAsistenciaEnBackend(const String& rut, const String& nombre, const String& tipo, const String& metodo, const String& turnoId);
 bool crearTurnoEnBackend(const String& nombre, const String& inicio, const String& fin, const String& dias, String& idBackend);
 bool crearAsignacionEnBackend(const String& personaId, const String& turnoIdBackend, String& idBackend);
 String obtenerTurnoBackendId(const String& turnoLocalId);
@@ -203,6 +206,11 @@ static void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_
       esp_mqtt_client_subscribe(mqtt_client, notifTopic.c_str(), 0);
       String huellaRegTopic = "backend/huella/registrar/" + deviceMAC;
       esp_mqtt_client_subscribe(mqtt_client, huellaRegTopic.c_str(), 0);
+      String reiniciarTopic = "backend/comando/" + deviceMAC + "/reiniciar";
+      esp_mqtt_client_subscribe(mqtt_client, reiniciarTopic.c_str(), 0);
+      String wifiReconnectTopic = "backend/comando/" + deviceMAC + "/wifi-reconnect";
+      esp_mqtt_client_subscribe(mqtt_client, wifiReconnectTopic.c_str(), 0);
+      sincronizacionPendiente = true;
       break;
     }
     case MQTT_EVENT_DISCONNECTED:
@@ -316,6 +324,21 @@ static void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_
         estadoActual = ESTADO_ESPERANDO_HUELLA_REGISTRO;
         tiempoUltimoEstado = millis();
         addLog("Registro remoto de huella iniciado para persona " + persona_id);
+      }
+
+      if (topic.startsWith("backend/comando/") && topic.endsWith("/reiniciar")) {
+        addLog("Comando REINICIAR recibido desde backend");
+        server.send(200, "text/plain", "Reiniciando dispositivo...");
+        delay(500);
+        ESP.restart();
+      }
+
+      if (topic.startsWith("backend/comando/") && topic.endsWith("/wifi-reconnect")) {
+        addLog("Comando RECONECTAR WIFI recibido desde backend");
+        WiFi.disconnect(false);
+        delay(500);
+        WiFi.begin();
+        addLog("Reconexion WiFi iniciada");
       }
       break;
     }
@@ -624,6 +647,7 @@ void verificarConexionWiFi() {
       mqtt_client = NULL;
       mqttConnected = false;
     }
+    sincronizacionPendiente = true;
   } else if (reintentosWifi >= 5) {
     addLog("5 intentos fallidos. Activando AP para reconfigurar...");
     WiFi.disconnect(true);
@@ -993,22 +1017,66 @@ String procesarAsistencia(String personaId, String metodo) {
   }
 
   if (nombre == "") return "Persona ID no existe localmente";
-  if (!turnoActivo(personaId)) return "Sin turno asignado: " + nombre;
 
-  DynamicJsonDocument docA(8192);
-  JsonArray asist = loadArray("/asistencias.json", docA);
-  
-  String tipo = "entrada";
-  for (int i = asist.size() - 1; i >= 0; i--) {
-    JsonObject a = asist[i];
-    if (a["persona_id"] == personaId) {
-      tipo = (String(a["tipo"].as<const char*>()) == "entrada") ? "salida" : "entrada";
+  DynamicJsonDocument docAsig(4096);
+  JsonArray asign = loadArray("/asignaciones.json", docAsig);
+  String turnoIdActivo = "";
+  for (JsonObject aObj : asign) {
+    if (aObj["persona_id"] == personaId) {
+      turnoIdActivo = aObj["turno_id"].as<String>();
+      break;
+    }
+  }
+  if (turnoIdActivo == "") return "Sin turno asignado: " + nombre;
+
+  DynamicJsonDocument docT(8192);
+  JsonArray turnos = loadArray("/turnos.json", docT);
+  bool conColacion = false;
+  for (JsonObject t : turnos) {
+    if (t["id"] == turnoIdActivo) {
+      conColacion = t.containsKey("con_colacion") && t["con_colacion"].as<bool>();
       break;
     }
   }
 
+  String secuencia[4];
+  int lenSec;
+  if (conColacion) {
+    secuencia[0] = "entrada"; secuencia[1] = "colacion_entrada";
+    secuencia[2] = "colacion_salida"; secuencia[3] = "salida";
+    lenSec = 4;
+  } else {
+    secuencia[0] = "entrada"; secuencia[1] = "salida";
+    lenSec = 2;
+  }
+
+  DynamicJsonDocument docA(8192);
+  JsonArray asist = loadArray("/asistencias.json", docA);
+  
+  String ultimoTipo = "";
+  String ultimoTurno = "";
+  for (int i = asist.size() - 1; i >= 0; i--) {
+    JsonObject aReg = asist[i];
+    if (aReg["persona_id"] == personaId) {
+      ultimoTipo = aReg["tipo"].as<String>();
+      ultimoTurno = aReg.containsKey("turno_id") ? aReg["turno_id"].as<String>() : "";
+      break;
+    }
+  }
+
+  String tipo = secuencia[0];
+  if (ultimoTipo.length() > 0 && ultimoTurno == turnoIdActivo) {
+    int idx = -1;
+    for (int i = 0; i < lenSec; i++) {
+      if (ultimoTipo == secuencia[i]) { idx = i; break; }
+    }
+    if (idx >= 0 && idx < lenSec - 1) {
+      tipo = secuencia[idx + 1];
+    }
+  }
+
   JsonObject a = asist.createNestedObject();
-  if (a.isNull()) { addLog("[WARN] Overflow en docA — createNestedObject falló"); }
+  if (a.isNull()) { addLog("[WARN] Overflow en docA — createNestedObject fallo"); }
   a["persona_id"]   = personaId;
   a["rut"]          = rut;
   a["nombre"]       = nombre;
@@ -1016,8 +1084,9 @@ String procesarAsistencia(String personaId, String metodo) {
   a["metodo"]       = metodo;
   a["timestamp"]    = getTimestamp();
   a["sincronizado"] = false;
+  a["turno_id"]     = turnoIdActivo;
 
-  if (postAsistenciaEnBackend(rut, nombre, tipo, metodo)) {
+  if (postAsistenciaEnBackend(rut, nombre, tipo, metodo, turnoIdActivo)) {
     a["sincronizado"] = true;
   }
   
@@ -1030,7 +1099,7 @@ String procesarAsistencia(String personaId, String metodo) {
   return tipoMayus + " OK: " + nombre + " (" + metodo + ")";
 }
 
-bool postAsistenciaEnBackend(const String& rut, const String& nombre, const String& tipo, const String& metodo) {
+bool postAsistenciaEnBackend(const String& rut, const String& nombre, const String& tipo, const String& metodo, const String& turnoId) {
   if (!isOnline || WiFi.status() != WL_CONNECTED) return false;
   if (rut.length() == 0) return false;
 
@@ -1046,6 +1115,7 @@ bool postAsistenciaEnBackend(const String& rut, const String& nombre, const Stri
   payloadDoc["metodo"] = metodo;
   payloadDoc["origen"] = "dispositivo";
   payloadDoc["sincronizado"] = true;
+  if (turnoId.length() > 0) payloadDoc["turno_id"] = turnoId;
   String payload;
   serializeJson(payloadDoc, payload);
 
@@ -1316,6 +1386,7 @@ void sincronizarAsistencias() {
       r["nombre"]     = a["nombre"];
       r["tipo"]       = a["tipo"];
       r["metodo"]     = a["metodo"];
+      if (a.containsKey("turno_id")) r["turno_id"] = a["turno_id"];
     }
   }
   String body; serializeJson(payload, body);
@@ -1648,6 +1719,16 @@ void sincronizarPersonasPendientes() {
   }
 }
 
+void sincronizarTodo() {
+  if (!isOnline) return;
+  enSync = true;
+  sincronizarPendientes();
+  sincronizarPersonasDesdeBackend();
+  sincronizarTurnosDesdeBackend();
+  sincronizarAsignacionesDesdeBackend();
+  enSync = false;
+}
+
 void sincronizarPendientes() {
   sincronizarPersonasPendientes();
   sincronizarTurnosPendientes();
@@ -1672,6 +1753,7 @@ void saveArray(const char* path, DynamicJsonDocument& doc) {
   File file = LittleFS.open(path, "w");
   serializeJson(doc, file);
   file.close();
+  if (isOnline && !enSync) sincronizacionPendiente = true;
 }
 
 void initLittleFS() {
@@ -1903,10 +1985,7 @@ void handleSincronizar() {
   if (!requiereAdmin(server)) return;
   actualizarBloqueoAsistencia();
   if (!isOnline) { server.send(503, "text/plain", "Sin conexion"); return; }
-  sincronizarPendientes();
-  sincronizarPersonasDesdeBackend();
-  sincronizarTurnosDesdeBackend();
-  sincronizarAsignacionesDesdeBackend();
+  sincronizarTodo();
   server.send(200, "text/plain", "Sincronizacion ejecutada");
 }
 
@@ -2367,10 +2446,7 @@ void setup() {
   initLittleFS(); delay(500); loadWiFiConfig(); tryConnectWiFi();
   
   if (isOnline) {
-    sincronizarPendientes();
-    sincronizarPersonasDesdeBackend();
-    sincronizarTurnosDesdeBackend();
-    sincronizarAsignacionesDesdeBackend();
+    sincronizarTodo();
   } else {
       delay(500);
       WiFi.mode(WIFI_AP);
@@ -2400,6 +2476,17 @@ void setup() {
   server.on("/marcar", handleMarcarAsistencia);
   server.on("/limpiar", handleLimpiarDatos);
   server.on("/sincronizar", handleSincronizar);
+  server.on("/reiniciar", []() {
+    server.send(200, "text/plain", "Reiniciando dispositivo...");
+    delay(500);
+    ESP.restart();
+  });
+  server.on("/wifi-reconnect", []() {
+    server.send(200, "text/plain", "Reconectando WiFi...");
+    WiFi.disconnect(false);
+    delay(500);
+    WiFi.begin();
+  });
   server.on("/fetch-personas", handleFetchPersonas);
   server.on("/set-backend", handleSetBackend);
   server.on("/editar_persona", handleEditarPersona);
@@ -2741,12 +2828,6 @@ void loop() {
     esp_mqtt_client_publish(mqtt_client, topic.c_str(), payload.c_str(), 0, 0, 0);
   }
 
-  static unsigned long lastSync = 0;
-  if (isOnline && (ahora - lastSync) > 300000UL) {
-    lastSync = ahora;
-    sincronizarPendientes();
-  }
-
   static unsigned long lastErpSync = 0;
   if (isOnline && (ahora - lastErpSync) > 360000UL) {
     lastErpSync = ahora;
@@ -2757,6 +2838,11 @@ void loop() {
   if (isOnline && (ahora - lastPwdCheck) > 60000UL) {
     lastPwdCheck = ahora;
     verificarPasswordPendiente();
+  }
+
+  if (isOnline && sincronizacionPendiente && estadoActual == ESTADO_IDLE) {
+    sincronizacionPendiente = false;
+    sincronizarTodo();
   }
 
   delay(20);

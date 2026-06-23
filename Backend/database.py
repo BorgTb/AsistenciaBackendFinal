@@ -120,6 +120,9 @@ def init_db():
         """)
         cur.execute("ALTER TABLE turnos ADD COLUMN IF NOT EXISTS empresa_id INTEGER REFERENCES empresas(id) DEFAULT 1")
         cur.execute("ALTER TABLE turnos ADD COLUMN IF NOT EXISTS activo BOOLEAN DEFAULT TRUE")
+        cur.execute("ALTER TABLE turnos ADD COLUMN IF NOT EXISTS con_colacion BOOLEAN DEFAULT FALSE")
+        cur.execute("ALTER TABLE turnos ADD COLUMN IF NOT EXISTS colacion_inicio TIME")
+        cur.execute("ALTER TABLE turnos ADD COLUMN IF NOT EXISTS colacion_fin TIME")
 
         cur.execute("""
             CREATE TABLE IF NOT EXISTS asignaciones (
@@ -154,6 +157,7 @@ def init_db():
         cur.execute("ALTER TABLE asistencias ADD COLUMN IF NOT EXISTS dispositivo_id INTEGER REFERENCES dispositivos(id) DEFAULT 1")
         cur.execute("ALTER TABLE asistencias ADD COLUMN IF NOT EXISTS timestamp_local VARCHAR(50)")
         cur.execute("ALTER TABLE asistencias ADD COLUMN IF NOT EXISTS sincronizado_at TIMESTAMP")
+        cur.execute("ALTER TABLE asistencias ADD COLUMN IF NOT EXISTS turno_id INTEGER REFERENCES turnos(id)")
         # El DEFAULT 1 apunta a un dispositivo que puede no existir (viola la FK).
         # Quitar el default para que las inserciones que omitan la columna usen NULL.
         cur.execute("ALTER TABLE asistencias ALTER COLUMN dispositivo_id DROP DEFAULT")

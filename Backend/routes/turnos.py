@@ -18,15 +18,15 @@ def get_turnos():
     persona_id = request.persona_id
 
     if rol == 'admin':
-        cur.execute("SELECT id, nombre, hora_inicio, hora_fin, dias, empresa_id FROM turnos ORDER BY id")
+        cur.execute("SELECT id, nombre, hora_inicio, hora_fin, dias, empresa_id, con_colacion, colacion_inicio, colacion_fin FROM turnos ORDER BY id")
     elif rol == 'empleador' and empresa_id:
         cur.execute(
-            "SELECT id, nombre, hora_inicio, hora_fin, dias, empresa_id FROM turnos WHERE empresa_id = %s ORDER BY id",
+            "SELECT id, nombre, hora_inicio, hora_fin, dias, empresa_id, con_colacion, colacion_inicio, colacion_fin FROM turnos WHERE empresa_id = %s ORDER BY id",
             (empresa_id,)
         )
     elif rol == 'trabajador' and persona_id:
         cur.execute(
-            """SELECT t.id, t.nombre, t.hora_inicio, t.hora_fin, t.dias, t.empresa_id
+            """SELECT t.id, t.nombre, t.hora_inicio, t.hora_fin, t.dias, t.empresa_id, t.con_colacion, t.colacion_inicio, t.colacion_fin
                FROM turnos t
                JOIN asignaciones a ON a.turno_id = t.id AND a.vigente = TRUE
                WHERE a.persona_id = %s ORDER BY t.id""",
@@ -35,7 +35,7 @@ def get_turnos():
     else:
         if empresa_id:
             cur.execute(
-                "SELECT id, nombre, hora_inicio, hora_fin, dias, empresa_id FROM turnos WHERE empresa_id = %s ORDER BY id",
+                "SELECT id, nombre, hora_inicio, hora_fin, dias, empresa_id, con_colacion, colacion_inicio, colacion_fin FROM turnos WHERE empresa_id = %s ORDER BY id",
                 (empresa_id,)
             )
         else:
@@ -53,7 +53,10 @@ def get_turnos():
         "inicio": str(r[2]),
         "fin": str(r[3]),
         "dias": r[4],
-        "empresa_id": r[5]
+        "empresa_id": r[5],
+        "con_colacion": r[6],
+        "colacion_inicio": str(r[7]) if r[7] else None,
+        "colacion_fin": str(r[8]) if r[8] else None
     } for r in rows])
 
 
@@ -68,13 +71,48 @@ def create_turno():
     cur = conn.cursor()
     try:
         cur.execute(
-            "INSERT INTO turnos (empresa_id, nombre, hora_inicio, hora_fin, dias) VALUES (%s, %s, %s, %s, %s) RETURNING id",
-            (empresa_id, data['nombre'], data['inicio'], data['fin'], data.get('dias', ''))
+            "INSERT INTO turnos (empresa_id, nombre, hora_inicio, hora_fin, dias, con_colacion, colacion_inicio, colacion_fin) VALUES (%s, %s, %s, %s, %s, %s, %s, %s) RETURNING id",
+            (empresa_id, data['nombre'], data['inicio'], data['fin'], data.get('dias', ''),
+             data.get('con_colacion', False),
+             data.get('colacion_inicio') or None,
+             data.get('colacion_fin') or None)
         )
         turno_id = cur.fetchone()[0]
         conn.commit()
         notificar_sincronizacion(empresa_id, 'turnos', 'crear', turno_id)
         return jsonify({'ok': True, 'id': turno_id})
+    except Exception as e:
+        conn.rollback()
+        return jsonify({'error': str(e)}), 500
+    finally:
+        cur.close()
+        conn.close()
+
+
+@turnos_bp.route('/api/turnos/<turno_id>', methods=['PUT'])
+@token_opcional
+def update_turno(turno_id):
+    data = request.json or {}
+    conn = get_connection()
+    cur = conn.cursor()
+    try:
+        cur.execute(
+            """UPDATE turnos SET
+               nombre = COALESCE(%s, nombre),
+               hora_inicio = COALESCE(%s, hora_inicio),
+               hora_fin = COALESCE(%s, hora_fin),
+               dias = COALESCE(%s, dias),
+               con_colacion = COALESCE(%s, con_colacion),
+               colacion_inicio = %s,
+               colacion_fin = %s
+               WHERE id::text = %s""",
+            (data.get('nombre'), data.get('inicio'), data.get('fin'), data.get('dias'),
+             data.get('con_colacion'), data.get('colacion_inicio') or None, data.get('colacion_fin') or None,
+             str(turno_id))
+        )
+        conn.commit()
+        notificar_sincronizacion(request.empresa_id, 'turnos', 'actualizar', int(turno_id))
+        return jsonify({'ok': True})
     except Exception as e:
         conn.rollback()
         return jsonify({'error': str(e)}), 500

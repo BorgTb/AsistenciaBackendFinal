@@ -56,22 +56,22 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Oxygen,sans-
     </div>
   </div>
 
-  <div class="section-label">Servidores (Opcional)</div>
+  <div class="section-label">Servidores - Opcional (avanzado)</div>
   <div class="form-card">
     <div class="field">
-      <label>URL Backend HTTP</label>
+      <label>Dirección del servidor (URL)</label>
       <input type="text" id="backend" placeholder="http://192.168.1.X:5000">
     </div>
     <div class="field">
-      <label>IP Broker MQTT</label>
+      <label>Servidor MQTT (broker)</label>
       <input type="text" id="mqtt" placeholder="192.168.1.X">
     </div>
   </div>
 
-  <div class="section-label">PIN de Enrolamiento</div>
+  <div class="section-label">PIN de registro</div>
   <div class="form-card">
     <div class="field">
-      <label>Código de enrolamiento (opcional)</label>
+      <label>Código de registro (opcional)</label>
       <input type="text" id="pin" placeholder="Código de 6 dígitos" maxlength="8" pattern="[A-Za-z0-9]*" style="font-size:22px;letter-spacing:6px;text-align:center;font-weight:600;font-family:'SF Mono',Monaco,monospace">
     </div>
   </div>
@@ -90,6 +90,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Oxygen,sans-
   </div>
 
   <button class="btn btn-primary" onclick="guardar()">Guardar y Reiniciar</button>
+  <button class="btn btn-secondary" onclick="reiniciarDispositivo()">Reiniciar dispositivo (sin guardar)</button>
   <button class="btn btn-secondary" onclick="location.href='/'">Cancelar</button>
 
   <div id="status" class="msg"></div>
@@ -134,6 +135,14 @@ async function guardar(){
   }catch(e){
     el.className='msg show err';el.textContent='Error: '+e.message;
   }
+}
+async function reiniciarDispositivo(){
+  if(!confirm('¿Reiniciar el dispositivo? Perderá los cambios no guardados.'))return;
+  try{
+    const r = await fetch('/reiniciar');
+    if(r.ok){alert('Reiniciando dispositivo...');}
+    else{alert('Error al reiniciar');}
+  }catch(e){alert('Error: '+e.message);}
 }
 </script>
 </body>

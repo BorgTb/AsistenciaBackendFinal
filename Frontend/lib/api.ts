@@ -64,9 +64,16 @@ export async function getTurnos() {
   return request<Turno[]>('/api/turnos');
 }
 
-export async function createTurno(payload: { nombre: string; inicio: string; fin: string; dias: string }) {
+export async function createTurno(payload: { nombre: string; inicio: string; fin: string; dias: string; con_colacion?: boolean; colacion_inicio?: string | null; colacion_fin?: string | null }) {
   return request<{ ok: boolean; id: string } | { error: string }>('/api/turnos', {
     method: 'POST',
+    body: JSON.stringify(payload)
+  });
+}
+
+export async function updateTurno(turnoId: string, payload: { nombre?: string; inicio?: string; fin?: string; dias?: string; con_colacion?: boolean; colacion_inicio?: string | null; colacion_fin?: string | null }) {
+  return request<{ ok: boolean } | { error: string }>(`/api/turnos/${turnoId}`, {
+    method: 'PUT',
     body: JSON.stringify(payload)
   });
 }

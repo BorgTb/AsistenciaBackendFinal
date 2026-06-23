@@ -2,7 +2,7 @@
 <html>
 <head>
 <meta charset="utf-8">
-<title>SAS · Registro Biométrico</title>
+<title>SAS · Registro biométrico (huella/rostro)</title>
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
 <style>
 :root{--bg:#0f172a;--surface:#1e293b;--surface-2:#334155;--border:#475569;--primary:#1d4ed8;--primary-light:#1e40af;--success:#16a34a;--warning:#d97706;--danger:#dc2626;--text:#f1f5f9;--muted:#94a3b8;--muted-2:#64748b;--line:rgba(255,255,255,.08);--radius:8px;--radius-lg:12px}
@@ -54,7 +54,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Oxygen,sans-
 <div class="wrap">
   <div class="top">
     <button class="back" onclick="location.href='/'">← Volver</button>
-    <h1>Registro Biométrico</h1>
+    <h1>Registro biométrico (huella/rostro)</h1>
   </div>
 
   <div id="form-container">
@@ -72,9 +72,9 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Oxygen,sans-
     </div>
     <label style="display:flex;align-items:flex-start;gap:10px;margin-bottom:14px;font-size:12px;color:var(--muted);line-height:1.4">
       <input type="checkbox" id="consentCheck" required style="margin-top:2px">
-      <span>Acepto la política de privacidad y el tratamiento de datos biométricos para el control de asistencia</span>
+      <span>Acepto la política de privacidad y el tratamiento de datos biométricos (huella y rostro) para el control de asistencia</span>
     </label>
-    <button class="btn btn-primary" onclick="iniciarRegistro()">Iniciar Escaneo Biométrico</button>
+    <button class="btn btn-primary" onclick="iniciarRegistro()">Iniciar registro biométrico</button>
     <button class="btn btn-secondary" onclick="location.href='/'">Cancelar</button>
   </div>
 
@@ -191,7 +191,7 @@ function marcarPasoActivo(paso){
   ['step1','step2','step3'].forEach(id=>document.getElementById(id).className='step');
   const icons=['&#9997;','&#9997;','&#128247;'];
   const titles=['Coloque el dedo en el sensor','Levante y vuelva a colocarlo','Mire a la cámara del reloj'];
-  const descs=['Mantenga presionado firmemente','Para confirmar la plantilla biométrica','Se registrará su rostro en la base de datos'];
+  const descs=['Mantenga presionado firmemente','Para confirmar la plantilla de huella','Se registrará su rostro en la base de datos'];
   document.getElementById('camIcon').innerHTML=icons[paso-1];
   document.getElementById('step3-title').textContent=titles[paso-1];
   document.getElementById('step3-desc').textContent=descs[paso-1];

@@ -264,6 +264,16 @@ def broadcast_device_update(data: dict):
     except Exception as e:
         print(f"⚠️ Error broadcasting SSE: {e}", flush=True)
 
+def enviar_comando_dispositivo(mac: str, comando: str) -> bool:
+    if _mqtt_client is None:
+        print(f"❌ MQTT no disponible para enviar comando {comando} a {mac}", flush=True)
+        return False
+    topic = f"backend/comando/{mac}/{comando}"
+    _mqtt_client.publish(topic, json.dumps({"comando": comando}))
+    print(f"📤 Comando enviado: {topic}", flush=True)
+    return True
+
+
 def device_pinger():
     while True:
         time.sleep(30)

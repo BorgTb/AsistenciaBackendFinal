@@ -1,4 +1,4 @@
-export type AttendanceType = 'entrada' | 'salida';
+export type AttendanceType = 'entrada' | 'salida' | 'colacion_entrada' | 'colacion_salida';
 
 export interface Persona {
   id: string;
@@ -16,6 +16,9 @@ export interface Turno {
   inicio: string;
   fin: string;
   dias: string;
+  con_colacion: boolean;
+  colacion_inicio: string | null;
+  colacion_fin: string | null;
 }
 
 export interface Asignacion {

@@ -146,6 +146,18 @@ export async function registrarHuellaDispositivo(dispositivoId: string, personaI
   });
 }
 
+export async function reiniciarDispositivo(dispositivoId: string) {
+  return request<{ ok: boolean; mensaje: string }>(`/api/dispositivos/${dispositivoId}/reiniciar`, {
+    method: 'POST'
+  });
+}
+
+export async function reconectarWifiDispositivo(dispositivoId: string) {
+  return request<{ ok: boolean; mensaje: string }>(`/api/dispositivos/${dispositivoId}/wifi-reconnect`, {
+    method: 'POST'
+  });
+}
+
 export async function enviarErp(erpId: string) {
   return request<{ ok: boolean; enviados: number; errores: number; mensaje?: string; ultimo_estado?: unknown }>(`/api/erp/${erpId}/enviar`, {
     method: 'POST'

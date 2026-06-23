@@ -161,7 +161,7 @@ async function cargar(){
     lista.innerHTML=personas.map((p,idx)=>`
       <div class="card">
         <div class="card-name">${p.nombre}</div>
-        <div class="card-info">RUT: ${p.rut||'N/A'} &nbsp;|&nbsp; Email: ${p.email||'N/A'}<br><span>Huella ID: ${p.huella_id} &nbsp;|&nbsp; SYS ID: ${p.id}</span></div>
+        <div class="card-info">RUT: ${p.rut||'N/A'} &nbsp;|&nbsp; Email: ${p.email||'N/A'}<br><span>ID Huella: ${p.huella_id} &nbsp;|&nbsp; ID Interno: ${p.id}</span></div>
         <div class="actions">
           <button class="abtn a-ed" onclick="editarPersona(${idx})">Editar</button>
           <button class="abtn a-h" onclick="actualizarHuella(${idx})">Huella</button>

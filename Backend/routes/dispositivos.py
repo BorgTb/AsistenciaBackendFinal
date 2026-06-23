@@ -338,3 +338,77 @@ def registrar_huella(dispositivo_id):
         })
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
+
+@dispositivos_bp.route('/api/dispositivos/<dispositivo_id>/reiniciar', methods=['POST'])
+@requiere_rol('admin', 'empleador')
+def reiniciar_dispositivo(dispositivo_id):
+    conn = get_connection()
+    cur = conn.cursor()
+    try:
+        if request.user_rol == 'admin':
+            cur.execute(
+                "SELECT REPLACE(mac_address, ':', '') as mac, nombre, empresa_id FROM dispositivos WHERE id::text = %s",
+                (str(dispositivo_id),)
+            )
+        else:
+            cur.execute(
+                "SELECT REPLACE(mac_address, ':', '') as mac, nombre, empresa_id FROM dispositivos WHERE id::text = %s AND empresa_id = %s",
+                (str(dispositivo_id), request.empresa_id)
+            )
+        row = cur.fetchone()
+        if not row:
+            return jsonify({'error': 'Dispositivo no encontrado'}), 404
+        mac, nombre, device_empresa_id = row
+
+        if request.user_rol != 'admin' and device_empresa_id != request.empresa_id:
+            return jsonify({'error': 'Dispositivo no pertenece a tu empresa'}), 403
+    finally:
+        cur.close()
+        conn.close()
+
+    try:
+        from mqtt_handler import enviar_comando_dispositivo
+        if enviar_comando_dispositivo(mac, 'reiniciar'):
+            return jsonify({'ok': True, 'mensaje': f'Comando de reinicio enviado a {nombre}'})
+        else:
+            return jsonify({'error': 'MQTT no disponible'}), 503
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@dispositivos_bp.route('/api/dispositivos/<dispositivo_id>/wifi-reconnect', methods=['POST'])
+@requiere_rol('admin', 'empleador')
+def reconectar_wifi_dispositivo(dispositivo_id):
+    conn = get_connection()
+    cur = conn.cursor()
+    try:
+        if request.user_rol == 'admin':
+            cur.execute(
+                "SELECT REPLACE(mac_address, ':', '') as mac, nombre, empresa_id FROM dispositivos WHERE id::text = %s",
+                (str(dispositivo_id),)
+            )
+        else:
+            cur.execute(
+                "SELECT REPLACE(mac_address, ':', '') as mac, nombre, empresa_id FROM dispositivos WHERE id::text = %s AND empresa_id = %s",
+                (str(dispositivo_id), request.empresa_id)
+            )
+        row = cur.fetchone()
+        if not row:
+            return jsonify({'error': 'Dispositivo no encontrado'}), 404
+        mac, nombre, device_empresa_id = row
+
+        if request.user_rol != 'admin' and device_empresa_id != request.empresa_id:
+            return jsonify({'error': 'Dispositivo no pertenece a tu empresa'}), 403
+    finally:
+        cur.close()
+        conn.close()
+
+    try:
+        from mqtt_handler import enviar_comando_dispositivo
+        if enviar_comando_dispositivo(mac, 'wifi-reconnect'):
+            return jsonify({'ok': True, 'mensaje': f'Comando de reconexion WiFi enviado a {nombre}'})
+        else:
+            return jsonify({'error': 'MQTT no disponible'}), 503
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500

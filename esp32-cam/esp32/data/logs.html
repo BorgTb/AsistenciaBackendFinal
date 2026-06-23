@@ -2,7 +2,7 @@
 <html>
 <head>
 <meta charset="utf-8">
-<title>SAS · Logs</title>
+<title>SAS · Registro de eventos</title>
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
 <style>
 :root{--bg:#0f172a;--surface:#1e293b;--surface-2:#334155;--border:#475569;--primary:#1d4ed8;--primary-light:#1e40af;--success:#16a34a;--warning:#d97706;--danger:#dc2626;--text:#f1f5f9;--muted:#94a3b8;--muted-2:#64748b;--line:rgba(255,255,255,.08);--radius:8px;--radius-lg:12px}
@@ -33,11 +33,11 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Oxygen,sans-
 <div class="wrap">
   <div class="top">
     <button class="back" onclick="location.href='/'">← Volver</button>
-    <h1>Logs del Sistema</h1>
+    <h1>Registro de eventos del sistema</h1>
   </div>
   <div class="toolbar">
     <button class="tbtn tbtn-reload" onclick="cargarLogs()">Actualizar</button>
-    <button class="tbtn tbtn-clear" onclick="limpiarLogs()">Limpiar Buffer</button>
+    <button class="tbtn tbtn-clear" onclick="limpiarLogs()">Limpiar registros</button>
   </div>
   <div id="logs" class="logbox">Cargando logs...</div>
   <div id="status" class="statusbar"><span class="live-dot"></span>Auto-refresh cada 2 s</div>

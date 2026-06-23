@@ -20,6 +20,8 @@ import {
   generarPasswordDispositivo,
   eliminarPasswordDispositivo,
   registrarHuellaDispositivo,
+  reiniciarDispositivo,
+  reconectarWifiDispositivo,
   getEmpresas,
   getUsuarios,
   registerUser,
@@ -221,7 +223,7 @@ export function SasDashboard({ initialSection = 'dashboard' }: { initialSection?
   const [huellaMensaje, setHuellaMensaje] = useState('');
 
   const [personaForm, setPersonaForm] = useState({ nombre: '', rut: '', email: '', consentimiento: false });
-  const [turnoForm, setTurnoForm] = useState({ nombre: '', inicio: '08:00', fin: '17:00' });
+  const [turnoForm, setTurnoForm] = useState({ nombre: '', inicio: '08:00', fin: '17:00', con_colacion: false, colacion_inicio: '13:00', colacion_fin: '14:00' });
   const [asignacionForm, setAsignacionForm] = useState({ rut: '', turnoId: '' });
   const [erpForm, setErpForm] = useState<ErpFormState>({
     nombre: 'Nueva integración',
@@ -611,7 +613,7 @@ export function SasDashboard({ initialSection = 'dashboard' }: { initialSection?
 
     if (result && 'ok' in result && result.ok) {
       pushLog('ok', `Persona creada: ${nombre}`);
-      showToast('success', `Persona ${nombre} guardada. Complete huella/rostro desde el dispositivo ESP32.`);
+      showToast('success', `Persona ${nombre} guardada. Complete el registro de huella y rostro desde el dispositivo físico (ESP32).`);
       closeModal();
       setPersonaForm({ nombre: '', rut: '', email: '', consentimiento: false });
       await refreshData();
@@ -629,13 +631,18 @@ export function SasDashboard({ initialSection = 'dashboard' }: { initialSection?
     }
 
     const dias = days.join('');
-    const result = await createTurno({ nombre, inicio: turnoForm.inicio, fin: turnoForm.fin, dias });
+    const result = await createTurno({
+      nombre, inicio: turnoForm.inicio, fin: turnoForm.fin, dias,
+      con_colacion: turnoForm.con_colacion,
+      colacion_inicio: turnoForm.con_colacion ? turnoForm.colacion_inicio : null,
+      colacion_fin: turnoForm.con_colacion ? turnoForm.colacion_fin : null
+    });
 
     if (result && 'ok' in result && result.ok) {
       pushLog('ok', `Turno creado: ${nombre}`);
       showToast('success', `Turno ${nombre} creado`);
       closeModal();
-      setTurnoForm({ nombre: '', inicio: '08:00', fin: '17:00' });
+      setTurnoForm({ nombre: '', inicio: '08:00', fin: '17:00', con_colacion: false, colacion_inicio: '13:00', colacion_fin: '14:00' });
       setDays(['L', 'M', 'X', 'J', 'V']);
       await refreshData();
       return;
@@ -867,6 +874,38 @@ export function SasDashboard({ initialSection = 'dashboard' }: { initialSection?
   function handleDeviceSync(ip: string) {
     pushLog('info', `Sincronización solicitada para ${ip}`);
     showToast('success', `Sincronización iniciada para el dispositivo`);
+  }
+
+  async function handleReiniciarDispositivo(id: string, nombre: string) {
+    if (!confirm(`¿Desea reiniciar el dispositivo "${nombre}"? El dispositivo se reiniciará y tardará unos segundos en volver a estar en línea.`)) return;
+    showToast('success', `Enviando comando de reinicio a ${nombre}...`);
+    try {
+      const res = await reiniciarDispositivo(id);
+      if (res && res.ok) {
+        pushLog('ok', `Reinicio enviado: ${nombre}`);
+        showToast('success', res.mensaje || `Reinicio enviado a ${nombre}`);
+      } else {
+        showToast('error', (res as { error?: string })?.error || 'No se pudo enviar el comando de reinicio');
+      }
+    } catch {
+      showToast('error', 'Error de conexión al enviar comando de reinicio');
+    }
+  }
+
+  async function handleReconectarWifiDispositivo(id: string, nombre: string) {
+    if (!confirm(`¿Desea reconectar el WiFi del dispositivo "${nombre}"?`)) return;
+    showToast('success', `Enviando comando de reconexión WiFi a ${nombre}...`);
+    try {
+      const res = await reconectarWifiDispositivo(id);
+      if (res && res.ok) {
+        pushLog('ok', `Reconexión WiFi enviada: ${nombre}`);
+        showToast('success', res.mensaje || `Reconexión WiFi enviada a ${nombre}`);
+      } else {
+        showToast('error', (res as { error?: string })?.error || 'No se pudo enviar el comando de reconexión WiFi');
+      }
+    } catch {
+      showToast('error', 'Error de conexión al enviar comando de reconexión WiFi');
+    }
   }
 
   async function handleToggleConsentimiento() {
@@ -1385,7 +1424,7 @@ export function SasDashboard({ initialSection = 'dashboard' }: { initialSection?
 
           <div className="top-actions">
             {(user?.rol === 'admin' || user?.rol === 'empleador') && (
-              <span className="chip"><strong>{stats.onlineDevices}</strong> dispositivos online</span>
+              <span className="chip"><strong>{stats.onlineDevices}</strong> dispositivos en línea</span>
             )}
             {user?.rol === 'trabajador' && (
               <button className="btn btn-secondary" type="button" onClick={() => openModal('password')}>
@@ -1455,10 +1494,10 @@ export function SasDashboard({ initialSection = 'dashboard' }: { initialSection?
               <article className="metric-card">
                 <div className="metric-top">
                   <span className="metric-label">Personas</span>
-                  <Badge tone="success">biometría activa</Badge>
+                  <Badge tone="success">con datos biométricos</Badge>
                 </div>
                 <div className="metric-value">{personas.length}</div>
-                <div className="metric-foot">{personas.filter((item) => item.huella_id > 0).length} con huella registrada</div>
+                <div className="metric-foot">{personas.filter((item) => item.huella_id > 0).length} con huella dactilar registrada</div>
                 <div className="sparkline" aria-hidden>
                   {[30, 24, 48, 44, 58, 60, 74, 82].map((height, index) => (
                     <span key={index} style={{ height: `${height}%` }} />
@@ -1468,7 +1507,7 @@ export function SasDashboard({ initialSection = 'dashboard' }: { initialSection?
               <article className="metric-card">
                 <div className="metric-top">
                   <span className="metric-label">Dispositivos</span>
-                  <Badge tone={stats.onlineDevices > 0 ? 'success' : 'warning'}>{stats.onlineDevices} online</Badge>
+                  <Badge tone={stats.onlineDevices > 0 ? 'success' : 'warning'}>{stats.onlineDevices} en línea</Badge>
                 </div>
                 <div className="metric-value">{devices.length}</div>
                 <div className="metric-foot">{devices.filter(d => d.online).length} en línea · {devices.length} registrados</div>
@@ -1480,11 +1519,11 @@ export function SasDashboard({ initialSection = 'dashboard' }: { initialSection?
               </article>
               <article className="metric-card">
                 <div className="metric-top">
-                  <span className="metric-label">Verificación biométrica</span>
+                  <span className="metric-label">Verificación biométrica (huella/rostro)</span>
                   <Badge tone="warning">capturas</Badge>
                 </div>
                 <div className="metric-value">{stats.facialChecks}</div>
-                <div className="metric-foot">Marcajes con verificación biométrica</div>
+                <div className="metric-foot">Marcajes con verificación (huella/rostro)</div>
                 <div className="sparkline" aria-hidden>
                   {[16, 28, 18, 46, 38, 52, 48, 66].map((height, index) => (
                     <span key={index} style={{ height: `${height}%` }} />
@@ -1512,7 +1551,7 @@ export function SasDashboard({ initialSection = 'dashboard' }: { initialSection?
                   <div className="status-item-left">
                     <span className="dot-online" />
                     <div>
-                      <div className="status-name">Servidor</div>
+                      <div className="status-name">Plataforma (servidor)</div>
                       <div className="status-meta">Conectado y operativo</div>
                     </div>
                   </div>
@@ -1583,14 +1622,16 @@ export function SasDashboard({ initialSection = 'dashboard' }: { initialSection?
                     <option value="">Todos</option>
                     <option value="entrada">Entrada</option>
                     <option value="salida">Salida</option>
+                    <option value="colacion_entrada">Colación Entrada</option>
+                    <option value="colacion_salida">Colación Salida</option>
                   </select>
                 </div>
                 <div className="field" style={{ minWidth: 220 }}>
                   <label>Método</label>
                   <select value={filterMethod} onChange={(event) => setFilterMethod(event.target.value)}>
                     <option value="">Todos</option>
-                    <option value="huella">Huella</option>
-                    <option value="facial+huella">Facial + Huella</option>
+                    <option value="huella">Huella dactilar</option>
+                    <option value="facial+huella">Rostro + Huella dactilar</option>
                   </select>
                 </div>
               </div>
@@ -1614,7 +1655,7 @@ export function SasDashboard({ initialSection = 'dashboard' }: { initialSection?
                           <td className="mono muted">{item.id || index + 1}</td>
                           <td>{item.nombre}</td>
                           <td>
-                            <Badge tone={item.tipo === 'entrada' ? 'success' : 'warning'}>{item.tipo}</Badge>
+                            <Badge tone={item.tipo === 'entrada' ? 'success' : item.tipo === 'salida' ? 'warning' : item.tipo === 'colacion_entrada' ? 'info' : 'danger'}>{item.tipo}</Badge>
                           </td>
                           <td>
                             <Badge tone={item.metodo.includes('facial') ? 'info' : 'warning'}>{item.metodo}</Badge>
@@ -1673,13 +1714,13 @@ export function SasDashboard({ initialSection = 'dashboard' }: { initialSection?
                         <td className="mono muted">{item.rut}</td>
                         <td className="muted">{item.email || '—'}</td>
                         <td>
-                          <Badge tone={item.huella_id ? 'success' : 'danger'}>{item.huella_id ? `ID ${item.huella_id}` : 'sin huella'}</Badge>
+                          <Badge tone={item.huella_id ? 'success' : 'danger'}>{item.huella_id ? `ID ${item.huella_id}` : 'sin huella dactilar'}</Badge>
                         </td>
                         <td className="mono muted">{formatDate(item.fecha_registro)}</td>
                         <td>
                           <div className="toolbar">
                             <button className="btn btn-secondary" type="button" disabled={uploadingRostro} onClick={() => handleRostroUpload(item.id)}>{uploadingRostro ? 'Subiendo...' : 'Rostro'}</button>
-                            <button className="btn btn-primary" type="button" onClick={() => openHuellaModal(item.id, item.nombre)}>Huella</button>
+                            <button className="btn btn-primary" type="button" onClick={() => openHuellaModal(item.id, item.nombre)}>Huella dactilar</button>
                             <button className="btn btn-danger" type="button" onClick={() => handleDeletePersona(item.id)}>{user?.rol === 'admin' ? 'Eliminar' : 'Desactivar'}</button>
                           </div>
                         </td>
@@ -1805,7 +1846,7 @@ export function SasDashboard({ initialSection = 'dashboard' }: { initialSection?
                 <div className="status-row">
                   <div className="status-dot" style={{ background: 'var(--primary)' }} />
                   <div>
-                    <div className="device-name" style={{ fontWeight: 700, fontSize: '1.1rem' }}>PIN de enrolamiento generado</div>
+                    <div className="device-name" style={{ fontWeight: 700, fontSize: '1.1rem' }}>PIN de registro generado</div>
                     <div className="device-ip">Copia este código para configurar el dispositivo físico</div>
                   </div>
                 </div>
@@ -1813,7 +1854,7 @@ export function SasDashboard({ initialSection = 'dashboard' }: { initialSection?
                   {generatedPin}
                 </div>
                 <div className="muted" style={{ marginTop: 12, fontSize: '0.82rem' }}>
-                  1. Enciende el dispositivo · 2. Conéctate a su WiFi · 3. Ingresa el PIN y la URL del servidor · 4. El dispositivo se configurará automáticamente
+                  1. Enciende el dispositivo · 2. Conéctate a su red WiFi (inalámbrica) · 3. Ingresa el PIN y la dirección del servidor (URL) · 4. El dispositivo se configurará automáticamente
                 </div>
               </div>
             )}
@@ -1850,11 +1891,11 @@ export function SasDashboard({ initialSection = 'dashboard' }: { initialSection?
                                     target="_blank"
                                     rel="noreferrer"
                                     className="device-ip-link"
-                                    title="Abrir interfaz del dispositivo (misma red)"
+                                    title="Abrir configuración del dispositivo (misma red)"
                                   >
                                     {item.ip}
                                   </a>
-                                  <div className="device-ip-hint">Misma red requerida</div>
+                                  <div className="device-ip-hint">Requiere misma red WiFi</div>
                                 </>
                               ) : (
                                 <div className="device-ip">IP no disponible</div>
@@ -1865,7 +1906,7 @@ export function SasDashboard({ initialSection = 'dashboard' }: { initialSection?
                       )}
                     </div>
                     <div className="status-row" style={{ gap: 6 }}>
-                      <Badge tone={item.online ? 'success' : 'warning'}>{item.online ? 'online' : 'offline'}</Badge>
+                      <Badge tone={item.online ? 'success' : 'warning'}>{item.online ? 'en línea' : 'desconectado'}</Badge>
                       {item.tienePassword ? (
                         <span title={item.passwordPendiente ? 'Contraseña pendiente de aplicar en el dispositivo' : 'Con contraseña'} style={{ fontSize: '1.1rem' }}>
                           {item.passwordPendiente ? '🔑' : '🔒'}
@@ -1879,7 +1920,7 @@ export function SasDashboard({ initialSection = 'dashboard' }: { initialSection?
                   {item.codigoEnrol && (
                     <div className="card" style={{ marginTop: 12, padding: '10px 14px', borderLeft: '4px solid var(--primary)' }}>
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                        <span className="muted" style={{ fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.5px' }}>PIN de enrolamiento</span>
+                        <span className="muted" style={{ fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.5px' }}>PIN de registro</span>
                         <button
                           className="btn btn-secondary"
                           type="button"
@@ -1944,7 +1985,7 @@ export function SasDashboard({ initialSection = 'dashboard' }: { initialSection?
                   <div className="device-actions">
                     <button className="btn btn-secondary" type="button" onClick={() => { setEditingDeviceId(item.id); setEditDeviceName(item.nombre); }}>Renombrar</button>
                     {item.ip && item.ip !== '—' && (
-                      <a className="btn btn-primary" href={`http://${item.ip}`} target="_blank" rel="noreferrer" title="Abrir interfaz del dispositivo (requiere estar en la misma red local)">Conectar</a>
+                      <a className="btn btn-primary" href={`http://${item.ip}`} target="_blank" rel="noreferrer" title="Abrir panel del dispositivo (requiere misma red WiFi)">Abrir dispositivo</a>
                     )}
                     <button
                       className="btn btn-secondary"
@@ -1959,8 +2000,24 @@ export function SasDashboard({ initialSection = 'dashboard' }: { initialSection?
                         Quitar contraseña
                       </button>
                     )}
-                    <a className="btn btn-secondary" href={`http://${item.ip || deviceBase}/logs`} target="_blank" rel="noreferrer">Logs</a>
-                    <button className="btn btn-secondary" type="button" onClick={() => handleDeviceSync(item.ip)}>Sync</button>
+                    <a className="btn btn-secondary" href={`http://${item.ip || deviceBase}/registros`} target="_blank" rel="noreferrer">Registros</a>
+                    <button className="btn btn-secondary" type="button" onClick={() => handleDeviceSync(item.ip)}>Sincronizar</button>
+                    <button
+                      className="btn btn-secondary"
+                      type="button"
+                      disabled={!item.online}
+                      onClick={() => handleReiniciarDispositivo(item.id, item.nombre)}
+                    >
+                      Reiniciar
+                    </button>
+                    <button
+                      className="btn btn-secondary"
+                      type="button"
+                      disabled={!item.online}
+                      onClick={() => handleReconectarWifiDispositivo(item.id, item.nombre)}
+                    >
+                      Reconectar WiFi
+                    </button>
                     <button className="btn btn-danger" type="button" onClick={() => handleDeleteDispositivo(item.id, item.nombre)}>Eliminar</button>
                   </div>
                 </article>
@@ -1974,10 +2031,10 @@ export function SasDashboard({ initialSection = 'dashboard' }: { initialSection?
           <section className="panel section">
             <div className="section-head">
               <div>
-                <h2 className="section-title">Integraciones ERP</h2>
+                <h2 className="section-title">Integraciones (ERP)</h2>
                 <p className="section-subtitle">Conecta el sistema con tus plataformas externas.</p>
               </div>
-              <button className="btn btn-secondary" type="button" onClick={() => openModal('erp')}>Agregar ERP</button>
+              <button className="btn btn-secondary" type="button" onClick={() => openModal('erp')}>Agregar integración</button>
             </div>
 
             <div className="erp-grid">
@@ -2013,7 +2070,7 @@ export function SasDashboard({ initialSection = 'dashboard' }: { initialSection?
           <section className="panel section">
             <div className="section-head">
               <div>
-                <h2 className="section-title">Logs</h2>
+                <h2 className="section-title">Registro de eventos</h2>
                 <p className="section-subtitle">Historial de eventos y operaciones del sistema.</p>
               </div>
               <div className="toolbar">
@@ -2075,7 +2132,7 @@ export function SasDashboard({ initialSection = 'dashboard' }: { initialSection?
             <div className="section-head">
               <div>
                 <h3 className="section-title">Mi cuenta</h3>
-                <p className="section-subtitle">Información personal, consentimiento biométrico y registro facial.</p>
+                <p className="section-subtitle">Información personal, consentimiento de datos biométricos y registro de rostro.</p>
               </div>
             </div>
 
@@ -2100,7 +2157,7 @@ export function SasDashboard({ initialSection = 'dashboard' }: { initialSection?
               </div>
 
               <div className="card" style={{ padding: 24 }}>
-                <h4 style={{ fontSize: 18, fontWeight: 600, margin: 0 }}>Consentimiento biométrico</h4>
+                <h4 style={{ fontSize: 18, fontWeight: 600, margin: 0 }}>Consentimiento de datos biométricos</h4>
                 <p style={{ fontSize: 13, color: '#64748b', margin: '8px 0 0' }}>Debes aceptar el consentimiento antes de registrar tus datos faciales.</p>
                 <div style={{ marginTop: 24, display: 'flex', alignItems: 'center', gap: 12 }}>
                   <label style={{ position: 'relative', display: 'inline-block', width: 48, height: 26, cursor: guardandoConsentimiento ? 'not-allowed' : 'pointer' }}>
@@ -2130,7 +2187,7 @@ export function SasDashboard({ initialSection = 'dashboard' }: { initialSection?
 
               <div className="card" style={{ padding: 24 }}>
                 <h4 style={{ fontSize: 18, fontWeight: 600, margin: 0 }}>Registro facial</h4>
-                <p style={{ fontSize: 13, color: '#64748b', margin: '8px 0 0' }}>Captura tu rostro para habilitar el reconocimiento biométrico.</p>
+                <p style={{ fontSize: 13, color: '#64748b', margin: '8px 0 0' }}>Captura tu rostro para habilitar el reconocimiento por cámara.</p>
                 <button
                   className="btn btn-primary"
                   type="button"
@@ -2150,13 +2207,13 @@ export function SasDashboard({ initialSection = 'dashboard' }: { initialSection?
               </div>
 
               <div className="card" style={{ padding: 24 }}>
-                <h4 style={{ fontSize: 18, fontWeight: 600, margin: 0 }}>Estado biométrico</h4>
+                <h4 style={{ fontSize: 18, fontWeight: 600, margin: 0 }}>Estado de datos biométricos</h4>
                 <p style={{ fontSize: 13, color: '#64748b', margin: '8px 0 0' }}>Estado actual de tus datos biométricos en el sistema.</p>
                 <div style={{ marginTop: 24, display: 'flex', flexDirection: 'column', gap: 12 }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', background: '#f8fafc', borderRadius: 8 }}>
                     <div>
                       <div style={{ fontSize: 14, fontWeight: 500 }}>Datos faciales</div>
-                      <div style={{ fontSize: 12, color: '#64748b' }}>Encoding biométrico</div>
+                      <div style={{ fontSize: 12, color: '#64748b' }}>Codificación biométrica</div>
                     </div>
                     <Badge tone={personaActual.encoding_facial ? 'success' : 'warning'}>
                       {personaActual.encoding_facial ? 'Registrado' : 'No registrado'}
@@ -2525,7 +2582,7 @@ export function SasDashboard({ initialSection = 'dashboard' }: { initialSection?
           <div className="modal" onClick={(e) => e.stopPropagation()} role="presentation">
             <div className="modal-head">
               <h3 className="modal-title">Agregar dispositivo</h3>
-              <p className="modal-subtitle">Genera un PIN de enrolamiento para configurar un nuevo dispositivo.</p>
+              <p className="modal-subtitle">Genera un PIN de registro para configurar un nuevo dispositivo.</p>
             </div>
             <div className="modal-body">
               {formError && <div className="login-error" style={{ marginBottom: 12 }}>{formError}</div>}
@@ -2551,7 +2608,7 @@ export function SasDashboard({ initialSection = 'dashboard' }: { initialSection?
                     {generatedPin}
                   </div>
                   <div className="muted" style={{ marginTop: 12, fontSize: '0.82rem' }}>
-                    1. Enciende el dispositivo · 2. Conéctate a su WiFi · 3. Ingresa el PIN y la URL del servidor · 4. El dispositivo se configurará automáticamente
+                  1. Enciende el dispositivo · 2. Conéctate a su red WiFi (inalámbrica) · 3. Ingresa el PIN y la dirección del servidor (URL) · 4. El dispositivo se configurará automáticamente
                   </div>
                 </div>
               )}
@@ -2579,8 +2636,8 @@ export function SasDashboard({ initialSection = 'dashboard' }: { initialSection?
                 {generatedDevicePassword}
               </div>
               <div className="muted" style={{ marginTop: 16, fontSize: '0.82rem' }}>
-                1. El dispositivo aplicará la contraseña cuando se conecte al servidor.<br />
-                2. Si está offline, ingrésela manualmente en la configuración WiFi del dispositivo.<br />
+                1. El dispositivo aplicará la contraseña cuando se conecte a la plataforma (servidor).<br />
+                2. Si está desconectado, ingrésela manualmente en la configuración WiFi del dispositivo.<br />
                 3. Use esta contraseña para acceder a la configuración del dispositivo.
               </div>
             </div>
@@ -2682,6 +2739,25 @@ export function SasDashboard({ initialSection = 'dashboard' }: { initialSection?
                   ))}
                 </div>
               </div>
+              <div className="field" style={{ marginTop: 12 }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <input type="checkbox" checked={turnoForm.con_colacion}
+                    onChange={(event) => setTurnoForm((current) => ({ ...current, con_colacion: event.target.checked }))} />
+                  ¿Tiene colación?
+                </label>
+              </div>
+              {turnoForm.con_colacion && (
+                <div className="form-row">
+                  <div className="field">
+                    <label>Colación inicio</label>
+                    <input type="time" value={turnoForm.colacion_inicio} onChange={(event) => setTurnoForm((current) => ({ ...current, colacion_inicio: event.target.value }))} />
+                  </div>
+                  <div className="field">
+                    <label>Colación fin</label>
+                    <input type="time" value={turnoForm.colacion_fin} onChange={(event) => setTurnoForm((current) => ({ ...current, colacion_fin: event.target.value }))} />
+                  </div>
+                </div>
+              )}
               {formError ? <div className="badge danger">{formError}</div> : null}
             </div>
             <div className="modal-footer">

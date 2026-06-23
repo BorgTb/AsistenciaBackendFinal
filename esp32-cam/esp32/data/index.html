@@ -2,7 +2,7 @@
 <html>
 <head>
 <meta charset="utf-8">
-<title>SAS · ESP32-CAM</title>
+<title>SAS · Dispositivo</title>
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
 <style>
 :root{--bg:#0f172a;--surface:#1e293b;--surface-2:#334155;--border:#475569;--primary:#1d4ed8;--primary-light:#1e40af;--success:#16a34a;--warning:#d97706;--danger:#dc2626;--text:#f1f5f9;--muted:#94a3b8;--muted-2:#64748b;--line:rgba(255,255,255,.08);--radius:8px;--radius-lg:12px}
@@ -57,18 +57,18 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Oxygen,sans-
 <div class="wrap">
   <div class="brand">
     <div class="brand-mark">SA</div>
-    <h1>Sistema de Asistencia<em>ESP32-CAM · Control Biométrico</em></h1>
+    <h1>Sistema de Asistencia<em>Dispositivo · Control biométrico (huella/rostro)</em></h1>
   </div>
 
   <div class="stats">
-    <div class="stat"><div class="stat-label">Modo</div><div class="stat-val off" id="modoEstado">OFFLINE</div></div>
+    <div class="stat"><div class="stat-label">Red</div><div class="stat-val off" id="modoEstado">DESCONECTADO</div></div>
     <div class="stat"><div class="stat-label">Sensor</div><div class="stat-val on">ACTIVO</div></div>
-    <div class="stat"><div class="stat-label">Enrolado</div><div class="stat-val pend" id="enrolEstado">PEND.</div></div>
+    <div class="stat"><div class="stat-label">Registro</div><div class="stat-val pend" id="enrolEstado">PEND.</div></div>
   </div>
 
   <div class="pin-card" id="pinSection" style="display:none;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:12px 14px;margin-bottom:16px">
     <div style="display:flex;align-items:center;justify-content:space-between">
-      <div style="font-size:9px;color:var(--muted-2);text-transform:uppercase;letter-spacing:.6px;font-weight:600">PIN de Enrolamiento</div>
+      <div style="font-size:9px;color:var(--muted-2);text-transform:uppercase;letter-spacing:.6px;font-weight:600">PIN de registro</div>
       <button id="pinToggle" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:11px;padding:4px 8px;border-radius:4px;font-family:inherit" onclick="togglePin()">Mostrar</button>
     </div>
     <div id="pinValue" style="font-size:22px;letter-spacing:6px;font-weight:700;font-family:'SF Mono',Monaco,monospace;color:var(--primary);margin-top:6px;cursor:pointer;user-select:all" onclick="togglePin()">••••••</div>
@@ -106,7 +106,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Oxygen,sans-
     <div class="nav-label">Sincronización</div>
     <button class="btn btn-success" onclick="sincronizarTodo()">
       <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
-      <span class="label">Sincronizar con Backend</span><span class="arrow">→</span>
+      <span class="label">Sincronizar con plataforma</span><span class="arrow">→</span>
     </button>
     <button class="btn btn-warning" onclick="location.href='/wifi-setup'">
       <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12.55a10.94 10.94 0 0 1 5.17-2.39"/><path d="M10.71 5.05A16 16 0 0 1 22.58 9"/><path d="M1.42 9a15.91 15.91 0 0 1 4.7-2.88"/><path d="M8.53 16.11a6 6 0 0 1 6.95 0"/><circle cx="12" cy="20" r="1"/></svg>
@@ -117,6 +117,10 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Oxygen,sans-
   <div class="danger-zone">
     <div class="nav-label">Zona de Peligro</div>
     <div id="adminBadge">&#128274; Admin: Contraseña requerida para acciones protegidas</div>
+    <button class="btn btn-danger" onclick="reiniciarDispositivo()">
+      <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+      <span class="label">Reiniciar dispositivo</span><span class="arrow">→</span>
+    </button>
     <button class="btn btn-danger" onclick="limpiarDatos()">
       <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
       <span class="label">Limpiar Todos los Datos</span><span class="arrow">→</span>
@@ -197,10 +201,10 @@ async function actualizarEstado(){
   try{
     const e=await fetch('/estado').then(r=>r.json());
     const m=document.getElementById('modoEstado');
-    m.textContent=e.online?'ONLINE':'OFFLINE';
+    m.textContent=e.online?'EN LÍNEA':'DESCONECTADO';
     m.className='stat-val '+(e.online?'on':'off');
     const a=document.getElementById('enrolEstado');
-    a.textContent=e.enrolado?'ENROLADO':'PEND.';
+    a.textContent=e.enrolado?'REGISTRADO':'PEND.';
     a.className='stat-val '+(e.enrolado?'on':'pend');
     if(e.admin_protegido){
       document.getElementById('adminBadge').style.display='block';
@@ -222,6 +226,14 @@ function setStatus(msg,ok=true){
   sm.innerHTML=msg.replace(/\n/g,'<br>');
   sp.style.background=ok?'var(--success)':'var(--warning)';
   setTimeout(()=>{sm.textContent='Sistema listo';sp.style.background='var(--success)';},5000);
+}
+async function reiniciarDispositivo(){
+  if(!confirm('¿Reiniciar el dispositivo? Se desconectará y tardará unos segundos en volver.'))return;
+  try{
+    const r = await fetch('/reiniciar');
+    if(r.ok){alert('Reiniciando dispositivo...');}
+    else{alert('Error al reiniciar');}
+  }catch(e){alert('Error: '+e.message);}
 }
 async function limpiarDatos(){
   const codigo=prompt('ADVERTENCIA: Se eliminarán TODOS los datos.\nIngrese el código de seguridad:');

@@ -35,9 +35,10 @@ class TestRoutesAsistencias:
             headers={'Authorization': f'Bearer {admin_token}'},
             json={'nombre': 'P', 'rut': '22.222.222-2'})
         for i in range(3):
+            tipos = ['entrada', 'salida', 'colacion_entrada']
             client.post('/api/asistencias', json={
                 'persona_id': '1', 'nombre': 'P',
-                'tipo': 'entrada' if i % 2 == 0 else 'salida',
+                'tipo': tipos[i],
                 'metodo': 'huella'
             })
         resp = client.get('/api/asistencias',

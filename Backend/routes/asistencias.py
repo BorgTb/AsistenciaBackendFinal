@@ -127,9 +127,21 @@ def create_asistencia():
             if not persona_id:
                 return jsonify({'error': f"Persona con rut {data.get('rut')} no encontrada"}), 404
 
+        turno_id = data.get('turno_id')
+
+        # Deteccion de duplicado: misma persona + mismo turno + mismo tipo + mismo dia
+        if persona_id:
+            cur.execute(
+                "SELECT id, fecha_hora FROM asistencias WHERE persona_id = %s AND tipo = %s AND DATE(fecha_hora) = CURRENT_DATE AND (turno_id = %s OR (turno_id IS NULL AND %s IS NULL))",
+                (persona_id, tipo, turno_id, turno_id)
+            )
+            existente = cur.fetchone()
+            if existente:
+                return jsonify({'ok': True, 'id': existente[0], 'duplicado': True})
+
         cur.execute(
-            "INSERT INTO asistencias (persona_id, dispositivo_id, nombre, tipo, metodo, origen, sincronizado) VALUES (%s, %s, %s, %s, %s, %s, %s) RETURNING id, fecha_hora",
-            (persona_id, dispositivo_id, nombre, tipo, metodo, data.get('origen', 'dispositivo'), data.get('sincronizado', False))
+            "INSERT INTO asistencias (persona_id, dispositivo_id, nombre, tipo, metodo, origen, sincronizado, turno_id) VALUES (%s, %s, %s, %s, %s, %s, %s, %s) RETURNING id, fecha_hora",
+            (persona_id, dispositivo_id, nombre, tipo, metodo, data.get('origen', 'dispositivo'), data.get('sincronizado', False), turno_id)
         )
         row = cur.fetchone()
         asist_id = row[0]
@@ -176,9 +188,21 @@ def sync_asistencias():
                 continue
 
             tipo_buscar = r.get('tipo')
+            turno_id_buscar = r.get('turno_id')
+
+            # Deteccion de duplicado
+            if persona_id_buscar:
+                cur.execute(
+                    "SELECT id FROM asistencias WHERE persona_id = %s AND tipo = %s AND DATE(fecha_hora) = CURRENT_DATE AND (turno_id = %s OR (turno_id IS NULL AND %s IS NULL))",
+                    (persona_id_buscar, tipo_buscar, turno_id_buscar, turno_id_buscar)
+                )
+                if cur.fetchone():
+                    insertados += 1  # Contar como ok (idempotente)
+                    continue
+
             cur.execute(
-                "INSERT INTO asistencias (persona_id, nombre, tipo, metodo, origen, sincronizado) VALUES (%s, %s, %s, %s, 'sync', TRUE) RETURNING id, fecha_hora",
-                (persona_id_buscar, r.get('nombre'), tipo_buscar, r.get('metodo', 'huella'))
+                "INSERT INTO asistencias (persona_id, nombre, tipo, metodo, origen, sincronizado, turno_id) VALUES (%s, %s, %s, %s, 'sync', TRUE, %s) RETURNING id, fecha_hora",
+                (persona_id_buscar, r.get('nombre'), tipo_buscar, r.get('metodo', 'huella'), turno_id_buscar)
             )
             row = cur.fetchone()
             conn.commit()
