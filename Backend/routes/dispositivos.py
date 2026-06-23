@@ -5,6 +5,7 @@ import requests as http_requests
 import secrets
 import string
 import hashlib
+import json
 
 dispositivos_bp = Blueprint('dispositivos', __name__)
 
@@ -285,3 +286,55 @@ def confirmar_password_aplicada():
     finally:
         cur.close()
         conn.close()
+
+
+@dispositivos_bp.route('/api/dispositivos/<dispositivo_id>/registrar-huella', methods=['POST'])
+@requiere_rol('admin', 'empleador')
+def registrar_huella(dispositivo_id):
+    data = request.json or {}
+    persona_id = data.get('persona_id')
+    if not persona_id:
+        return jsonify({'error': 'Se requiere persona_id'}), 400
+
+    conn = get_connection()
+    cur = conn.cursor()
+    try:
+        cur.execute(
+            "SELECT REPLACE(mac_address, ':', '') as mac, empresa_id FROM dispositivos WHERE id::text = %s",
+            (str(dispositivo_id),)
+        )
+        row = cur.fetchone()
+        if not row:
+            return jsonify({'error': 'Dispositivo no encontrado'}), 404
+        mac, device_empresa_id = row
+
+        if request.user_rol != 'admin' and device_empresa_id != request.empresa_id:
+            return jsonify({'error': 'Dispositivo no pertenece a tu empresa'}), 403
+
+        cur.execute(
+            "SELECT id FROM personas WHERE id = %s AND empresa_id = %s",
+            (persona_id, device_empresa_id)
+        )
+        if not cur.fetchone():
+            return jsonify({'error': 'Persona no encontrada en esta empresa'}), 404
+    finally:
+        cur.close()
+        conn.close()
+
+    try:
+        from mqtt_handler import _mqtt_client
+        if _mqtt_client is None:
+            return jsonify({'error': 'MQTT no disponible'}), 503
+
+        topic = f"backend/huella/registrar/{mac}"
+        payload = json.dumps({"persona_id": str(persona_id), "accion": "registrar"})
+        _mqtt_client.publish(topic, payload)
+
+        return jsonify({
+            'ok': True,
+            'mensaje': 'Solicitud de registro de huella enviada al dispositivo',
+            'dispositivo_id': dispositivo_id,
+            'persona_id': str(persona_id)
+        })
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500

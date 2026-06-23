@@ -115,6 +115,8 @@ bool modoEdicionRostro = false;
 bool consentimientoRegistrando = false;
 String personaEditandoId = "";
 int huellaAnteriorEditando = -1;
+bool modoRegistroRemoto = false;
+String personaRemotaId = "";
 unsigned long ultimoLogDiagnosticoOffline = 0;
 String wifiDisconnectReason = "";
 int wifiDisconnectCount = 0;
@@ -199,6 +201,8 @@ static void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_
       esp_mqtt_client_subscribe(mqtt_client, pingTopic.c_str(), 0);
       String notifTopic = "backend/notificacion/" + deviceMAC;
       esp_mqtt_client_subscribe(mqtt_client, notifTopic.c_str(), 0);
+      String huellaRegTopic = "backend/huella/registrar/" + deviceMAC;
+      esp_mqtt_client_subscribe(mqtt_client, huellaRegTopic.c_str(), 0);
       break;
     }
     case MQTT_EVENT_DISCONNECTED:
@@ -260,6 +264,58 @@ static void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_
           if (tipo == "turnos" || tipo == "todas")      sincronizarTurnosDesdeBackend();
           if (tipo == "asignaciones" || tipo == "todas") sincronizarAsignacionesDesdeBackend();
         }
+      }
+
+      if (topic.startsWith("backend/huella/registrar/")) {
+        DynamicJsonDocument doc(256);
+        DeserializationError err = deserializeJson(doc, mensaje);
+        if (err) return;
+        String persona_id = doc["persona_id"] | "";
+        if (persona_id.length() == 0) return;
+
+        if (estadoActual != ESTADO_IDLE) {
+          String errTopic = "esp32/huella/resultado/" + deviceMAC;
+          String errMsg = "{\"persona_id\":\"" + persona_id + "\",\"status\":\"error\",\"mensaje\":\"Sistema ocupado\"}";
+          esp_mqtt_client_publish(mqtt_client, errTopic.c_str(), errMsg.c_str(), 0, 0, 0);
+          return;
+        }
+
+        actualizarBloqueoAsistencia(60000);
+
+        DynamicJsonDocument pdoc(4096);
+        JsonArray arr = loadArray("/personas.json", pdoc);
+        JsonObject objetivo;
+        bool encontrado = false;
+        for (JsonObject p : arr) {
+          if (p["id"].as<String>() == persona_id) { objetivo = p; encontrado = true; break; }
+        }
+        if (!encontrado) {
+          String errTopic = "esp32/huella/resultado/" + deviceMAC;
+          String errMsg = "{\"persona_id\":\"" + persona_id + "\",\"status\":\"error\",\"mensaje\":\"Persona no encontrada localmente\"}";
+          esp_mqtt_client_publish(mqtt_client, errTopic.c_str(), errMsg.c_str(), 0, 0, 0);
+          return;
+        }
+
+        int slot = encontrarSlotLibre();
+        if (slot < 0) {
+          String errTopic = "esp32/huella/resultado/" + deviceMAC;
+          String errMsg = "{\"persona_id\":\"" + persona_id + "\",\"status\":\"error\",\"mensaje\":\"Sin slots de huella disponibles\"}";
+          esp_mqtt_client_publish(mqtt_client, errTopic.c_str(), errMsg.c_str(), 0, 0, 0);
+          return;
+        }
+
+        int viejaHuella = objetivo["huella_id"].as<int>();
+        if (viejaHuella > 0) finger.deleteModel(viejaHuella);
+
+        modoRegistroRemoto = true;
+        personaRemotaId = persona_id;
+        modoEdicionHuella = true;
+        personaEditandoId = persona_id;
+        huellaAnteriorEditando = viejaHuella;
+        slotRegistrando = slot;
+        estadoActual = ESTADO_ESPERANDO_HUELLA_REGISTRO;
+        tiempoUltimoEstado = millis();
+        addLog("Registro remoto de huella iniciado para persona " + persona_id);
       }
       break;
     }
@@ -2093,7 +2149,16 @@ void completarEdicionHuellaExistente() {
   objetivo["sincronizado"] = false;
   bool synced = false;
 
-  if (isOnline && WiFi.status() == WL_CONNECTED && !personaEditandoId.startsWith("local-")) {
+  if (modoRegistroRemoto && mqtt_client != NULL && isOnline) {
+    String rTopic = "esp32/huella/resultado/" + deviceMAC;
+    String rPayload = "{\"persona_id\":\"" + personaRemotaId
+                    + "\",\"huella_id\":" + String(slotRegistrando)
+                    + ",\"status\":\"ok\"}";
+    esp_mqtt_client_publish(mqtt_client, rTopic.c_str(), rPayload.c_str(), 0, 0, 0);
+    synced = true;
+    objetivo["sincronizado"] = true;
+    addLog("Resultado de huella enviado por MQTT para persona " + personaRemotaId);
+  } else if (isOnline && WiFi.status() == WL_CONNECTED && !personaEditandoId.startsWith("local-")) {
     HTTPClient http;
   beginHttp(http, backendURL + "/api/personas/" + personaEditandoId + "/huella");
     http.addHeader("Content-Type", "application/json");
@@ -2121,6 +2186,8 @@ void completarEdicionHuellaExistente() {
   personaEditandoId = "";
   slotRegistrando = -1;
   huellaAnteriorEditando = -1;
+  modoRegistroRemoto = false;
+  personaRemotaId = "";
   estadoActual = ESTADO_IDLE;
 }
 
@@ -2572,7 +2639,9 @@ void loop() {
   // FLUJO DE REGISTRO MANUAL
   // ==========================================================
   if (estadoActual == ESTADO_ESPERANDO_HUELLA_REGISTRO) {
+    digitalWrite(GREEN_LED_PIN, HIGH);
     if (finger.getImage() == FINGERPRINT_OK && finger.image2Tz(1) == FINGERPRINT_OK) {
+        digitalWrite(GREEN_LED_PIN, LOW);
         addLog("Primera huella capturada, retire el dedo.");
         estadoActual = ESTADO_ESPERANDO_SOLTAR_DEDO; 
         tiempoUltimoEstado = millis();
@@ -2586,9 +2655,12 @@ void loop() {
     }
   }
   else if (estadoActual == ESTADO_REGISTRO_SEGUNDA_HUELLA) {
+    digitalWrite(GREEN_LED_PIN, HIGH);
     if (finger.getImage() == FINGERPRINT_OK && finger.image2Tz(2) == FINGERPRINT_OK) {
+        digitalWrite(GREEN_LED_PIN, LOW);
         if (finger.createModel() == FINGERPRINT_OK && finger.storeModel(slotRegistrando) == FINGERPRINT_OK) {
             addLog("Huella guardada fisicamente. Enviando datos a DB...");
+            flashExito();
             if (modoEdicionHuella) completarEdicionHuellaExistente();
             else completarRegistroPersona(); 
         } else {

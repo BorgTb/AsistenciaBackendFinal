@@ -19,6 +19,7 @@ import {
   generarPinEnrolamiento,
   generarPasswordDispositivo,
   eliminarPasswordDispositivo,
+  registrarHuellaDispositivo,
   getEmpresas,
   getUsuarios,
   registerUser,
@@ -212,6 +213,12 @@ export function SasDashboard({ initialSection = 'dashboard' }: { initialSection?
   const [consentimientoActivo, setConsentimientoActivo] = useState(false);
   const [guardandoConsentimiento, setGuardandoConsentimiento] = useState(false);
   const [eliminandoBiometricos, setEliminandoBiometricos] = useState(false);
+  const [huellaModalOpen, setHuellaModalOpen] = useState(false);
+  const [huellaPersonaId, setHuellaPersonaId] = useState<string | null>(null);
+  const [huellaPersonaNombre, setHuellaPersonaNombre] = useState('');
+  const [huellaDeviceId, setHuellaDeviceId] = useState<string | null>(null);
+  const [registrandoHuella, setRegistrandoHuella] = useState(false);
+  const [huellaMensaje, setHuellaMensaje] = useState('');
 
   const [personaForm, setPersonaForm] = useState({ nombre: '', rut: '', email: '', consentimiento: false });
   const [turnoForm, setTurnoForm] = useState({ nombre: '', inicio: '08:00', fin: '17:00' });
@@ -367,6 +374,38 @@ export function SasDashboard({ initialSection = 'dashboard' }: { initialSection?
       return Array.from(map.values());
     });
   }, [liveDevices]);
+
+  useEffect(() => {
+    const sseUrl = `${process.env.NEXT_PUBLIC_API_URL || `http://${typeof window !== 'undefined' ? window.location.hostname : 'localhost'}:5000`}/sse/huellas`;
+    let retryTimer: ReturnType<typeof setTimeout>;
+    let es: EventSource | null = null;
+
+    function connect() {
+      es = new EventSource(sseUrl);
+      es.onopen = () => { console.log('[SSE] Conectado a /sse/huellas'); };
+      es.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          if (data.status === 'ok' && data.persona_id) {
+            setRegistrandoHuella(false);
+            setHuellaModalOpen(false);
+            setToast({ kind: 'success', message: `Huella ID ${data.huella_id} registrada` });
+            getPersonas().then((p) => { if (p) setPersonas(p); });
+          }
+        } catch { /* ignore */ }
+      };
+      es.onerror = () => {
+        es?.close();
+        retryTimer = setTimeout(connect, 5000);
+      };
+    }
+
+    connect();
+    return () => {
+      clearTimeout(retryTimer);
+      if (es) es.close();
+    };
+  }, []);
 
   const pollRef = useRef<ReturnType<typeof setInterval> | undefined>(undefined);
   useEffect(() => {
@@ -689,6 +728,35 @@ export function SasDashboard({ initialSection = 'dashboard' }: { initialSection?
     }
 
     showToast('error', 'No se pudo desactivar la persona');
+  }
+
+  function openHuellaModal(personaId: string, personaNombre: string) {
+    setHuellaPersonaId(personaId);
+    setHuellaPersonaNombre(personaNombre);
+    setHuellaDeviceId(null);
+    setHuellaMensaje('');
+    setRegistrandoHuella(false);
+    setHuellaModalOpen(true);
+  }
+
+  function closeHuellaModal() {
+    setHuellaModalOpen(false);
+    setHuellaPersonaId(null);
+    setRegistrandoHuella(false);
+  }
+
+  async function handleRegistrarHuella() {
+    if (!huellaDeviceId || !huellaPersonaId) return;
+    setRegistrandoHuella(true);
+    setHuellaMensaje('Enviando solicitud al dispositivo...');
+    try {
+      await registrarHuellaDispositivo(huellaDeviceId, huellaPersonaId);
+      setHuellaMensaje('Solicitud enviada. Coloque el dedo en el dispositivo. El LED verde indica que está listo.');
+    } catch {
+      setRegistrandoHuella(false);
+      setHuellaMensaje('Error al enviar la solicitud');
+      showToast('error', 'Error al enviar solicitud de huella');
+    }
   }
 
   async function handleDeleteTurno(turnoId: string) {
@@ -1611,6 +1679,7 @@ export function SasDashboard({ initialSection = 'dashboard' }: { initialSection?
                         <td>
                           <div className="toolbar">
                             <button className="btn btn-secondary" type="button" disabled={uploadingRostro} onClick={() => handleRostroUpload(item.id)}>{uploadingRostro ? 'Subiendo...' : 'Rostro'}</button>
+                            <button className="btn btn-primary" type="button" onClick={() => openHuellaModal(item.id, item.nombre)}>Huella</button>
                             <button className="btn btn-danger" type="button" onClick={() => handleDeletePersona(item.id)}>{user?.rol === 'admin' ? 'Eliminar' : 'Desactivar'}</button>
                           </div>
                         </td>
@@ -2722,6 +2791,73 @@ export function SasDashboard({ initialSection = 'dashboard' }: { initialSection?
             <div className="modal-footer">
               <button className="btn btn-secondary" type="button" onClick={closeModal}>Cancelar</button>
               <button className="btn btn-primary" type="button" onClick={handleSaveErp}>Guardar</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {huellaModalOpen && (
+        <div className="overlay" onClick={closeHuellaModal} role="presentation">
+          <div className="modal" style={{ maxWidth: 480 }} onClick={(e) => e.stopPropagation()} role="presentation">
+            <div className="modal-head">
+              <h3 className="modal-title">Registrar huella</h3>
+              <p className="modal-subtitle">Persona: {huellaPersonaNombre}</p>
+            </div>
+            <div className="modal-body">
+              {!registrandoHuella && huellaMensaje === '' ? (
+                <>
+                  <p style={{ marginBottom: 12 }}>Selecciona el dispositivo para registrar la huella:</p>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8, maxHeight: 200, overflowY: 'auto' }}>
+                    {devices.filter((d) => d.online).map((d) => (
+                      <label
+                        key={d.id}
+                        className="chip"
+                        style={{ justifyContent: 'flex-start', cursor: 'pointer', padding: '10px 14px' }}
+                      >
+                        <input
+                          type="radio"
+                          name="huellaDevice"
+                          checked={huellaDeviceId === d.id}
+                          onChange={() => setHuellaDeviceId(d.id)}
+                        />
+                        <span style={{ marginLeft: 8 }}>
+                          <strong>{d.nombre}</strong>
+                          <span className="muted" style={{ marginLeft: 8 }}>({d.ip})</span>
+                        </span>
+                      </label>
+                    ))}
+                    {devices.filter((d) => d.online).length === 0 && (
+                      <p className="muted">No hay dispositivos en línea disponibles.</p>
+                    )}
+                  </div>
+                </>
+              ) : (
+                <div style={{ textAlign: 'center', padding: '20px 0' }}>
+                  {registrandoHuella ? (
+                    <>
+                      <span className="status-dot live" style={{ margin: '0 auto 12px' }} />
+                      <p>{huellaMensaje}</p>
+                    </>
+                  ) : (
+                    <p className={`badge ${huellaMensaje.includes('Error') ? 'danger' : 'info'}`}>{huellaMensaje}</p>
+                  )}
+                </div>
+              )}
+            </div>
+            <div className="modal-footer">
+              <button className="btn btn-secondary" type="button" onClick={closeHuellaModal} disabled={registrandoHuella}>
+                Cancelar
+              </button>
+              {!registrandoHuella && huellaMensaje === '' && (
+                <button
+                  className="btn btn-primary"
+                  type="button"
+                  onClick={handleRegistrarHuella}
+                  disabled={!huellaDeviceId}
+                >
+                  Registrar huella
+                </button>
+              )}
             </div>
           </div>
         </div>

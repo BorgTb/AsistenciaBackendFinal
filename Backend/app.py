@@ -66,6 +66,37 @@ def add_cors_headers(response):
     response.headers['Access-Control-Allow-Headers'] = '*'
     return response
 
+# SSE para resultados de registro de huella
+huella_clients = []
+huella_clients_lock = threading.Lock()
+
+def broadcast_huella_update(data: dict):
+    with huella_clients_lock:
+        for q in huella_clients:
+            try:
+                q.put_nowait(data)
+            except queue.Full:
+                pass
+
+@app.route('/sse/huellas')
+def huella_stream():
+    def generate():
+        q = queue.Queue(maxsize=50)
+        with huella_clients_lock:
+            huella_clients.append(q)
+        try:
+            while True:
+                try:
+                    data = q.get(timeout=30)
+                    yield f"data: {json.dumps(data)}\n\n"
+                except queue.Empty:
+                    yield ": keepalive\n\n"
+        except GeneratorExit:
+            with huella_clients_lock:
+                if q in huella_clients:
+                    huella_clients.remove(q)
+    return Response(stream_with_context(generate()), mimetype='text/event-stream')
+
 # Registrar rutas
 app.register_blueprint(auth_bp)
 app.register_blueprint(personas_bp)

@@ -139,6 +139,13 @@ export async function eliminarPasswordDispositivo(dispositivoId: string) {
   });
 }
 
+export async function registrarHuellaDispositivo(dispositivoId: string, personaId: string) {
+  return request<{ ok: boolean; mensaje: string; dispositivo_id: string; persona_id: string }>(`/api/dispositivos/${dispositivoId}/registrar-huella`, {
+    method: 'POST',
+    body: JSON.stringify({ persona_id: personaId })
+  });
+}
+
 export async function enviarErp(erpId: string) {
   return request<{ ok: boolean; enviados: number; errores: number; mensaje?: string; ultimo_estado?: unknown }>(`/api/erp/${erpId}/enviar`, {
     method: 'POST'

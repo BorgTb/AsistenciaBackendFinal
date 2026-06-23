@@ -40,6 +40,7 @@ def on_connect(client, userdata, flags, rc):
     client.subscribe("esp32/heartbeat/#")
     client.subscribe("esp32/lwt/#")
     client.subscribe("esp32/imagen/registrar")  # ← agregar
+    client.subscribe("esp32/huella/resultado/#")
     print("📡 Suscripciones registradas.", flush=True)
 
     # FIX: publicar el eco en un hilo separado con delay
@@ -147,6 +148,45 @@ def on_message(client, userdata, msg):
                 print(f"📡 Broadcast WebSocket: {row[1]} desconectado", flush=True)
         except Exception as e:
             print(f"❌ Error LWT DB: {e}", flush=True)
+        return
+
+    if full_topic.startswith("esp32/huella/resultado"):
+        try:
+            payload = json.loads(msg.payload.decode())
+            persona_id = payload.get("persona_id")
+            huella_id = payload.get("huella_id")
+            status = payload.get("status")
+
+            if status == "ok" and persona_id and huella_id:
+                conn = get_connection()
+                cur = conn.cursor()
+                cur.execute("UPDATE personas SET huella_id = %s WHERE id = %s", (huella_id, persona_id))
+                conn.commit()
+                cur.execute("SELECT empresa_id FROM personas WHERE id = %s", (persona_id,))
+                row = cur.fetchone()
+                empresa_id = row[0] if row else None
+                cur.close()
+                conn.close()
+
+                if empresa_id:
+                    from eventos_mqtt import notificar_sincronizacion
+                    notificar_sincronizacion(empresa_id, 'personas', 'actualizar', int(persona_id))
+
+                try:
+                    from app import broadcast_huella_update
+                    broadcast_huella_update({
+                        "persona_id": str(persona_id),
+                        "huella_id": huella_id,
+                        "status": "ok"
+                    })
+                except Exception:
+                    pass
+
+                print(f"✅ Huella {huella_id} registrada para persona {persona_id}", flush=True)
+            else:
+                print(f"⚠️ Resultado huella error/no ok: {payload}", flush=True)
+        except Exception as e:
+            print(f"❌ Error procesando resultado huella: {e}", flush=True)
         return
 
 
