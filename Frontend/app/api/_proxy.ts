@@ -19,7 +19,15 @@ export async function proxyJsonRequest(path: string, init?: RequestInit, incomin
 
   if (incoming) {
     const auth = incoming.headers.get('Authorization');
-    if (auth) forwardedHeaders['Authorization'] = auth;
+    if (auth) {
+      forwardedHeaders['Authorization'] = auth;
+    } else {
+      const cookie = incoming.headers.get('Cookie') || '';
+      const match = cookie.match(/(?:^|;\s*)sas_token=([^;]+)/);
+      if (match) {
+        forwardedHeaders['Authorization'] = `Bearer ${decodeURIComponent(match[1])}`;
+      }
+    }
     const mac = incoming.headers.get('X-Device-MAC');
     if (mac) forwardedHeaders['X-Device-MAC'] = mac;
   }

@@ -159,7 +159,10 @@ def registrar_facial():
     if not _verificar_consentimiento(persona_id):
         return jsonify({'error': 'Consentimiento biometrico requerido. Acepte la politica de privacidad antes de registrar datos biometricos.'}), 403
 
-    file_path = guardar_imagen_de_registro(persona_id, imagen_b64)
+    try:
+        file_path = guardar_imagen_de_registro(persona_id, imagen_b64)
+    except Exception as e:
+        return jsonify({'error': f'Error al guardar imagen: {str(e)}'}), 500
 
     try:
         ok_calidad, msg_calidad = _validar_calidad_imagen(file_path)

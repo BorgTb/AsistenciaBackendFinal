@@ -32,7 +32,15 @@ def get_turnos():
             (persona_id,)
         )
     else:
-        cur.execute("SELECT id, nombre, hora_inicio, hora_fin, dias, empresa_id FROM turnos ORDER BY id")
+        if empresa_id:
+            cur.execute(
+                "SELECT id, nombre, hora_inicio, hora_fin, dias, empresa_id FROM turnos WHERE empresa_id = %s ORDER BY id",
+                (empresa_id,)
+            )
+        else:
+            cur.close()
+            conn.close()
+            return jsonify([])
 
     rows = cur.fetchall()
     cur.close()
@@ -52,7 +60,9 @@ def get_turnos():
 @token_opcional
 def create_turno():
     data = request.json
-    empresa_id = request.empresa_id if request.empresa_id else 1
+    if not request.empresa_id:
+        return jsonify({'error': 'No autorizado: empresa no identificada'}), 401
+    empresa_id = request.empresa_id
     conn = get_connection()
     cur = conn.cursor()
     try:

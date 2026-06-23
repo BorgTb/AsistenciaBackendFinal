@@ -1163,6 +1163,11 @@ tbody tr:hover td {
   font-size: 0.95rem;
 }
 
+.btn-sm {
+  padding: 5px 10px;
+  font-size: 0.8rem;
+}
+
 .logout-btn {
   background: transparent;
   border: 1px solid var(--line);

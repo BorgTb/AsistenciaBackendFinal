@@ -27,7 +27,7 @@ export async function getPersonas() {
   return request<Persona[]>('/api/personas');
 }
 
-export async function createPersona(payload: { nombre: string; rut: string; email?: string }) {
+export async function createPersona(payload: { nombre: string; rut: string; email?: string; consentimiento?: boolean }) {
   return request<{ ok: boolean; id: string } | { error: string }>('/api/personas', {
     method: 'POST',
     body: JSON.stringify(payload)

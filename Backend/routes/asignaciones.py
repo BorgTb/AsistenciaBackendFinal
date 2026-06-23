@@ -45,14 +45,19 @@ def get_asignaciones():
             ORDER BY a.id
         """, (persona_id,))
     else:
-        cur.execute("""
-            SELECT a.id, a.persona_id, p.rut, p.nombre, a.turno_id, t.nombre,
-                   a.fecha_asignacion, a.vigente
-            FROM asignaciones a
-            JOIN personas p ON a.persona_id = p.id
-            JOIN turnos t ON a.turno_id = t.id
-            ORDER BY a.id
-        """)
+        if empresa_id:
+            cur.execute("""
+                SELECT a.id, a.persona_id, p.rut, p.nombre, a.turno_id, t.nombre,
+                       a.fecha_asignacion, a.vigente
+                FROM asignaciones a
+                JOIN personas p ON a.persona_id = p.id AND p.empresa_id = %s
+                JOIN turnos t ON a.turno_id = t.id
+                ORDER BY a.id
+            """, (empresa_id,))
+        else:
+            cur.close()
+            conn.close()
+            return jsonify([])
 
     rows = cur.fetchall()
     cur.close()

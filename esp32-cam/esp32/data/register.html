@@ -70,6 +70,10 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Oxygen,sans-
       <label>Email Corporativo</label>
       <input type="email" id="personEmail" placeholder="juan@empresa.com" required>
     </div>
+    <label style="display:flex;align-items:flex-start;gap:10px;margin-bottom:14px;font-size:12px;color:var(--muted);line-height:1.4">
+      <input type="checkbox" id="consentCheck" required style="margin-top:2px">
+      <span>Acepto la política de privacidad y el tratamiento de datos biométricos para el control de asistencia</span>
+    </label>
     <button class="btn btn-primary" onclick="iniciarRegistro()">Iniciar Escaneo Biométrico</button>
     <button class="btn btn-secondary" onclick="location.href='/'">Cancelar</button>
   </div>
@@ -147,9 +151,11 @@ async function iniciarRegistro(){
   const nombre=document.getElementById('personName').value.trim();
   const rut=document.getElementById('personRut').value.trim();
   const email=document.getElementById('personEmail').value.trim();
+  const consent=document.getElementById('consentCheck').checked;
   if(!nombre||!rut||!email){alert('Complete todos los datos.');return;}
+  if(!consent){alert('Debe aceptar la pol\u00edtica de privacidad.');return;}
   try{
-    const r=await fetchProtegido('/registrar?name='+encodeURIComponent(nombre)+'&rut='+encodeURIComponent(rut)+'&email='+encodeURIComponent(email));
+    const r=await fetchProtegido('/registrar?name='+encodeURIComponent(nombre)+'&rut='+encodeURIComponent(rut)+'&email='+encodeURIComponent(email)+'&consent=1');
     if(!r)return;
     if(r.ok){
       document.getElementById('form-container').style.display='none';

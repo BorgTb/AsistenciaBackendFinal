@@ -184,8 +184,20 @@ export async function getEmpresas() {
   return request<Empresa[]>('/api/auth/empresas');
 }
 
-export async function createEmpresa(payload: { nombre: string; rut_empresa?: string; email_contacto?: string; telefono?: string; direccion?: string }) {
-  return request<{ ok: boolean; id: number; mensaje: string }>('/api/auth/empresas', {
+export async function createEmpresa(payload: {
+  nombre: string;
+  rut_empresa?: string;
+  email_contacto?: string;
+  telefono?: string;
+  direccion?: string;
+  mode?: string;
+  rol_usuario?: string;
+  nombre_usuario?: string;
+  email_usuario?: string;
+  password_usuario?: string;
+  usuario_id?: number;
+}) {
+  return request<{ ok: boolean; id: number; usuario_id?: number; mensaje: string }>('/api/auth/empresas', {
     method: 'POST',
     body: JSON.stringify(payload)
   });

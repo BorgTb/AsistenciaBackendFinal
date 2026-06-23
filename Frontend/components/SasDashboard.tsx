@@ -186,7 +186,13 @@ export function SasDashboard({ initialSection = 'dashboard' }: { initialSection?
   const [empresas, setEmpresas] = useState<Empresa[]>([]);
   const [registerForm, setRegisterForm] = useState({ nombre: '', email: '', password: '', rol: 'trabajador', empresa_id: undefined as number | undefined });
   const [editingUsuario, setEditingUsuario] = useState<UsuarioWeb | null>(null);
-  const [empresaForm, setEmpresaForm] = useState({ nombre: '', rut_empresa: '', email_contacto: '', telefono: '', direccion: '' });
+  const [empresaUserMode, setEmpresaUserMode] = useState<'new' | 'existing'>('new');
+  const [empresaForm, setEmpresaForm] = useState<{
+    nombre: string; rut_empresa: string; email_contacto: string; telefono: string; direccion: string;
+    nombre_usuario: string; email_usuario: string; password_usuario: string;
+    usuario_existente_id: number | undefined;
+    rol_usuario: string;
+  }>({ nombre: '', rut_empresa: '', email_contacto: '', telefono: '', direccion: '', nombre_usuario: '', email_usuario: '', password_usuario: '', usuario_existente_id: undefined, rol_usuario: 'empleador' });
   const [passwordForm, setPasswordForm] = useState({ passwordActual: '', passwordNueva: '', confirmacion: '' });
   const [generatedPin, setGeneratedPin] = useState('');
   const [deviceForm, setDeviceForm] = useState({ nombre: '', ip: '' });
@@ -207,7 +213,7 @@ export function SasDashboard({ initialSection = 'dashboard' }: { initialSection?
   const [guardandoConsentimiento, setGuardandoConsentimiento] = useState(false);
   const [eliminandoBiometricos, setEliminandoBiometricos] = useState(false);
 
-  const [personaForm, setPersonaForm] = useState({ nombre: '', rut: '', email: '' });
+  const [personaForm, setPersonaForm] = useState({ nombre: '', rut: '', email: '', consentimiento: false });
   const [turnoForm, setTurnoForm] = useState({ nombre: '', inicio: '08:00', fin: '17:00' });
   const [asignacionForm, setAsignacionForm] = useState({ rut: '', turnoId: '' });
   const [erpForm, setErpForm] = useState<ErpFormState>({
@@ -442,9 +448,14 @@ export function SasDashboard({ initialSection = 'dashboard' }: { initialSection?
     setToast({ kind, message });
   }
 
-  function openModal(nextModal: NonNullable<typeof modal>) {
+  async function openModal(nextModal: NonNullable<typeof modal>) {
     setFormError('');
     setModal(nextModal);
+    if (nextModal === 'empresa') {
+      setEmpresaUserMode('new');
+      const usuariosData = await getUsuarios();
+      if (usuariosData) setUsuarios(usuariosData);
+    }
   }
 
   function closeModal() {
@@ -453,6 +464,7 @@ export function SasDashboard({ initialSection = 'dashboard' }: { initialSection?
     setDeviceForm({ nombre: '', ip: '' });
     setEditingUsuario(null);
     setRegisterForm({ nombre: '', email: '', password: '', rol: 'trabajador', empresa_id: undefined });
+    setEmpresaForm({ nombre: '', rut_empresa: '', email_contacto: '', telefono: '', direccion: '', nombre_usuario: '', email_usuario: '', password_usuario: '', usuario_existente_id: undefined, rol_usuario: 'empleador' });
   }
 
   async function refreshData() {
@@ -551,13 +563,18 @@ export function SasDashboard({ initialSection = 'dashboard' }: { initialSection?
       return;
     }
 
-    const result = await createPersona({ nombre, rut, email: personaForm.email.trim() });
+    if (!personaForm.consentimiento) {
+      setFormError('Debe aceptar la política de privacidad antes de registrar datos biométricos');
+      return;
+    }
+
+    const result = await createPersona({ nombre, rut, email: personaForm.email.trim(), consentimiento: personaForm.consentimiento });
 
     if (result && 'ok' in result && result.ok) {
       pushLog('ok', `Persona creada: ${nombre}`);
       showToast('success', `Persona ${nombre} guardada. Complete huella/rostro desde el dispositivo ESP32.`);
       closeModal();
-      setPersonaForm({ nombre: '', rut: '', email: '' });
+      setPersonaForm({ nombre: '', rut: '', email: '', consentimiento: false });
       await refreshData();
       return;
     }
@@ -864,17 +881,21 @@ export function SasDashboard({ initialSection = 'dashboard' }: { initialSection?
   async function handleWebcamConfirm() {
     if (!capturedImage || !rostroPersonaId) return;
     setUploadingRostro(true);
-    const base64 = capturedImage.split(',')[1];
-    const result = await registrarRostro(rostroPersonaId, base64);
-    if (result && 'ok' in result && result.ok) {
-      pushLog('ok', `Rostro registrado para ID ${rostroPersonaId}`);
-      showToast('success', 'Rostro registrado correctamente');
-      if (personaActual && personaActual.id === rostroPersonaId) {
-        setPersonaActual((prev) => prev ? { ...prev, encoding_facial: 'registered' } : prev);
+    try {
+      const base64 = capturedImage.split(',')[1];
+      const result = await registrarRostro(rostroPersonaId, base64);
+      if (result && 'ok' in result && result.ok) {
+        pushLog('ok', `Rostro registrado para ID ${rostroPersonaId}`);
+        showToast('success', 'Rostro registrado correctamente');
+        if (personaActual && personaActual.id === rostroPersonaId) {
+          setPersonaActual((prev) => prev ? { ...prev, encoding_facial: 'registered' } : prev);
+        }
+      } else {
+        const msg = result && 'error' in result ? String(result.error) : 'No se pudo registrar el rostro';
+        showToast('error', msg);
       }
-    } else {
-      const msg = result && 'error' in result ? String(result.error) : 'No se pudo registrar el rostro';
-      showToast('error', msg);
+    } catch (e) {
+      showToast('error', e instanceof Error ? e.message : 'Error al registrar rostro');
     }
     setUploadingRostro(false);
     handleWebcamCancel();
@@ -963,23 +984,63 @@ export function SasDashboard({ initialSection = 'dashboard' }: { initialSection?
       return;
     }
 
-    const result = await createEmpresa({
+    const base = {
       nombre: nombre.trim(),
       rut_empresa: empresaForm.rut_empresa.trim(),
       email_contacto: empresaForm.email_contacto.trim(),
       telefono: empresaForm.telefono.trim(),
-      direccion: empresaForm.direccion.trim()
-    });
+      direccion: empresaForm.direccion.trim(),
+      rol_usuario: empresaForm.rol_usuario,
+    };
 
-    if (result && 'ok' in result && result.ok) {
-      showToast('success', 'Empresa creada');
-      setEmpresaForm({ nombre: '', rut_empresa: '', email_contacto: '', telefono: '', direccion: '' });
-      closeModal();
-      await refreshData();
-      return;
+    try {
+      if (empresaUserMode === 'new') {
+        const { nombre_usuario, email_usuario, password_usuario } = empresaForm;
+        if (!nombre_usuario.trim() || !email_usuario.trim() || !password_usuario.trim()) {
+          setFormError('Completa todos los campos del usuario (nombre, email y contraseña)');
+          return;
+        }
+        if (password_usuario.length < 4) {
+          setFormError('La contraseña debe tener al menos 4 caracteres');
+          return;
+        }
+        const result = await createEmpresa({
+          ...base,
+          mode: 'new',
+          nombre_usuario: nombre_usuario.trim(),
+          email_usuario: email_usuario.trim().toLowerCase(),
+          password_usuario: password_usuario
+        });
+
+        if (result && 'ok' in result && result.ok) {
+          showToast('success', 'Empresa creada con usuario asignado');
+          setEmpresaForm({ nombre: '', rut_empresa: '', email_contacto: '', telefono: '', direccion: '', nombre_usuario: '', email_usuario: '', password_usuario: '', usuario_existente_id: undefined, rol_usuario: 'empleador' });
+          closeModal();
+          await refreshData();
+        }
+      } else {
+        if (!empresaForm.usuario_existente_id) {
+          setFormError('Selecciona un usuario existente');
+          return;
+        }
+        const result = await createEmpresa({
+          ...base,
+          mode: 'existing',
+          usuario_id: empresaForm.usuario_existente_id
+        });
+
+        if (result && 'ok' in result && result.ok) {
+          showToast('success', 'Empresa creada con usuario asignado');
+          setEmpresaForm({ nombre: '', rut_empresa: '', email_contacto: '', telefono: '', direccion: '', nombre_usuario: '', email_usuario: '', password_usuario: '', usuario_existente_id: undefined, rol_usuario: 'empleador' });
+          closeModal();
+          await refreshData();
+        }
+      }
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Error al crear empresa';
+      showToast('error', msg);
+      pushLog('err', msg);
     }
-
-    showToast('error', result && 'error' in result ? String(result.error) : 'Error al crear empresa');
   }
 
   async function handleDeleteEmpresa(empresaId: number, nombre: string) {
@@ -1083,7 +1144,7 @@ export function SasDashboard({ initialSection = 'dashboard' }: { initialSection?
 
     if (password) payload.password = password;
     if (user?.rol === 'admin' && empresa_id) payload.empresa_id = empresa_id;
-    if (user?.rol === 'admin' && rol) payload.rol = rol;
+    if ((user?.rol === 'admin' || user?.rol === 'empleador') && rol) payload.rol = rol;
 
     const result = await updateUsuario(editingUsuario.id, payload);
 
@@ -1237,7 +1298,7 @@ export function SasDashboard({ initialSection = 'dashboard' }: { initialSection?
           <div className="sidebar-card">
             <div className="sidebar-card-title">{user.empresa_nombre}</div>
             <div className="sidebar-card-subtitle" style={{ marginTop: 4 }}>
-              {user.nombre} · {user.rol === 'admin' ? 'Administrador' : user.rol === 'empleador' ? 'Empleador' : 'Trabajador'}
+              {user.nombre} · {user.rol === 'admin' ? 'Administrador' : user.rol === 'empleador' ? 'Administrador de empresa' : 'Trabajador'}
             </div>
           </div>
         )}
@@ -2086,7 +2147,7 @@ export function SasDashboard({ initialSection = 'dashboard' }: { initialSection?
                         {user?.rol === 'admin' && <td>{item.empresa_nombre}</td>}
                         <td>
                           <Badge tone={item.rol === 'admin' ? 'danger' : item.rol === 'empleador' ? 'warning' : 'info'}>
-                            {item.rol}
+                            {item.rol === 'admin' ? 'Admin sistema' : item.rol === 'empleador' ? 'Admin empresa' : 'Trabajador'}
                           </Badge>
                         </td>
                         <td>{item.activo ? 'Sí' : 'No'}</td>
@@ -2095,7 +2156,7 @@ export function SasDashboard({ initialSection = 'dashboard' }: { initialSection?
                           <button className="btn btn-ghost" type="button" onClick={() => handleEditUsuario(item)} style={{ marginRight: 8 }}>
                             Editar
                           </button>
-                          {(user?.rol === 'admin' || (user?.rol === 'empleador' && item.rol === 'trabajador')) && item.id !== user?.id && (
+                          {(user?.rol === 'admin' || (user?.rol === 'empleador' && (item.rol === 'empleador' || item.rol === 'trabajador'))) && item.id !== user?.id && (
                             <button className="btn btn-danger" type="button" onClick={() => handleDeleteUsuario(item.id, item.empresa_id, item.nombre)}>
                               Eliminar
                             </button>
@@ -2179,7 +2240,7 @@ export function SasDashboard({ initialSection = 'dashboard' }: { initialSection?
           <div className="modal" onClick={(e) => e.stopPropagation()} role="presentation">
             <div className="modal-head">
               <h3 className="modal-title">Nueva empresa</h3>
-              <p className="modal-subtitle">Registra una nueva empresa en el sistema.</p>
+              <p className="modal-subtitle">Registra una nueva empresa y asígnale un usuario administrador.</p>
             </div>
             <div className="modal-body">
               {formError && <div className="login-error" style={{ marginBottom: 12 }}>{formError}</div>}
@@ -2202,6 +2263,67 @@ export function SasDashboard({ initialSection = 'dashboard' }: { initialSection?
               <div className="field">
                 <label>Dirección</label>
                 <input type="text" placeholder="Av. Siempre Viva 742" value={empresaForm.direccion} onChange={(e) => setEmpresaForm((c) => ({ ...c, direccion: e.target.value }))} />
+              </div>
+
+              <hr style={{ margin: '16px 0', border: 'none', borderTop: '1px solid var(--border-color, #eee)' }} />
+              <p style={{ fontSize: '0.9rem', fontWeight: 600, marginBottom: 12 }}>Usuario administrador *</p>
+
+              <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
+                <button
+                  type="button"
+                  className={`btn btn-sm ${empresaUserMode === 'new' ? 'btn-primary' : 'btn-secondary'}`}
+                  onClick={() => { setEmpresaUserMode('new'); setFormError(''); }}
+                >
+                  Crear nuevo
+                </button>
+                <button
+                  type="button"
+                  className={`btn btn-sm ${empresaUserMode === 'existing' ? 'btn-primary' : 'btn-secondary'}`}
+                  onClick={() => { setEmpresaUserMode('existing'); setFormError(''); }}
+                >
+                  Asignar existente
+                </button>
+              </div>
+
+              {empresaUserMode === 'new' ? (
+                <>
+                  <div className="field">
+                    <label>Nombre del usuario *</label>
+                    <input type="text" placeholder="Ej: Juan Pérez" value={empresaForm.nombre_usuario} onChange={(e) => setEmpresaForm((c) => ({ ...c, nombre_usuario: e.target.value }))} />
+                  </div>
+                  <div className="field">
+                    <label>Email del usuario *</label>
+                    <input type="email" placeholder="admin@empresa.cl" value={empresaForm.email_usuario} onChange={(e) => setEmpresaForm((c) => ({ ...c, email_usuario: e.target.value }))} />
+                  </div>
+                  <div className="field">
+                    <label>Contraseña *</label>
+                    <input type="password" placeholder="Mínimo 4 caracteres" value={empresaForm.password_usuario} onChange={(e) => setEmpresaForm((c) => ({ ...c, password_usuario: e.target.value }))} />
+                  </div>
+                </>
+              ) : (
+                <div className="field">
+                  <label>Seleccionar usuario *</label>
+                  <select
+                    value={empresaForm.usuario_existente_id ?? ''}
+                    onChange={(e) => setEmpresaForm((c) => ({ ...c, usuario_existente_id: e.target.value ? Number(e.target.value) : undefined }))}
+                  >
+                    <option value="">-- Selecciona un usuario --</option>
+                    {usuarios
+                      .filter(u => u.rol === 'empleador')
+                      .filter((u, i, arr) => arr.findIndex(x => x.id === u.id) === i)
+                      .map((u) => (
+                        <option key={u.id} value={u.id}>{u.nombre} ({u.email}) — {u.empresa_nombre}</option>
+                      ))}
+                  </select>
+                </div>
+              )}
+
+              <div className="field">
+                <label>Rol del usuario</label>
+                <select value={empresaForm.rol_usuario} onChange={(e) => setEmpresaForm((c) => ({ ...c, rol_usuario: e.target.value }))}>
+                  <option value="empleador">Empleador</option>
+                  <option value="trabajador">Trabajador</option>
+                </select>
               </div>
             </div>
             <div className="modal-footer">
@@ -2267,10 +2389,9 @@ export function SasDashboard({ initialSection = 'dashboard' }: { initialSection?
                 <select
                   value={registerForm.rol}
                   onChange={(e) => setRegisterForm((c) => ({ ...c, rol: e.target.value }))}
-                  disabled={!user?.rol?.includes('admin') && editingUsuario !== null}
+                  disabled={user?.rol === 'trabajador' && editingUsuario !== null}
                 >
-                  {user?.rol === 'admin' && <option value="admin">Administrador</option>}
-                  {user?.rol === 'admin' && <option value="empleador">Empleador</option>}
+                  {(user?.rol === 'admin' || user?.rol === 'empleador') && <option value="empleador">Admin de empresa</option>}
                   <option value="trabajador">Trabajador</option>
                 </select>
               </div>
@@ -2430,6 +2551,14 @@ export function SasDashboard({ initialSection = 'dashboard' }: { initialSection?
               <div className="field">
                 <label>Email</label>
                 <input value={personaForm.email} onChange={(event) => setPersonaForm((current) => ({ ...current, email: event.target.value }))} placeholder="juan@empresa.cl" />
+              </div>
+              <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', margin: '14px 0', padding: '10px', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '6px' }}>
+                <input type="checkbox" id="consent-check" checked={personaForm.consentimiento}
+                  onChange={(event) => setPersonaForm((current) => ({ ...current, consentimiento: event.target.checked }))}
+                  style={{ marginTop: '2px', width: '16px', height: '16px', flexShrink: 0, accentColor: 'var(--primary)' }} />
+                <label htmlFor="consent-check" style={{ fontSize: '12px', color: 'var(--muted)', lineHeight: '1.4', cursor: 'pointer' }}>
+                  Acepto la política de privacidad y el tratamiento de datos biométricos para el control de asistencia
+                </label>
               </div>
               {formError ? <div className="badge danger">{formError}</div> : null}
             </div>

@@ -69,10 +69,12 @@ unsigned long cooldownAsistencia = 0;
 const unsigned long COOLDOWN_TIEMPO = 8000;       
 
 // ===== Escaneo automatico =====
-unsigned long lastFingerCheck = 0;
-const unsigned long FINGER_CHECK_INTERVAL = 2000; // <-- OPTIMIZADO: Ahorra CPU y energía
 unsigned long lastFaceCheck = 0;
-const unsigned long FACE_CHECK_INTERVAL = 6000;   
+const unsigned long FACE_CHECK_INTERVAL = 6000;
+
+// ===== Detección pasiva de huella (sin depender del PIR) =====
+unsigned long lastPassiveFingerCheck = 0;
+const unsigned long PASSIVE_FINGER_INTERVAL = 500;  // 500ms: respuesta rápida al poner el dedo
 int   lastFingerID   = -1;
 unsigned long lastFingerTime = 0;
 const unsigned long FINGER_DEBOUNCE = 4000;       
@@ -110,6 +112,7 @@ String idParaRostro = "";
 String logBuffer = "";
 bool modoEdicionHuella = false;
 bool modoEdicionRostro = false;
+bool consentimientoRegistrando = false;
 String personaEditandoId = "";
 int huellaAnteriorEditando = -1;
 unsigned long ultimoLogDiagnosticoOffline = 0;
@@ -117,20 +120,14 @@ String wifiDisconnectReason = "";
 int wifiDisconnectCount = 0;
 unsigned long wifiUptimeStart = 0;
 
-// Identificación facial async: HTTP upload + MQTT respuesta
-bool identificacionPendiente = false;
-unsigned long inicioIdentificacion = 0;
-const unsigned long TIMEOUT_MQTT_IDENTIFICACION = 12000;
-bool mqttIdentificacionRecibida = false;
-bool mqttSuccess = false;
-String mqttPersonaId = "";
+// Identificación facial: HTTP directo (respuesta sincrónica)
 
 // ============================================================
 // PROTOTIPOS
 // ============================================================
 JsonArray loadArray(const char* path, DynamicJsonDocument& doc);
 void saveArray(const char* path, DynamicJsonDocument& doc);
-bool enviarFotoIdentificacion();
+bool enviarFotoIdentificacion(String& personaIdOut);
 bool registrarRostroEnBackend(String rut);
 bool agregarFotoEnBackend(String rut);
 void completarRegistroPersona();
@@ -194,14 +191,14 @@ void completarEdicionHuellaExistente();
 static void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_t event_id, void *event_data) {
   esp_mqtt_event_handle_t event = (esp_mqtt_event_handle_t)event_data;
   switch ((esp_mqtt_event_id_t)event_id) {
-    case MQTT_EVENT_CONNECTED:
+    case MQTT_EVENT_CONNECTED: {
       addLog("MQTT Conectado por WebSockets");
       mqttConnected = true;
       esp_mqtt_client_subscribe(mqtt_client, "esp32/respuesta/facial", 0);
-      esp_mqtt_client_subscribe(mqtt_client, "esp32/respuesta/identificar", 0);
       String pingTopic = "esp32/ping/" + deviceMAC;
       esp_mqtt_client_subscribe(mqtt_client, pingTopic.c_str(), 0);
       break;
+    }
     case MQTT_EVENT_DISCONNECTED:
       mqttConnected = false;
       break;
@@ -242,15 +239,7 @@ static void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_
           ultimoErrorRegistro = "Rostro rechazado: " + detalle;
         }
       }
-      if (topic == "esp32/respuesta/identificar") {
-        DynamicJsonDocument doc(256);
-        deserializeJson(doc, mensaje);
-        identificacionPendiente = false;
-        mqttIdentificacionRecibida = true;
-        mqttSuccess = (doc["success"] == true);
-        mqttPersonaId = doc["persona_id"].as<String>();
-        addLog(mqttSuccess ? "Respuesta MQTT: Rostro identificado" : "Respuesta MQTT: Rostro NO reconocido");
-      }
+
       if (topic.startsWith("esp32/ping/")) {
         addLog("Ping recibido, respondiendo heartbeat");
         String hbTopic = "esp32/heartbeat/" + deviceMAC;
@@ -857,7 +846,8 @@ void sincronizarPersonasDesdeBackend() {
 // ============================================================
 // LÓGICA DE ASISTENCIA BIOMÉTRICA
 // ============================================================
-bool enviarFotoIdentificacion() {
+bool enviarFotoIdentificacion(String& personaIdOut) {
+  personaIdOut = "";
   if (!camaraIniciada || !isOnline || WiFi.status() != WL_CONNECTED) return false;
 
   sensor_t* s = esp_camera_sensor_get();
@@ -881,9 +871,19 @@ bool enviarFotoIdentificacion() {
   int httpCode = http.POST(fb->buf, fb->len);
   esp_camera_fb_return(fb);
 
-  bool exito = (httpCode >= 200 && httpCode < 300);
+  bool exito = false;
+  if (httpCode == 200) {
+    String response = http.getString();
+    DynamicJsonDocument doc(256);
+    DeserializationError err = deserializeJson(doc, response);
+    if (!err && doc.containsKey("persona_id")) {
+      personaIdOut = doc["persona_id"].as<String>();
+      exito = true;
+      addLog("Rostro identificado via HTTP: " + personaIdOut);
+    }
+  }
   if (!exito) {
-    addLog("Error enviando foto identificacion: " + String(httpCode));
+    addLog("Identificacion facial fallida: HTTP " + String(httpCode));
   }
   http.end();
   return exito;
@@ -1114,6 +1114,7 @@ void completarRegistroPersona() {
     bodyDoc["rut"] = rutRegistrando;
     bodyDoc["email"] = emailRegistrando;
     bodyDoc["huella_id"] = slotRegistrando;
+    if (consentimientoRegistrando) bodyDoc["consentimiento"] = true;
     String payload;
     serializeJson(bodyDoc, payload);
 
@@ -1365,6 +1366,7 @@ void sincronizarTurnosDesdeBackend() {
   JsonArray arr = doc.as<JsonArray>();
   for (JsonObject t : arr) {
     String id = t["id"].as<String>();
+    t["id"] = id;  // Normalizar a string (backend puede mandarlo como number)
     t["backend_id"] = id;
     t["sincronizado"] = true;
   }
@@ -1406,6 +1408,10 @@ void sincronizarAsignacionesDesdeBackend() {
   for (JsonObject a : arr) {
     a["backend_id"] = a["id"].as<String>();
     a["sincronizado"] = true;
+    // Corregir types: backend manda persona_id y turno_id como number,
+    // pero personas.json y turnos.json los tienen como string
+    if (a.containsKey("persona_id")) a["persona_id"] = a["persona_id"].as<String>();
+    if (a.containsKey("turno_id")) a["turno_id"] = a["turno_id"].as<String>();
   }
   saveArray("/asignaciones.json", doc);
 }
@@ -1680,8 +1686,10 @@ void handleWiFiConfig() {
 void handleRegisterUser() {
   if (!requiereAdmin(server)) return;
   if (!server.hasArg("name") || !server.hasArg("rut")) { server.send(400, "text/plain", "Faltan datos"); return; }
+  if (server.arg("consent") != "1") { server.send(400, "text/plain", "Debe aceptar la politica de privacidad"); return; }
   ultimoErrorRegistro = "";
   rostroRegistroExitoso = false;
+  consentimientoRegistrando = true;
   actualizarBloqueoAsistencia(60000);
   int slot = encontrarSlotLibre();
   if (slot < 0) { server.send(500, "text/plain", "Sin slots"); return; }
@@ -1764,10 +1772,21 @@ void handleAssignTurn() {
 void handleMarcarAsistencia() {
   actualizarBloqueoAsistencia();
   addLog("Esperando huella...");
-  int p = finger.getImage();
+
+  // Reintentar por hasta 10 segundos para dar tiempo a colocar el dedo
+  unsigned long inicio = millis();
+  int p = FINGERPRINT_NOFINGER;
+  while (millis() - inicio < 10000UL) {
+    server.handleClient();
+    yield();
+    p = finger.getImage();
+    if (p == FINGERPRINT_OK) break;
+    delay(200);
+  }
+
   if (p != FINGERPRINT_OK) {
     flashError();
-    server.send(500, "text/plain", "No se detecta huella");
+    server.send(500, "text/plain", "Timeout: no se detecto huella en 10s");
     return;
   }
   if (finger.image2Tz() != FINGERPRINT_OK) {
@@ -1781,6 +1800,11 @@ void handleMarcarAsistencia() {
     return;
   }
   String pId = buscarPersonaPorHuella(finger.fingerID);
+  if (pId == "") {
+    flashError();
+    server.send(500, "text/plain", "Huella no vinculada a ninguna persona");
+    return;
+  }
   String resultado = procesarAsistencia(pId, "huella_manual");
   if (resultadoAsistenciaExitosa(resultado)) flashExito();
   else flashError();
@@ -2426,7 +2450,51 @@ void loop() {
       ultimoLogDiagnosticoOffline = ahora;
       addLog("[OFFLINE] Auto-huella inactiva: " + motivoAuto);
     }
-      
+
+    // ============================================================
+    // 0. DETECCIÓN PASIVA DE HUELLA (siempre activa, sin depender del PIR)
+    //    El lector monitorea constantemente: al poner el dedo, marca
+    // ============================================================
+    if (asistenciaAutomaticaHabilitada(ahora) && (ahora - lastPassiveFingerCheck > PASSIVE_FINGER_INTERVAL)) {
+      lastPassiveFingerCheck = ahora;
+      int pf = finger.getImage();
+      if (pf != FINGERPRINT_OK && pf != FINGERPRINT_NOFINGER) {
+        addLog("[Huella] Error lectura sensor: 0x" + String(pf, HEX));
+      }
+      if (pf == FINGERPRINT_OK) {
+        addLog("[Huella] Dedo detectado (modo pasivo)");
+        int tz = finger.image2Tz();
+        if (tz != FINGERPRINT_OK) {
+          addLog("[Huella] Error image2Tz: 0x" + String(tz, HEX));
+        } else {
+          int sr = finger.fingerSearch();
+          if (sr == FINGERPRINT_OK && finger.fingerID > 0) {
+            if (finger.fingerID != lastFingerID || (ahora - lastFingerTime > FINGER_DEBOUNCE)) {
+              estadoActual = ESTADO_PROCESANDO_ASISTENCIA;
+              addLog("[Huella] Match ID:" + String(finger.fingerID) + " conf:" + String(finger.confidence));
+              String personaId = buscarPersonaPorHuella(finger.fingerID);
+              if (personaId != "") {
+                String res = procesarAsistencia(personaId, isOnline ? "huella_online" : "huella_offline");
+                addLog(res);
+                if (resultadoAsistenciaExitosa(res)) flashExito(); else flashError();
+                cooldownAsistencia = millis();
+              } else {
+                addLog("[Huella] ID " + String(finger.fingerID) + " sin persona vinculada");
+                flashError();
+              }
+              lastFingerID = finger.fingerID;
+              lastFingerTime = millis();
+              estadoActual = ESTADO_IDLE;
+            }
+          } else if (sr == FINGERPRINT_NOTFOUND) {
+            addLog("[Huella] No encontrada en base de huellas local");
+          } else {
+            addLog("[Huella] Error fingerSearch: 0x" + String(sr, HEX));
+          }
+        }
+      }
+    }
+
     // 1. EL PIR ES EL PORTERO: Solo si detecta movimiento, activamos un "modo alerta" de 15 segundos
     static unsigned long tiempoUltimoMovimiento = 0;
     static bool hayAlguienFrenteAlSensor = false;
@@ -2438,6 +2506,11 @@ void loop() {
         hayAlguienFrenteAlSensor = true;
         inicioPIR = ahora;
         tiempoUltimoMovimiento = ahora;
+        // Anular bloqueo de menú: hay alguien físicamente presente que quiere marcar
+        if (bloqueoAsistenciaHasta > ahora) {
+          addLog("Anulando bloqueo de menú por presencia física");
+          bloqueoAsistenciaHasta = ahora;
+        }
         ledcWrite(FLASH_PIN, FLASH_DUTY_LOW); // Flash ON al detectar
         return;
       }
@@ -2449,7 +2522,7 @@ void loop() {
       return;
     }
 
-    // 3. SOLO SI HAY ALGUIEN, PROCESAMOS HUELLA Y/O FACIAL
+    // 3. SOLO SI HAY ALGUIEN, PROCESAMOS RECONOCIMIENTO FACIAL (huella es independiente, chequeo pasivo arriba)
     if (hayAlguienFrenteAlSensor) {
 
       // --- TIMEOUT DEL PIR (Anti-Bucle) ---
@@ -2462,75 +2535,23 @@ void loop() {
           return;
       }
 
-      bool asistenciaProcesada = false;
-
-      // -- INTENTO HUELLA (rápido, primero para no bloquear facial) --
-      if (asistenciaAutomaticaHabilitada(ahora) && (ahora - lastFingerCheck > FINGER_CHECK_INTERVAL)) {
-        lastFingerCheck = ahora;
-        int p = finger.getImage();
-        if (p == FINGERPRINT_OK && finger.image2Tz() == FINGERPRINT_OK && finger.fingerSearch() == FINGERPRINT_OK) {
-
-            if (finger.fingerID > 0 && (finger.fingerID != lastFingerID || (ahora - lastFingerTime > FINGER_DEBOUNCE))) {
-                estadoActual = ESTADO_PROCESANDO_ASISTENCIA;
-                addLog("Huella detectada Sensor ID: " + String(finger.fingerID));
-
-                String personaId = buscarPersonaPorHuella(finger.fingerID);
-                if (personaId != "") {
-                    String res = procesarAsistencia(personaId, isOnline ? "huella_online" : "huella_offline");
-                    addLog(res);
-                    if (resultadoAsistenciaExitosa(res)) flashExito();
-                    else flashError();
-                    cooldownAsistencia = millis();
-                    ledcWrite(FLASH_PIN, 0);
-                    hayAlguienFrenteAlSensor = false;
-                    asistenciaProcesada = true;
-                } else {
-                    addLog("Huella no vinculada.");
-                    flashError();
-                }
-
-                lastFingerID = finger.fingerID;
-                lastFingerTime = millis();
-                estadoActual = ESTADO_IDLE;
-            }
-        }
-      }
-
-      // -- INTENTO FACIAL (async: HTTP upload + MQTT respuesta) --
-      if (!asistenciaProcesada && !identificacionPendiente && isOnline && (ahora - cooldownAsistencia > COOLDOWN_TIEMPO) && (ahora - lastFaceCheck > FACE_CHECK_INTERVAL)) {
+      // -- INTENTO FACIAL (HTTP directo, PIR solo para rostro, respeta bloqueo de menú) --
+      if (asistenciaAutomaticaHabilitada(ahora) && isOnline && (ahora - cooldownAsistencia > COOLDOWN_TIEMPO) && (ahora - lastFaceCheck > FACE_CHECK_INTERVAL)) {
         lastFaceCheck = ahora;
-        if (enviarFotoIdentificacion()) {
-            identificacionPendiente = true;
-            inicioIdentificacion = ahora;
-            addLog("Foto enviada, esperando respuesta MQTT...");
-        }
-      }
-
-      // -- Procesar respuesta MQTT de identificación --
-      if (mqttIdentificacionRecibida) {
-        mqttIdentificacionRecibida = false;
-        identificacionPendiente = false;
-        if (mqttSuccess && mqttPersonaId != "") {
+        String personaIdFacial = "";
+        if (enviarFotoIdentificacion(personaIdFacial) && personaIdFacial != "") {
             estadoActual = ESTADO_PROCESANDO_ASISTENCIA;
-            String res = procesarAsistencia(mqttPersonaId, "facial");
+            String res = procesarAsistencia(personaIdFacial, "facial");
             addLog(res);
             if (resultadoAsistenciaExitosa(res)) flashExito(); else flashError();
             cooldownAsistencia = millis();
             ledcWrite(FLASH_PIN, 0);
             hayAlguienFrenteAlSensor = false;
             estadoActual = ESTADO_IDLE;
-        } else {
-            addLog("Identificacion facial rechazada por backend");
         }
       }
 
     } // Fin del bloque "if (hayAlguienFrenteAlSensor)"
-
-    // Timeout MQTT (fuera de hayAlguienFrenteAlSensor, por si la persona ya se fue)
-    if (identificacionPendiente && (ahora - inicioIdentificacion > TIMEOUT_MQTT_IDENTIFICACION)) {
-        addLog("Timeout identificacion facial (MQTT)");
-        identificacionPendiente = false;
-    }
   }
 
   // ==========================================================

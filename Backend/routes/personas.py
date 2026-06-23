@@ -40,7 +40,15 @@ def get_personas():
             (persona_id,)
         )
     else:
-        cur.execute("SELECT id, nombre, rut, email, huella_id, empresa_id, created_at FROM personas WHERE activo = true ORDER BY id")
+        if empresa_id:
+            cur.execute(
+                "SELECT id, nombre, rut, email, huella_id, empresa_id, created_at FROM personas WHERE empresa_id = %s AND activo = true ORDER BY id",
+                (empresa_id,)
+            )
+        else:
+            cur.close()
+            conn.close()
+            return jsonify([])
 
     rows = cur.fetchall()
     cur.close()
@@ -68,7 +76,9 @@ def create_persona():
     if not data.get('nombre') or not data.get('rut'):
         return jsonify({'error': 'Faltan datos'}), 400
 
-    empresa_id = request.empresa_id if request.empresa_id else 1
+    if not request.empresa_id:
+        return jsonify({'error': 'No autorizado: empresa no identificada'}), 401
+    empresa_id = request.empresa_id
 
     conn = get_connection()
     cur = conn.cursor()
@@ -78,6 +88,14 @@ def create_persona():
             (empresa_id, data['nombre'], data['rut'], data.get('email', ''), data.get('huella_id'))
         )
         persona_id = cur.fetchone()[0]
+
+        if data.get('consentimiento'):
+            ip = request.headers.get('X-Forwarded-For', request.remote_addr)
+            cur.execute(
+                "INSERT INTO consentimientos (persona_id, version_politica, ip_dispositivo, metodo_aceptacion) VALUES (%s, '1.0', %s, 'registro') ON CONFLICT (persona_id) DO NOTHING",
+                (persona_id, ip)
+            )
+
         conn.commit()
         return jsonify({'ok': True, 'id': persona_id, 'rut': data['rut']})
     except Exception as e:

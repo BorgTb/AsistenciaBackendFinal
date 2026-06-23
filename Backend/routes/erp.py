@@ -167,6 +167,8 @@ def create_erp():
     envio_auto = bool(data.get('envio_auto', data.get('envioAuto', True)))
     activo = bool(data.get('activo', True))
     empresa_id = request.empresa_id
+    if not empresa_id:
+        return jsonify({'error': 'No autorizado: empresa no identificada'}), 401
 
     if isinstance(headers, dict):
         headers = json.dumps(headers, ensure_ascii=False)

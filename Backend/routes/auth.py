@@ -97,17 +97,19 @@ def token_opcional(fn):
 
 
 def _puede_crear_rol(rol_creador, rol_a_crear):
+    if rol_a_crear == 'admin':
+        return False
     if rol_creador == 'admin':
-        return rol_a_crear in ('admin', 'empleador', 'trabajador')
+        return rol_a_crear in ('empleador', 'trabajador')
     if rol_creador == 'empleador':
-        return rol_a_crear == 'trabajador'
+        return rol_a_crear in ('empleador', 'trabajador')
     return False
 
 
 def _puede_gestionar(rol_gestor, rol_objetivo):
     if rol_gestor == 'admin':
         return True
-    if rol_gestor == 'empleador' and rol_objetivo == 'trabajador':
+    if rol_gestor == 'empleador' and rol_objetivo in ('empleador', 'trabajador'):
         return True
     return False
 
@@ -246,6 +248,9 @@ def register():
     if request.user_rol == 'empleador':
         empresa_id = request.empresa_id
 
+    if not empresa_id:
+        return jsonify({'error': 'No autorizado: empresa no identificada'}), 401
+
     pw_hash = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
 
     conn = get_connection()
@@ -297,7 +302,7 @@ def listar_usuarios():
                 FROM usuarios_web u
                 JOIN usuario_empresa ue ON ue.usuario_id = u.id
                 JOIN empresas e ON e.id = ue.empresa_id
-                WHERE ue.empresa_id = %s AND ue.rol IN ('empleador', 'trabajador')
+                WHERE ue.empresa_id = %s
                 ORDER BY u.id
             """, (request.empresa_id,))
 
@@ -439,8 +444,8 @@ def editar_usuario(user_id):
             )
 
         nuevo_rol = rol if rol in ('admin', 'empleador', 'trabajador') and not es_self_edit else None
-        if nuevo_rol and request.user_rol == 'empleador':
-            nuevo_rol = 'trabajador'
+        if nuevo_rol == 'admin':
+            return jsonify({'error': 'No se puede asignar el rol de administrador del sistema'}), 403
 
         if nuevo_rol or (request.user_rol == 'admin' and empresa_id is not None and not es_self_edit):
             cur.execute(
@@ -491,16 +496,70 @@ def crear_empresa():
     if not nombre:
         return jsonify({'error': 'Nombre requerido'}), 400
 
+    mode = data.get('mode', 'new')
+    if mode not in ('new', 'existing'):
+        return jsonify({'error': 'mode debe ser "new" o "existing"'}), 400
+
+    rol_usuario = (data.get('rol_usuario') or 'empleador').strip().lower()
+    if rol_usuario not in ('empleador', 'trabajador'):
+        return jsonify({'error': 'Rol de usuario invalido'}), 400
+
+    new_user_data = None
+    existing_user_id = None
+
+    if mode == 'new':
+        nombre_usuario = (data.get('nombre_usuario') or '').strip()
+        email_usuario = (data.get('email_usuario') or '').strip().lower()
+        password_usuario = data.get('password_usuario') or ''
+        if not nombre_usuario or not email_usuario or not password_usuario:
+            return jsonify({'error': 'nombre_usuario, email_usuario y password_usuario son requeridos'}), 400
+        if len(password_usuario) < 4:
+            return jsonify({'error': 'La contraseña debe tener al menos 4 caracteres'}), 400
+        if '@' not in email_usuario:
+            return jsonify({'error': 'Email de usuario invalido'}), 400
+        new_user_data = (nombre_usuario, email_usuario, password_usuario)
+    else:
+        existing_user_id = data.get('usuario_id')
+        if not existing_user_id:
+            return jsonify({'error': 'usuario_id es requerido para asignar un usuario existente'}), 400
+
     conn = get_connection()
     cur = conn.cursor()
     try:
+        if new_user_data:
+            cur.execute("SELECT id FROM usuarios_web WHERE email = %s", (new_user_data[1],))
+            if cur.fetchone():
+                return jsonify({'error': 'Ya existe un usuario con ese email'}), 409
+        else:
+            cur.execute("SELECT id FROM usuarios_web WHERE id = %s", (existing_user_id,))
+            if not cur.fetchone():
+                return jsonify({'error': 'El usuario especificado no existe'}), 404
+
         cur.execute(
             "INSERT INTO empresas (nombre, rut_empresa, email_contacto, telefono, direccion) VALUES (%s, %s, %s, %s, %s) RETURNING id",
             (nombre, data.get('rut_empresa', ''), data.get('email_contacto', ''), data.get('telefono', ''), data.get('direccion', ''))
         )
         empresa_id = cur.fetchone()[0]
+
+        if new_user_data:
+            pw_hash = bcrypt.hashpw(new_user_data[2].encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+            cur.execute(
+                "INSERT INTO usuarios_web (nombre, email, password_hash) VALUES (%s, %s, %s) RETURNING id",
+                (new_user_data[0], new_user_data[1], pw_hash)
+            )
+            usuario_id = cur.fetchone()[0]
+        else:
+            usuario_id = existing_user_id
+
+        cur.execute(
+            """INSERT INTO usuario_empresa (usuario_id, empresa_id, rol)
+               VALUES (%s, %s, %s)
+               ON CONFLICT (usuario_id, empresa_id) DO UPDATE SET rol = EXCLUDED.rol""",
+            (usuario_id, empresa_id, rol_usuario)
+        )
+
         conn.commit()
-        return jsonify({'ok': True, 'id': empresa_id, 'mensaje': 'Empresa creada'})
+        return jsonify({'ok': True, 'id': empresa_id, 'usuario_id': usuario_id, 'mensaje': 'Empresa creada'})
     except Exception as e:
         conn.rollback()
         return jsonify({'error': str(e)}), 500
@@ -539,6 +598,9 @@ def asignar_usuario_empresa():
 
     if rol not in ('admin', 'empleador', 'trabajador'):
         return jsonify({'error': 'Rol invalido'}), 400
+
+    if rol == 'admin':
+        return jsonify({'error': 'No se puede asignar el rol de administrador del sistema'}), 403
 
     conn = get_connection()
     cur = conn.cursor()
@@ -598,7 +660,7 @@ def registrar_empresa():
 
         cur.execute(
             "INSERT INTO usuario_empresa (usuario_id, empresa_id, rol) VALUES (%s, %s, %s)",
-            (user_id, empresa_id, 'admin')
+            (user_id, empresa_id, 'empleador')
         )
 
         conn.commit()
@@ -606,7 +668,7 @@ def registrar_empresa():
         payload = {
             'user_id': user_id,
             'empresa_id': empresa_id,
-            'rol': 'admin',
+            'rol': 'empleador',
             'exp': datetime.datetime.utcnow() + datetime.timedelta(hours=JWT_EXP_HOURS)
         }
         token = jwt.encode(payload, JWT_SECRET, algorithm='HS256')
@@ -618,13 +680,13 @@ def registrar_empresa():
                 'id': user_id,
                 'nombre': admin_nombre,
                 'email': admin_email,
-                'rol': 'admin',
+                'rol': 'empleador',
                 'empresa_id': empresa_id,
                 'empresa_nombre': empresa_nombre,
                 'persona_id': None,
                 'empresas': [{
                     'empresa_id': empresa_id,
-                    'rol': 'admin',
+                    'rol': 'empleador',
                     'empresa_nombre': empresa_nombre
                 }]
             }
@@ -731,6 +793,8 @@ def me():
 @requiere_rol('admin', 'empleador')
 def generar_pin_enrolamiento():
     empresa_id = request.empresa_id
+    if not empresa_id:
+        return jsonify({'error': 'No autorizado: empresa no identificada'}), 401
     data = request.json or {}
     nombre = (data.get('nombre') or 'Nuevo dispositivo').strip()
     pin = ''.join(secrets.choice(string.ascii_uppercase + string.digits) for _ in range(8))
