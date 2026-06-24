@@ -22,6 +22,10 @@ app = Flask(__name__)
 app.config['JWT_SECRET'] = os.getenv('JWT_SECRET', 'sas-secret-cambiar-en-produccion')
 CORS(app)
 
+SECURE_MODE = os.getenv('SECURE_MODE', 'false').lower() == 'true'
+SSL_CERT_PATH = os.getenv('SSL_CERT_PATH', 'certs/server.crt')
+SSL_KEY_PATH = os.getenv('SSL_KEY_PATH', 'certs/server.key')
+
 # SSE device stream globals
 device_clients = []
 clients_lock = threading.Lock()
@@ -117,10 +121,23 @@ if __name__ == '__main__':
     print("¡¡¡NUEVO CÓDIGO CARGADO!!!")
     init_db()
     mqtt_client = start_mqtt(broadcast_device_update)
-    app.run(
-        host='0.0.0.0',
-        port=5000,
-        debug=True,
-        use_reloader=False,
-        threaded=True
-    )
+
+    if SECURE_MODE:
+        ctx = (SSL_CERT_PATH, SSL_KEY_PATH)
+        print(f"🔒 HTTPS en puerto 443 (cert={SSL_CERT_PATH})", flush=True)
+        t = threading.Thread(target=lambda: app.run(
+            host='0.0.0.0', port=443, ssl_context=ctx,
+            debug=False, use_reloader=False, threaded=True
+        ), daemon=True)
+        t.start()
+        print(f"🔓 HTTP en puerto 5000 (siempre activo)", flush=True)
+        app.run(
+            host='0.0.0.0', port=5000,
+            debug=True, use_reloader=False, threaded=True
+        )
+    else:
+        print(f"🔓 HTTP en puerto 5000 (modo no seguro)", flush=True)
+        app.run(
+            host='0.0.0.0', port=5000,
+            debug=True, use_reloader=False, threaded=True
+        )

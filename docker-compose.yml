@@ -23,10 +23,13 @@ services:
     image: eclipse-mosquitto:latest
     container_name: sas_mosquitto
     ports:
-      - "1884:1883"
-      - "9001:9001"
+      - "1884:1883"         # MQTT plano (modo no seguro)
+      - "8884:8883"         # MQTT con TLS (modo seguro)
+      - "9001:9001"         # WebSocket
     volumes:
       - ./Backend/mosquitto/config/mosquitto.conf:/mosquitto/config/mosquitto.conf
+      - ./Backend/certs:/mosquitto/certs:ro
+      - ./Backend/mosquitto/config/passwd:/mosquitto/config/passwd:ro
       - mosquitto_data:/mosquitto/data
       - mosquitto_log:/mosquitto/log
     restart: unless-stopped
@@ -48,9 +51,18 @@ services:
       JWT_SECRET: ${JWT_SECRET:-sas-secret-cambiar-en-produccion}
       MQTT_HOST: mosquitto
       MQTT_PORT: "1883"
+      SECURE_MODE: ${SECURE_MODE:-false}
+      MQTT_SSL_PORT: "8883"
+      MQTT_SSL_CA: /app/certs/ca.crt
+      MQTT_USER: sas
+      MQTT_PASSWORD: ${MQTT_PASSWORD:-}
+      SSL_CERT_PATH: /app/certs/server.crt
+      SSL_KEY_PATH: /app/certs/server.key
     ports:
+      - "443:443"
       - "5000:5000"
     volumes:
+      - ./Backend/certs:/app/certs:ro
       - backend_static:/app/static
       - deepface_models:/root/.deepface
     restart: unless-stopped

@@ -49,5 +49,9 @@ diagrams/*.aux
 diagrams/*.log
 diagrams/*.pdf
 
+# Generados por generate_certs.ps1 (no committear)
+Backend/certs/
+Backend/mosquitto/config/passwd
+
 # Auto-generated tool config
 skills-lock.json

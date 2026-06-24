@@ -7,6 +7,7 @@
 #include <Arduino.h>
 #include <WebServer.h>
 #include <WiFi.h>
+#include <WiFiClientSecure.h>
 #include <esp_wifi.h> // <-- VITAL: Para el manejo avanzado de energía del WiFi
 #include "LittleFS.h"
 #include <ArduinoJson.h>
@@ -60,6 +61,34 @@ String pinEnrol       = "";
 bool   estaEnrolado   = false;
 String adminHash     = "";
 String lastCapturedImageUrl = "";
+
+// ===== Modo Seguro (TLS) =====
+bool   secureMode     = false;
+String mqttUser       = "";
+String mqttPass       = "";
+
+// CA certificate for self-signed TLS (modo seguro local)
+const char CA_CERT[] = R"EOF(
+-----BEGIN CERTIFICATE-----
+MIIC/TCCAeWgAwIBAgIUcKRlHN1rueh7a8+QaqSZbTVdm6kwDQYJKoZIhvcNAQEL
+BQAwDjEMMAoGA1UEAwwDU0FTMB4XDTI2MDYyMzIwNTIxOFoXDTM2MDYyMDIwNTIx
+OFowDjEMMAoGA1UEAwwDU0FTMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKC
+AQEAt2uWB0aNTOFq8SGf+Ks1GLXOby0uuw3J/jUwDItPEDhac/37tilEoSAjolUE
+Z79A2JJ4kQo2WpIVqQg3TtNNi9uaOwFTBH/wtMIi2s92D+r4/4sQqNKguljPYuWt
+beh98vwNXn1N605KLG77Dv9Jaun4VA1YPEo1jwzv+ZOQ0gYkomP3TX+j5oV2sDx9
+0ZeuiROPXOX14wy2tF6Aoz3CrwJ/SuOR3HMK2Z1J6RTezl+zSwQkJmzQJpRwL7di
+FkScg48990KvWGogTTLyebjeBKkRk1JNSPU4EEGUAsup627OQ/ijtJZEeyQgfOlA
+TnGsf/XfYCyOZZwZphIUdhrFGQIDAQABo1MwUTAdBgNVHQ4EFgQU10MzKJokZAiL
+Trd8jr/fuXhQFVIwHwYDVR0jBBgwFoAU10MzKJokZAiLTrd8jr/fuXhQFVIwDwYD
+VR0TAQH/BAUwAwEB/zANBgkqhkiG9w0BAQsFAAOCAQEAZllNJEyWNND0VSukr9lJ
+KbGF5L9w2vGm2dVqNn7OOqFw/D5h2spdrwxiMpuOYqAzaKZmemqO98dYtVMZvmFk
+1qgDoDZpqbhiwt44hq2vC9W3Ob/iYT/4XscJIWjBCKT7xQOOiQyYSd0TbCy4mFMj
+WsPmhbZj1UNruYOyThDMwmhLREOUAr3ed9l+L3mCzZeLZvMK5ZGyFjt/8vzfHt7V
+VqCOp+WA4NGhGnksMTgJ+EUk4uhrBLclxNryyT5Q555LyihpFJE8pvkt5WIPj5Fi
+uQyqmcBGxfQ5MzM4lA5Elsk90YYjYPUCkc7UWU5wmSI7xWfcDYeHSkHGXKTuqA4I
+Lg==
+-----END CERTIFICATE-----
+)EOF";
 bool   camaraIniciada = false;
 bool   wifiEstabaConectado = false;
 
@@ -669,7 +698,27 @@ void mantenerConexionMQTT() {
   if (mqtt_client != NULL) return;
   
   String brokerUrl = mqttBroker;
-  bool tieneEsquema = brokerUrl.startsWith("mqtt://") || brokerUrl.startsWith("ws://") || brokerUrl.startsWith("wss://") ||
+
+  // ── Step 1: Apply secure mode transformations ──
+  if (secureMode) {
+    if (brokerUrl.startsWith("mqtt://")) {
+      brokerUrl.replace("mqtt://", "mqtts://");
+      brokerUrl.replace(":1883", ":8883");
+    } else if (brokerUrl.startsWith("ws://")) {
+      brokerUrl.replace("ws://", "wss://");
+    } else if (brokerUrl.startsWith("http://")) {
+      brokerUrl.replace("http://", "https://");
+    } else if (!brokerUrl.startsWith("mqtts://") && !brokerUrl.startsWith("wss://") &&
+               !brokerUrl.startsWith("https://")) {
+      if (brokerUrl.endsWith(":1883")) brokerUrl.replace(":1883", ":8883");
+      else if (brokerUrl.indexOf(":") == -1) brokerUrl += ":8883";
+      brokerUrl = "mqtts://" + brokerUrl;
+    }
+  }
+
+  // ── Step 2: Normalize URL scheme ──
+  bool tieneEsquema = brokerUrl.startsWith("mqtt://") || brokerUrl.startsWith("mqtts://") ||
+                     brokerUrl.startsWith("ws://") || brokerUrl.startsWith("wss://") ||
                      brokerUrl.startsWith("http://") || brokerUrl.startsWith("https://");
 
   if (!tieneEsquema) {
@@ -678,7 +727,6 @@ void mantenerConexionMQTT() {
   } else {
     if (brokerUrl.startsWith("http://")) brokerUrl = "ws://" + brokerUrl.substring(7);
     else if (brokerUrl.startsWith("https://")) brokerUrl = "wss://" + brokerUrl.substring(8);
-
     if (brokerUrl.startsWith("ws://") || brokerUrl.startsWith("wss://")) {
       if (!brokerUrl.endsWith("/mqtt")) brokerUrl += brokerUrl.endsWith("/") ? "mqtt" : "/mqtt";
     }
@@ -686,15 +734,21 @@ void mantenerConexionMQTT() {
 
   addLog("Conectando MQTT: " + brokerUrl);
   esp_mqtt_client_config_t mqtt_cfg = {};
+
+  bool needsTls = brokerUrl.startsWith("mqtts://") || brokerUrl.startsWith("wss://");
   
   #if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 0, 0)
     mqtt_cfg.broker.address.uri = brokerUrl.c_str();
-    if (brokerUrl.startsWith("wss://")) {
+    if (needsTls) {
       mqtt_cfg.broker.verification.crt_bundle_attach = esp_crt_bundle_attach;
+    }
+    if (mqttUser.length() > 0) {
+      mqtt_cfg.credentials.username = mqttUser.c_str();
+      mqtt_cfg.credentials.authentication.password = mqttPass.c_str();
     }
   #else
     mqtt_cfg.uri = brokerUrl.c_str();
-    if (brokerUrl.startsWith("wss://")) {
+    if (needsTls) {
       mqtt_cfg.crt_bundle_attach = esp_crt_bundle_attach;
     }
   #endif
@@ -1784,6 +1838,9 @@ void loadWiFiConfig() {
       while (mqttBroker.startsWith(":")) mqttBroker = mqttBroker.substring(1);
     }
     if (doc.containsKey("pin")) pinEnrol = doc["pin"].as<String>();
+    if (doc.containsKey("secure")) secureMode = doc["secure"].as<bool>();
+    if (doc.containsKey("mqtt_user")) mqttUser = doc["mqtt_user"].as<String>();
+    if (doc.containsKey("mqtt_pass")) mqttPass = doc["mqtt_pass"].as<String>();
     file.close();
   }
   cargarAdminHash();
@@ -1792,6 +1849,7 @@ void loadWiFiConfig() {
 void saveConfig(String ssid, String pass, String backend, String mqtt, String pin) {
   DynamicJsonDocument doc(512);
   doc["ssid"] = ssid; doc["pass"] = pass; doc["backend"] = backend; doc["mqtt"] = mqtt; doc["pin"] = pin;
+  doc["secure"] = secureMode; doc["mqtt_user"] = mqttUser; doc["mqtt_pass"] = mqttPass;
   File file = LittleFS.open("/wifi.json", "w");
   serializeJson(doc, file); file.close();
   savedSSID = ssid; savedPASS = pass; backendURL = backend; mqttBroker = mqtt; pinEnrol = pin;
@@ -1818,6 +1876,9 @@ void handleWiFiConfig() {
   String backend = server.hasArg("backend") && server.arg("backend").length() > 0 ? server.arg("backend") : backendURL;
   String mqtt    = server.hasArg("mqtt")    && server.arg("mqtt").length()    > 0 ? server.arg("mqtt")    : mqttBroker;
   String pin     = server.hasArg("pin")     && server.arg("pin").length()     > 0 ? server.arg("pin")     : pinEnrol;
+  secureMode = server.hasArg("secure") && server.arg("secure") == "1";
+  if (server.hasArg("mqtt_user")) mqttUser = server.arg("mqtt_user");
+  if (server.hasArg("mqtt_pass")) mqttPass = server.arg("mqtt_pass");
 
   if (server.hasArg("admin_password_new") && server.arg("admin_password_new").length() > 0) {
     if (adminHash.length() > 0) {
@@ -2555,6 +2616,9 @@ void setup() {
     json += "\"enrolado\":"  + String(estaEnrolado ? "true" : "false") + ",";
     json += "\"admin_protegido\":" + String(adminHash.length() > 0 ? "true" : "false") + ",";
     json += "\"pin\":\""     + jsonEscape(pinEnrol) + "\",";
+    json += "\"secure\":"    + String(secureMode ? "true" : "false") + ",";
+    json += "\"mqtt_user\":\"" + jsonEscape(mqttUser) + "\",";
+    json += "\"mqtt_pass\":\"" + jsonEscape(mqttPass) + "\",";
     json += "\"mac\":\""     + deviceMAC + "\"";
     json += "}";
     server.send(200, "application/json", json);

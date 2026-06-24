@@ -14,6 +14,12 @@ from encryption import cifrar_embedding
 BROKER_HOST = os.getenv('MQTT_HOST', '127.0.0.1')
 BROKER_PORT = int(os.getenv('MQTT_PORT', '1884'))
 
+SECURE_MODE = os.getenv('SECURE_MODE', 'false').lower() == 'true'
+MQTT_TLS_PORT = int(os.getenv('MQTT_SSL_PORT', '8883'))
+MQTT_SSL_CA = os.getenv('MQTT_SSL_CA', 'certs/ca.crt')
+MQTT_USER = os.getenv('MQTT_USER', 'sas')
+MQTT_PASSWORD = os.getenv('MQTT_PASSWORD', '')
+
 heartbeat_times = {}
 heartbeat_lock = threading.Lock()
 
@@ -326,11 +332,21 @@ def device_pinger():
 def start_mqtt(broadcast_callback=None):
     global _broadcast_callback, _mqtt_client
     try:
-        print(f"🚀 Conectando MQTT a {BROKER_HOST}:{BROKER_PORT}...", flush=True)
-        client = mqtt.Client(client_id="python-backend", clean_session=True)
+        if SECURE_MODE:
+            port = MQTT_TLS_PORT
+            print(f"🔒 Modo SEGURO: conectando MQTT con TLS a {BROKER_HOST}:{port}...", flush=True)
+            client = mqtt.Client(client_id="python-backend", clean_session=True)
+            client.tls_set(ca_certs=MQTT_SSL_CA)
+            client.tls_insecure_set(True)
+            if MQTT_PASSWORD:
+                client.username_pw_set(MQTT_USER, MQTT_PASSWORD)
+        else:
+            port = BROKER_PORT
+            print(f"🔓 Modo NO SEGURO: conectando MQTT a {BROKER_HOST}:{port}...", flush=True)
+            client = mqtt.Client(client_id="python-backend", clean_session=True)
         client.on_connect = on_connect
         client.on_message = on_message
-        client.connect(BROKER_HOST, BROKER_PORT, 60)
+        client.connect(BROKER_HOST, port, 60)
         client.loop_start()
         _mqtt_client = client
         if broadcast_callback:

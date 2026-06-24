@@ -1,1 +1,1 @@
-{"ssid":"","pass":"","backend":"http://172.20.10.3:5000","mqtt":"","pin":""}
+{"ssid":"","pass":"","backend":"http://172.20.10.3:5000","mqtt":"","pin":"","secure":false,"mqtt_user":"","mqtt_pass":""}

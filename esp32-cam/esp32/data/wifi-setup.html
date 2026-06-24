@@ -66,6 +66,23 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Oxygen,sans-
       <label>Servidor MQTT (broker)</label>
       <input type="text" id="mqtt" placeholder="192.168.1.X">
     </div>
+    <div class="field" style="display:flex;align-items:center;gap:10px;margin-top:12px">
+      <label style="flex:1;margin:0;cursor:pointer" for="secure" onclick="document.getElementById('secure').checked=!document.getElementById('secure').checked;toggleSecureFields()">
+        <span style="font-size:10px;color:var(--muted-2);text-transform:uppercase;letter-spacing:.6px;font-weight:600">Modo Seguro (TLS)</span>
+      </label>
+      <input type="checkbox" id="secure" onchange="toggleSecureFields()" style="width:20px;height:20px;accent-color:var(--primary);cursor:pointer">
+    </div>
+    <div id="secureFields" style="display:none">
+      <div class="field">
+        <label>Usuario MQTT</label>
+        <input type="text" id="mqtt_user" placeholder="sas">
+      </div>
+      <div class="field">
+        <label>Contraseña MQTT</label>
+        <input type="password" id="mqtt_pass" placeholder="••••••••">
+      </div>
+      <div class="warning-text">⚠️ Al activar, el ESP32 usará TLS para conectar al broker y al backend.</div>
+    </div>
   </div>
 
   <div class="section-label">PIN de registro</div>
@@ -102,17 +119,29 @@ fetch('/estado').then(r=>r.json()).then(data=>{
   if(data.backend)document.getElementById('backend').value=data.backend;
   if(data.mqtt)document.getElementById('mqtt').value=data.mqtt;
   if(data.pin)document.getElementById('pin').value=data.pin;
+  if(data.secure){
+    document.getElementById('secure').checked=true;
+    toggleSecureFields();
+  }
+  if(data.mqtt_user)document.getElementById('mqtt_user').value=data.mqtt_user;
+  if(data.mqtt_pass)document.getElementById('mqtt_pass').value=data.mqtt_pass;
   if(data.admin_protegido){
     document.getElementById('adminPasswordOld').style.display='block';
     document.getElementById('adminStatus').style.display='block';
   }
 });
+function toggleSecureFields(){
+  document.getElementById('secureFields').style.display=document.getElementById('secure').checked?'block':'none';
+}
 async function guardar(){
   const ssid=document.getElementById('ssid').value.trim();
   const pass=document.getElementById('password').value.trim();
   const backend=document.getElementById('backend').value.trim();
   const mqtt=document.getElementById('mqtt').value.trim();
   const pin=document.getElementById('pin').value.trim();
+  const secure=document.getElementById('secure').checked;
+  const mqtt_user=document.getElementById('mqtt_user').value.trim();
+  const mqtt_pass=document.getElementById('mqtt_pass').value.trim();
   const adminOld=document.getElementById('adminPasswordOld').value.trim();
   const adminNew=document.getElementById('adminPasswordNew').value.trim();
   const el=document.getElementById('status');
@@ -123,6 +152,9 @@ async function guardar(){
     if(backend)params.append('backend',backend);
     if(mqtt)params.append('mqtt',mqtt);
     if(pin)params.append('pin',pin);
+    if(secure)params.append('secure','1');
+    if(mqtt_user)params.append('mqtt_user',mqtt_user);
+    if(mqtt_pass)params.append('mqtt_pass',mqtt_pass);
     if(adminNew)params.append('admin_password_new',adminNew);
     if(adminOld)params.append('admin_password_old',adminOld);
     const msg=await fetch('/wifi-config?'+params.toString()).then(r=>r.text());
