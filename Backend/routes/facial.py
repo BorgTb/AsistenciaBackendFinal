@@ -18,9 +18,6 @@ from datetime import datetime
 
 facial_bp = Blueprint('facial', __name__)
 
-PREVIEWS_DIR = os.path.join(os.getcwd(), 'static', 'previews')
-os.makedirs(PREVIEWS_DIR, exist_ok=True)
-
 DETECTOR_BACKEND = os.getenv('FACIAL_DETECTOR', 'mtcnn')
 UMBRAL_NITIDEZ = float(os.getenv('FACIAL_NITIDEZ_UMBRAL', '50'))
 UMBRAL_DISTANCIA = float(os.getenv('FACIAL_UMBRAL_DISTANCIA', '10.0'))
@@ -120,7 +117,7 @@ def decodificar_y_guardar_temporal(imagen_b64):
 
 def guardar_imagen_de_registro(persona_id, imagen_b64, suffix=''):
     file_name = f"{persona_id}{suffix}.jpg"
-    file_path = os.path.join(PREVIEWS_DIR, file_name)
+    file_path = os.path.join(tempfile.gettempdir(), file_name)
     img_bytes = base64.b64decode(imagen_b64)
     img = Image.open(io.BytesIO(img_bytes)).convert('RGB')
     img.save(file_path)
@@ -204,13 +201,16 @@ def registrar_facial():
         quality_score = float(cv2.Laplacian(cv2.imread(file_path, cv2.IMREAD_GRAYSCALE), cv2.CV_64F).var())
         encoding_json = cifrar_embedding(nuevo_embedding.tolist())
         cur.execute(
-            "INSERT INTO encodings_faciales (persona_id, encoding, foto_path, quality_score) VALUES (%s, %s, %s, %s)",
-            (persona_id, encoding_json, file_path, quality_score)
+            "INSERT INTO encodings_faciales (persona_id, encoding, quality_score) VALUES (%s, %s, %s)",
+            (persona_id, encoding_json, quality_score)
         )
 
         conn.commit()
         cur.close()
         conn.close()
+
+        if os.path.exists(file_path):
+            os.unlink(file_path)
 
         _invalidar_cache()
         _log_biometrico(persona_id, None, 'registro', 'exito')
@@ -260,8 +260,8 @@ def agregar_foto():
         conn = get_connection()
         cur = conn.cursor()
         cur.execute(
-            "INSERT INTO encodings_faciales (persona_id, encoding, foto_path, quality_score) VALUES (%s, %s, %s, %s) RETURNING id",
-            (persona_id, encoding_json, file_path, quality_score)
+            "INSERT INTO encodings_faciales (persona_id, encoding, quality_score) VALUES (%s, %s, %s) RETURNING id",
+            (persona_id, encoding_json, quality_score)
         )
         enc_id = cur.fetchone()[0]
 
@@ -274,6 +274,9 @@ def agregar_foto():
         conn.commit()
         cur.close()
         conn.close()
+
+        if os.path.exists(file_path):
+            os.unlink(file_path)
 
         _invalidar_cache()
         _log_biometrico(persona_id, None, 'registro', 'exito')
@@ -313,7 +316,7 @@ def actualizar_facial(persona_id):
 
         ts = datetime.now().strftime('%Y%m%d_%H%M%S')
         file_name = f"{persona_id}_{ts}.jpg"
-        file_path = os.path.join(PREVIEWS_DIR, file_name)
+        file_path = os.path.join(tempfile.gettempdir(), file_name)
 
         img_bytes = base64.b64decode(imagen_b64)
         img = Image.open(io.BytesIO(img_bytes)).convert('RGB')
@@ -330,19 +333,20 @@ def actualizar_facial(persona_id):
         encoding_cifrado = cifrar_embedding(embedding)
 
         cur.execute(
-            "INSERT INTO encodings_faciales (persona_id, encoding, foto_path, quality_score) VALUES (%s, %s, %s, %s)",
-            (persona_id, encoding_cifrado, file_path, quality_score)
+            "INSERT INTO encodings_faciales (persona_id, encoding, quality_score) VALUES (%s, %s, %s)",
+            (persona_id, encoding_cifrado, quality_score)
         )
         conn.commit()
 
+        if os.path.exists(file_path):
+            os.unlink(file_path)
+
         _invalidar_cache()
 
-        preview_url = f"{request.host_url.rstrip('/')}/static/previews/{file_name}"
         _log_biometrico(persona_id, None, 'registro', 'exito')
         return jsonify({
             'ok': True,
-            'mensaje': 'Rostro actualizado correctamente',
-            'preview_url': preview_url
+            'mensaje': 'Rostro actualizado correctamente'
         })
     except ValueError as ve:
         return jsonify({'error': str(ve)}), 400
@@ -375,8 +379,6 @@ def verificar_facial():
         if not ok_calidad:
             _log_biometrico(persona_id, None, 'verificacion', 'fallo')
             return jsonify({'error': msg_calidad}), 400
-
-        file_path = guardar_imagen_temporal(imagen_b64)
 
         conn = get_connection()
         cur = conn.cursor()
@@ -539,6 +541,7 @@ def identificar_o_registrar():
     img.save(tmp_path)
     tmp.close()
 
+    preview_path = None
     try:
         ok_calidad, msg_calidad = _validar_calidad_imagen(tmp_path)
         if not ok_calidad:
@@ -636,10 +639,13 @@ def identificar_o_registrar():
             encoding_json = cifrar_embedding(embedding_captura.tolist())
 
             cur.execute(
-                "INSERT INTO encodings_faciales (persona_id, encoding, foto_path, quality_score) VALUES (%s, %s, %s, %s)",
-                (persona_id, encoding_json, preview_path, quality_score)
+                "INSERT INTO encodings_faciales (persona_id, encoding, quality_score) VALUES (%s, %s, %s)",
+                (persona_id, encoding_json, quality_score)
             )
             conn.commit()
+
+            if os.path.exists(preview_path):
+                os.unlink(preview_path)
 
             _invalidar_cache()
             _log_biometrico(persona_id, None, 'registro', 'exito')
@@ -662,5 +668,7 @@ def identificar_o_registrar():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
     finally:
-        if os.path.exists(tmp_path):
+        if tmp_path and os.path.exists(tmp_path):
             os.unlink(tmp_path)
+        if preview_path and os.path.exists(preview_path):
+            os.unlink(preview_path)

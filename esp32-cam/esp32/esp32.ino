@@ -194,6 +194,7 @@ void sincronizarTurnosPendientes();
 void sincronizarAsignacionesPendientes();
 void enrolarDispositivo();
 String buscarRutPersona(const String& personaId);
+void actualizarAsistenciasPorPersona(const String& oldId, const String& newId);
 
 void handleWiFiConfig();
 void handleRegisterUser();
@@ -940,11 +941,15 @@ void sincronizarPersonasDesdeBackend() {
   DynamicJsonDocument docLocal(8192);
   JsonArray locales = loadArray("/personas.json", docLocal);
 
-  bool hayLocalesPendientes = false;
+  // Migrar entradas antiguas: reemplazar id local-* por backend_id si existe
   for (JsonObject p : locales) {
-    if (!p["sincronizado"].as<bool>()) {
-      hayLocalesPendientes = true;
-      break;
+    if (p.containsKey("backend_id") && p["id"].as<String>().startsWith("local-")) {
+      String oldId = p["id"].as<String>();
+      String realId = p["backend_id"].as<String>();
+      p["id"] = realId;
+      p.remove("backend_id");
+      p["sincronizado"] = true;
+      actualizarAsistenciasPorPersona(oldId, realId);
     }
   }
 
@@ -961,20 +966,21 @@ void sincronizarPersonasDesdeBackend() {
       for (JsonObject p : backendArr) {
         p["sincronizado"] = true;
       }
+
+      // Limpiar del array local las entradas que ya están en backend (mismo id)
+      // para evitar duplicados al hacer merge
       int localesReagregadas = 0;
-      if (hayLocalesPendientes) {
-        for (JsonObject p : locales) {
-          if (!p["sincronizado"].as<bool>()) {
-            JsonObject obj = backendArr.createNestedObject();
-            obj["id"] = p["id"];
-            obj["nombre"] = p["nombre"];
-            obj["rut"] = p["rut"];
-            if (p.containsKey("email")) obj["email"] = p["email"];
-            if (p.containsKey("huella_id")) obj["huella_id"] = p["huella_id"];
-            if (p.containsKey("fecha_registro")) obj["fecha_registro"] = p["fecha_registro"];
-            obj["sincronizado"] = false;
-            localesReagregadas++;
-          }
+      for (JsonObject p : locales) {
+        if (!p["sincronizado"].as<bool>()) {
+          JsonObject obj = backendArr.createNestedObject();
+          obj["id"] = p["id"];
+          obj["nombre"] = p["nombre"];
+          obj["rut"] = p["rut"];
+          if (p.containsKey("email")) obj["email"] = p["email"];
+          if (p.containsKey("huella_id")) obj["huella_id"] = p["huella_id"];
+          if (p.containsKey("fecha_registro")) obj["fecha_registro"] = p["fecha_registro"];
+          obj["sincronizado"] = false;
+          localesReagregadas++;
         }
       }
       if (backendArr.size() > 0) {
@@ -1342,14 +1348,35 @@ void completarRegistroPersona() {
 
   DynamicJsonDocument doc(2048);
   JsonArray personas = loadArray("/personas.json", doc);
-  JsonObject p = personas.createNestedObject();
-  p["id"]             = idReal;
-  p["nombre"]         = nombreRegistrando;
-  p["rut"]            = rutRegistrando;
-  p["email"]          = emailRegistrando;
-  p["huella_id"]      = slotRegistrando;
-  p["fecha_registro"] = getTimestamp();
-  p["sincronizado"]   = personaCreadaEnBackend;
+
+  // Buscar si ya existe una persona con el mismo RUT para NO duplicar
+  bool encontrada = false;
+  for (JsonObject p : personas) {
+    if (p["rut"].as<String>() == rutRegistrando) {
+      p["id"]             = idReal;
+      p["nombre"]         = nombreRegistrando;
+      p["email"]          = emailRegistrando;
+      p["huella_id"]      = slotRegistrando;
+      p["fecha_registro"] = getTimestamp();
+      p["sincronizado"]   = personaCreadaEnBackend;
+      if (consentimientoRegistrando) p["consentimiento"] = true;
+      encontrada = true;
+      break;
+    }
+  }
+
+  if (!encontrada) {
+    JsonObject p = personas.createNestedObject();
+    p["id"]             = idReal;
+    p["nombre"]         = nombreRegistrando;
+    p["rut"]            = rutRegistrando;
+    p["email"]          = emailRegistrando;
+    p["huella_id"]      = slotRegistrando;
+    p["fecha_registro"] = getTimestamp();
+    p["sincronizado"]   = personaCreadaEnBackend;
+    if (consentimientoRegistrando) p["consentimiento"] = true;
+  }
+
   saveArray("/personas.json", doc);
   
   if (personaCreadaEnBackend && camaraIniciada) {
@@ -1732,12 +1759,43 @@ String buscarRutPersona(const String& personaId) {
   return "";
 }
 
+void actualizarAsistenciasPorPersona(const String& oldId, const String& newId) {
+  DynamicJsonDocument doc(8192);
+  JsonArray asistencias = loadArray("/asistencias.json", doc);
+  bool huboCambios = false;
+  for (JsonObject a : asistencias) {
+    if (a["persona_id"].as<String>() == oldId) {
+      a["persona_id"] = newId;
+      huboCambios = true;
+    }
+  }
+  if (huboCambios) {
+    saveArray("/asistencias.json", doc);
+    addLog("Asistencias actualizadas: " + oldId + " -> " + newId);
+  }
+}
+
 void sincronizarPersonasPendientes() {
   if (!isOnline || WiFi.status() != WL_CONNECTED) return;
 
   DynamicJsonDocument doc(8192);
   JsonArray personas = loadArray("/personas.json", doc);
   bool huboCambios = false;
+
+  // Migrar entradas antiguas que tienen backend_id pero aún id local-*
+  for (JsonObject p : personas) {
+    if (p.containsKey("backend_id")) {
+      String realId = p["backend_id"].as<String>();
+      String oldId = p["id"].as<String>();
+      if (oldId != realId) {
+        p["id"] = realId;
+        p["sincronizado"] = true;
+        p.remove("backend_id");
+        actualizarAsistenciasPorPersona(oldId, realId);
+        huboCambios = true;
+      }
+    }
+  }
 
   for (JsonObject p : personas) {
     bool sincronizado = p.containsKey("sincronizado") ? p["sincronizado"].as<bool>() : false;
@@ -1752,6 +1810,7 @@ void sincronizarPersonasPendientes() {
     bodyDoc["rut"] = p["rut"];
     if (p.containsKey("email")) bodyDoc["email"] = p["email"];
     if (p.containsKey("huella_id")) bodyDoc["huella_id"] = p["huella_id"];
+    if (p.containsKey("consentimiento") && p["consentimiento"].as<bool>()) bodyDoc["consentimiento"] = true;
     String payload;
     serializeJson(bodyDoc, payload);
     int code = http.POST(payload);
@@ -1760,7 +1819,10 @@ void sincronizarPersonasPendientes() {
       DynamicJsonDocument respDoc(256);
       DeserializationError err = deserializeJson(respDoc, response);
       if (!err && respDoc.containsKey("id")) {
-        p["backend_id"] = respDoc["id"].as<String>();
+        String oldId = p["id"].as<String>();
+        String realId = respDoc["id"].as<String>();
+        p["id"] = realId;
+        actualizarAsistenciasPorPersona(oldId, realId);
       }
       p["sincronizado"] = true;
       huboCambios = true;

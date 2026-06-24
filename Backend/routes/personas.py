@@ -87,23 +87,18 @@ def create_persona():
     conn = get_connection()
     cur = conn.cursor()
     try:
-        dispositivo_origen_id = None
-        if not empresa_id:
-            device_mac = request.headers.get('X-Device-MAC', '').strip()
-            if device_mac:
-                cur.execute(
-                    "SELECT id FROM dispositivos WHERE REPLACE(mac_address, ':', '') = %s",
-                    (device_mac,)
-                )
-                row = cur.fetchone()
-                if row:
-                    dispositivo_origen_id = row[0]
-                else:
-                    cur.execute(
-                        "INSERT INTO dispositivos (mac_address, empresa_id, nombre, enrolado, estado) VALUES (%s, NULL, 'ESP32 (auto)', FALSE, 'pendiente') RETURNING id",
-                        (device_mac,)
-                    )
-                    dispositivo_origen_id = cur.fetchone()[0]
+        cur.execute("SELECT id, nombre, rut FROM personas WHERE rut = %s", (data['rut'],))
+        existente = cur.fetchone()
+        if existente:
+            return jsonify({
+                'ok': True,
+                'id': existente[0],
+                'nombre': existente[1],
+                'rut': existente[2],
+                'ya_existente': True
+            })
+
+        dispositivo_origen_id = request.dispositivo_id if not empresa_id else None
 
         cur.execute(
             "INSERT INTO personas (empresa_id, dispositivo_origen_id, nombre, rut, email, huella_id) VALUES (%s, %s, %s, %s, %s, %s) RETURNING id",
@@ -121,7 +116,7 @@ def create_persona():
         conn.commit()
         if empresa_id:
             notificar_sincronizacion(empresa_id, 'personas', 'crear', persona_id)
-        return jsonify({'ok': True, 'id': persona_id, 'rut': data['rut']})
+        return jsonify({'ok': True, 'id': persona_id, 'rut': data['rut'], 'ya_existente': False})
     except Exception as e:
         conn.rollback()
         print(f"ERROR FATAL POSTGRESQL: {str(e)}")

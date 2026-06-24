@@ -38,11 +38,18 @@ class TestEmuladorRegistroPersona:
         data = resp.get_json()
         assert data['id'] is not None
 
-    def test_rut_duplicado_rechazado(self, client, admin_token):
-        client.post('/api/personas',
+    def test_rut_duplicado_reutiliza_persona(self, client, admin_token):
+        resp1 = client.post('/api/personas',
             headers={'Authorization': f'Bearer {admin_token}'},
             json={'nombre': 'P1', 'rut': '44.444.444-4'})
-        resp = client.post('/api/personas',
+        assert resp1.status_code == 200
+        pid_original = resp1.get_json()['id']
+
+        resp2 = client.post('/api/personas',
             headers={'Authorization': f'Bearer {admin_token}'},
             json={'nombre': 'P2', 'rut': '44.444.444-4'})
-        assert resp.status_code == 500
+        assert resp2.status_code == 200
+        data = resp2.get_json()
+        assert data['ya_existente'] is True
+        assert data['id'] == pid_original
+        assert data['nombre'] == 'P1'

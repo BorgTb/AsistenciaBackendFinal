@@ -84,12 +84,19 @@ def token_opcional(fn):
                         (device_mac,)
                     )
                     row = cur.fetchone()
-                    cur.close()
-                    conn.close()
                     if row:
                         request.dispositivo_id = row[0]
                         if row[1] is not None:
                             request.empresa_id = row[1]
+                    else:
+                        cur.execute(
+                            "INSERT INTO dispositivos (mac_address, empresa_id, nombre, enrolado, estado) VALUES (%s, NULL, 'ESP32 (auto)', FALSE, 'pendiente') RETURNING id",
+                            (device_mac,)
+                        )
+                        request.dispositivo_id = cur.fetchone()[0]
+                        conn.commit()
+                    cur.close()
+                    conn.close()
                 except Exception:
                     pass
 
