@@ -1,15 +1,10 @@
 import paho.mqtt.client as mqtt
-import base64
 import json
 import os
-import io
 import time
 import threading
 from datetime import datetime, timezone
-from PIL import Image
-from deepface import DeepFace
 from database import get_connection, resolver_rut_a_id
-from encryption import cifrar_embedding
 
 BROKER_HOST = os.getenv('MQTT_HOST', '127.0.0.1')
 BROKER_PORT = int(os.getenv('MQTT_PORT', '1884'))
@@ -26,15 +21,6 @@ heartbeat_lock = threading.Lock()
 PREVIEWS_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), 'static', 'previews'))
 os.makedirs(PREVIEWS_DIR, exist_ok=True)
 
-def extraer_embedding_mqtt(img_path):
-    resultado = DeepFace.represent(
-        img_path=img_path,
-        model_name="Facenet",
-        enforce_detection=True,
-        detector_backend="retinaface"
-    )
-    return resultado[0]['embedding']
-
 def on_connect(client, userdata, flags, rc):
     if rc != 0:
         print(f"❌ MQTT fallo conexion. Codigo: {rc}", flush=True)
@@ -45,7 +31,6 @@ def on_connect(client, userdata, flags, rc):
     client.subscribe("esp32/asistencia/#")
     client.subscribe("esp32/heartbeat/#")
     client.subscribe("esp32/lwt/#")
-    client.subscribe("esp32/imagen/registrar")  # ← agregar
     client.subscribe("esp32/huella/resultado/#")
     print("📡 Suscripciones registradas.", flush=True)
 
@@ -69,29 +54,6 @@ def on_message(client, userdata, msg):
         print("✅ ECO OK — Python se escucha a si mismo.", flush=True)
         return
     
-    if full_topic == "esp32/imagen/registrar":
-        try:
-            payload = json.loads(msg.payload.decode())
-            rut = payload.get("rut", "")
-            persona_id = payload.get("persona_id")
-            imagen_b64 = payload.get("imagen", "")
-
-            if not imagen_b64 or (not rut and not persona_id):
-                print("❌ Mensaje de registro incompleto (persona_id o rut requerido)", flush=True)
-                return
-
-            if not persona_id:
-                persona_id = resolver_rut_a_id(rut)
-            if not persona_id:
-                print(f"❌ Persona con rut {rut} no encontrada en BD", flush=True)
-                return
-
-            print(f"📸 Registro facial recibido (ID: {persona_id})", flush=True)
-            procesar_imagen_facial(client, persona_id, imagen_b64)
-        except Exception as e:
-            print(f"❌ Error procesando registro facial: {e}", flush=True)
-        return
-
     if full_topic.startswith("esp32/heartbeat/"):
         mac = full_topic.split("/")[-1]
         with heartbeat_lock:
@@ -195,71 +157,6 @@ def on_message(client, userdata, msg):
             print(f"❌ Error procesando resultado huella: {e}", flush=True)
         return
 
-
-
-def procesar_imagen_facial(client, persona_id, imagen_b64):
-    file_name = f"{persona_id}.jpg"
-    file_path = os.path.join(PREVIEWS_DIR, file_name)
-
-    try:
-        conn = get_connection()
-        cur = conn.cursor()
-        cur.execute("SELECT id FROM consentimientos WHERE persona_id = %s", (persona_id,))
-        tiene_consentimiento = cur.fetchone()
-        cur.close()
-        conn.close()
-
-        if not tiene_consentimiento:
-            print(f"⛔ Consentimiento biometrico faltante para persona {persona_id}", flush=True)
-            client.publish("esp32/respuesta/facial", json.dumps({
-                "status": "error", "mensaje": "Consentimiento biometrico requerido. Acepte la politica de privacidad antes del registro."
-            }))
-            if os.path.exists(file_path):
-                os.unlink(file_path)
-            return
-
-        try:
-            img_bytes = base64.b64decode(imagen_b64, validate=True)
-        except Exception:
-            print("❌ Base64 invalido o corrupto.", flush=True)
-            client.publish("esp32/respuesta/facial", json.dumps({
-                "status": "error", "mensaje": "Base64 corrupto"
-            }))
-            return
-
-        img = Image.open(io.BytesIO(img_bytes)).convert('RGB')
-        img.save(file_path)
-        print(f"💾 Imagen guardada: {file_path}", flush=True)
-
-        print("🧠 Analizando con DeepFace...", flush=True)
-        embedding = extraer_embedding_mqtt(file_path)
-
-        conn = get_connection()
-        cur = conn.cursor()
-        cur.execute(
-            "UPDATE personas SET encoding_facial = %s WHERE id = %s",
-            (cifrar_embedding(embedding), persona_id)
-        )
-        conn.commit()
-        cur.close()
-        conn.close()
-
-        print(f"🎉 Rostro guardado en BD para ID {persona_id}", flush=True)
-        client.publish("esp32/respuesta/facial", json.dumps({
-            "status": "ok", "file_name": file_name
-        }))
-
-    except ValueError as ve:
-        print(f"❌ DeepFace: {ve}", flush=True)
-        client.publish("esp32/respuesta/facial", json.dumps({
-            "status": "error", "mensaje": str(ve)
-        }))
-    except Exception as e:
-        print(f"❌ Error: {e}", flush=True)
-        client.publish("esp32/respuesta/facial", json.dumps({
-            "status": "error", "mensaje": str(e)
-        }))
-
 _broadcast_callback = None
 _mqtt_client = None
 
@@ -344,6 +241,8 @@ def start_mqtt(broadcast_callback=None):
             port = BROKER_PORT
             print(f"🔓 Modo NO SEGURO: conectando MQTT a {BROKER_HOST}:{port}...", flush=True)
             client = mqtt.Client(client_id="python-backend", clean_session=True)
+            if MQTT_PASSWORD:
+                client.username_pw_set(MQTT_USER, MQTT_PASSWORD)
         client.on_connect = on_connect
         client.on_message = on_message
         client.connect(BROKER_HOST, port, 60)

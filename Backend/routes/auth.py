@@ -59,6 +59,7 @@ def token_opcional(fn):
         request.empresa_id = None
         request.user_rol = None
         request.persona_id = None
+        request.dispositivo_id = None
 
         header = request.headers.get('Authorization', '')
         if header.startswith('Bearer '):
@@ -79,14 +80,16 @@ def token_opcional(fn):
                     conn = get_connection()
                     cur = conn.cursor()
                     cur.execute(
-                        "SELECT empresa_id FROM dispositivos WHERE REPLACE(mac_address, ':', '') = %s",
+                        "SELECT id, empresa_id FROM dispositivos WHERE REPLACE(mac_address, ':', '') = %s",
                         (device_mac,)
                     )
                     row = cur.fetchone()
                     cur.close()
                     conn.close()
-                    if row and row[0] is not None:
-                        request.empresa_id = row[0]
+                    if row:
+                        request.dispositivo_id = row[0]
+                        if row[1] is not None:
+                            request.empresa_id = row[1]
                 except Exception:
                     pass
 
@@ -849,13 +852,42 @@ def enrolar_dispositivo():
         if enrolado:
             return jsonify({'error': 'Este PIN ya fue usado'}), 409
 
+        target_id = device_id
+
+        if mac:
+            cur.execute(
+                "SELECT id, empresa_id FROM dispositivos WHERE REPLACE(mac_address, ':', '') = REPLACE(%s, ':', '') AND id != %s",
+                (mac, device_id)
+            )
+            existing = cur.fetchone()
+            if existing:
+                existing_id = existing[0]
+                cur.execute(
+                    "UPDATE dispositivos SET empresa_id = %s, ip_local = %s, codigo_enrol = NULL, enrolado = TRUE, estado = 'activo' WHERE id = %s",
+                    (empresa_id, ip, existing_id)
+                )
+                cur.execute("DELETE FROM dispositivos WHERE id = %s", (device_id,))
+                target_id = existing_id
+                device_id = target_id
+            else:
+                cur.execute(
+                    "UPDATE dispositivos SET mac_address = %s, ip_local = %s, codigo_enrol = NULL, enrolado = TRUE, estado = 'activo' WHERE id = %s",
+                    (mac, ip, device_id)
+                )
+
         cur.execute(
-            "UPDATE dispositivos SET mac_address = %s, ip_local = %s, codigo_enrol = NULL, enrolado = TRUE, estado = 'activo' WHERE id = %s",
-            (mac, ip, device_id)
+            "UPDATE personas SET empresa_id = %s WHERE dispositivo_origen_id = %s AND empresa_id IS NULL",
+            (empresa_id, target_id)
         )
+        migradas = cur.rowcount
+
         conn.commit()
 
-        return jsonify({'ok': True, 'dispositivo_id': device_id, 'empresa_id': empresa_id, 'mensaje': 'Dispositivo enrolado'})
+        mensaje = f'Dispositivo enrolado'
+        if migradas > 0:
+            mensaje += f' ({migradas} personas migradas a la empresa)'
+
+        return jsonify({'ok': True, 'dispositivo_id': device_id, 'empresa_id': empresa_id, 'mensaje': mensaje, 'personas_migradas': migradas})
     except Exception as e:
         conn.rollback()
         return jsonify({'error': str(e)}), 500

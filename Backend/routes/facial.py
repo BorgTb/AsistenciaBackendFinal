@@ -208,11 +208,6 @@ def registrar_facial():
             (persona_id, encoding_json, file_path, quality_score)
         )
 
-        cur.execute(
-            "UPDATE personas SET encoding_facial = %s WHERE id = %s",
-            (encoding_json, persona_id)
-        )
-
         conn.commit()
         cur.close()
         conn.close()
@@ -337,10 +332,6 @@ def actualizar_facial(persona_id):
         cur.execute(
             "INSERT INTO encodings_faciales (persona_id, encoding, foto_path, quality_score) VALUES (%s, %s, %s, %s)",
             (persona_id, encoding_cifrado, file_path, quality_score)
-        )
-        cur.execute(
-            "UPDATE personas SET encoding_facial = %s WHERE id::text = %s",
-            (encoding_cifrado, str(persona_id))
         )
         conn.commit()
 
@@ -525,3 +516,151 @@ def identificar_facial():
     except Exception as e:
         print(f"Error grave: {e}")
         return jsonify({'error': str(e)}), 500
+
+
+@facial_bp.route('/api/facial/identificar-o-registrar', methods=['POST'])
+def identificar_o_registrar():
+    data = request.json or {}
+    imagen_b64 = data.get('imagen')
+    rut = (data.get('rut') or '').strip()
+    consentimiento = data.get('consentimiento', False)
+
+    if not imagen_b64:
+        return jsonify({'error': 'Falta imagen'}), 400
+
+    try:
+        img_bytes = base64.b64decode(imagen_b64)
+    except Exception:
+        return jsonify({'error': 'Base64 invalido'}), 400
+
+    img = Image.open(io.BytesIO(img_bytes)).convert('RGB')
+    tmp = tempfile.NamedTemporaryFile(suffix='.jpg', delete=False)
+    tmp_path = tmp.name
+    img.save(tmp_path)
+    tmp.close()
+
+    try:
+        ok_calidad, msg_calidad = _validar_calidad_imagen(tmp_path)
+        if not ok_calidad:
+            return jsonify({'error': msg_calidad}), 400
+
+        embedding_captura = np.array(extraer_embedding(tmp_path, anti_spoofing=True))
+        embeddings_dict = _obtener_embeddings()
+
+        mejor_distancia = float('inf')
+        persona_identificada_id = None
+        rut_encontrado = None
+
+        if embeddings_dict:
+            for pid, lista_embs in embeddings_dict.items():
+                for emb in lista_embs:
+                    distancia = np.linalg.norm(embedding_captura - emb)
+                    if distancia < mejor_distancia:
+                        mejor_distancia = distancia
+                        persona_identificada_id = pid
+
+            if mejor_distancia < UMBRAL_DISTANCIA and persona_identificada_id:
+                conn2 = get_connection()
+                cur2 = conn2.cursor()
+                cur2.execute("SELECT rut, nombre FROM personas WHERE id = %s", (persona_identificada_id,))
+                row2 = cur2.fetchone()
+                cur2.close()
+                conn2.close()
+
+                if not row2:
+                    _log_biometrico(None, None, 'identificacion', 'fallo')
+                    return jsonify({'ok': False, 'error': 'Persona no encontrada en BD'}), 404
+
+                _log_biometrico(persona_identificada_id, None, 'identificacion', 'exito')
+                return jsonify({
+                    'ok': True,
+                    'persona_id': str(persona_identificada_id),
+                    'rut': row2[0],
+                    'nombre': row2[1]
+                })
+
+        if not rut:
+            return jsonify({'ok': False, 'error': 'Rostro no reconocido'}), 404
+
+        conn = get_connection()
+        cur = conn.cursor()
+        try:
+            cur.execute("SELECT id, nombre FROM personas WHERE rut = %s AND activo = TRUE", (rut,))
+            existente = cur.fetchone()
+
+            dispositivo_origen_id = None
+            if not existente:
+                device_mac = request.headers.get('X-Device-MAC', '').strip()
+                if device_mac:
+                    cur.execute(
+                        "SELECT id FROM dispositivos WHERE REPLACE(mac_address, ':', '') = %s",
+                        (device_mac,)
+                    )
+                    d_row = cur.fetchone()
+                    if d_row:
+                        dispositivo_origen_id = d_row[0]
+
+                cur.execute(
+                    "INSERT INTO personas (empresa_id, dispositivo_origen_id, nombre, rut) VALUES (NULL, %s, %s, %s) RETURNING id, nombre",
+                    (dispositivo_origen_id, rut, rut)
+                )
+                row = cur.fetchone()
+                persona_id = row[0]
+                nombre_persona = row[1]
+                conn.commit()
+
+                if consentimiento:
+                    ip = request.headers.get('X-Forwarded-For', request.remote_addr)
+                    cur.execute(
+                        "INSERT INTO consentimientos (persona_id, version_politica, ip_dispositivo, metodo_aceptacion) VALUES (%s, '1.0', %s, 'dispositivo') ON CONFLICT (persona_id) DO NOTHING",
+                        (persona_id, ip)
+                    )
+                    conn.commit()
+            else:
+                persona_id = existente[0]
+                nombre_persona = existente[1]
+
+                if not _verificar_consentimiento(persona_id):
+                    if consentimiento:
+                        ip = request.headers.get('X-Forwarded-For', request.remote_addr)
+                        cur.execute(
+                            "INSERT INTO consentimientos (persona_id, version_politica, ip_dispositivo, metodo_aceptacion) VALUES (%s, '1.0', %s, 'dispositivo') ON CONFLICT (persona_id) DO NOTHING",
+                            (persona_id, ip)
+                        )
+                        conn.commit()
+                    else:
+                        return jsonify({'error': 'Consentimiento biometrico requerido'}), 403
+
+            preview_path = guardar_imagen_de_registro(persona_id, imagen_b64, suffix=f'_reg_{uuid.uuid4().hex[:4]}')
+            quality_score = float(cv2.Laplacian(cv2.imread(preview_path, cv2.IMREAD_GRAYSCALE), cv2.CV_64F).var())
+            encoding_json = cifrar_embedding(embedding_captura.tolist())
+
+            cur.execute(
+                "INSERT INTO encodings_faciales (persona_id, encoding, foto_path, quality_score) VALUES (%s, %s, %s, %s)",
+                (persona_id, encoding_json, preview_path, quality_score)
+            )
+            conn.commit()
+
+            _invalidar_cache()
+            _log_biometrico(persona_id, None, 'registro', 'exito')
+
+            return jsonify({
+                'ok': True,
+                'persona_id': str(persona_id),
+                'rut': rut,
+                'nombre': nombre_persona,
+                'registro_nuevo': existente is None
+            })
+        except Exception as e:
+            conn.rollback()
+            return jsonify({'error': str(e)}), 500
+        finally:
+            cur.close()
+            conn.close()
+    except ValueError as ve:
+        return jsonify({'error': str(ve)}), 400
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+    finally:
+        if os.path.exists(tmp_path):
+            os.unlink(tmp_path)

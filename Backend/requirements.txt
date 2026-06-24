@@ -2,6 +2,7 @@
     psycopg2-binary
     python-dotenv
     deepface
+    tf-keras
     numpy
     pillow
     flask-cors

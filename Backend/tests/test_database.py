@@ -126,7 +126,7 @@ class TestDatabase:
         """)
         cols = {row[0] for row in cur.fetchall()}
         required = {'id', 'empresa_id', 'nombre', 'rut', 'email',
-                    'huella_id', 'encoding_facial', 'activo', 'created_at'}
+                    'huella_id', 'activo', 'created_at'}
         missing = required - cols
         cur.close()
         conn.close()

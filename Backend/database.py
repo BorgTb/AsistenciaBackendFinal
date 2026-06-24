@@ -93,17 +93,19 @@ def init_db():
         cur.execute("""
             CREATE TABLE IF NOT EXISTS personas (
                 id SERIAL PRIMARY KEY,
-                empresa_id INTEGER REFERENCES empresas(id) DEFAULT 1,
+                empresa_id INTEGER REFERENCES empresas(id),
+                dispositivo_origen_id INTEGER REFERENCES dispositivos(id),
                 nombre VARCHAR(100) NOT NULL,
                 rut VARCHAR(20) UNIQUE NOT NULL,
                 email VARCHAR(100),
                 huella_id INTEGER,
-                encoding_facial TEXT,
                 activo BOOLEAN DEFAULT TRUE,
                 created_at TIMESTAMP DEFAULT NOW()
             )
         """)
-        cur.execute("ALTER TABLE personas ADD COLUMN IF NOT EXISTS empresa_id INTEGER REFERENCES empresas(id) DEFAULT 1")
+        cur.execute("ALTER TABLE personas ADD COLUMN IF NOT EXISTS empresa_id INTEGER REFERENCES empresas(id)")
+        cur.execute("ALTER TABLE personas ALTER COLUMN empresa_id DROP DEFAULT")
+        cur.execute("ALTER TABLE personas ADD COLUMN IF NOT EXISTS dispositivo_origen_id INTEGER REFERENCES dispositivos(id)")
         cur.execute("ALTER TABLE personas ADD COLUMN IF NOT EXISTS activo BOOLEAN DEFAULT TRUE")
 
         cur.execute("""
@@ -250,8 +252,10 @@ def init_db():
         cur.execute("CREATE INDEX IF NOT EXISTS idx_asistencias_fecha ON asistencias(fecha_hora)")
         cur.execute("CREATE INDEX IF NOT EXISTS idx_personas_empresa ON personas(empresa_id)")
         cur.execute("CREATE INDEX IF NOT EXISTS idx_personas_rut ON personas(rut)")
+        cur.execute("CREATE INDEX IF NOT EXISTS idx_personas_dispositivo_origen ON personas(dispositivo_origen_id)")
         cur.execute("CREATE INDEX IF NOT EXISTS idx_erp_activo ON integraciones_erp(activo)")
 
+        cur.execute("ALTER TABLE personas ADD COLUMN IF NOT EXISTS encoding_facial TEXT")
         cur.execute("""
             INSERT INTO encodings_faciales (persona_id, encoding, foto_path)
             SELECT p.id, p.encoding_facial, 'static/previews/' || p.id || '.jpg'
@@ -261,6 +265,7 @@ def init_db():
                   SELECT 1 FROM encodings_faciales ef WHERE ef.persona_id = p.id
               )
         """)
+        cur.execute("ALTER TABLE personas DROP COLUMN IF EXISTS encoding_facial")
 
         # ── SEED ─────────────────────────────────────────────────────
         cur.execute("""

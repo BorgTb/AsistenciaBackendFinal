@@ -46,6 +46,11 @@ def get_personas():
                 "SELECT id, nombre, rut, email, huella_id, empresa_id, created_at FROM personas WHERE empresa_id = %s AND activo = true ORDER BY id",
                 (empresa_id,)
             )
+        elif request.dispositivo_id:
+            cur.execute(
+                "SELECT id, nombre, rut, email, huella_id, empresa_id, created_at FROM personas WHERE dispositivo_origen_id = %s AND empresa_id IS NULL AND activo = true ORDER BY id",
+                (request.dispositivo_id,)
+            )
         else:
             cur.close()
             conn.close()
@@ -77,16 +82,32 @@ def create_persona():
     if not data.get('nombre') or not data.get('rut'):
         return jsonify({'error': 'Faltan datos'}), 400
 
-    if not request.empresa_id:
-        return jsonify({'error': 'No autorizado: empresa no identificada'}), 401
     empresa_id = request.empresa_id
 
     conn = get_connection()
     cur = conn.cursor()
     try:
+        dispositivo_origen_id = None
+        if not empresa_id:
+            device_mac = request.headers.get('X-Device-MAC', '').strip()
+            if device_mac:
+                cur.execute(
+                    "SELECT id FROM dispositivos WHERE REPLACE(mac_address, ':', '') = %s",
+                    (device_mac,)
+                )
+                row = cur.fetchone()
+                if row:
+                    dispositivo_origen_id = row[0]
+                else:
+                    cur.execute(
+                        "INSERT INTO dispositivos (mac_address, empresa_id, nombre, enrolado, estado) VALUES (%s, NULL, 'ESP32 (auto)', FALSE, 'pendiente') RETURNING id",
+                        (device_mac,)
+                    )
+                    dispositivo_origen_id = cur.fetchone()[0]
+
         cur.execute(
-            "INSERT INTO personas (empresa_id, nombre, rut, email, huella_id) VALUES (%s, %s, %s, %s, %s) RETURNING id",
-            (empresa_id, data['nombre'], data['rut'], data.get('email', ''), data.get('huella_id'))
+            "INSERT INTO personas (empresa_id, dispositivo_origen_id, nombre, rut, email, huella_id) VALUES (%s, %s, %s, %s, %s, %s) RETURNING id",
+            (empresa_id, dispositivo_origen_id, data['nombre'], data['rut'], data.get('email', ''), data.get('huella_id'))
         )
         persona_id = cur.fetchone()[0]
 
@@ -98,7 +119,8 @@ def create_persona():
             )
 
         conn.commit()
-        notificar_sincronizacion(empresa_id, 'personas', 'crear', persona_id)
+        if empresa_id:
+            notificar_sincronizacion(empresa_id, 'personas', 'crear', persona_id)
         return jsonify({'ok': True, 'id': persona_id, 'rut': data['rut']})
     except Exception as e:
         conn.rollback()
@@ -324,12 +346,12 @@ def eliminar_datos_biometricos(persona_id):
     try:
         if request.empresa_id and request.user_rol != 'admin':
             cur.execute(
-                "SELECT id, encoding_facial, nombre FROM personas WHERE id::text = %s AND empresa_id = %s",
+                "SELECT id, nombre FROM personas WHERE id::text = %s AND empresa_id = %s",
                 (str(persona_id), request.empresa_id)
             )
         elif request.user_rol == 'admin':
             cur.execute(
-                "SELECT id, encoding_facial, nombre FROM personas WHERE id::text = %s",
+                "SELECT id, nombre FROM personas WHERE id::text = %s",
                 (str(persona_id),)
             )
         else:
@@ -339,16 +361,24 @@ def eliminar_datos_biometricos(persona_id):
         if not row:
             return jsonify({'error': 'Persona no encontrada'}), 404
 
-        persona_id_real, embedding_anterior, nombre = row
+        persona_id_real, nombre = row
+
+        cur.execute(
+            "SELECT encoding, foto_path FROM encodings_faciales WHERE persona_id = %s LIMIT 1",
+            (persona_id_real,)
+        )
+        ef_row = cur.fetchone()
+        embedding_anterior = ef_row[0] if ef_row else None
+        foto_path = ef_row[1] if ef_row else f"static/previews/{persona_id_real}.jpg"
 
         usuario_solicitante = getattr(request, 'user_id', 'anonimo')
 
         cur.execute(
             "INSERT INTO eliminaciones_biometricas (persona_id, embedding_anterior, foto_path, usuario_solicitante) VALUES (%s, %s, %s, %s)",
-            (persona_id_real, embedding_anterior, f"static/previews/{persona_id_real}.jpg", str(usuario_solicitante))
+            (persona_id_real, embedding_anterior, foto_path, str(usuario_solicitante))
         )
 
-        cur.execute("UPDATE personas SET encoding_facial = NULL, huella_id = NULL WHERE id = %s", (persona_id_real,))
+        cur.execute("UPDATE personas SET huella_id = NULL WHERE id = %s", (persona_id_real,))
 
         foto_path = os.path.join(PREVIEWS_DIR, f"{persona_id_real}.jpg")
         if os.path.exists(foto_path):

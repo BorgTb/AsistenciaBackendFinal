@@ -977,10 +977,14 @@ void sincronizarPersonasDesdeBackend() {
           }
         }
       }
-      File file = LittleFS.open("/personas.json", "w");
-      serializeJson(docBackend, file);
-      file.close();
-      addLog("Personas sincronizadas. Backend: " + String(backendArr.size()) + " + locales pendientes: " + String(localesReagregadas));
+      if (backendArr.size() > 0) {
+        File file = LittleFS.open("/personas.json", "w");
+        serializeJson(docBackend, file);
+        file.close();
+        addLog("Personas sincronizadas. Backend: " + String(backendArr.size()) + " + locales pendientes: " + String(localesReagregadas));
+      } else {
+        addLog("Backend devolvió lista vacía. Se mantienen datos locales.");
+      }
     } else {
       addLog("Error parseando JSON de personas.");
     }
@@ -1367,7 +1371,7 @@ void completarRegistroPersona() {
 }
 
 bool registrarRostroEnBackend(String personaId) {
-  if (!camaraIniciada || !isOnline || !mqttConnected || mqtt_client == NULL) return false;
+  if (!camaraIniciada || !isOnline || WiFi.status() != WL_CONNECTED) return false;
 
   String rut = buscarRutPersona(personaId);
   if (rut.length() == 0) rut = personaId;
@@ -1375,23 +1379,22 @@ bool registrarRostroEnBackend(String personaId) {
   String imgBase64 = capturarImagenBase64();
   if (imgBase64.length() == 0) return false;
 
+  HTTPClient http;
+  beginHttp(http, backendURL + "/api/facial/registrar");
+  http.addHeader("Content-Type", "application/json");
+
   String payload = "{\"rut\":\"" + rut + "\",\"imagen\":\"" + imgBase64 + "\"}";
-  addLog("Enviando rostro MQTT: " + String(payload.length()) + " bytes para RUT " + rut);
+  addLog("Enviando rostro HTTP: " + String(payload.length()) + " bytes para RUT " + rut);
 
-  int ret = esp_mqtt_client_publish(
-    mqtt_client,
-    "esp32/imagen/registrar",
-    payload.c_str(),
-    payload.length(),
-    1,
-    0
-  );
+  int code = http.POST(payload);
+  http.end();
 
-  if (ret < 0) {
-    addLog("Error publicando MQTT (ret=" + String(ret) + ")");
-    return false;
+  if (code == 200) {
+    addLog("Rostro registrado OK en backend para RUT " + rut);
+    return true;
   }
-  return true;
+  addLog("Error registrando rostro: HTTP " + String(code));
+  return false;
 }
 
 bool agregarFotoEnBackend(String personaId) {
@@ -2854,9 +2857,11 @@ void loop() {
         fotosTomadas = 0;
       } else if (fotosTomadas == 0) {
         addLog("Enviando fotografia #" + String(intentosFacial) + " para registro inicial...");
-        if (!registrarRostroEnBackend(idParaRostro)) {
-          addLog("No se pudo enviar foto por MQTT. Reintentando...");
-          if (mqtt_client == NULL && mqttBroker != "") mantenerConexionMQTT();
+        if (registrarRostroEnBackend(idParaRostro)) {
+          fotosTomadas++;
+          addLog("Foto #1 registrada. Siguiente en 4 segundos...");
+        } else {
+          addLog("Error en registro inicial. Reintentando...");
         }
       } else {
         addLog("Tomando fotografia adicional #" + String(fotosTomadas + 1) + "/" + String(FOTOS_REQUERIDAS) + "...");
