@@ -142,3 +142,60 @@ class TestMqttHandler:
         on_message(MagicMock(), None, mock_msg)
 
         assert 'CAFEBABE0001' in mqtt_handler.heartbeat_times
+
+    def test_enviar_comando_dispositivo_exito(self):
+        from mqtt_handler import enviar_comando_dispositivo, _mqtt_client
+        import mqtt_handler
+        mqtt_handler._mqtt_client = MagicMock()
+        result = enviar_comando_dispositivo('AABBCCDDEE01', 'reiniciar')
+        assert result is True
+        mqtt_handler._mqtt_client.publish.assert_called_once_with(
+            'backend/comando/AABBCCDDEE01/reiniciar', '{"comando": "reiniciar"}')
+
+    def test_enviar_comando_dispositivo_sin_mqtt(self):
+        from mqtt_handler import enviar_comando_dispositivo, _mqtt_client
+        import mqtt_handler
+        mqtt_handler._mqtt_client = None
+        result = enviar_comando_dispositivo('AABBCCDDEE01', 'reiniciar')
+        assert result is False
+
+    def test_on_message_huella_resultado_ok(self, app, client, admin_token):
+        from mqtt_handler import on_message
+        import mqtt_handler
+        _set_mqtt_client_for_test()
+
+        client.post('/api/personas',
+            headers={'Authorization': f'Bearer {admin_token}'},
+            json={'nombre': 'PH', 'rut': '80.100.100-1'})
+
+        mock_client = MagicMock()
+        mock_msg = MagicMock()
+        mock_msg.topic = 'esp32/huella/resultado/1'
+        mock_msg.payload = json.dumps({
+            'persona_id': '1', 'huella_id': 5, 'status': 'ok'
+        }).encode()
+        on_message(mock_client, None, mock_msg)
+
+        from database import get_connection
+        conn = get_connection()
+        cur = conn.cursor()
+        cur.execute("SELECT huella_id FROM personas WHERE id = 1")
+        row = cur.fetchone()
+        cur.close()
+        conn.close()
+        assert row[0] == 5
+
+    def test_on_message_huella_resultado_error(self, app):
+        from mqtt_handler import on_message
+        mock_client = MagicMock()
+        mock_msg = MagicMock()
+        mock_msg.topic = 'esp32/huella/resultado/2'
+        mock_msg.payload = json.dumps({
+            'persona_id': '1', 'status': 'error', 'huella_id': None
+        }).encode()
+        on_message(mock_client, None, mock_msg)
+
+
+def _set_mqtt_client_for_test():
+    import mqtt_handler
+    mqtt_handler._mqtt_client = MagicMock()

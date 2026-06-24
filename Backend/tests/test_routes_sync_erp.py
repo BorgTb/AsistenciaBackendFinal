@@ -335,7 +335,9 @@ class TestRoutesDispositivos:
     def test_check_password_mac_inexistente(self, client):
         resp = client.get('/api/dispositivos/check-password',
             headers={'X-Device-MAC': 'ZZ:ZZ:ZZ:ZZ:ZZ:ZZ'})
-        assert resp.status_code == 404
+        # token_opcional auto-crea dispositivo si MAC no existe
+        assert resp.status_code == 200
+        assert resp.get_json()['pendiente'] is False
 
     def test_confirmar_password_exito(self, client, admin_token):
         dev_id = _enrolar_dispositivo(client, admin_token, mac='AA:BB:CC:DD:EE:20')
@@ -356,7 +358,9 @@ class TestRoutesDispositivos:
     def test_confirmar_password_mac_inexistente(self, client):
         resp = client.post('/api/dispositivos/confirmar-password',
             headers={'X-Device-MAC': 'ZZ:ZZ:ZZ:ZZ:ZZ:ZZ'})
-        assert resp.status_code == 404
+        # token_opcional auto-crea dispositivo si MAC no existe, luego UPDATE ok
+        assert resp.status_code == 200
+        assert resp.get_json()['ok'] is True
 
     def test_delete_dispositivo_exito_admin(self, client, admin_token):
         dev_id = _enrolar_dispositivo(client, admin_token)
@@ -404,6 +408,96 @@ class TestRoutesDispositivos:
         resp = client.get('/api/dispositivos',
             headers={'Authorization': f'Bearer {trabajador_token}'})
         assert resp.status_code == 200
+
+    def test_delete_dispositivo_empleador_su_empresa(self, client, admin_token, empleador_token):
+        dev_id = _enrolar_dispositivo(client, empleador_token, mac='AA:BB:CC:DD:EE:70')
+        resp = client.delete(f'/api/dispositivos/{dev_id}',
+            headers={'Authorization': f'Bearer {empleador_token}'})
+        assert resp.status_code == 200
+
+    def test_update_dispositivo_empleador_su_empresa(self, client, admin_token, empleador_token):
+        dev_id = _enrolar_dispositivo(client, empleador_token, mac='AA:BB:CC:DD:EE:71')
+        resp = client.put(f'/api/dispositivos/{dev_id}',
+            headers={'Authorization': f'Bearer {empleador_token}'},
+            json={'nombre': 'Renamed By Emp'})
+        assert resp.status_code == 200
+
+    def test_update_dispositivo_db_error(self, client, admin_token):
+        from unittest.mock import patch, MagicMock
+        _enrolar_dispositivo(client, admin_token, mac='AA:BB:CC:DD:EE:72')
+        mock_conn = MagicMock()
+        mock_cur = MagicMock()
+        mock_conn.cursor.return_value = mock_cur
+        mock_cur.execute.side_effect = Exception('DB error update')
+        with patch('routes.dispositivos.get_connection', return_value=mock_conn):
+            resp = client.put('/api/dispositivos/1',
+                headers={'Authorization': f'Bearer {admin_token}'},
+                json={'nombre': 'Fail'})
+            assert resp.status_code == 500
+
+    def test_verificar_dispositivo_http_error(self, client, admin_token, mock_requests_get):
+        mock_requests_get.return_value.status_code = 502
+        mock_requests_get.return_value.headers = {}
+        resp = client.post('/api/dispositivos/verificar',
+            headers={'Authorization': f'Bearer {admin_token}'},
+            json={'ip': '192.168.1.200'})
+        assert resp.status_code == 200
+        assert resp.get_json()['ok'] is False
+
+    def test_verificar_dispositivo_exception_generica(self, client, admin_token, mocker):
+        mock_get = mocker.patch('routes.dispositivos.http_requests.get')
+        mock_get.side_effect = Exception('Generic error')
+        resp = client.post('/api/dispositivos/verificar',
+            headers={'Authorization': f'Bearer {admin_token}'},
+            json={'ip': '10.0.0.55'})
+        assert resp.status_code == 200
+        assert resp.get_json()['ok'] is False
+
+    def test_generar_password_db_error(self, client, admin_token):
+        from unittest.mock import patch, MagicMock
+        mock_conn = MagicMock()
+        mock_cur = MagicMock()
+        mock_conn.cursor.return_value = mock_cur
+        mock_cur.execute.side_effect = Exception('DB gen pw')
+        with patch('routes.dispositivos.get_connection', return_value=mock_conn):
+            resp = client.post('/api/dispositivos/1/generar-password',
+                headers={'Authorization': f'Bearer {admin_token}'})
+            assert resp.status_code == 500
+
+    def test_eliminar_password_empleador_su_empresa(self, client, admin_token, empleador_token):
+        dev_id = _enrolar_dispositivo(client, empleador_token, mac='AA:BB:CC:DD:EE:73')
+        client.post(f'/api/dispositivos/{dev_id}/generar-password',
+            headers={'Authorization': f'Bearer {empleador_token}'})
+        resp = client.delete(f'/api/dispositivos/{dev_id}/password',
+            headers={'Authorization': f'Bearer {empleador_token}'})
+        assert resp.status_code == 200
+
+    def test_eliminar_password_db_error(self, client, admin_token):
+        from unittest.mock import patch, MagicMock
+        mock_conn = MagicMock()
+        mock_cur = MagicMock()
+        mock_conn.cursor.return_value = mock_cur
+        mock_cur.execute.side_effect = Exception('DB del pw')
+        with patch('routes.dispositivos.get_connection', return_value=mock_conn):
+            resp = client.delete('/api/dispositivos/1/password',
+                headers={'Authorization': f'Bearer {admin_token}'})
+            assert resp.status_code == 500
+
+    def test_check_password_dispositivo_no_encontrado(self, client):
+        resp = client.get('/api/dispositivos/check-password',
+            headers={'X-Device-MAC': 'ZZ:ZZ:ZZ:ZZ:ZZ:ZZ'})
+        assert resp.status_code == 200
+
+    def test_confirmar_password_db_error(self, client, admin_token):
+        from unittest.mock import patch, MagicMock
+        mock_conn = MagicMock()
+        mock_cur = MagicMock()
+        mock_conn.cursor.return_value = mock_cur
+        mock_cur.execute.side_effect = Exception('DB confirm')
+        with patch('routes.dispositivos.get_connection', return_value=mock_conn):
+            resp = client.post('/api/dispositivos/confirmar-password',
+                headers={'X-Device-MAC': 'AA:BB:CC:DD:EE:99'})
+            assert resp.status_code == 500
 
 
 class TestRoutesErp:
@@ -609,3 +703,194 @@ class TestRoutesErp:
         )
         assert result['ok'] is False
         assert 'Timeout' in result['error']
+
+
+class TestRoutesDispositivosNuevos:
+    """Tests para los 3 nuevos endpoints de control remoto ESP32."""
+
+    def test_registrar_huella_exito(self, client, admin_token):
+        dev_id = _enrolar_dispositivo(client, admin_token, mac='AA:BB:CC:DD:EE:30')
+        client.post('/api/personas',
+            headers={'Authorization': f'Bearer {admin_token}'},
+            json={'nombre': 'PH', 'rut': '60.100.100-1'})
+        import mqtt_handler
+        mqtt_handler._mqtt_client = __import__('unittest').mock.MagicMock()
+        resp = client.post(f'/api/dispositivos/{dev_id}/registrar-huella',
+            headers={'Authorization': f'Bearer {admin_token}'},
+            json={'persona_id': '1'})
+        assert resp.status_code == 200
+        assert resp.get_json()['ok'] is True
+
+    def test_registrar_huella_sin_persona_id(self, client, admin_token):
+        dev_id = _enrolar_dispositivo(client, admin_token, mac='AA:BB:CC:DD:EE:31')
+        resp = client.post(f'/api/dispositivos/{dev_id}/registrar-huella',
+            headers={'Authorization': f'Bearer {admin_token}'},
+            json={})
+        assert resp.status_code == 400
+
+    def test_registrar_huella_dispositivo_no_existe(self, client, admin_token):
+        resp = client.post('/api/dispositivos/99999/registrar-huella',
+            headers={'Authorization': f'Bearer {admin_token}'},
+            json={'persona_id': '1'})
+        assert resp.status_code == 404
+
+    def test_reiniciar_dispositivo_exito(self, client, admin_token):
+        dev_id = _enrolar_dispositivo(client, admin_token, mac='AA:BB:CC:DD:EE:40')
+        import mqtt_handler
+        mqtt_handler._mqtt_client = __import__('unittest').mock.MagicMock()
+        resp = client.post(f'/api/dispositivos/{dev_id}/reiniciar',
+            headers={'Authorization': f'Bearer {admin_token}'})
+        assert resp.status_code == 200
+
+    def test_reiniciar_dispositivo_no_existe(self, client, admin_token):
+        resp = client.post('/api/dispositivos/99999/reiniciar',
+            headers={'Authorization': f'Bearer {admin_token}'})
+        assert resp.status_code == 404
+
+    def test_wifi_reconnect_exito(self, client, admin_token):
+        dev_id = _enrolar_dispositivo(client, admin_token, mac='AA:BB:CC:DD:EE:50')
+        import mqtt_handler
+        mqtt_handler._mqtt_client = __import__('unittest').mock.MagicMock()
+        resp = client.post(f'/api/dispositivos/{dev_id}/wifi-reconnect',
+            headers={'Authorization': f'Bearer {admin_token}'})
+        assert resp.status_code == 200
+
+    def test_registrar_huella_cross_tenant_403(self, client, admin_token, empleador_token):
+        dev_id = _enrolar_dispositivo(client, admin_token, mac='AA:BB:CC:DD:EE:34')
+        resp = client.post(f'/api/dispositivos/{dev_id}/registrar-huella',
+            headers={'Authorization': f'Bearer {empleador_token}'},
+            json={'persona_id': '1'})
+        assert resp.status_code == 403
+
+    def test_registrar_huella_persona_no_encontrada(self, client, admin_token):
+        dev_id = _enrolar_dispositivo(client, admin_token, mac='AA:BB:CC:DD:EE:35')
+        resp = client.post(f'/api/dispositivos/{dev_id}/registrar-huella',
+            headers={'Authorization': f'Bearer {admin_token}'},
+            json={'persona_id': '99999'})
+        assert resp.status_code == 404
+
+    def test_registrar_huella_mqtt_no_disponible(self, client, admin_token):
+        import mqtt_handler
+        mqtt_handler._mqtt_client = None
+        dev_id = _enrolar_dispositivo(client, admin_token, mac='AA:BB:CC:DD:EE:36')
+        client.post('/api/personas',
+            headers={'Authorization': f'Bearer {admin_token}'},
+            json={'nombre': 'P-MQTT', 'rut': '61.100.100-1'})
+        resp = client.post(f'/api/dispositivos/{dev_id}/registrar-huella',
+            headers={'Authorization': f'Bearer {admin_token}'},
+            json={'persona_id': '1'})
+        assert resp.status_code == 503
+
+    def test_reiniciar_empleador_not_found(self, client, admin_token, empleador_token):
+        dev_id = _enrolar_dispositivo(client, admin_token, mac='AA:BB:CC:DD:EE:41')
+        import mqtt_handler
+        mqtt_handler._mqtt_client = __import__('unittest').mock.MagicMock()
+        resp = client.post(f'/api/dispositivos/{dev_id}/reiniciar',
+            headers={'Authorization': f'Bearer {empleador_token}'})
+        assert resp.status_code == 404
+
+    def test_wifi_reconnect_empleador_not_found(self, client, admin_token, empleador_token):
+        dev_id = _enrolar_dispositivo(client, admin_token, mac='AA:BB:CC:DD:EE:51')
+        import mqtt_handler
+        mqtt_handler._mqtt_client = __import__('unittest').mock.MagicMock()
+        resp = client.post(f'/api/dispositivos/{dev_id}/wifi-reconnect',
+            headers={'Authorization': f'Bearer {empleador_token}'})
+        assert resp.status_code == 404
+
+    def test_reiniciar_mqtt_no_disponible(self, client, admin_token):
+        import mqtt_handler
+        mqtt_handler._mqtt_client = None
+        dev_id = _enrolar_dispositivo(client, admin_token, mac='AA:BB:CC:DD:EE:42')
+        resp = client.post(f'/api/dispositivos/{dev_id}/reiniciar',
+            headers={'Authorization': f'Bearer {admin_token}'})
+        assert resp.status_code == 503
+
+    def test_wifi_reconnect_empleador_not_found(self, client, admin_token, empleador_token):
+        dev_id = _enrolar_dispositivo(client, admin_token, mac='AA:BB:CC:DD:EE:51')
+        resp = client.post(f'/api/dispositivos/{dev_id}/wifi-reconnect',
+            headers={'Authorization': f'Bearer {empleador_token}'})
+        assert resp.status_code == 404
+
+    def test_wifi_reconnect_mqtt_no_disponible(self, client, admin_token):
+        import mqtt_handler
+        mqtt_handler._mqtt_client = None
+        dev_id = _enrolar_dispositivo(client, admin_token, mac='AA:BB:CC:DD:EE:52')
+        resp = client.post(f'/api/dispositivos/{dev_id}/wifi-reconnect',
+            headers={'Authorization': f'Bearer {admin_token}'})
+        assert resp.status_code == 503
+
+
+class TestRoutesAsistenciasNuevos:
+    """Tests para turno_id y deteccion de duplicados en asistencias."""
+
+    def test_crear_asistencia_con_turno_id(self, client, admin_token):
+        client.post('/api/personas',
+            headers={'Authorization': f'Bearer {admin_token}'},
+            json={'nombre': 'AT', 'rut': '70.100.100-1'})
+        turno = client.post('/api/turnos',
+            headers={'Authorization': f'Bearer {admin_token}'},
+            json={'nombre': 'T-AT', 'inicio': '08:00', 'fin': '17:00', 'dias': 'L'})
+        tid = turno.get_json()['id']
+        resp = client.post('/api/asistencias',
+            headers={'Authorization': f'Bearer {admin_token}'},
+            json={'persona_id': '1', 'tipo': 'entrada', 'turno_id': tid})
+        assert resp.status_code == 200
+        assert resp.get_json()['ok'] is True
+
+    def test_asistencia_duplicado_rechazado(self, client, admin_token):
+        client.post('/api/personas',
+            headers={'Authorization': f'Bearer {admin_token}'},
+            json={'nombre': 'AD', 'rut': '70.200.200-2'})
+        turno = client.post('/api/turnos',
+            headers={'Authorization': f'Bearer {admin_token}'},
+            json={'nombre': 'T-AD', 'inicio': '08:00', 'fin': '17:00', 'dias': 'L'})
+        tid = turno.get_json()['id']
+        client.post('/api/asistencias',
+            headers={'Authorization': f'Bearer {admin_token}'},
+            json={'persona_id': '1', 'tipo': 'entrada', 'turno_id': tid})
+        resp = client.post('/api/asistencias',
+            headers={'Authorization': f'Bearer {admin_token}'},
+            json={'persona_id': '1', 'tipo': 'entrada', 'turno_id': tid})
+        assert resp.status_code == 200
+        assert resp.get_json()['duplicado'] is True
+
+    def test_sync_asistencias_con_turno_id(self, client, admin_token):
+        client.post('/api/personas',
+            headers={'Authorization': f'Bearer {admin_token}'},
+            json={'nombre': 'AS', 'rut': '70.300.300-3'})
+        resp = client.post('/api/asistencias/sync', json={
+            'registros': [{'persona_id': '1', 'nombre': 'AS', 'tipo': 'entrada', 'metodo': 'huella'}]
+        })
+        assert resp.status_code == 200
+
+    def test_sync_asistencias_duplicado_idempotente(self, client, admin_token):
+        client.post('/api/personas',
+            headers={'Authorization': f'Bearer {admin_token}'},
+            json={'nombre': 'ADI', 'rut': '70.400.400-4'})
+        payload = {'registros': [{'persona_id': '1', 'nombre': 'ADI', 'tipo': 'entrada', 'metodo': 'huella'}]}
+        client.post('/api/asistencias/sync', json=payload)
+        resp = client.post('/api/asistencias/sync', json=payload)
+        assert resp.status_code == 200
+        assert resp.get_json()['insertados'] >= 1
+
+
+class TestRoutesAsistenciasEdge:
+    """Edge case tests for asistencias."""
+
+    def test_crear_asistencia_rut_no_encontrado(self, client):
+        resp = client.post('/api/asistencias', json={
+            'rut': '99.999.999-9', 'nombre': 'NoExiste', 'tipo': 'entrada'
+        })
+        assert resp.status_code == 404
+
+    def test_sync_asistencias_sin_persona_id(self, client):
+        resp = client.post('/api/asistencias/sync', json={
+            'registros': [{'nombre': 'Anon', 'tipo': 'entrada'}]
+        })
+        assert resp.status_code == 200
+        assert resp.get_json()['errores'] == 1
+
+    def test_get_asistencias_sin_token(self, client):
+        resp = client.get('/api/asistencias')
+        assert resp.status_code == 200
+        assert isinstance(resp.get_json(), list)

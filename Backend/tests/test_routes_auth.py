@@ -141,7 +141,15 @@ class TestRoutesAuth:
     def test_admin_crea_empresa(self, client, admin_token):
         resp = client.post('/api/auth/empresas',
             headers={'Authorization': f'Bearer {admin_token}'},
-            json={'nombre': 'Nueva Empresa SA', 'rut_empresa': '99.999.999-9'})
+            json={
+                'nombre': 'Nueva Empresa SA',
+                'rut_empresa': '99.999.999-9',
+                'mode': 'new',
+                'nombre_usuario': 'Admin Nueva',
+                'email_usuario': 'admin_nueva@test.cl',
+                'password_usuario': 'test1234',
+                'rol_usuario': 'empleador'
+            })
         assert resp.status_code == 200
         assert resp.get_json()['ok'] is True
 
@@ -183,7 +191,7 @@ class TestRoutesAuth:
     def test_asignar_usuario_empresa(self, client, admin_token):
         resp = client.post('/api/auth/asignar-usuario',
             headers={'Authorization': f'Bearer {admin_token}'},
-            json={'usuario_id': 1, 'empresa_id': 1, 'rol': 'admin'})
+            json={'usuario_id': 1, 'empresa_id': 1, 'rol': 'empleador'})
         assert resp.status_code == 200
 
     # ── Eliminar usuario de empresa ──────────────────────
@@ -256,7 +264,14 @@ class TestRoutesAuth:
     def test_admin_elimina_empresa(self, client, admin_token):
         r = client.post('/api/auth/empresas',
             headers={'Authorization': f'Bearer {admin_token}'},
-            json={'nombre': 'A Eliminar'})
+            json={
+                'nombre': 'A Eliminar',
+                'mode': 'new',
+                'nombre_usuario': 'AEliminar',
+                'email_usuario': 'aeliminar@test.cl',
+                'password_usuario': 'test1234',
+                'rol_usuario': 'empleador'
+            })
         emp_id = r.get_json()['id']
         resp = client.delete(f'/api/auth/empresas/{emp_id}',
             headers={'Authorization': f'Bearer {admin_token}'})
@@ -328,11 +343,19 @@ class TestRoutesAuth:
     def test_login_need_empresa_multi_empresa(self, client, admin_token):
         create = client.post('/api/auth/empresas',
             headers={'Authorization': f'Bearer {admin_token}'},
-            json={'nombre': 'Empresa B', 'rut_empresa': '88.888.888-8'})
+            json={
+                'nombre': 'Empresa B',
+                'rut_empresa': '88.888.888-8',
+                'mode': 'new',
+                'nombre_usuario': 'Admin B',
+                'email_usuario': 'admin_b_999@test.cl',
+                'password_usuario': 'test1234',
+                'rol_usuario': 'empleador'
+            })
         emp_id = create.get_json()['id']
         client.post('/api/auth/asignar-usuario',
             headers={'Authorization': f'Bearer {admin_token}'},
-            json={'usuario_id': 1, 'empresa_id': emp_id, 'rol': 'admin'})
+            json={'usuario_id': 1, 'empresa_id': emp_id, 'rol': 'empleador'})
         resp = client.post('/api/auth/login', json={
             'email': 'admin@empresa.cl', 'password': 'admin123'})
         assert resp.status_code == 200
@@ -344,11 +367,19 @@ class TestRoutesAuth:
     def test_login_empresa_no_valida(self, client, admin_token):
         create = client.post('/api/auth/empresas',
             headers={'Authorization': f'Bearer {admin_token}'},
-            json={'nombre': 'Empresa X', 'rut_empresa': '66.666.666-6'})
+            json={
+                'nombre': 'Empresa X',
+                'rut_empresa': '66.666.666-6',
+                'mode': 'new',
+                'nombre_usuario': 'Admin X',
+                'email_usuario': 'admin_x_888@test.cl',
+                'password_usuario': 'test1234',
+                'rol_usuario': 'empleador'
+            })
         emp_id = create.get_json()['id']
         client.post('/api/auth/asignar-usuario',
             headers={'Authorization': f'Bearer {admin_token}'},
-            json={'usuario_id': 1, 'empresa_id': emp_id, 'rol': 'admin'})
+            json={'usuario_id': 1, 'empresa_id': emp_id, 'rol': 'empleador'})
         resp = client.post('/api/auth/login', json={
             'email': 'admin@empresa.cl', 'password': 'admin123', 'empresa_id': 99999})
         assert resp.status_code == 403
@@ -395,11 +426,19 @@ class TestRoutesAuth:
     def test_admin_se_remueve_de_empresa(self, client, admin_token):
         create = client.post('/api/auth/empresas',
             headers={'Authorization': f'Bearer {admin_token}'},
-            json={'nombre': 'Temporary', 'rut_empresa': '77.777.777-7'})
+            json={
+                'nombre': 'Temporary',
+                'rut_empresa': '77.777.777-7',
+                'mode': 'new',
+                'nombre_usuario': 'Admin Temp',
+                'email_usuario': 'admin_temp_777@test.cl',
+                'password_usuario': 'test1234',
+                'rol_usuario': 'empleador'
+            })
         emp_id = create.get_json()['id']
         client.post('/api/auth/asignar-usuario',
             headers={'Authorization': f'Bearer {admin_token}'},
-            json={'usuario_id': 1, 'empresa_id': emp_id, 'rol': 'admin'})
+            json={'usuario_id': 1, 'empresa_id': emp_id, 'rol': 'empleador'})
         resp = client.delete('/api/auth/usuarios/1',
             headers={'Authorization': f'Bearer {admin_token}'},
             json={'empresa_id': emp_id})

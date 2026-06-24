@@ -191,3 +191,81 @@ class TestRoutesFacial:
             data='not an image',
             headers={'Content-Type': 'text/plain'})
         assert resp.status_code == 415
+
+    # ── identificar-o-registrar ────────────────────────
+
+    def test_identificar_o_registrar_rostro_existente(self, client, admin_token):
+        client.post('/api/personas',
+            headers={'Authorization': f'Bearer {admin_token}'},
+            json={'nombre': 'IR-Exist', 'rut': '50.100.100-1'})
+        client.post('/api/personas/1/consentimiento',
+            headers={'Authorization': f'Bearer {admin_token}'})
+        client.post('/api/facial/registrar', json={
+            'persona_id': '1', 'imagen': _b64_dummy_jpeg()
+        })
+        resp = client.post('/api/facial/identificar-o-registrar', json={
+            'imagen': _b64_dummy_jpeg()
+        })
+        assert resp.status_code == 200
+        data = resp.get_json()
+        assert data['ok'] is True
+        assert data['persona_id'] == '1'
+
+    def test_identificar_o_registrar_sin_imagen(self, client):
+        resp = client.post('/api/facial/identificar-o-registrar', json={})
+        assert resp.status_code == 400
+
+    def test_identificar_o_registrar_base64_invalido(self, client):
+        resp = client.post('/api/facial/identificar-o-registrar', json={
+            'imagen': 'esto-no-es-base64!!!'
+        })
+        assert resp.status_code == 400
+
+    def test_identificar_o_registrar_rostro_no_reconocido(self, client):
+        from routes.facial import _invalidar_cache
+        _invalidar_cache()
+        resp = client.post('/api/facial/identificar-o-registrar', json={
+            'imagen': _b64_dummy_jpeg()
+        })
+        assert resp.status_code == 404
+
+    def test_identificar_o_registrar_crea_nuevo_con_rut(self, client):
+        from routes.facial import _invalidar_cache
+        _invalidar_cache()
+        resp = client.post('/api/facial/identificar-o-registrar', json={
+            'imagen': _b64_dummy_jpeg(),
+            'rut': '99.888.777-6',
+            'consentimiento': True
+        })
+        assert resp.status_code == 200
+        data = resp.get_json()
+        assert data['ok'] is True
+        assert data['registro_nuevo'] is True
+        assert data['rut'] == '99.888.777-6'
+
+    def test_identificar_o_registrar_rut_existente(self, client, admin_token):
+        from routes.facial import _invalidar_cache
+        _invalidar_cache()
+        client.post('/api/personas',
+            headers={'Authorization': f'Bearer {admin_token}'},
+            json={'nombre': 'IR-Existente', 'rut': '50.200.200-2'})
+        resp = client.post('/api/facial/identificar-o-registrar', json={
+            'imagen': _b64_dummy_jpeg(),
+            'rut': '50.200.200-2',
+            'consentimiento': True
+        })
+        assert resp.status_code == 200
+        data = resp.get_json()
+        assert data['registro_nuevo'] is False
+
+    def test_identificar_o_registrar_consentimiento_requerido(self, client):
+        from routes.facial import _invalidar_cache
+        _invalidar_cache()
+        resp = client.post('/api/facial/identificar-o-registrar', json={
+            'imagen': _b64_dummy_jpeg(),
+            'rut': '50.300.300-3',
+            'consentimiento': True
+        })
+        assert resp.status_code == 200
+        data = resp.get_json()
+        assert data['ok'] is True

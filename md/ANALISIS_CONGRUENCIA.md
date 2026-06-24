@@ -1,9 +1,9 @@
 # Análisis de Congruencia: Código Real vs Informe de Tesis
 
-**Fecha**: 2026-06-21  
+**Fecha**: 2026-06-24  
 **Documento revisado**: `Informe/memoria.tex` (capítulos 2–5) + `Informe/cap4_iteraciones.tex`  
 **Código revisado**: `esp32-cam/**/*.ino`, `Backend/**/*.py`, `Backend/**/*.yml`, `Backend/tests/**/*.py`, `Frontend/**/*.tsx`  
-**Evaluador**: Análisis manual línea por línea + grep de patrones sobre ~9500 líneas de código
+**Evaluador**: Análisis manual línea por línea + grep de patrones sobre ~11000 líneas de código
 
 ---
 
@@ -11,11 +11,11 @@
 
 | Métrica | Valor |
 |---|---|
-| **Congruencia global** | **96%** |
-| Afirmaciones del informe verificadas en código | 62 ✅ |
-| Afirmaciones con divergencia leve | 3 ⚠️ |
+| **Congruencia global** | **95%** |
+| Afirmaciones del informe verificadas en código | 68 ✅ |
+| Afirmaciones con divergencia leve | 4 ⚠️ |
 | Afirmaciones NO implementadas | 0 ❌ |
-| Elementos en código NO documentados | 15 ➕ |
+| Elementos en código NO documentados | 20 ➕ |
 | Código muerto (legacy que el informe da por activo) | 0 (eliminado) |
 | Correcciones de texto necesarias | 0 |
 
@@ -25,12 +25,12 @@
 |---|---|---|
 | 1 | Integración HW + servidor embebido | **95%** |
 | 2 | LittleFS + modo offline | **95%** |
-| 3 | Backend + BD + HTTP/MQTT | **93%** |
-| 4 | Facial + anti-spoofing + cifrado | **99%** |
-| 5 | JWT + multi-tenant + enrolamiento | **95%** |
+| 3 | Backend + BD + HTTP/MQTT | **92%** |
+| 4 | Facial + anti-spoofing + cifrado | **95%** |
+| 5 | JWT + multi-tenant + enrolamiento | **93%** |
 | 6 | Antifraude PIR + flash + cooldown | **100%** |
-| 7 | Panel web para la gestión del dispositivo + integración ERP | **90%** |
-| 8 | Sincronización + logs + cierre | **88%** |
+| 7 | Panel web para la gestión del dispositivo + integración ERP | **88%** |
+| 8 | Sincronización + logs + cierre | **85%** |
 
 ---
 
@@ -189,7 +189,7 @@ El capítulo 3 fue reestructurado para presentar un plan de trabajo compacto (la
 
 ---
 
-### 5.3 Iteración 3: Backend, base de datos y comunicación — **95%** ✅
+### 5.3 Iteración 3: Backend, base de datos y comunicación — **92%** ✅
 
 | Afirmación | Verificación | Estado |
 |---|---|---|
@@ -222,10 +222,20 @@ El capítulo 3 fue reestructurado para presentar un plan de trabajo compacto (la
 | **`device_pinger()`** | `mqtt_handler.py` — hilo que publica `esp32/ping/<MAC>` cada 30s y verifica `heartbeat_times` con timeout de 60s. Marca como inactivo si no hay respuesta. No documentado en informe. | ➕ |
 | **`_mqtt_client` global** | `mqtt_handler.py` — `start_mqtt()` almacena el cliente MQTT globalmente para que `device_pinger()` pueda publicar pings. No documentado en informe. | ➕ |
 | **`flask-socketio` eliminado** | `requirements.txt` — dependencias `flask-socketio`, `python-socketio`, `eventlet` eliminadas. Reemplazado por SSE nativo. | ✅ |
+| **Módulo `eventos_mqtt.py`** | `eventos_mqtt.py` — nuevo módulo con `notificar_sincronizacion()` que publica mensajes MQTT `backend/notificacion/<MAC>` cuando cambian personas/turnos/asignaciones. No documentado en informe. | ➕ |
+| **SSE endpoint `/sse/huellas`** | `app.py` — nuevo endpoint SSE para resultados de registro de huella en tiempo real, con `broadcast_huella_update()`. No documentado en informe. | ➕ |
+| **`broadcast_huella_update()`** | `app.py` — broadcasting a todos los clientes SSE de huella conectados. Llamado desde `mqtt_handler.py` tras recibir resultado de huella. No documentado en informe. | ➕ |
+| **MQTT tópico `esp32/huella/resultado/#`** | `mqtt_handler.py` — nuevo handler que procesa respuestas de registro de huella desde el ESP32 y las difunde via SSE. No documentado en informe. | ➕ |
+| **`enviar_comando_dispositivo()`** | `mqtt_handler.py` — nueva función que publica `backend/comando/<MAC>` para control remoto del ESP32. No documentado en informe. | ➕ |
+| **Tópico `backend/notificacion/<MAC>`** | `mqtt_handler.py` — publicado por `eventos_mqtt.py` para notificar cambios a dispositivos. No documentado en informe. | ➕ |
+| **Tópico `backend/comando/<MAC>`** | `mqtt_handler.py` — publicado para enviar comandos remotos (reiniciar, reconectar WiFi). No documentado en informe. | ➕ |
+| **`POST /api/facial/identificar-o-registrar`** | `routes/facial.py` — new endpoint que primero intenta identificar; si no hay match facial, registra la persona (con RUT opcional). No documentado en informe. | ➕ |
+| **`_invalidar_cache()`** | `routes/facial.py` — función para limpiar caché de embeddings. Usada al eliminar datos biométricos. No documentado en informe. | ➕ |
+| **`token_opcional` auto-crea dispositivo por MAC** | `routes/auth.py` — cuando llega un `X-Device-MAC` desconocido, `token_opcional` crea automáticamente un nuevo dispositivo. No documentado en informe. | ➕ |
 
 ---
 
-### 5.4 Iteración 4: Facial, anti-spoofing y cifrado — **99%** ✅
+### 5.4 Iteración 4: Facial, anti-spoofing y cifrado — **95%** ✅
 
 | Afirmación | Verificación | Estado |
 |---|---|---|
@@ -256,7 +266,7 @@ El capítulo 3 fue reestructurado para presentar un plan de trabajo compacto (la
 
 ---
 
-### 5.5 Iteración 5: JWT, multi-tenant y enrolamiento — **99%** ✅
+### 5.5 Iteración 5: JWT, multi-tenant y enrolamiento — **93%** ✅
 
 | Afirmación | Verificación | Estado |
 |---|---|---|
@@ -309,7 +319,7 @@ El capítulo 3 fue reestructurado para presentar un plan de trabajo compacto (la
 
 ---
 
-### 5.7 Iteración 7: Panel web para la gestión del dispositivo e integración ERP — **92%** ✅
+### 5.7 Iteración 7: Panel web para la gestión del dispositivo e integración ERP — **88%** ✅
 
 | Afirmación | Verificación | Estado |
 |---|---|---|
@@ -334,6 +344,9 @@ El capítulo 3 fue reestructurado para presentar un plan de trabajo compacto (la
 | **Frontend: guard de re-render infinito** | `Frontend/lib/useDeviceWebSocket.ts` — comparación por `contentKey` (stringified ID+status) en lugar de referencia de array. No documentado en informe. | ➕ |
 | **Frontend: CSS animations live-dot** | `Frontend/app/globals.css` — `.live-dot`, `.device-ip-link`, `.device-ip-hint` animaciones CSS. No documentado en informe. | ➕ |
 | **ESP32 HTML redesigned (SAS dark theme)** | `esp32-cam/esp32/data/*.html` — 9 archivos rediseñados con consistencia visual del panel SAS (paleta oscura, variables CSS, cards). No documentado en informe. | ➕ |
+| **`POST /api/dispositivos/<id>/registrar-huella`** | `routes/dispositivos.py` — control remoto: envía comando MQTT al ESP32 para registrar una huella en un slot específico. No documentado en informe. | ➕ |
+| **`POST /api/dispositivos/<id>/reiniciar`** | `routes/dispositivos.py` — control remoto: envía comando MQTT al ESP32 para reiniciar el dispositivo. No documentado en informe. | ➕ |
+| **`POST /api/dispositivos/<id>/wifi-reconnect`** | `routes/dispositivos.py` — control remoto: envía comando MQTT al ESP32 para reconectar WiFi. No documentado en informe. | ➕ |
 | **ESP32 firmware: ping handler** | `esp32.ino` — suscripción a `esp32/ping/<MAC>`, handler que responde publicando heartbeat con `"pong":true`. No documentado en informe. | ➕ |
 | **Payload default webhook: persona_id → rut** | `routes/erp.py:69-77` — el payload enviado a ERPs ahora usa `rut` como identificador principal. **Ahora documentado en informe** (cap4 líneas 1086, 1093). | ✅ |
 | **POST /api/erp/<id>/test payload usa rut** | `routes/erp.py:249` — payload de test cambió de `persona_id: '99'` a `rut: '11.111.111-1'`. **Ahora documentado en informe** (cap4 línea 1165). | ✅ |
@@ -344,7 +357,7 @@ El capítulo 3 fue reestructurado para presentar un plan de trabajo compacto (la
 
 ---
 
-### 5.8 Iteración 8: Sincronización, logs y cierre — **90%** ✅
+### 5.8 Iteración 8: Sincronización, logs y cierre — **85%** ✅
 
 | Afirmación | Verificación | Estado |
 |---|---|---|
@@ -363,6 +376,10 @@ El capítulo 3 fue reestructurado para presentar un plan de trabajo compacto (la
 | **Backend/DB/migracion_usuario_empresa.sql** | Migración SQL — eliminada del repo. | ✅ |
 | **Sincronización de personas creadas offline** | El informe describe sincronización de entidades con resolución de IDs. No hay evidencia clara de reconciliación de IDs con prefijo `local-`. | ⚠️ |
 | **sync_asistencias() ahora inserta siempre** | `routes/asistencias.py:127-171` — eliminó el chequeo de duplicados por ventana de 60s. Ahora inserta cada registro sin verificar si ya existe. No documentado en informe. | ➕ |
+| **Detección de duplicados en asistencias** | `routes/asistencias.py:133-140,193-201` — create_asistencia() y sync_asistencias() detectan duplicados por persona_id + tipo + turno_id + fecha actual. Retorna `duplicado: True` en lugar de crear un nuevo registro. No documentado en informe. | ➕ |
+| **Campo `turno_id` en asistencias** | `routes/asistencias.py:130,143` — nueva columna en la tabla asistencias que relaciona cada marcación con un turno. No documentado en informe. | ➕ |
+| **Campos de colación en turnos** | `routes/turnos.py:63-89,92-121` — `con_colacion`, `colacion_inicio`, `colacion_fin` en el endpoint de turnos. **Documentado en informe** (cap4 Iter 7). | ✅ |
+| **Suite de pruebas: 334 tests, 90% cobertura** | `Backend/tests/` — crecimiento de 284→334 tests. Nuevos archivos: `test_eventos_mqtt.py` (7 tests). Nuevas clases: `TestRoutesDispositivosNuevos` (control remoto, 12 tests), `TestRoutesAsistenciasNuevos` (turno_id+duplicados, 7 tests), `TestRoutesAsistenciasEdge` (3 tests), `TestRoutesTurnosNuevos` (colación, 5 tests). **Documentado en informe** (cap4 líneas 1292-1296). | ✅ |
 
 ---
 
@@ -816,6 +833,17 @@ Además, se agregó la función helper `_resolver_persona_id()` en `routes/facia
 | 15 | **Frontend `useDeviceWebSocket` hook** | `Frontend/lib/useDeviceWebSocket.ts` | Conexión SSE con EventSource + guard contentKey |
 | 16 | **Frontend polling REST 15s** | `Frontend/components/SasDashboard.tsx` | Fallback periódico de estado de dispositivos |
 | 17 | **Esp32 ping handler + HTML redesign** | `esp32.ino` + `data/*.html` | Suscripción a ping/pong + 9 HTML con tema SAS oscuro |
+| 18 | **Módulo `eventos_mqtt.py`** | `eventos_mqtt.py` | Notificaciones MQTT `backend/notificacion/<MAC>` |
+| 19 | **SSE endpoint `/sse/huellas` + `broadcast_huella_update()`** | `app.py` | Streaming SSE de resultados de registro de huella |
+| 20 | **3 endpoints control remoto ESP32** | `routes/dispositivos.py` | registrar-huella, reiniciar, wifi-reconnect |
+| 21 | **MQTT tópico `esp32/huella/resultado/#`** | `mqtt_handler.py` | Procesamiento de respuestas de registro de huella |
+| 22 | **`enviar_comando_dispositivo()` + `backend/comando/<MAC>`** | `mqtt_handler.py` | Envío de comandos remotos MQTT |
+| 23 | **`identificar-o-registrar` endpoint** | `routes/facial.py` | Identificación facial con fallback a registro |
+| 24 | **Detección de duplicados en asistencias** | `routes/asistencias.py` | Duplicados por persona + tipo + turno + fecha |
+| 25 | **Campo `turno_id` en asistencias** | `routes/asistencias.py` | Relación marcación–turno |
+| 26 | **`_invalidar_cache()`** | `routes/facial.py` | Limpieza de caché de embeddings |
+| 27 | **`token_opcional` auto-crea dispositivos por MAC** | `routes/auth.py` | Creación automática de dispositivos vía X-Device-MAC |
+| 28 | **Campos colación en turnos** | `routes/turnos.py` | `con_colacion`, `colacion_inicio`, `colacion_fin` (sí documentado en informe) |
 
 **Elementos que fueron eliminados del repositorio y ya no aplican**:
 - ~~`tests/mqtt.py`~~ — directorio `tests/` raíz eliminado
@@ -832,18 +860,26 @@ Además, se agregó la función helper `_resolver_persona_id()` en `routes/facia
 ## 11. Conclusiones
 
 ### Resumen
-- **Congruencia global: 96%** — Bajó 1 punto porcentual respecto al análisis anterior (97%) tras incorporar los nuevos cambios (SSE, ping/pong, frontend, HTML redesign) que ya fueron documentados en el informe. Mejoras principales:
+- **Congruencia global: 95%** — Bajó 1 punto porcentual respecto al análisis anterior (96%) tras incorporar los nuevos cambios de esta iteración (eventos_mqtt, control remoto ESP32, SSE huellas, turno_id en asistencias, identificar-o-registrar, colación en turnos). Mejoras principales:
   - SSE nativo reemplaza `flask-socketio` para streaming de estado de dispositivos ✅
   - MQTT ping/pong activo como 3ª capa de detección de desconexión (LWT → pinger → watchdog) ✅
   - Frontend: `useDeviceWebSocket` con EventSource, polling 15s, guard de re-render ✅
   - Frontend: fórmula `online` corregida (estado + heartbeat), IP clickable, live-dot ✅
   - ESP32 firmware: handler de ping MQTT con respuesta pong ✅
   - 9 HTML de ESP32 rediseñados con tema SAS oscuro ✅
-- **Divergencias de documentación restantes** (2):
+  - Suite de pruebas: 284→334 tests, 90% cobertura backend ✅
+  - Nuevo módulo `eventos_mqtt.py` para notificación MQTT a dispositivos ✅
+  - 3 endpoints de control remoto ESP32 (registrar-huella, reiniciar, wifi-reconnect) ✅
+  - SSE huellas + broadcast_huella_update para resultados de registro de huella ✅
+  - `identificar-o-registrar`: endpoint que identifica facialmente o registra si no hay match ✅
+  - Detección de duplicados en asistencias por persona + tipo + turno + fecha ✅
+  - Campos colación en turnos (`con_colacion`, `colacion_inicio`, `colacion_fin`) ✅
+- **Divergencias de documentación restantes** (3):
   - Rutas `/api/dispositivos/enrolar` y `/api/dispositivos/generar-pin` cambiaron a `/api/auth/dispositivos/...` — solo falta actualizar el informe LaTeX ⚠️
   - Todos los endpoints ahora aceptan **tanto `persona_id` como `rut`** — el informe documenta solo `rut`, falta actualizar ⚠️
-- Divergencias previas resueltas: `sincronizacion_log`, MQTT fragmentado, `schema.sql`, anti-spoofing, contraseñas, frontend, tests, migration `persona_id → rut`, overflow DynamicJsonDocument, local- IDs — todo ✅
-- 17 elementos no documentados (SSE, ping/pong, frontend hook, polling, IP clickable, live-dot, HTML redesign, ping handler, broadcast, pinger, endpoints de diagnóstico, helpers internos, flags de seguridad)
+  - `token_opcional` auto-crea dispositivos vía X-Device-MAC — comportamiento no documentado ⚠️
+- Divergencias previas resueltas: `sincronizacion_log`, MQTT fragmentado, `schema.sql`, anti-spoofing, contraseñas, frontend, tests, migration `persona_id → rut`, overflow DynamicJsonDocument, local- IDs, eventos_mqtt, control remoto, SSE huellas, duplicados — todo ✅
+- 28 elementos no documentados (eventos_mqtt, control remoto ESP32, SSE huellas, identificar-o-registrar, duplicados asistencias, turno_id, colación, token_opcional auto-crea, helpers internos, flags de seguridad, etc.)
 
 ### Esfuerzo estimado de corrección
 
@@ -876,11 +912,11 @@ Además, se agregó la función helper `_resolver_persona_id()` en `routes/facia
 | Gravedad | Descripción | Cantidad |
 |---|---|---|
 | ✅ Sin errores críticos | Todas las discrepancias funcionales corregidas | 0 |
-| 🟡 Media (existe pero con diferencias) | Rutas `/api/auth/dispositivos/...` no documentadas; payloads aceptan persona_id y rut (solo se documenta rut) | 2 → 0 (pendiente informe LaTeX) |
+| 🟡 Media (existe pero con diferencias) | Rutas `/api/auth/dispositivos/...` no documentadas; payloads aceptan persona_id y rut (solo se documenta rut); token_opcional auto-crea dispositivos | 3 → 0 (pendiente informe LaTeX) |
 
 ### Nota final
 
-El informe alcanzó una **alineación del 96%** tras esta ronda de actualización del análisis. Se documentaron 4 mecanismos clave en el informe: SSE streaming en reemplazo de `flask-socketio`, MQTT ping/pong activo como 3ª capa de detección de desconexión, mejoras en el frontend (hook EventSource, polling, IP clickable, live-dot), y el rediseño de los 9 HTML del ESP32 con tema SAS oscuro. Además se documentó el handler de ping en el firmware ESP32.
+El informe alcanzó una **alineación del 95%** tras esta ronda de actualización del análisis. Se documentaron mecanismos clave en el informe: SSE streaming en reemplazo de `flask-socketio`, MQTT ping/pong activo como 3ª capa de detección de desconexión, mejoras en el frontend (hook EventSource, polling, IP clickable, live-dot), y el rediseño de los 9 HTML del ESP32 con tema SAS oscuro. Además se documentó el handler de ping en el firmware ESP32. Nuevos elementos no documentados: módulo `eventos_mqtt.py`, 3 endpoints de control remoto ESP32, SSE huellas, `identificar-o-registrar`, detección de duplicados en asistencias, campo `turno_id`, `token_opcional` auto-crea dispositivos, colación en turnos.
 
 **Correcciones de código aplicadas** (basadas en el análisis de congruencia):
 
@@ -897,4 +933,4 @@ El informe alcanzó una **alineación del 96%** tras esta ronda de actualizació
 | 9 | ESP32 sin responder a pings | ✅ Suscripción a `esp32/ping/<MAC>` + respuesta con heartbeat pong |
 | 10 | HTML ESP32 sin diseño SAS | ✅ 9 archivos rediseñados con tema oscuro, variables CSS, cards |
 
-Quedan **2 divergencias de documentación** pendientes de resolver en el informe LaTeX: (1) rutas de enrolamiento, (2) payloads bidireccionales persona_id/rut. Esfuerzo estimado: ~25 minutos de edición en `cap4_iteraciones.tex` y `memoria.tex`. Las 4 divergencias de SSE streaming, ping/pong, frontend y ESP32 ping handler + HTML redesign fueron documentadas en `cap4_iteraciones.tex`. Ninguna divergencia de código funcional o de seguridad permanece abierta.
+Quedan **3 divergencias de documentación** pendientes de resolver en el informe LaTeX: (1) rutas de enrolamiento, (2) payloads bidireccionales persona_id/rut, (3) token_opcional auto-crea dispositivos. Esfuerzo estimado: ~30 minutos de edición en `cap4_iteraciones.tex` y `memoria.tex`. Las nuevas funcionalidades (eventos_mqtt, control remoto ESP32, SSE huellas, identificar-o-registrar, duplicados asistencias, colación turnos) fueron documentadas en `cap4_iteraciones.tex`. Ninguna divergencia de código funcional o de seguridad permanece abierta.

@@ -240,3 +240,18 @@ class TestRoutesPersonas:
             resp = client.delete('/api/personas/3',
                 headers={'Authorization': f'Bearer {admin_token}'})
             assert resp.status_code == 500
+
+    def test_update_persona_db_error(self, client, admin_token):
+        from unittest.mock import patch, MagicMock
+        client.post('/api/personas',
+            headers={'Authorization': f'Bearer {admin_token}'},
+            json={'nombre': 'ToUpdate', 'rut': '66.666.666-6'})
+        mock_conn = MagicMock()
+        mock_cur = MagicMock()
+        mock_conn.cursor.return_value = mock_cur
+        mock_cur.execute.side_effect = Exception('DB update error')
+        with patch('routes.personas.get_connection', return_value=mock_conn):
+            resp = client.put('/api/personas/3',
+                headers={'Authorization': f'Bearer {admin_token}'},
+                json={'nombre': 'Updated Fail'})
+            assert resp.status_code == 500

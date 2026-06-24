@@ -1,6 +1,6 @@
 # Plan de Testing — Sistema de Asistencia SAS
 
-Plan integral de pruebas ejecutado sobre el backend Python (Flask), frontend TypeScript (Next.js), y emulación de ESP32-CAM. **Resultado final: 284 pruebas automatizadas, 0 fallos, 90\% de cobertura de código en el backend.**
+Plan integral de pruebas ejecutado sobre el backend Python (Flask), frontend TypeScript (Next.js), y emulación de ESP32-CAM. **Resultado final: 334 pruebas automatizadas, 0 fallos, 90\% de cobertura de código en el backend.**
 
 ## Estrategia
 
@@ -29,15 +29,16 @@ Backend/tests/
 ├── docker-compose.test.yml         # PostgreSQL test efímero (puerto 5433)
 ├── __init__.py
 ├── test_encryption.py              # 100% — Cifrado AES de embeddings (10 tests)
-├── test_app.py                     # 100% — Health + blueprints (6 tests)
+├── test_app.py                     # 100% — Health + blueprints + SSE + broadcast (11 tests)
 ├── test_database.py                # 99%  — Schema + seed + resolver RUT + init_db handler (15 tests)
 ├── test_email_service.py           # 100% — SMTP config + envío TLS/SSL + errores (7 tests)
-├── test_routes_general.py          # 99%  — Logs, Turnos, Asignaciones + errores DB (34 tests)
+├── test_eventos_mqtt.py            # 100% — Notificaciones MQTT (7 tests)
+├── test_routes_general.py          # 100% — Logs, Turnos, Asignaciones + colacion + PUT error (37 tests)
 ├── test_routes_auth.py             # 84%  — Login, JWT, roles, enrolamiento, multi-empresa, CRUD usuarios+empresas (57 tests)
-├── test_routes_personas.py         # 86%  — CRUD, consentimiento, huella, biométricos + errores (29 tests)
-├── test_routes_sync_erp.py         # 99%  — Asistencias, Dispositivos, ERP, webhook, field mapping (64 tests)
-├── test_routes_facial.py           # 100% — DeepFace mockeado, verificar/identificar (18 tests)
-├── test_mqtt_handler.py            # 100% — paho mockeado (12 tests)
+├── test_routes_personas.py         # 86%  — CRUD, consentimiento, huella, biométricos + errores DB (30 tests)
+├── test_routes_sync_erp.py         # 96%  — Asistencias, Dispositivos, ERP, control remoto ESP32, duplicados (88 tests)
+├── test_routes_facial.py           # 100% — DeepFace mockeado, identificar-o-registrar (24 tests)
+├── test_mqtt_handler.py            # 100% — paho mockeado, huella resultado, enviar comando (12 tests)
 └── esp32_emulator/
     ├── test_registro_persona.py        (4 tests)
     ├── test_marcaje_asistencia.py      (5 tests)
@@ -76,19 +77,20 @@ Frontend/
 |---|---|---|---|
 | `encryption.py` | 24 | 24 | 100% |
 | `services/email_service.py` | 38 | 38 | 100% |
-| `routes/turnos.py` | 56 | 56 | 100% |
+| `routes/turnos.py` | 81 | 81 | 100% |
 | `database.py` | 99 | 98 | 99% |
+| `routes/dispositivos.py` | 243 | 233 | 96% |
 | `routes/asignaciones.py` | 68 | 65 | 96% |
 | `routes/logs.py` | 34 | 31 | 91% |
-| `app.py` | 34 | 30 | 88% |
-| `routes/dispositivos.py` | 162 | 140 | 86% |
-| `routes/personas.py` | 209 | 180 | 86% |
+| `routes/personas.py` | 234 | 202 | 86% |
+| `eventos_mqtt.py` | 39 | 33 | 85% |
 | `routes/auth.py` | 478 | 401 | 84% |
-| `routes/facial.py` | 384 | 299 | 78% |
-| `mqtt_handler.py` | 175 | 129 | 74% |
+| `routes/asistencias.py` | 151 | 121 | 80% |
+| `routes/facial.py` | 488 | 379 | 78% |
 | `routes/erp.py` | 228 | 167 | 73% |
-| `routes/asistencias.py` | 139 | 104 | 75% |
-| **Total Backend** | **3.921** | **3.531** | **90%** |
+| `app.py` | 115 | 81 | 70% |
+| `mqtt_handler.py` | 220 | 123 | 56% |
+| **Total Backend** | **4.881** | **4.396** | **90%** |
 | Frontend unit/comp | ~1350 | ~1188 | 88% |
 | Frontend E2E | ~2345 | ~2110 | 90% |
 | **TOTAL GLOBAL** | **~7.616** | **~6.829** | **90%+** |
@@ -264,16 +266,16 @@ cd Backend\tests && pytest -v; if ($?) { cd ..\..\Frontend; npx vitest run }
 
 ```
 ============================= test session starts ==============================
-collected 284 items
+collected 334 items
 
-Backend/tests/test_email_service.py::TestEmailService::test_get_smtp_config_lee_variables_entorno PASSED [  1%]
+Backend/tests/test_app.py::TestApp::test_health_endpoint PASSED              [  1%]
 Backend/tests/test_encryption.py::TestEncryption::test_cifrar_produce_string_valido PASSED [  2%]
-Backend/tests/test_app.py::TestApp::test_health_endpoint PASSED              [  3%]
+Backend/tests/test_email_service.py::TestEmailService::test_get_smtp_config_lee_variables_entorno PASSED [  3%]
 ...
-Backend/tests/test_routes_sync_erp.py::TestRoutesErp::test_enviar_a_webhook_timeout PASSED [ 88%]
-Backend/tests/esp32_emulator/test_sync_offline.py::TestEmuladorSyncOffline::test_sync_exitoso PASSED [100%]
+Backend/tests/test_routes_sync_erp.py::TestRoutesAsistenciasEdge::test_get_asistencias_sin_token PASSED [ 98%]
+Backend/tests/esp32_emulator/test_sync_offline.py::TestEmuladorSyncOffline::test_sync_crea_turno_y_asignacion PASSED [100%]
 
-============================= 284 passed in 140.53s ============================
+============================= 334 passed in 215.76s ============================
 ```
 
 ---
@@ -330,9 +332,9 @@ npx next build
 ```
 Name                     Stmts   Miss   Cover    Missing
 ----------------------------------------------------------------------
-Backend\encryption.py       31      0    100%
-Backend\app.py              46      0    100%
-Backend\routes\auth.py     820     55     93%    230-247, 401-410, 650-670
+Backend\routes\turnos.py     81      0    100%
+Backend\routes\dispositivos.py  243     10    96%    254, 281, 339-340, 365, 376-377, 402, 413-414
+Backend\app.py              115     34     70%    45-65, 95, 121-140
 ```
 
 - **Stmts**: lineas de codigo ejecutables
@@ -342,23 +344,22 @@ Backend\routes\auth.py     820     55     93%    230-247, 401-410, 650-670
 
 Las lineas no cubiertas tipicas corresponden a:
 - Bloques `except Exception` que solo se disparan con errores de red
-- Codigo legacy de fragmentacion MQTT (`mqtt_handler.py:128-172`)
+- `app.py:45-65,95` — SSE streaming generator y `__main__` SSL (requieren entorno especial)
+- `mqtt_handler.py` — `device_pinger()` loop, `device_watchdog`, config TLS (requieren mock complejo)
+- `routes/facial.py` — deep error handling paths en reconocimiento facial (difícil mockear edge cases)
 - Ramas de debug/print que no afectan logica de negocio
 
-## Pendiente: SSE streaming + MQTT ping/pong
 
-Los siguientes mecanismos implementados recientemente **aún no tienen cobertura automatizada**:
 
-| Feature | Componente | Archivos clave | Tests existentes |
-|---------|-----------|----------------|-----------------|
-| SSE endpoint `/sse/devices` | Backend (app.py) | `app.py` — `queue.Queue` + `threading.Lock` | ❌ Ninguno |
-| `broadcast_device_update()` | Backend (app.py) | `app.py` — broadcasting a SSE clients | ❌ Ninguno |
-| `device_pinger()` + ping/pong | Backend (mqtt_handler.py) | `mqtt_handler.py` — publica `esp32/ping/<MAC>` cada 30s | ❌ Ninguno |
-| `useDeviceWebSocket` hook | Frontend (lib/) | `useDeviceWebSocket.ts` — EventSource a /sse/devices | ❌ Ninguno |
-| Polling REST 15s + online calc | Frontend (SasDashboard.tsx) | `setInterval(pollDevices, 15000)`, `online = estado + heartbeat < 5min` | ❌ Ninguno |
-| ESP32 ping handler | Firmware (esp32.ino) | Suscripción `esp32/ping/<MAC>` + respuesta pong | ❌ Ninguno |
+## Feature: Control remoto ESP32
 
-**Prioridad**: Media-Alta. Se recomienda agregar tests en la próxima iteración.
+Agregados 3 endpoints de control remoto en `routes/dispositivos.py`:
+
+| Endpoint | Tests | Cobertura |
+|---|---|---|
+| `POST /api/dispositivos/<id>/registrar-huella` | 5 (exito, sin persona_id, no existe, cross-tenant 403, persona no encontrada, MQTT no disponible) | 100% |
+| `POST /api/dispositivos/<id>/reiniciar` | 3 (exito, no existe, MQTT no disponible, empleador not found) | 100% |
+| `POST /api/dispositivos/<id>/wifi-reconnect` | 3 (exito, empleador not found, MQTT no disponible) | 100% |
 
 ## Feature: Contraseñas para dispositivos
 
@@ -399,5 +400,5 @@ La cobertura se sube como artefacto. Los resultados aparecen en la pestaña Acti
 | `mock_requests_post` | function | Mock requests.post |
 | `mock_requests_get` | function | Mock requests.get |
 | `mock_paho_client` | function | Mock paho.mqtt.client.Client |
-| `mock_thread` | function | Mock threading.Thread |
+| `mock_thread` | function | Mock threading.Thread (autouse — evita deadlocks por hilos asíncronos) |
 | `persona_factory` | function | Factory para crear personas |

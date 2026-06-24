@@ -52,12 +52,14 @@ class TestEmuladorSyncOffline:
         client.post('/api/personas',
             headers={'Authorization': f'Bearer {admin_token}'},
             json={'nombre': 'TA', 'rut': '20.000.004-0'})
-        turno = client.post('/api/turnos', json={
-            'nombre': 'Turno Offline', 'inicio': '08:00', 'fin': '17:00', 'dias': 'L,M,X'
-        })
+        turno = client.post('/api/turnos',
+            headers={'Authorization': f'Bearer {admin_token}'},
+            json={'nombre': 'Turno Offline', 'inicio': '08:00', 'fin': '17:00', 'dias': 'L,M,X'}
+        )
         assert turno.status_code == 200
         tid = turno.get_json()['id']
-        asig = client.post('/api/asignaciones', json={
-            'persona_id': '1', 'turno_id': str(tid)
-        })
+        asig = client.post('/api/asignaciones',
+            headers={'Authorization': f'Bearer {admin_token}'},
+            json={'persona_id': '1', 'turno_id': str(tid)}
+        )
         assert asig.status_code == 200

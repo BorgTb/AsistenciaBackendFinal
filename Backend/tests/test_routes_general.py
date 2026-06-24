@@ -64,10 +64,11 @@ class TestRoutesTurnos:
         assert resp.status_code == 200
         assert isinstance(resp.get_json(), list)
 
-    def test_crear_turno_sin_token_default_empresa(self, client):
-        resp = client.post('/api/turnos', json={
-            'nombre': 'Turno diurno', 'inicio': '08:00', 'fin': '17:00', 'dias': 'L,M,X,J,V'
-        })
+    def test_crear_turno_con_admin_token(self, client, admin_token):
+        resp = client.post('/api/turnos',
+            headers={'Authorization': f'Bearer {admin_token}'},
+            json={'nombre': 'Turno diurno', 'inicio': '08:00', 'fin': '17:00', 'dias': 'L,M,X,J,V'}
+        )
         assert resp.status_code == 200
         data = resp.get_json()
         assert data['ok'] is True
@@ -377,3 +378,62 @@ class TestRoutesAsignaciones:
             resp = client.delete('/api/asignaciones/1',
                 headers={'Authorization': f'Bearer {admin_token}'})
             assert resp.status_code == 500
+
+
+class TestRoutesTurnosNuevos:
+    """Tests para PUT turno + campos colacion."""
+
+    def test_crear_turno_con_colacion(self, client, admin_token):
+        resp = client.post('/api/turnos',
+            headers={'Authorization': f'Bearer {admin_token}'},
+            json={
+                'nombre': 'T-Colacion', 'inicio': '08:00', 'fin': '17:00',
+                'dias': 'L,M,X', 'con_colacion': True,
+                'colacion_inicio': '13:00', 'colacion_fin': '14:00'
+            })
+        assert resp.status_code == 200
+        data = resp.get_json()
+        assert data['ok'] is True
+
+    def test_listar_turnos_incluye_colacion(self, client, admin_token):
+        client.post('/api/turnos',
+            headers={'Authorization': f'Bearer {admin_token}'},
+            json={'nombre': 'T-List', 'inicio': '08:00', 'fin': '17:00',
+                  'dias': 'L', 'con_colacion': True,
+                  'colacion_inicio': '12:00', 'colacion_fin': '13:00'})
+        resp = client.get('/api/turnos',
+            headers={'Authorization': f'Bearer {admin_token}'})
+        assert resp.status_code == 200
+        data = resp.get_json()
+        assert len(data) >= 1
+        turno = next(t for t in data if t['nombre'] == 'T-List')
+        assert turno['con_colacion'] is True
+
+    def test_actualizar_turno(self, client, admin_token):
+        create = client.post('/api/turnos',
+            headers={'Authorization': f'Bearer {admin_token}'},
+            json={'nombre': 'T-Orig', 'inicio': '08:00', 'fin': '17:00', 'dias': 'L'})
+        tid = create.get_json()['id']
+        resp = client.put(f'/api/turnos/{tid}',
+            headers={'Authorization': f'Bearer {admin_token}'},
+            json={'nombre': 'T-Updated'})
+        assert resp.status_code == 200
+        assert resp.get_json()['ok'] is True
+
+    def test_actualizar_turno_db_error(self, client, admin_token):
+        from unittest.mock import patch, MagicMock
+        mock_conn = MagicMock()
+        mock_cur = MagicMock()
+        mock_conn.cursor.return_value = mock_cur
+        mock_cur.execute.side_effect = Exception('DB put error')
+        with patch('routes.turnos.get_connection', return_value=mock_conn):
+            resp = client.put('/api/turnos/1',
+                headers={'Authorization': f'Bearer {admin_token}'},
+                json={'nombre': 'T-Fail'})
+            assert resp.status_code == 500
+
+    def test_crear_turno_sin_auth(self, client):
+        resp = client.post('/api/turnos', json={
+            'nombre': 'NoAuth', 'inicio': '08:00', 'fin': '17:00', 'dias': 'L'
+        })
+        assert resp.status_code == 401

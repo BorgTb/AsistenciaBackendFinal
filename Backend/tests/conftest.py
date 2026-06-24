@@ -165,16 +165,23 @@ def admin_token(client):
 
 @pytest.fixture
 def empleador_token(client, admin_token):
-    """JWT for empleador in empresa 2."""
-    client.post('/api/auth/empresas',
+    """JWT for empleador in empresa 2.
+    
+    Note: crear_empresa ahora acepta mode='new' con datos del usuario inline.
+    """
+    resp = client.post('/api/auth/empresas',
         headers={'Authorization': f'Bearer {admin_token}'},
-        json={'nombre': 'Empresa Test', 'rut_empresa': '11.111.111-1'}
+        json={
+            'nombre': 'Empresa Test',
+            'rut_empresa': '11.111.111-1',
+            'mode': 'new',
+            'nombre_usuario': 'Empleador Test',
+            'email_usuario': 'empleador@test.cl',
+            'password_usuario': 'test1234',
+            'rol_usuario': 'empleador'
+        }
     )
-    client.post('/api/auth/register',
-        headers={'Authorization': f'Bearer {admin_token}'},
-        json={'nombre': 'Empleador Test', 'email': 'empleador@test.cl',
-              'password': 'test1234', 'rol': 'empleador', 'empresa_id': 2}
-    )
+    assert resp.status_code == 200, resp.get_data(as_text=True)
     resp = client.post('/api/auth/login', json={
         'email': 'empleador@test.cl', 'password': 'test1234', 'empresa_id': 2
     })
