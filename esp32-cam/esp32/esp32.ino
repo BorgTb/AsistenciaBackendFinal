@@ -555,12 +555,16 @@ String capturarImagenBase64Identificacion() {
 String capturarImagenBase64() {
   if (!camaraIniciada) return "";
 
+  // 1. ILUMINACIÓN (Consumo alto: Flash ON al 50%)
   ledcWrite(FLASH_PIN, FLASH_DUTY_LOW);
-  delay(120);
+  delay(200); // Damos tiempo al sensor OV2640 para ajustar brillo y enfoque
 
+  // 2. CAPTURA DE HARDWARE (Guardamos la foto en la RAM)
   camera_fb_t* fb = esp_camera_fb_get();
 
+  // 3. APAGADO INMEDIATO (Liberamos carga eléctrica de la fuente)
   ledcWrite(FLASH_PIN, 0);
+  delay(150);
   if (!fb) {
     addLog("Error: Falla al capturar frame");
     return "";
@@ -1500,14 +1504,13 @@ bool registrarRostroEnBackend(String personaId) {
 
   sensor_t* s = esp_camera_sensor_get();
   s->set_quality(s, 10);
-  ledcWrite(FLASH_PIN, FLASH_DUTY_LOW);
-  delay(120);
+
   camera_fb_t* fb = esp_camera_fb_get();
-  ledcWrite(FLASH_PIN, 0);
+
   s->set_quality(s, 8);
 
   if (!fb) {
-    addLog("Error: No se pudo capturar frame para registro");
+    addLog("Error: No se pudo capturar frame para registrar rostro");
     return false;
   }
 
@@ -1515,17 +1518,18 @@ bool registrarRostroEnBackend(String personaId) {
   beginHttp(http, backendURL + "/api/facial/registrar");
   http.addHeader("Content-Type", "application/octet-stream");
   http.addHeader("X-RUT", rut);
-  http.setTimeout(6000);
 
-  int code = http.POST(fb->buf, fb->len);
+  size_t flen = fb->len;
+  int code = http.POST(fb->buf, flen);
   esp_camera_fb_return(fb);
+  fb = NULL;
   http.end();
 
   if (code == 200) {
-    addLog("Rostro registrado OK en backend para RUT " + rut);
+    addLog("Rostro registrado OK en backend para RUT " + rut + " (" + String(flen) + " bytes)");
     return true;
   }
-  addLog("Error registrando rostro: HTTP " + String(code));
+  addLog("Error registrando rostro: HTTP " + String(code) + " para RUT " + rut);
   return false;
 }
 
@@ -1537,14 +1541,13 @@ bool agregarFotoEnBackend(String personaId) {
 
   sensor_t* s = esp_camera_sensor_get();
   s->set_quality(s, 10);
-  ledcWrite(FLASH_PIN, FLASH_DUTY_LOW);
-  delay(120);
+
   camera_fb_t* fb = esp_camera_fb_get();
-  ledcWrite(FLASH_PIN, 0);
+
   s->set_quality(s, 8);
 
   if (!fb) {
-    addLog("Error: No se pudo capturar frame para foto extra");
+    addLog("Error: No se pudo capturar frame para foto adicional");
     return false;
   }
 
@@ -1552,17 +1555,18 @@ bool agregarFotoEnBackend(String personaId) {
   beginHttp(http, backendURL + "/api/facial/agregar-foto");
   http.addHeader("Content-Type", "application/octet-stream");
   http.addHeader("X-RUT", rut);
-  http.setTimeout(6000);
 
-  int code = http.POST(fb->buf, fb->len);
+  size_t flen = fb->len;
+  int code = http.POST(fb->buf, flen);
   esp_camera_fb_return(fb);
+  fb = NULL;
   http.end();
 
   if (code == 200) {
-    addLog("Foto extra agregada OK en backend para RUT " + rut);
+    addLog("Foto adicional guardada en backend para RUT " + rut + " (" + String(flen) + " bytes)");
     return true;
   }
-  addLog("Error agregando foto: HTTP " + String(code));
+  addLog("Error agregando foto extra: HTTP " + String(code) + " para RUT " + rut);
   return false;
 }
 
@@ -2975,6 +2979,58 @@ void handleBorrarAsignacion() {
   server.send(404, "text/plain", "Asignacion no encontrada");
 }
 
+void handleCapturarFotoRegistro() {
+  if (!requiereAdmin(server)) return;
+  
+  if (estadoActual != ESTADO_REGISTRO_FACIAL) {
+    server.send(400, "application/json", "{\"error\":\"No esta en modo registro facial\"}");
+    return;
+  }
+  
+  actualizarBloqueoAsistencia();
+  intentosFacial++;
+  
+  bool exito = false;
+  if (fotosTomadas == 0) {
+    addLog("Capturando foto inicial para registro...");
+    exito = registrarRostroEnBackend(idParaRostro);
+  } else {
+    addLog("Capturando foto adicional #" + String(fotosTomadas + 1) + "/" + String(FOTOS_REQUERIDAS) + "...");
+    exito = agregarFotoEnBackend(idParaRostro);
+  }
+  
+  if (exito) {
+    fotosTomadas++;
+    tiempoUltimoEstado = millis();
+    ultimoErrorRegistro = "";
+    
+    if (fotosTomadas >= FOTOS_REQUERIDAS) {
+      ledcWrite(FLASH_PIN, 0);
+      flashExito();
+      addLog("Registro completo: " + String(fotosTomadas) + " fotos de referencia guardadas");
+      rostroRegistroExitoso = true;
+      estadoActual = ESTADO_IDLE;
+      nombreRegistrando = ""; rutRegistrando = ""; emailRegistrando = ""; slotRegistrando = -1;
+      idParaRostro = "";
+      modoEdicionRostro = false;
+      personaEditandoId = "";
+      fotosTomadas = 0;
+    }
+  } else {
+    ultimoErrorRegistro = "No se pudo registrar la foto. Intente de nuevo.";
+    flashError();
+  }
+  
+  String json = "{";
+  json += "\"ok\":" + String(exito ? "true" : "false") + ",";
+  json += "\"fotos_tomadas\":" + String(fotosTomadas) + ",";
+  json += "\"total\":" + String(FOTOS_REQUERIDAS) + ",";
+  json += "\"completado\":" + String(rostroRegistroExitoso ? "true" : "false") + ",";
+  json += "\"error\":\"" + jsonEscape(ultimoErrorRegistro) + "\"";
+  json += "}";
+  server.send(200, "application/json", json);
+}
+
 void handleUltimoRegistro() {
   addLog("[API] GET /ultimo_registro");
   if (!requiereAdmin(server)) return;
@@ -3133,6 +3189,7 @@ void setup() {
     server.send(200, "text/plain", "Logs limpiados");
   });
   server.on("/ultimo_registro", handleUltimoRegistro); 
+  server.on("/capturar_foto_registro", handleCapturarFotoRegistro);
 
   server.on("/estado", []() {
     String referer = server.header("Referer");
@@ -3156,6 +3213,7 @@ void setup() {
     json += "\"online\":"    + String(isOnline ? "true" : "false") + ",";
     json += "\"camara\":"    + String(camaraIniciada ? "true" : "false") + ",";
     json += "\"rostro_ok\":" + String(rostroRegistroExitoso ? "true" : "false") + ",";
+    json += "\"fotos_tomadas\":" + String(fotosTomadas) + ",";
     json += "\"error_registro\":\"" + jsonEscape(ultimoErrorRegistro) + "\",";
     json += "\"asistencia_bloqueada\":" + String(millis() < bloqueoAsistenciaHasta ? "true" : "false") + ",";
     json += "\"bloqueo_restante_ms\":" + String(millis() < bloqueoAsistenciaHasta ? (bloqueoAsistenciaHasta - millis()) : 0) + ",";
@@ -3376,69 +3434,10 @@ void loop() {
     }
   }
   else if (estadoActual == ESTADO_REGISTRO_FACIAL) {
-    static unsigned long ultimoIntentoFoto = 0;
-    if (ahora - ultimoIntentoFoto > 4000) { 
-      ultimoIntentoFoto = ahora;
-      intentosFacial++;
-      
-      bool excedido = (fotosTomadas >= FOTOS_REQUERIDAS) || (intentosFacial > 15);
-      
-      if (excedido && fotosTomadas == 0) {
-        ledcWrite(FLASH_PIN, 0);
-        flashError();
-        addLog("No se pudo registrar rostro tras multiples intentos");
-        ultimoErrorRegistro = "No se pudo registrar rostro tras multiples intentos";
-        estadoActual = ESTADO_IDLE;
-        nombreRegistrando = ""; rutRegistrando = ""; emailRegistrando = ""; slotRegistrando = -1;
-        idParaRostro = "";
-        modoEdicionRostro = false;
-        personaEditandoId = "";
-        fotosTomadas = 0;
-      } else if (excedido && fotosTomadas > 0) {
-        ledcWrite(FLASH_PIN, 0);
-        flashExito();
-        addLog("Registro completo: " + String(fotosTomadas) + " foto(s) de referencia guardada(s)");
-        rostroRegistroExitoso = true;
-        ultimoErrorRegistro = "";
-        estadoActual = ESTADO_IDLE;
-        nombreRegistrando = ""; rutRegistrando = ""; emailRegistrando = ""; slotRegistrando = -1;
-        idParaRostro = "";
-        modoEdicionRostro = false;
-        personaEditandoId = "";
-        fotosTomadas = 0;
-      } else if (fotosTomadas == 0) {
-        addLog("Enviando fotografia #" + String(intentosFacial) + " para registro inicial...");
-        if (registrarRostroEnBackend(idParaRostro)) {
-          fotosTomadas++;
-          addLog("Foto #1 registrada. Siguiente en 4 segundos...");
-        } else {
-          addLog("Error en registro inicial. Reintentando...");
-        }
-      } else {
-        addLog("Tomando fotografia adicional #" + String(fotosTomadas + 1) + "/" + String(FOTOS_REQUERIDAS) + "...");
-        delay(1500);
-        if (agregarFotoEnBackend(idParaRostro)) {
-          fotosTomadas++;
-          if (fotosTomadas >= FOTOS_REQUERIDAS) {
-            ledcWrite(FLASH_PIN, 0);
-            flashExito();
-            addLog("Registro completo: " + String(fotosTomadas) + " fotos de referencia guardadas");
-            rostroRegistroExitoso = true;
-            ultimoErrorRegistro = "";
-            estadoActual = ESTADO_IDLE;
-            nombreRegistrando = ""; rutRegistrando = ""; emailRegistrando = ""; slotRegistrando = -1;
-            idParaRostro = "";
-            modoEdicionRostro = false;
-            personaEditandoId = "";
-            fotosTomadas = 0;
-          } else {
-            addLog("Foto adicional OK. Siguiente en 4 segundos...");
-          }
-        } else {
-          addLog("Error en foto adicional. Reintentando...");
-        }
-      }
-    }
+    // Modo manual: la captura de fotos se activa desde la interfaz web
+    // via el endpoint /capturar_foto_registro
+    // El timeout de 30s limpia automaticamente si no se captura ninguna foto.
+    // Cada foto exitosa resetea el timeout en handleCapturarFotoRegistro().
   }
 
   if (mqttConnected && mqtt_client != NULL && (ahora - lastHeartbeat) > 30000UL) {

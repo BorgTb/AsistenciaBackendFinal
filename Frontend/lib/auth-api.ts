@@ -175,6 +175,13 @@ export async function registrarRostro(rut: string, imagenBase64: string) {
   });
 }
 
+export async function agregarFotoRostro(rut: string, imagenBase64: string) {
+  return request<{ ok: boolean; id: number; total_fotos: number; mensaje: string }>(`/api/facial/agregar-foto`, {
+    method: 'POST',
+    body: JSON.stringify({ rut, imagen: imagenBase64 })
+  });
+}
+
 export interface RegisterCompanyPayload {
   empresa_nombre: string;
   admin_nombre: string;

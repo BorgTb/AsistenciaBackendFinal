@@ -45,6 +45,21 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Oxygen,sans-
 .empty{text-align:center;padding:50px 20px;color:var(--muted-2);font-size:13px}
 .toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--surface-2);border:1px solid var(--success);color:var(--text);padding:10px 20px;border-radius:6px;font-size:12px;font-weight:500;display:none;z-index:100}
 .toast.err{border-color:var(--danger)}
+
+.foto-capture{display:none;background:var(--surface);border:1px solid var(--primary);border-radius:var(--radius-lg);padding:24px 14px;text-align:center;margin-bottom:12px}
+.foto-capture.on{display:block}
+.foto-capture .title{font-size:13px;font-weight:600;color:var(--text);margin-bottom:8px}
+.foto-capture .desc{font-size:11px;color:var(--muted);margin-bottom:12px}
+.foto-dots{display:flex;gap:8px;justify-content:center;margin-bottom:10px}
+.foto-dot{width:14px;height:14px;border-radius:50%;background:var(--surface-2);border:2px solid var(--border);transition:all .3s ease}
+.foto-dot.ok{background:var(--success);border-color:var(--success)}
+.foto-dot.fail{background:var(--danger);border-color:var(--danger)}
+.foto-count{font-size:13px;font-weight:600;color:var(--muted);margin-bottom:10px}
+.foto-count span{color:var(--success)}
+.foto-error{color:var(--danger);font-size:12px;margin-top:8px;display:none;padding:8px;background:rgba(220,38,38,.1);border-radius:6px}
+.btn-capture{width:100%;padding:14px;border:none;border-radius:6px;font-family:inherit;font-size:14px;font-weight:600;cursor:pointer;margin-top:6px;background:var(--success);color:#fff;transition:.15s;text-align:center}
+.btn-capture:hover:not(:disabled){background:#15803d}
+.btn-capture:disabled{opacity:.5;cursor:not-allowed}
 </style>
 </head>
 <body>
@@ -62,12 +77,26 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Oxygen,sans-
     <div id="panelTexto" class="text">Espere un momento.</div>
   </div>
 
+  <div id="fotoCapture" class="foto-capture">
+    <div class="title" id="fotoTitulo">Captura de rostro</div>
+    <div class="desc" id="fotoDesc">Presione el botón para capturar cada foto. Se requieren 3 fotos con buena calidad.</div>
+    <div class="foto-dots">
+      <div class="foto-dot" id="fdot1"></div>
+      <div class="foto-dot" id="fdot2"></div>
+      <div class="foto-dot" id="fdot3"></div>
+    </div>
+    <div class="foto-count">Fotos: <span id="fotosCount">0/3</span></div>
+    <div class="foto-error" id="fotoError"></div>
+    <button class="btn-capture" id="btnCapturarFoto" onclick="capturarFoto()">📷 Capturar foto</button>
+  </div>
+
   <div id="lista"><div class="empty">Cargando...</div></div>
 </div>
 <div id="toast" class="toast"></div>
 
 <script>
 let timerProceso=null,procesoActivo='';
+let capturandoFoto=false,fotosTomadas=0;
 const ADMIN_PW_KEY='sas_admin_session';
 let adminHabilitado=false;
 async function mostrarModalPassword(errorMsg){
@@ -131,7 +160,24 @@ function mostrarPanel(titulo,texto){
 }
 function ocultarPanel(){document.getElementById('panelProceso').classList.remove('on');}
 function textoEstado(c){return c===1?'Coloque el dedo (1ra vez).':c===4?'Retire el dedo.':c===2?'Coloque el dedo (2da vez).':c===3?'Mire a la cámara.':'Procesando...';}
-function detenerSeguimiento(){if(timerProceso){clearInterval(timerProceso);timerProceso=null;}procesoActivo='';ocultarPanel();}
+function detenerSeguimiento(){
+  if(timerProceso){clearInterval(timerProceso);timerProceso=null;}
+  procesoActivo='';ocultarPanel();
+  document.getElementById('fotoCapture').classList.remove('on');
+  capturandoFoto=false;
+}
+function mostrarCapturaFacial(estado){
+  const panel=document.getElementById('panelProceso');
+  const foto=document.getElementById('fotoCapture');
+  if(estado.codigo_paso===3){
+    panel.classList.remove('on');
+    foto.classList.add('on');
+    if(estado.fotos_tomadas!==undefined)actualizarProgresoFotos(estado.fotos_tomadas);
+  }else{
+    foto.classList.remove('on');
+    panel.classList.add('on');
+  }
+}
 function iniciarSeguimiento(tipo,nombre){
   detenerSeguimiento();procesoActivo=tipo;
   mostrarPanel('Actualizando '+tipo,'Preparando para '+nombre+'...');
@@ -141,15 +187,59 @@ function iniciarSeguimiento(tipo,nombre){
       if(procesoActivo==='huella'){
         if(e.codigo_paso===0){detenerSeguimiento();mostrarToast('Huella actualizada','ok');cargar();return;}
         mostrarPanel('Actualizando huella',textoEstado(e.codigo_paso));
-      }else if(procesoActivo==='rostro'){
-        if(e.codigo_paso===0){detenerSeguimiento();mostrarToast(e.rostro_ok?'Rostro actualizado':e.error_registro||'Error facial',e.rostro_ok?'ok':'err');cargar();return;}
-        mostrarPanel('Actualizando rostro',textoEstado(e.codigo_paso));
-      }else if(procesoActivo==='fotos'){
-        if(e.codigo_paso===0){detenerSeguimiento();mostrarToast(e.rostro_ok?'Fotos agregadas correctamente':e.error_registro||'Error facial',e.rostro_ok?'ok':'err');cargar();return;}
-        mostrarPanel('Agregando fotos',textoEstado(e.codigo_paso));
+      }else if(procesoActivo==='rostro'||procesoActivo==='fotos'){
+        mostrarCapturaFacial(e);
+        if(e.codigo_paso===0){
+          detenerSeguimiento();
+          if(e.rostro_ok){
+            mostrarToast(procesoActivo==='rostro'?'Rostro actualizado':'Fotos agregadas correctamente','ok');
+          }else{
+            mostrarToast(e.error_registro||'Error facial','err');
+          }
+          cargar();
+          return;
+        }
       }
     }catch(err){mostrarPanel('Esperando...','Reintentando...');}
   },1500);
+}
+async function capturarFoto(){
+  if(capturandoFoto)return;
+  capturandoFoto=true;
+  const btn=document.getElementById('btnCapturarFoto');
+  const errEl=document.getElementById('fotoError');
+  btn.textContent='Capturando...';
+  btn.disabled=true;
+  errEl.style.display='none';
+  try{
+    const r=await fetchProtegido('/capturar_foto_registro');
+    if(!r){capturandoFoto=false;btn.textContent='\uD83D\uDCF7 Capturar foto';btn.disabled=false;return;}
+    const data=await r.json();
+    if(data.ok){
+      actualizarProgresoFotos(data.fotos_tomadas);
+      btn.textContent='\uD83D\uDCF7 Capturar foto ('+data.fotos_tomadas+'/3)';
+      if(data.completado){
+        document.getElementById('fotoCapture').classList.remove('on');
+      }
+    }else{
+      errEl.textContent=data.error||'Error al capturar. Intente de nuevo.';
+      errEl.style.display='block';
+      btn.textContent='\uD83D\uDCF7 Reintentar foto';
+    }
+  }catch(e){
+    errEl.textContent='Error de conexion. Intente de nuevo.';
+    errEl.style.display='block';
+  }
+  capturandoFoto=false;
+  btn.disabled=false;
+}
+function actualizarProgresoFotos(count){
+  fotosTomadas=count;
+  document.getElementById('fotosCount').textContent=count+'/3';
+  const dots=[document.getElementById('fdot1'),document.getElementById('fdot2'),document.getElementById('fdot3')];
+  for(let i=0;i<3;i++){
+    dots[i].className='foto-dot'+(i<count?' ok':'');
+  }
 }
 async function cargar(){
   try{

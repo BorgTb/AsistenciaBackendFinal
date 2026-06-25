@@ -21,12 +21,15 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Oxygen,sans-
 .field input:focus{border-color:var(--primary);box-shadow:0 0 0 3px rgba(29,78,216,.15)}
 
 .btn{width:100%;padding:12px;border:none;border-radius:6px;font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;margin-bottom:6px;transition:.15s;text-align:center}
+.btn:disabled{opacity:.5;cursor:not-allowed}
 .btn-primary{background:var(--primary);color:#fff}
-.btn-primary:hover{background:var(--primary-light)}
+.btn-primary:hover:not(:disabled){background:var(--primary-light)}
 .btn-secondary{background:var(--surface);border:1px solid var(--border);color:var(--muted)}
 .btn-secondary:hover{color:var(--text);border-color:var(--muted-2)}
 .btn-success{background:var(--success);color:#fff}
 .btn-success:hover{background:#15803d}
+.btn-capture{background:var(--success);color:#fff;font-size:15px;padding:14px;margin-top:12px}
+.btn-capture:hover:not(:disabled){background:#15803d}
 
 #bp{display:none}
 
@@ -47,7 +50,17 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Oxygen,sans-
 .detail .desc{font-size:12px;color:var(--muted)}
 #camPreview{max-width:200px;border-radius:6px;margin:10px auto 0;border:2px solid var(--primary);display:none}
 
+#facialControls{display:none;margin-bottom:12px}
+.foto-progress{display:flex;align-items:center;justify-content:center;gap:6px;margin-bottom:8px;font-size:13px;font-weight:600}
+.foto-count{color:var(--success)}
+.foto-dots{display:flex;gap:6px;justify-content:center;margin:10px 0}
+.foto-dot{width:12px;height:12px;border-radius:50%;background:var(--surface-2);border:2px solid var(--border);transition:all .3s ease}
+.foto-dot.ok{background:var(--success);border-color:var(--success)}
+.foto-dot.fail{background:var(--danger);border-color:var(--danger)}
+.foto-error{color:var(--danger);font-size:12px;margin-top:6px;display:none}
+
 .badge-warning{display:inline-block;padding:4px 10px;border-radius:999px;font-size:10px;font-weight:600;color:var(--warning);background:rgba(217,119,6,.1);border:1px solid rgba(217,119,6,.2)}
+.badge-success{display:inline-block;padding:4px 10px;border-radius:999px;font-size:10px;font-weight:600;color:var(--success);background:rgba(22,163,74,.1);border:1px solid rgba(22,163,74,.2)}
 </style>
 </head>
 <body>
@@ -90,13 +103,29 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Oxygen,sans-
       <div class="title" id="step3-title">Coloque el dedo en el sensor</div>
       <div class="desc" id="step3-desc">Mantenga presionado firmemente sobre el lector</div>
     </div>
+
+    <div id="facialControls">
+      <div class="foto-dots">
+        <div class="foto-dot" id="dot1"></div>
+        <div class="foto-dot" id="dot2"></div>
+        <div class="foto-dot" id="dot3"></div>
+      </div>
+      <div class="foto-progress">
+        <span>Fotos: </span><span class="foto-count" id="fotosCount">0/3</span>
+      </div>
+      <div class="foto-error" id="fotoError"></div>
+      <button class="btn btn-capture" id="btnCapturar" onclick="capturarFoto()">
+        &#128247; Capturar foto
+      </button>
+    </div>
+
     <button class="btn btn-success" id="btn-finish" style="display:none" onclick="location.reload()">Registrar Otra Persona</button>
     <button class="btn btn-secondary" onclick="location.href='/'">Volver al Inicio</button>
   </div>
 </div>
 
 <script>
-let checkInterval,previewInterval,stepActual=0,registroFinalizado=false;
+let checkInterval,previewInterval,stepActual=0,registroFinalizado=false,capturando=false;
 const ADMIN_PW_KEY='sas_admin_session';
 let adminHabilitado=false;
 async function mostrarModalPassword(errorMsg){
@@ -169,11 +198,63 @@ async function monitorearHardware(){
   try{
     const data=await fetch('/estado').then(r=>r.json());
     if(registroFinalizado)return;
-    if(data.error_registro&&data.error_registro.length>0){clearInterval(checkInterval);if(previewInterval)clearInterval(previewInterval);alert('Error: '+data.error_registro);return;}
+    if(data.error_registro&&data.error_registro.length>0&&data.codigo_paso===0&&!data.rostro_ok){
+      clearInterval(checkInterval);if(previewInterval)clearInterval(previewInterval);
+      alert('Error: '+data.error_registro);return;
+    }
     if(stepActual===1&&(data.codigo_paso===4||data.codigo_paso===2))marcarPasoActivo(2);
-    if(data.codigo_paso===3&&stepActual<3){marcarPasoActivo(3);if(!previewInterval)previewInterval=setInterval(obtenerVistaPrevia,1500);}
-    if(data.rostro_ok===true&&data.codigo_paso===0){registroFinalizado=true;marcarExito();}
+    if(data.codigo_paso===3&&stepActual<3){
+      marcarPasoActivo(3);
+      document.getElementById('facialControls').style.display='block';
+      if(!previewInterval)previewInterval=setInterval(obtenerVistaPrevia,2000);
+    }
+    if(data.codigo_paso===3){
+      actualizarProgresoFotos(data.fotos_tomadas||0);
+    }
+    if(data.rostro_ok===true&&data.codigo_paso===0){
+      registroFinalizado=true;
+      document.getElementById('facialControls').style.display='none';
+      marcarExito();
+    }
   }catch(e){}
+}
+async function capturarFoto(){
+  if(capturando||registroFinalizado)return;
+  capturando=true;
+  const btn=document.getElementById('btnCapturar');
+  const errEl=document.getElementById('fotoError');
+  btn.textContent='Capturando...';
+  btn.disabled=true;
+  errEl.style.display='none';
+  try{
+    const r=await fetchProtegido('/capturar_foto_registro');
+    if(!r){capturando=false;btn.textContent='\uD83D\uDCF7 Capturar foto';btn.disabled=false;return;}
+    const data=await r.json();
+    if(data.ok){
+      actualizarProgresoFotos(data.fotos_tomadas);
+      btn.textContent='\uD83D\uDCF7 Capturar foto ('+data.fotos_tomadas+'/3)';
+      if(data.completado){
+        document.getElementById('facialControls').style.display='none';
+        btn.style.display='none';
+      }
+    }else{
+      errEl.textContent=data.error||'Error al capturar. Intente de nuevo.';
+      errEl.style.display='block';
+      btn.textContent='\uD83D\uDCF7 Reintentar foto';
+    }
+  }catch(e){
+    errEl.textContent='Error de conexion. Intente de nuevo.';
+    errEl.style.display='block';
+  }
+  capturando=false;
+  btn.disabled=false;
+}
+function actualizarProgresoFotos(count){
+  document.getElementById('fotosCount').textContent=count+'/3';
+  const dots=[document.getElementById('dot1'),document.getElementById('dot2'),document.getElementById('dot3')];
+  for(let i=0;i<3;i++){
+    dots[i].className='foto-dot'+(i<count?' ok':'');
+  }
 }
 async function obtenerVistaPrevia(){
   try{
@@ -190,14 +271,18 @@ function marcarPasoActivo(paso){
   stepActual=paso;
   ['step1','step2','step3'].forEach(id=>document.getElementById(id).className='step');
   const icons=['&#9997;','&#9997;','&#128247;'];
-  const titles=['Coloque el dedo en el sensor','Levante y vuelva a colocarlo','Mire a la cámara del reloj'];
-  const descs=['Mantenga presionado firmemente','Para confirmar la plantilla de huella','Se registrará su rostro en la base de datos'];
+  const titles=['Coloque el dedo en el sensor','Levante y vuelva a colocarlo','Presione el boton para capturar cada foto'];
+  const descs=['Mantenga presionado firmemente','Para confirmar la plantilla de huella','Se requieren 3 fotos con buena calidad de rostro'];
   document.getElementById('camIcon').innerHTML=icons[paso-1];
   document.getElementById('step3-title').textContent=titles[paso-1];
   document.getElementById('step3-desc').textContent=descs[paso-1];
   if(paso===1)document.getElementById('step1').className='step on';
   else if(paso===2){document.getElementById('step1').className='step ok';document.getElementById('step2').className='step on';}
-  else if(paso===3){document.getElementById('step1').className='step ok';document.getElementById('step2').className='step ok';document.getElementById('step3').className='step on';}
+  else if(paso===3){
+    document.getElementById('step1').className='step ok';
+    document.getElementById('step2').className='step ok';
+    document.getElementById('step3').className='step on';
+  }
 }
 function marcarExito(){
   clearInterval(checkInterval);if(previewInterval)clearInterval(previewInterval);

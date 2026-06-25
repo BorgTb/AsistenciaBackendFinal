@@ -15,6 +15,7 @@ import {
   verificarDispositivo,
   enviarErp,
   registrarRostro,
+  agregarFotoRostro,
 
   generarPinEnrolamiento,
   generarPasswordDispositivo,
@@ -220,6 +221,8 @@ export function SasDashboard({ initialSection = 'dashboard' }: { initialSection?
   const [webcamActive, setWebcamActive] = useState(false);
   const [capturedImage, setCapturedImage] = useState<string | null>(null);
   const [captureStream, setCaptureStream] = useState<MediaStream | null>(null);
+  const [fotosTomadasRostro, setFotosTomadasRostro] = useState(0);
+  const [ultimoErrorRostro, setUltimoErrorRostro] = useState('');
   const liveDevices = useDeviceWebSocket();
   const devicesRef = useRef(devices);
   devicesRef.current = devices;
@@ -1100,6 +1103,8 @@ export function SasDashboard({ initialSection = 'dashboard' }: { initialSection?
     const rut = persona?.rut || personaId;
     setRostroPersonaId(rut);
     setCapturedImage(null);
+    setFotosTomadasRostro(0);
+    setUltimoErrorRostro('');
     setWebcamActive(true);
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ video: { width: 640, height: 480, facingMode: 'user' } });
@@ -1134,29 +1139,49 @@ export function SasDashboard({ initialSection = 'dashboard' }: { initialSection?
     setCapturedImage(null);
     setCaptureStream(null);
     setRostroPersonaId(null);
+    setFotosTomadasRostro(0);
+    setUltimoErrorRostro('');
   }
 
   async function handleWebcamConfirm() {
     if (!capturedImage || !rostroPersonaId) return;
     setUploadingRostro(true);
+    setUltimoErrorRostro('');
     try {
       const base64 = capturedImage.split(',')[1];
-      const result = await registrarRostro(rostroPersonaId, base64);
+      let result;
+      if (fotosTomadasRostro === 0) {
+        result = await registrarRostro(rostroPersonaId, base64);
+      } else {
+        result = await agregarFotoRostro(rostroPersonaId, base64);
+      }
       if (result && 'ok' in result && result.ok) {
-        pushLog('ok', `Rostro registrado para ID ${rostroPersonaId}`);
-        showToast('success', 'Rostro registrado correctamente');
-        if (personaActual && personaActual.id === rostroPersonaId) {
-          setPersonaActual((prev) => prev ? { ...prev, encoding_facial: 'registered' } : prev);
+        const nuevasFotos = fotosTomadasRostro + 1;
+        setFotosTomadasRostro(nuevasFotos);
+        const angulos = ['frontal', 'perfil izquierdo', 'perfil derecho'];
+        pushLog('ok', `Foto ${nuevasFotos}/3 (${angulos[nuevasFotos - 1]}) registrada para ${rostroPersonaId}`);
+        if (nuevasFotos >= 3) {
+          showToast('success', 'Rostro registrado correctamente con 3 fotos');
+          if (personaActual && personaActual.id === rostroPersonaId) {
+            setPersonaActual((prev) => prev ? { ...prev, encoding_facial: 'registered' } : prev);
+          }
+          setUploadingRostro(false);
+          handleWebcamCancel();
+        } else {
+          showToast('success', `Foto ${nuevasFotos}/3 aceptada. Toma la siguiente.`);
+          setCapturedImage(null);
         }
       } else {
-        const msg = result && 'error' in result ? String(result.error) : 'No se pudo registrar el rostro';
+        const msg = result && 'error' in result ? String(result.error) : 'No se pudo registrar la foto';
+        setUltimoErrorRostro(msg);
         showToast('error', msg);
       }
     } catch (e) {
-      showToast('error', e instanceof Error ? e.message : 'Error al registrar rostro');
+      const msg = e instanceof Error ? e.message : 'Error al registrar rostro';
+      setUltimoErrorRostro(msg);
+      showToast('error', msg);
     }
     setUploadingRostro(false);
-    handleWebcamCancel();
   }
 
   async function handleGenerarPin() {
@@ -2093,6 +2118,7 @@ export function SasDashboard({ initialSection = 'dashboard' }: { initialSection?
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                         <span className="muted" style={{ fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.5px' }}>PIN de registro</span>
                         <button
+                          id={`pin-btn-${item.id}`}
                           className="btn btn-secondary"
                           type="button"
                           style={{ fontSize: '0.7rem', padding: '2px 10px' }}
@@ -2509,10 +2535,19 @@ export function SasDashboard({ initialSection = 'dashboard' }: { initialSection?
                   className="btn btn-primary"
                   type="button"
                   disabled={!consentimientoActivo}
-                  onClick={() => {
+                  onClick={async () => {
                     setRostroPersonaId(personaActual.id);
-                    setWebcamActive(true);
                     setCapturedImage(null);
+                    setFotosTomadasRostro(0);
+                    setUltimoErrorRostro('');
+                    setWebcamActive(true);
+                    try {
+                      const stream = await navigator.mediaDevices.getUserMedia({ video: { width: 640, height: 480, facingMode: 'user' } });
+                      setCaptureStream(stream);
+                    } catch {
+                      showToast('error', 'No se pudo acceder a la cámara. Verifica los permisos.');
+                      setWebcamActive(false);
+                    }
                   }}
                   style={{ marginTop: 24, opacity: consentimientoActivo ? 1 : 0.5 }}
                 >
@@ -3419,10 +3454,36 @@ export function SasDashboard({ initialSection = 'dashboard' }: { initialSection?
           <div className="modal" style={{ maxWidth: 560 }} onClick={(e) => e.stopPropagation()} role="presentation">
             <div className="modal-head">
               <h3 className="modal-title">Capturar rostro</h3>
-              <p className="modal-subtitle">{capturedImage ? 'Confirma o vuelve a capturar.' : 'Centra tu rostro frente a la cámara y presiona Capturar.'}</p>
+              <p className="modal-subtitle">
+                {fotosTomadasRostro >= 3
+                  ? '¡Completado! Se registraron 3 fotos.'
+                  : capturedImage
+                    ? 'Confirma o vuelve a capturar.'
+                    : `Foto ${fotosTomadasRostro + 1} de 3: ${['de frente', 'perfil izquierdo', 'perfil derecho'][fotosTomadasRostro]}. Centra tu rostro y presiona Capturar.`}
+              </p>
+              <div style={{ display: 'flex', gap: 10, justifyContent: 'center', marginTop: 10 }}>
+                {[0, 1, 2].map((i) => (
+                  <div
+                    key={i}
+                    style={{
+                      width: 16,
+                      height: 16,
+                      borderRadius: '50%',
+                      background: i < fotosTomadasRostro ? 'var(--success)' : 'var(--surface-2)',
+                      border: '2px solid',
+                      borderColor: i < fotosTomadasRostro ? 'var(--success)' : 'var(--border)',
+                      transition: 'all .3s ease',
+                    }}
+                  />
+                ))}
+              </div>
             </div>
             <div className="modal-body" style={{ textAlign: 'center' }}>
-              {!capturedImage ? (
+              {fotosTomadasRostro >= 3 ? (
+                <div style={{ padding: '20px 0', color: 'var(--success)', fontSize: '1.1rem', fontWeight: 600 }}>
+                  &#10003; Las 3 fotos se registraron correctamente en la base de datos.
+                </div>
+              ) : !capturedImage ? (
                 <div style={{ position: 'relative', background: '#000', borderRadius: 8, overflow: 'hidden' }}>
                   <video
                     id="webcam-video"
@@ -3446,12 +3507,19 @@ export function SasDashboard({ initialSection = 'dashboard' }: { initialSection?
               {uploadingRostro && (
                 <div style={{ marginTop: 12, color: '#6b7280' }}>Procesando rostro...</div>
               )}
+              {ultimoErrorRostro && !uploadingRostro && (
+                <div style={{ marginTop: 12, color: 'var(--danger)', fontSize: '0.85rem' }}>{ultimoErrorRostro}</div>
+              )}
             </div>
             <div className="modal-footer">
               <button className="btn btn-secondary" type="button" onClick={handleWebcamCancel} disabled={uploadingRostro}>
-                Cancelar
+                {fotosTomadasRostro >= 3 ? 'Cerrar' : 'Cancelar'}
               </button>
-              {!capturedImage ? (
+              {fotosTomadasRostro >= 3 ? (
+                <button className="btn btn-primary" type="button" onClick={handleWebcamCancel}>
+                  Listo
+                </button>
+              ) : !capturedImage ? (
                 <button className="btn btn-primary" type="button" onClick={handleWebcamCapture}>
                   Capturar
                 </button>
@@ -3461,7 +3529,7 @@ export function SasDashboard({ initialSection = 'dashboard' }: { initialSection?
                     Volver a capturar
                   </button>
                   <button className="btn btn-primary" type="button" onClick={handleWebcamConfirm} disabled={uploadingRostro}>
-                    Confirmar
+                    Confirmar foto {fotosTomadasRostro + 1}/3
                   </button>
                 </>
               )}
