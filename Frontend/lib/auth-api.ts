@@ -113,10 +113,10 @@ export async function deleteDispositivo(dispositivoId: string) {
   });
 }
 
-export async function updateDispositivo(dispositivoId: string, payload: { nombre?: string; con_colacion?: boolean; colacion_inicio?: string | null; colacion_fin?: string | null }) {
+export async function updateDispositivo(dispositivoId: string, nombre: string) {
   return request<{ ok: boolean; id: string; nombre: string }>(`/api/dispositivos/${dispositivoId}`, {
     method: 'PUT',
-    body: JSON.stringify(payload)
+    body: JSON.stringify({ nombre })
   });
 }
 

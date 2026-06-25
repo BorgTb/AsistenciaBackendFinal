@@ -205,8 +205,6 @@ export function SasDashboard({ initialSection = 'dashboard' }: { initialSection?
   const [deviceForm, setDeviceForm] = useState({ nombre: '', ip: '' });
   const [editingDeviceId, setEditingDeviceId] = useState<string | null>(null);
   const [editDeviceName, setEditDeviceName] = useState('');
-  const [editingDeviceColacion, setEditingDeviceColacion] = useState<string | null>(null);
-  const [editDeviceColacion, setEditDeviceColacion] = useState({ con_colacion: false, colacion_inicio: '13:00', colacion_fin: '14:00' });
   const [generatedDevicePassword, setGeneratedDevicePassword] = useState<string | null>(null);
   const [generatingPasswordFor, setGeneratingPasswordFor] = useState<string | null>(null);
   const [rostroPersonaId, setRostroPersonaId] = useState<string | null>(null);
@@ -317,10 +315,7 @@ export function SasDashboard({ initialSection = 'dashboard' }: { initialSection?
             tienePassword: (item as Record<string, unknown>).tiene_password as boolean,
             codigoEnrol: (item as Record<string, unknown>).codigo_enrol as string | null | undefined,
             passwordPendiente: (item as Record<string, unknown>).password_pendiente as boolean,
-            ultimoHeartbeat,
-            con_colacion: (item as Record<string, unknown>).con_colacion as boolean,
-            colacion_inicio: (item as Record<string, unknown>).colacion_inicio as string | null | undefined,
-            colacion_fin: (item as Record<string, unknown>).colacion_fin as string | null | undefined
+            ultimoHeartbeat
           };
         }));
       }
@@ -1107,7 +1102,7 @@ export function SasDashboard({ initialSection = 'dashboard' }: { initialSection?
       showToast('error', 'El nombre no puede estar vacío');
       return;
     }
-    const result = await updateDispositivo(dispositivoId, { nombre });
+    const result = await updateDispositivo(dispositivoId, nombre);
     if (result && 'ok' in result && result.ok) {
       setDevices((current) => current.map((d) => (d.id === dispositivoId ? { ...d, nombre } : d)));
       pushLog('ok', `Dispositivo renombrado: ${nombre}`);
@@ -1116,28 +1111,6 @@ export function SasDashboard({ initialSection = 'dashboard' }: { initialSection?
       return;
     }
     showToast('error', 'No se pudo actualizar el nombre');
-  }
-
-  async function handleSaveDeviceColacion(dispositivoId: string) {
-    const result = await updateDispositivo(dispositivoId, {
-      con_colacion: editDeviceColacion.con_colacion,
-      colacion_inicio: editDeviceColacion.con_colacion ? editDeviceColacion.colacion_inicio : null,
-      colacion_fin: editDeviceColacion.con_colacion ? editDeviceColacion.colacion_fin : null
-    });
-    if (result && 'ok' in result && result.ok) {
-      setDevices((current) =>
-        current.map((d) =>
-          d.id === dispositivoId
-            ? { ...d, con_colacion: editDeviceColacion.con_colacion, colacion_inicio: editDeviceColacion.con_colacion ? editDeviceColacion.colacion_inicio : null, colacion_fin: editDeviceColacion.con_colacion ? editDeviceColacion.colacion_fin : null }
-            : d
-        )
-      );
-      pushLog('ok', `Colación del dispositivo actualizada`);
-      showToast('success', 'Configuración de colación actualizada');
-      setEditingDeviceColacion(null);
-      return;
-    }
-    showToast('error', 'No se pudo actualizar la configuración de colación');
   }
 
   async function handleCreateEmpresa() {
@@ -2041,64 +2014,6 @@ export function SasDashboard({ initialSection = 'dashboard' }: { initialSection?
                         {item.ultimoHeartbeat ? formatDate(item.ultimoHeartbeat) + ' ' + formatTime(item.ultimoHeartbeat) : '—'}
                       </div>
                     </div>
-                  </div>
-
-                  <div className="card" style={{ marginTop: 12, padding: '10px 14px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                      <span className="muted" style={{ fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Colación</span>
-                      {(user?.rol === 'admin' || user?.rol === 'empleador') && (
-                        <button className="btn btn-secondary" type="button" style={{ fontSize: '0.7rem', padding: '2px 10px' }}
-                          onClick={() => {
-                            if (editingDeviceColacion === item.id) {
-                              setEditingDeviceColacion(null);
-                            } else {
-                              setEditingDeviceColacion(item.id);
-                              setEditDeviceColacion({
-                                con_colacion: item.con_colacion ?? false,
-                                colacion_inicio: item.colacion_inicio ?? '13:00',
-                                colacion_fin: item.colacion_fin ?? '14:00'
-                              });
-                            }
-                          }}>
-                          {editingDeviceColacion === item.id ? 'Cancelar' : item.con_colacion ? 'Editar' : 'Configurar'}
-                        </button>
-                      )}
-                    </div>
-                    {editingDeviceColacion === item.id ? (
-                      <div style={{ marginTop: 8 }}>
-                        <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: '0.85rem' }}>
-                          <input type="checkbox" checked={editDeviceColacion.con_colacion}
-                            onChange={(event) => setEditDeviceColacion((c) => ({ ...c, con_colacion: event.target.checked }))} />
-                          ¿Tiene colación?
-                        </label>
-                        {editDeviceColacion.con_colacion && (
-                          <div className="form-row" style={{ marginTop: 8 }}>
-                            <div className="field" style={{ flex: 1 }}>
-                              <label style={{ fontSize: '0.75rem' }}>Inicio</label>
-                              <input type="time" value={editDeviceColacion.colacion_inicio}
-                                onChange={(event) => setEditDeviceColacion((c) => ({ ...c, colacion_inicio: event.target.value }))}
-                                style={{ fontSize: '0.85rem' }} />
-                            </div>
-                            <div className="field" style={{ flex: 1 }}>
-                              <label style={{ fontSize: '0.75rem' }}>Fin</label>
-                              <input type="time" value={editDeviceColacion.colacion_fin}
-                                onChange={(event) => setEditDeviceColacion((c) => ({ ...c, colacion_fin: event.target.value }))}
-                                style={{ fontSize: '0.85rem' }} />
-                            </div>
-                          </div>
-                        )}
-                        <button className="btn btn-primary" type="button" style={{ fontSize: '0.75rem', padding: '4px 14px', marginTop: 8 }}
-                          onClick={() => handleSaveDeviceColacion(item.id)}>
-                          Guardar
-                        </button>
-                      </div>
-                    ) : (
-                      <div style={{ marginTop: 6, fontSize: '0.85rem', color: 'var(--muted)' }}>
-                        {item.con_colacion
-                          ? `${item.colacion_inicio ?? '—'} a ${item.colacion_fin ?? '—'}`
-                          : 'Sin colación'}
-                      </div>
-                    )}
                   </div>
 
                   <div className="device-actions">

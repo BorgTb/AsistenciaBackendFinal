@@ -60,9 +60,6 @@ def init_db():
         cur.execute("ALTER TABLE dispositivos ADD COLUMN IF NOT EXISTS password_hash VARCHAR(64)")
         cur.execute("ALTER TABLE dispositivos ADD COLUMN IF NOT EXISTS password_plain VARCHAR(20)")
         cur.execute("ALTER TABLE dispositivos ADD COLUMN IF NOT EXISTS password_pendiente BOOLEAN DEFAULT FALSE")
-        cur.execute("ALTER TABLE dispositivos ADD COLUMN IF NOT EXISTS con_colacion BOOLEAN DEFAULT FALSE")
-        cur.execute("ALTER TABLE dispositivos ADD COLUMN IF NOT EXISTS colacion_inicio TIME")
-        cur.execute("ALTER TABLE dispositivos ADD COLUMN IF NOT EXISTS colacion_fin TIME")
 
         cur.execute("""
             CREATE TABLE IF NOT EXISTS usuarios_web (
