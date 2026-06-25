@@ -2,9 +2,22 @@ import xmlrpc.client
 import psycopg2
 import json
 import os
+import re
 import time
 import sys
 from datetime import datetime
+from urllib.parse import urlparse
+
+# ─── Read env from Backend/.env ──────────────────────────────────
+_env_file = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'Backend', '.env')
+if os.path.exists(_env_file):
+    with open(_env_file, encoding='utf-8') as f:
+        for line in f:
+            line = line.strip()
+            if not line or line.startswith('#') or '=' not in line:
+                continue
+            key, _, val = line.partition('=')
+            os.environ.setdefault(key.strip(), val.strip().strip("'\""))
 
 # ─── Configuration ───────────────────────────────────────────────
 ODOO_URL = os.getenv('ODOO_URL', 'http://localhost:8069')
@@ -12,11 +25,20 @@ ODOO_DB = os.getenv('ODOO_DB', 'odoo')
 ODOO_USER = int(os.getenv('ODOO_USER', '2'))
 ODOO_PASS = os.getenv('ODOO_PASS', 'admin')
 
-SAS_DB_HOST = os.getenv('SAS_DB_HOST', 'localhost')
-SAS_DB_PORT = int(os.getenv('SAS_DB_PORT', '5432'))
-SAS_DB_NAME = os.getenv('SAS_DB_NAME', 'sas_db')
-SAS_DB_USER = os.getenv('SAS_DB_USER', 'sas')
-SAS_DB_PASS = os.getenv('SAS_DB_PASS', 'sas123')
+DATABASE_URL = os.getenv('DATABASE_URL', '')
+if DATABASE_URL:
+    parsed = urlparse(DATABASE_URL)
+    SAS_DB_HOST = parsed.hostname or 'localhost'
+    SAS_DB_PORT = parsed.port or 5432
+    SAS_DB_USER = parsed.username or 'sas'
+    SAS_DB_PASS = parsed.password or 'sas123'
+    SAS_DB_NAME = parsed.path.lstrip('/') if parsed.path else 'sas_db'
+else:
+    SAS_DB_HOST = os.getenv('SAS_DB_HOST', 'localhost')
+    SAS_DB_PORT = int(os.getenv('SAS_DB_PORT', '5432'))
+    SAS_DB_NAME = os.getenv('SAS_DB_NAME', 'sas_db')
+    SAS_DB_USER = os.getenv('SAS_DB_USER', 'sas')
+    SAS_DB_PASS = os.getenv('SAS_DB_PASS', 'sas123')
 
 WEBHOOK_TOKEN = os.getenv('WEBHOOK_TOKEN', 'sas-webhook-token-2026')
 ERP_NAME = os.getenv('ERP_NAME', 'Odoo Test ERP')
@@ -60,12 +82,17 @@ def set_webhook_token(models, db, uid, password, token):
     models.execute_kw(db, uid, password, 'ir.config_parameter', 'set_param', ['asistencia_webhook.token', token])
     log('TOKEN', 'Webhook token configured')
 
-def get_sas_personas():
-    log('SAS DB', 'Connecting to SAS database...')
-    conn = psycopg2.connect(
+def _sas_connect():
+    if DATABASE_URL:
+        return psycopg2.connect(DATABASE_URL)
+    return psycopg2.connect(
         host=SAS_DB_HOST, port=SAS_DB_PORT,
         dbname=SAS_DB_NAME, user=SAS_DB_USER, password=SAS_DB_PASS
     )
+
+def get_sas_personas():
+    log('SAS DB', 'Connecting to SAS database...')
+    conn = _sas_connect()
     cur = conn.cursor()
     cur.execute("""
         SELECT p.id, p.nombre, p.rut, p.email, COALESCE(e.nombre, 'Sin empresa') as empresa
@@ -93,10 +120,12 @@ def sync_employees(models, db, uid, password, personas):
             log('ODOO EMPLOYEES', f"  Skipped {nombre} (RUT {rut_clean}) — already exists")
             skipped += 1
             continue
+        digits_only = re.sub(r'[^0-9]', '', rut_clean)
+        pin = digits_only[-8:] if len(digits_only) >= 8 else digits_only.zfill(8)
         emp_id = models.execute_kw(db, uid, password, 'hr.employee', 'create', [{
             'name': nombre,
             'identification_id': rut_clean,
-            'pin': rut_clean,
+            'pin': pin,
             'work_email': email or '',
             'notes': f'SAS persona_id={pid} | Empresa: {empresa}',
         }])
@@ -107,13 +136,11 @@ def sync_employees(models, db, uid, password, personas):
 
 def create_erp_integration():
     log('ERP INTEGRATION', 'Creating ERP integration in SAS database...')
-    conn = psycopg2.connect(
-        host=SAS_DB_HOST, port=SAS_DB_PORT,
-        dbname=SAS_DB_NAME, user=SAS_DB_USER, password=SAS_DB_PASS
-    )
+    conn = _sas_connect()
     cur = conn.cursor()
 
-    webhook_url = f"{ODOO_URL}/asistencia/webhook"
+    odoo_internal = os.getenv('ODOO_INTERNAL_URL', 'http://localhost:8069')
+    webhook_url = f"{odoo_internal}/asistencia/webhook"
     headers = json.dumps({'Authorization': f'Bearer {WEBHOOK_TOKEN}'})
     field_map = json.dumps({'rut': 'employee_id', 'tipo': 'check_type', 'fecha_hora': 'datetime', 'nombre': 'employee_name'})
 
@@ -123,10 +150,16 @@ def create_erp_integration():
     )
     existing = cur.fetchone()
     if existing:
-        log('ERP INTEGRATION', f"Integration '{ERP_NAME}' already exists (ID {existing[0]})")
+        erp_id = existing[0]
+        cur.execute(
+            "UPDATE integraciones_erp SET webhook_url = %s, headers = %s, field_map = %s WHERE id = %s",
+            (webhook_url, headers, field_map, erp_id)
+        )
+        conn.commit()
+        log('ERP INTEGRATION', f"Integration '{ERP_NAME}' updated (ID {erp_id})")
         cur.close()
         conn.close()
-        return existing[0]
+        return erp_id
 
     cur.execute(
         """INSERT INTO integraciones_erp (empresa_id, nombre, tipo, webhook_url, headers, field_map, envio_auto, activo)

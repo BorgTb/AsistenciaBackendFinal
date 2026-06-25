@@ -107,6 +107,7 @@ def init_db():
         cur.execute("ALTER TABLE personas ALTER COLUMN empresa_id DROP DEFAULT")
         cur.execute("ALTER TABLE personas ADD COLUMN IF NOT EXISTS dispositivo_origen_id INTEGER REFERENCES dispositivos(id) ON DELETE SET NULL")
         cur.execute("ALTER TABLE personas ADD COLUMN IF NOT EXISTS activo BOOLEAN DEFAULT TRUE")
+        cur.execute("ALTER TABLE personas ALTER COLUMN rut DROP NOT NULL")
 
         cur.execute("""
             CREATE TABLE IF NOT EXISTS turnos (

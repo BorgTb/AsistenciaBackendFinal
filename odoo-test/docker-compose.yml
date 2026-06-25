@@ -5,7 +5,7 @@ services:
     environment:
       POSTGRES_USER: odoo
       POSTGRES_PASSWORD: odoo
-      POSTGRES_DB: odoo
+      POSTGRES_DB: postgres
     volumes:
       - odoo_postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -23,6 +23,7 @@ services:
     depends_on:
       odoo-postgres:
         condition: service_healthy
+    command: odoo -d odoo --db-filter=odoo --init=base
     environment:
       HOST: odoo-postgres
       USER: odoo

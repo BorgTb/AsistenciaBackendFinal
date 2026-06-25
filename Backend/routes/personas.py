@@ -29,7 +29,7 @@ def get_personas():
     persona_id = request.persona_id
 
     if rol == 'admin':
-        cur.execute("SELECT id, nombre, rut, email, huella_id, empresa_id, created_at FROM personas ORDER BY id")
+        cur.execute("SELECT id, nombre, rut, email, huella_id, empresa_id, created_at FROM personas WHERE activo = true ORDER BY id")
     elif rol == 'empleador' and empresa_id:
         cur.execute(
             "SELECT id, nombre, rut, email, huella_id, empresa_id, created_at FROM personas WHERE empresa_id = %s AND activo = true ORDER BY id",
@@ -502,19 +502,53 @@ def delete_persona(persona_id):
     cur = conn.cursor()
     try:
         if request.user_rol == 'admin':
-            cur.execute("DELETE FROM personas WHERE id::text = %s", (str(persona_id),))
+            cur.execute(
+                "SELECT id, nombre FROM personas WHERE id::text = %s",
+                (str(persona_id),)
+            )
+            row = cur.fetchone()
+            if not row:
+                return jsonify({'error': 'Persona no encontrada'}), 404
+
+            persona_id_real, nombre = row
+
+            usuario_solicitante = getattr(request, 'user_id', 'anonimo')
+            cur.execute(
+                "INSERT INTO eliminaciones_biometricas (persona_id, usuario_solicitante) VALUES (%s, %s)",
+                (persona_id_real, str(usuario_solicitante))
+            )
+
+            cur.execute(
+                "UPDATE personas SET rut = NULL, email = NULL, huella_id = NULL, activo = false WHERE id = %s",
+                (persona_id_real,)
+            )
+
+            cur.execute("DELETE FROM encodings_faciales WHERE persona_id = %s", (persona_id_real,))
+            cur.execute("DELETE FROM consentimientos WHERE persona_id = %s", (persona_id_real,))
+
+            foto_path = os.path.join(PREVIEWS_DIR, f"{persona_id_real}.jpg")
+            if os.path.exists(foto_path):
+                os.unlink(foto_path)
+
+            try:
+                from routes.facial import _invalidar_cache
+                _invalidar_cache()
+            except Exception:
+                pass
+
         elif request.empresa_id:
             cur.execute(
                 "UPDATE personas SET activo = false WHERE id::text = %s AND empresa_id = %s",
                 (str(persona_id), request.empresa_id)
             )
+            if cur.rowcount == 0:
+                return jsonify({'error': 'Persona no encontrada'}), 404
         else:
             return jsonify({'error': 'No autorizado'}), 403
-        if cur.rowcount == 0:
-            return jsonify({'error': 'Persona no encontrada'}), 404
+
         conn.commit()
         notificar_sincronizacion(request.empresa_id, 'personas', 'eliminar', int(persona_id))
-        return jsonify({'ok': True})
+        return jsonify({'ok': True, 'mensaje': f'Datos de {nombre} eliminados. Registros de asistencia conservados.' if request.user_rol == 'admin' else 'Persona desactivada.'})
     except Exception as e:
         conn.rollback()
         return jsonify({'error': str(e)}), 500
@@ -563,7 +597,7 @@ def eliminar_datos_biometricos(persona_id):
             (persona_id_real, embedding_anterior, foto_path, str(usuario_solicitante))
         )
 
-        cur.execute("UPDATE personas SET huella_id = NULL WHERE id = %s", (persona_id_real,))
+        cur.execute("UPDATE personas SET huella_id = NULL, rut = NULL, email = NULL WHERE id = %s", (persona_id_real,))
 
         foto_path = os.path.join(PREVIEWS_DIR, f"{persona_id_real}.jpg")
         if os.path.exists(foto_path):

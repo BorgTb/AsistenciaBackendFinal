@@ -120,7 +120,7 @@ def health():
 if __name__ == '__main__':
     print("¡¡¡NUEVO CÓDIGO CARGADO!!!")
     init_db()
-    mqtt_client = start_mqtt(broadcast_device_update)
+    mqtt_client = start_mqtt(broadcast_device_update, broadcast_huella_update)
 
     if SECURE_MODE:
         ctx = (SSL_CERT_PATH, SSL_KEY_PATH)

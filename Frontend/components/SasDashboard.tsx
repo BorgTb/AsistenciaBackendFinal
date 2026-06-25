@@ -1606,9 +1606,6 @@ export function SasDashboard({ initialSection = 'dashboard' }: { initialSection?
             <SectionButton active={section === 'dispositivos'} href={sectionPaths.dispositivos} onClick={() => setSidebarOpen(false)}>
               <span>Dispositivos</span>
             </SectionButton>
-            <SectionButton active={section === 'duplicados'} href={sectionPaths.duplicados} onClick={() => setSidebarOpen(false)}>
-              <span>Duplicados {duplicados.length > 0 ? <span className="badge danger" style={{ marginLeft: 6, fontSize: '0.7rem', padding: '1px 6px' }}>{duplicados.length}</span> : null}</span>
-            </SectionButton>
             <SectionButton active={section === 'configuracion'} href={sectionPaths.configuracion} onClick={() => setSidebarOpen(false)}>
               <span>Sincronización</span>
             </SectionButton>

@@ -90,6 +90,86 @@ def on_message(client, userdata, msg):
             print(f"❌ Error heartbeat DB: {e}", flush=True)
         return
 
+    if full_topic.startswith("esp32/asistencia/"):
+        mac = full_topic.split("/")[-1]
+        try:
+            payload = json.loads(msg.payload.decode())
+            rut = payload.get('rut')
+            tipo = payload.get('tipo', payload.get('check_type'))
+            metodo = payload.get('metodo', 'huella')
+            timestamp = payload.get('fecha_hora', payload.get('datetime'))
+
+            conn = get_connection()
+            cur = conn.cursor()
+
+            if not rut and payload.get('persona_id'):
+                cur.execute("SELECT rut FROM personas WHERE id = %s", (payload['persona_id'],))
+                row = cur.fetchone()
+                rut = row[0] if row else None
+
+            persona_id = None
+            nombre = payload.get('nombre', '')
+            if rut:
+                persona_id = resolver_rut_a_id(rut)
+                if not persona_id:
+                    cur.execute(
+                        "INSERT INTO personas (empresa_id, nombre, rut, activo) VALUES (1, %s, %s, TRUE) RETURNING id",
+                        (nombre or rut, rut)
+                    )
+                    persona_id = cur.fetchone()[0]
+                    conn.commit()
+                    print(f"🆕 Persona creada desde ESP32: {rut}", flush=True)
+
+            if persona_id and tipo:
+            # Detect duplicate: same persona + same type + same day
+                cur.execute(
+                    "SELECT id FROM asistencias WHERE persona_id = %s AND tipo = %s AND DATE(fecha_hora) = CURRENT_DATE",
+                    (persona_id, tipo)
+                )
+                if cur.fetchone():
+                    print(f"⏭️ Asistencia duplicada ignorada: persona {persona_id} / {tipo}", flush=True)
+                    cur.close()
+                    conn.close()
+                    return
+
+                cur.execute(
+                    "SELECT empresa_id, nombre FROM personas WHERE id = %s", (persona_id,)
+                )
+                p_row = cur.fetchone()
+                empresa_id = p_row[0] if p_row else None
+                if not nombre:
+                    nombre = p_row[1] if p_row else ''
+
+                if timestamp:
+                    cur.execute(
+                        "INSERT INTO asistencias (persona_id, nombre, tipo, metodo, fecha_hora, origen, sincronizado) VALUES (%s, %s, %s, %s, %s, 'dispositivo', TRUE) RETURNING id, fecha_hora",
+                        (persona_id, nombre, tipo, metodo, timestamp)
+                    )
+                else:
+                    cur.execute(
+                        "INSERT INTO asistencias (persona_id, nombre, tipo, metodo, origen, sincronizado) VALUES (%s, %s, %s, %s, 'dispositivo', TRUE) RETURNING id, fecha_hora",
+                        (persona_id, nombre, tipo, metodo)
+                    )
+                row_i = cur.fetchone()
+                asist_id = row_i[0]
+                fec_hora = row_i[1]
+                conn.commit()
+                print(f"✅ Asistencia ESP32 registrada: {nombre} / {tipo} (ID {asist_id})", flush=True)
+                cur.close()
+                conn.close()
+
+                # Trigger ERP push
+                from routes.asistencias import _disparar_erp_push
+                if empresa_id:
+                    _disparar_erp_push(persona_id, nombre, tipo, metodo, fec_hora, empresa_id)
+            else:
+                cur.close()
+                conn.close()
+                print(f"⚠️ ESP32 asistencia ignorada: faltan datos {payload}", flush=True)
+        except Exception as e:
+            print(f"❌ Error procesando asistencia ESP32: {e}", flush=True)
+        return
+
     if full_topic.startswith("esp32/lwt/"):
         mac = full_topic.split("/")[-1]
         print(f"⚠️ LWT recibido: dispositivo {mac} desconectado", flush=True)
@@ -140,15 +220,15 @@ def on_message(client, userdata, msg):
                     from eventos_mqtt import notificar_sincronizacion
                     notificar_sincronizacion(empresa_id, 'personas', 'actualizar', int(persona_id))
 
-                try:
-                    from app import broadcast_huella_update
-                    broadcast_huella_update({
-                        "persona_id": str(persona_id),
-                        "huella_id": huella_id,
-                        "status": "ok"
-                    })
-                except Exception:
-                    pass
+                if _huella_broadcast_callback:
+                    try:
+                        _huella_broadcast_callback({
+                            "persona_id": str(persona_id),
+                            "huella_id": huella_id,
+                            "status": "ok"
+                        })
+                    except Exception as e:
+                        print(f"⚠️ Error broadcasting huella SSE: {e}", flush=True)
 
                 print(f"✅ Huella {huella_id} registrada para persona {persona_id}", flush=True)
             else:
@@ -158,6 +238,7 @@ def on_message(client, userdata, msg):
         return
 
 _broadcast_callback = None
+_huella_broadcast_callback = None
 _mqtt_client = None
 
 def broadcast_device_update(data: dict):
@@ -226,8 +307,8 @@ def device_pinger():
         except Exception as e:
             print(f"❌ Error pinger: {e}", flush=True)
 
-def start_mqtt(broadcast_callback=None):
-    global _broadcast_callback, _mqtt_client
+def start_mqtt(broadcast_callback=None, huella_broadcast_callback=None):
+    global _broadcast_callback, _huella_broadcast_callback, _mqtt_client
     try:
         if SECURE_MODE:
             port = MQTT_TLS_PORT
@@ -251,6 +332,9 @@ def start_mqtt(broadcast_callback=None):
         if broadcast_callback:
             _broadcast_callback = broadcast_callback
             print("🔌 SSE broadcast vinculado", flush=True)
+        if huella_broadcast_callback:
+            _huella_broadcast_callback = huella_broadcast_callback
+            print("🔌 SSE huella broadcast vinculado", flush=True)
         threading.Thread(target=device_watchdog, daemon=True).start()
         threading.Thread(target=device_pinger, daemon=True).start()
         print("📡 Pinger MQTT activo (ping cada 30s)", flush=True)

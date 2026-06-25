@@ -85,7 +85,7 @@ Backend/
 ├── eventos_mqtt.py           # Notificación MQTT de cambios (sincronización)
 ├── routes/
 │   ├── auth.py               # Login, JWT, RBAC, enrolamiento dispositivos
-│   ├── personas.py           # CRUD personas + consentimiento biométrico
+│   ├── personas.py           # CRUD personas + consentimiento biométrico + eliminación de datos
 │   ├── turnos.py             # CRUD turnos
 │   ├── asignaciones.py       # Asignación persona ↔ turno
 │   ├── asistencias.py        # Marcaciones, sync, detección duplicados
@@ -307,6 +307,18 @@ Las eliminaciones de datos biométricos se registran en `eliminaciones_biometric
 - Almacena el embedding anterior (cifrado) por si se requiere deshacer
 - Registra qué usuario solicitó la eliminación
 
+### 5.7 Eliminación de Personas (Limpieza de Datos)
+
+El sistema ofrece dos modalidades de eliminación según el rol:
+
+| Rol | Comportamiento | Efecto |
+|---|---|---|
+| **admin** | `DELETE /api/personas/<id>` | Limpia todos los datos de la persona (rut=NULL, email=NULL, huella_id=NULL), elimina datos biométricos (encodings faciales, consentimientos, foto preview), registra auditoría en `eliminaciones_biometricas` y marca `activo=false`. El registro en `personas` se conserva con su **nombre** para mantener la integridad de las asistencias históricas. |
+| **empleador** | `DELETE /api/personas/<id>` | Solo marca `activo=false` (soft delete). La persona no aparece en listados pero sus datos persisten. |
+| **admin/trabajador** | `DELETE /api/personas/<id>/datos-biometricos` | Elimina solo los datos biométricos (huella, encodings faciales, consentimiento, foto), más `rut` y `email`. La persona sigue activa. |
+
+Las personas eliminadas (con `activo=false`) no aparecen en los listados del frontend (todos los roles filtran por `activo=true`). Si se registra una persona nueva posteriormente, se crea un registro completamente nuevo sin relación con el anterior.
+
 ---
 
 ## 6. Autenticación y Autorización (RBAC)
@@ -425,7 +437,7 @@ empresas (id, nombre, rut_empresa, email_contacto, ...)
     ├── usuarios_web (id, nombre, email, password_hash, activo)
     │       └── usuario_empresa (usuario_id, empresa_id, rol)
     │
-    ├── personas (id, empresa_id, nombre, rut, email, huella_id, encoding_facial, activo)
+    ├── personas (id, empresa_id, nombre, rut [nullable], email, huella_id, encoding_facial, activo)
     │       ├── consentimientos (persona_id, fecha_aceptacion, version_politica, ...)
     │       ├── encodings_faciales (id, persona_id, encoding, foto_path, quality_score)
     │       ├── eliminaciones_biometricas (id, persona_id, embedding_anterior, ...)
@@ -445,10 +457,10 @@ empresas (id, nombre, rut_empresa, email_contacto, ...)
 
 | Tabla | Propósito | Registros críticos |
 |---|---|---|
-| `personas` | Empleados | `encoding_facial` (cifrado), `huella_id` |
+| `personas` | Empleados | `encoding_facial` (cifrado), `huella_id`, `rut` nullable (se limpia al eliminar) |
 | `encodings_faciales` | Embeddings faciales históricos | Múltiples por persona, con quality_score |
 | `consentimientos` | Consentimiento biométrico | Requerido antes de registrar datos |
-| `eliminaciones_biometricas` | Auditoría de eliminaciones | Backup del embedding anterior |
+| `eliminaciones_biometricas` | Auditoría de eliminaciones | Backup del embedding anterior, registro de eliminaciones completas |
 | `logs_biometricos` | Auditoría completa | Todo intento de identificación/registro |
 | `asistencias` | Marcaciones | Con detección de duplicados por día |
 | `dispositivos` | ESP32-CAM | MAC, IP, estado online/offline, contraseña |
@@ -813,4 +825,4 @@ DISABLE_ASYNC_DISPATCH   # 1 para deshabilitar envíos async (ERP + email)
 | **Contraseña dispositivos** | SHA-256 de contraseña de 12 caracteres (opcional) |
 | **SSE en tiempo real** | Server-Sent Events para broadcast de cambios |
 | **Detección de duplicados** | Misma persona + tipo + día → idempotente |
-| **Control de acceso a datos** | Personas/turnos/asistencias filtrados por empresa y rol |
+| **Control de acceso a datos** | Personas/turnos/asistencias filtrados por empresa, rol y `activo=true` |

@@ -1,11 +1,23 @@
 import json
 import traceback
-from datetime import datetime
+from datetime import datetime, timezone
+
+try:
+    from zoneinfo import ZoneInfo
+except ImportError:
+    ZoneInfo = None
 
 import requests
 from flask import Blueprint, jsonify, request
 from database import get_connection, resolver_rut_a_id
 from routes.auth import requiere_rol, token_opcional
+
+CHILE_TZ = timezone.utc  # fallback
+if ZoneInfo:
+    try:
+        CHILE_TZ = ZoneInfo('America/Santiago')
+    except Exception:
+        pass
 
 erp_bp = Blueprint('erp', __name__)
 
@@ -48,6 +60,16 @@ def _enviar_a_webhook(webhook_url, headers_json, payload, timeout=10):
         return {'ok': False, 'error': str(e)}
 
 
+def _fmt_chile(dt):
+    if not dt:
+        return ''
+    if isinstance(dt, str):
+        return dt
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+    return dt.astimezone(CHILE_TZ).strftime('%Y-%m-%dT%H:%M:%S%z')
+
+
 def enviar_asistencia_a_erps(persona_id, nombre, tipo, metodo, fecha_hora, empresa_id):
     conn = get_connection()
     cur = conn.cursor()
@@ -74,8 +96,8 @@ def enviar_asistencia_a_erps(persona_id, nombre, tipo, metodo, fecha_hora, empre
         'nombre': nombre or '',
         'tipo': tipo or '',
         'metodo': metodo or '',
-        'fecha_hora': str(fecha_hora) if fecha_hora else '',
-        'timestamp': datetime.utcnow().isoformat()
+        'fecha_hora': _fmt_chile(fecha_hora),
+        'timestamp': datetime.now(CHILE_TZ).strftime('%Y-%m-%dT%H:%M:%S%z'),
     }
 
     resultados = []
@@ -254,7 +276,7 @@ def test_erp(erp_id):
         'nombre': 'Test Usuario',
         'tipo': 'entrada',
         'metodo': 'test',
-        'fecha_hora': datetime.utcnow().isoformat(),
+        'fecha_hora': datetime.now(CHILE_TZ).strftime('%Y-%m-%dT%H:%M:%S%z'),
     }
     transformed = _transformar_datos(payload, field_map_text)
     resultado = _enviar_a_webhook(webhook_url, headers_text, transformed)
@@ -325,7 +347,7 @@ def enviar_erp(erp_id):
             'nombre': nombre or '',
             'tipo': tipo or '',
             'metodo': metodo or '',
-            'fecha_hora': str(fecha_hora) if fecha_hora else '',
+            'fecha_hora': _fmt_chile(fecha_hora),
         }
         payload = _transformar_datos(datos, field_map_text)
         resultado = _enviar_a_webhook(webhook_url, headers_text, payload)

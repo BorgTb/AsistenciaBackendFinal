@@ -93,6 +93,10 @@ class TestRoutesPersonas:
         resp = client.delete('/api/personas/1',
             headers={'Authorization': f'Bearer {admin_token}'})
         assert resp.status_code == 200
+        data = resp.get_json()
+        assert data['ok'] is True
+        assert 'conservados' in data.get('mensaje', '')
+
         personas = client.get('/api/personas',
             headers={'Authorization': f'Bearer {admin_token}'})
         assert len(personas.get_json()) == 0
