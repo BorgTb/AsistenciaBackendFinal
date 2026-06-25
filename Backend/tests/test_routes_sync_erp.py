@@ -335,9 +335,8 @@ class TestRoutesDispositivos:
     def test_check_password_mac_inexistente(self, client):
         resp = client.get('/api/dispositivos/check-password',
             headers={'X-Device-MAC': 'ZZ:ZZ:ZZ:ZZ:ZZ:ZZ'})
-        # token_opcional auto-crea dispositivo si MAC no existe
-        assert resp.status_code == 200
-        assert resp.get_json()['pendiente'] is False
+        # MAC no existe -> 404
+        assert resp.status_code == 404
 
     def test_confirmar_password_exito(self, client, admin_token):
         dev_id = _enrolar_dispositivo(client, admin_token, mac='AA:BB:CC:DD:EE:20')
@@ -358,9 +357,8 @@ class TestRoutesDispositivos:
     def test_confirmar_password_mac_inexistente(self, client):
         resp = client.post('/api/dispositivos/confirmar-password',
             headers={'X-Device-MAC': 'ZZ:ZZ:ZZ:ZZ:ZZ:ZZ'})
-        # token_opcional auto-crea dispositivo si MAC no existe, luego UPDATE ok
-        assert resp.status_code == 200
-        assert resp.get_json()['ok'] is True
+        # MAC no existe -> 404
+        assert resp.status_code == 404
 
     def test_delete_dispositivo_exito_admin(self, client, admin_token):
         dev_id = _enrolar_dispositivo(client, admin_token)
@@ -486,7 +484,7 @@ class TestRoutesDispositivos:
     def test_check_password_dispositivo_no_encontrado(self, client):
         resp = client.get('/api/dispositivos/check-password',
             headers={'X-Device-MAC': 'ZZ:ZZ:ZZ:ZZ:ZZ:ZZ'})
-        assert resp.status_code == 200
+        assert resp.status_code == 404
 
     def test_confirmar_password_db_error(self, client, admin_token):
         from unittest.mock import patch, MagicMock

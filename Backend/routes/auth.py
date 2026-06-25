@@ -82,9 +82,10 @@ def token_opcional(fn):
                 try:
                     conn = get_connection()
                     cur = conn.cursor()
+                    clean_mac = device_mac.replace(':', '').upper()
                     cur.execute(
-                        "SELECT id, empresa_id FROM dispositivos WHERE REPLACE(mac_address, ':', '') = %s",
-                        (device_mac,)
+                        "SELECT id, empresa_id FROM dispositivos WHERE REPLACE(UPPER(mac_address), ':', '') = %s",
+                        (clean_mac,)
                     )
                     row = cur.fetchone()
                     if row:
