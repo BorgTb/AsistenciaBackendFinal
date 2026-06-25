@@ -13,6 +13,7 @@ import {
   deleteDispositivo,
   updateDispositivo,
   verificarDispositivo,
+  reasignarDispositivo,
   enviarErp,
   registrarRostro,
   agregarFotoRostro,
@@ -212,8 +213,11 @@ export function SasDashboard({ initialSection = 'dashboard' }: { initialSection?
   const [passwordForm, setPasswordForm] = useState({ passwordActual: '', passwordNueva: '', confirmacion: '' });
   const [generatedPin, setGeneratedPin] = useState('');
   const [deviceForm, setDeviceForm] = useState({ nombre: '', ip: '' });
+  const [deviceEmpresaId, setDeviceEmpresaId] = useState<number | ''>('');
   const [editingDeviceId, setEditingDeviceId] = useState<string | null>(null);
   const [editDeviceName, setEditDeviceName] = useState('');
+  const [reassigningDeviceId, setReassigningDeviceId] = useState<string | null>(null);
+  const [reassignEmpresaId, setReassignEmpresaId] = useState<number | ''>('');
   const [generatedDevicePassword, setGeneratedDevicePassword] = useState<string | null>(null);
   const [generatingPasswordFor, setGeneratingPasswordFor] = useState<string | null>(null);
   const [rostroPersonaId, setRostroPersonaId] = useState<string | null>(null);
@@ -334,7 +338,9 @@ export function SasDashboard({ initialSection = 'dashboard' }: { initialSection?
             tienePassword: (item as Record<string, unknown>).tiene_password as boolean,
             codigoEnrol: (item as Record<string, unknown>).codigo_enrol as string | null | undefined,
             passwordPendiente: (item as Record<string, unknown>).password_pendiente as boolean,
-            ultimoHeartbeat
+            ultimoHeartbeat,
+            empresa_id: (item as Record<string, unknown>).empresa_id as string | undefined,
+            empresa_nombre: (item as Record<string, unknown>).empresa_nombre as string | undefined,
           };
         }));
       }
@@ -455,7 +461,7 @@ export function SasDashboard({ initialSection = 'dashboard' }: { initialSection?
               : false;
             const existing = map.get(item.id);
             if (existing) {
-              map.set(item.id, { ...existing, online, estado: item.estado, ultimoHeartbeat });
+              map.set(item.id, { ...existing, online, estado: item.estado, ultimoHeartbeat, empresa_id: (item as Record<string, unknown>).empresa_id as string | undefined, empresa_nombre: (item as Record<string, unknown>).empresa_nombre as string | undefined });
             } else {
               map.set(item.id, {
                 id: item.id,
@@ -469,6 +475,8 @@ export function SasDashboard({ initialSection = 'dashboard' }: { initialSection?
                 tienePassword: (item as Record<string, unknown>).tiene_password as boolean,
                 passwordPendiente: (item as Record<string, unknown>).password_pendiente as boolean,
                 ultimoHeartbeat,
+                empresa_id: (item as Record<string, unknown>).empresa_id as string | undefined,
+                empresa_nombre: (item as Record<string, unknown>).empresa_nombre as string | undefined,
               });
             }
           }
@@ -524,6 +532,7 @@ export function SasDashboard({ initialSection = 'dashboard' }: { initialSection?
     if (nextModal === 'dispositivo') {
       setGeneratedPin('');
       setGeneratedDevicePassword('');
+      setDeviceEmpresaId('');
     }
     if (nextModal === 'empresa') {
       setEmpresaUserMode('new');
@@ -536,6 +545,7 @@ export function SasDashboard({ initialSection = 'dashboard' }: { initialSection?
     setModal(null);
     setFormError('');
     setDeviceForm({ nombre: '', ip: '' });
+    setDeviceEmpresaId('');
     setGeneratedPin('');
     setGeneratedDevicePassword('');
     setEditingUsuario(null);
@@ -1187,10 +1197,18 @@ export function SasDashboard({ initialSection = 'dashboard' }: { initialSection?
   async function handleGenerarPin() {
     setFormError('');
     const nombre = deviceForm.nombre.trim() || 'Nuevo dispositivo';
-    const result = await generarPinEnrolamiento(nombre);
+    if (user?.rol === 'admin' && !deviceEmpresaId) {
+      setFormError('Debes seleccionar una empresa');
+      return;
+    }
+    const empresaId = user?.rol === 'admin' ? (deviceEmpresaId || undefined) : undefined;
+    const result = await generarPinEnrolamiento(nombre, empresaId);
     if (result && 'ok' in result && result.ok) {
       setGeneratedPin(result.pin);
-      showToast('success', `PIN generado para "${nombre}"`);
+      const empresaNombre = user?.rol === 'admin' && empresaId
+        ? empresas.find((e) => e.id === empresaId)?.nombre || ''
+        : '';
+      showToast('success', `PIN generado para "${nombre}"${empresaNombre ? ` (${empresaNombre})` : ''}`);
     } else {
       const msg = result && 'error' in result ? String(result.error) : 'Error al generar PIN';
       setFormError(msg);
@@ -1224,6 +1242,34 @@ export function SasDashboard({ initialSection = 'dashboard' }: { initialSection?
       showToast('success', `Contraseña eliminada para "${nombre}"`);
     } else {
       const msg = result && 'error' in result ? String(result.error) : 'Error al eliminar contraseña';
+      showToast('error', msg);
+    }
+  }
+
+  async function handleReasignarDispositivo(dispositivoId: string, nombre: string) {
+    if (!reassignEmpresaId) return;
+    const empresaDestino = empresas.find((e) => e.id === reassignEmpresaId);
+    if (!empresaDestino) return;
+    if (!window.confirm(`¿Reasignar "${nombre}" a la empresa "${empresaDestino.nombre}"?`)) return;
+    try {
+      const result = await reasignarDispositivo(dispositivoId, reassignEmpresaId);
+      if (result && 'ok' in result && result.ok) {
+        setDevices((current) =>
+          current.map((d) =>
+            d.id === dispositivoId
+              ? { ...d, empresa_id: String(reassignEmpresaId), empresa_nombre: empresaDestino.nombre }
+              : d
+          )
+        );
+        showToast('success', result.mensaje || 'Dispositivo reasignado');
+        setReassigningDeviceId(null);
+        setReassignEmpresaId('');
+      } else {
+        const msg = result && 'error' in result ? String(result.error) : 'Error al reasignar';
+        showToast('error', msg);
+      }
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Error al reasignar';
       showToast('error', msg);
     }
   }
@@ -2079,7 +2125,14 @@ export function SasDashboard({ initialSection = 'dashboard' }: { initialSection?
                           <div className="status-row" style={{ gap: 10 }}>
                             <span className={`live-dot ${item.online ? 'online' : 'offline'}`} />
                             <div>
-                              <div className="device-name">{item.nombre}</div>
+                              <div className="device-name">
+                                {item.nombre}
+                                {user?.rol === 'admin' && item.empresa_nombre && (
+                                  <span className="badge info" style={{ marginLeft: 8, fontSize: '0.7rem', padding: '1px 8px', verticalAlign: 'middle' }}>
+                                    {item.empresa_nombre}
+                                  </span>
+                                )}
+                              </div>
                               {item.ip && item.ip !== '—' ? (
                                 <>
                                   <a
@@ -2215,6 +2268,29 @@ export function SasDashboard({ initialSection = 'dashboard' }: { initialSection?
                     >
                       Reconectar WiFi
                     </button>
+                    {user?.rol === 'admin' && (
+                      reassigningDeviceId === item.id ? (
+                        <div className="status-row" style={{ gap: 8, marginTop: 8 }}>
+                          <select
+                            className="input"
+                            value={reassignEmpresaId}
+                            onChange={(e) => setReassignEmpresaId(e.target.value ? Number(e.target.value) : '')}
+                            style={{ flex: 1, fontSize: '0.8rem' }}
+                          >
+                            <option value="">Seleccionar empresa...</option>
+                            {empresas.map((emp) => (
+                              <option key={emp.id} value={emp.id}>{emp.nombre}</option>
+                            ))}
+                          </select>
+                          <button className="btn btn-primary" type="button" disabled={!reassignEmpresaId} onClick={() => handleReasignarDispositivo(item.id, item.nombre)}>Guardar</button>
+                          <button className="btn btn-secondary" type="button" onClick={() => { setReassigningDeviceId(null); setReassignEmpresaId(''); }}>Cancelar</button>
+                        </div>
+                      ) : (
+                        <button className="btn btn-secondary" type="button" onClick={() => { setReassigningDeviceId(item.id); setReassignEmpresaId(item.empresa_id ? Number(item.empresa_id) : ''); }}>
+                          Reasignar empresa
+                        </button>
+                      )
+                    )}
                     <button className="btn btn-danger" type="button" onClick={() => handleDeleteDispositivo(item.id, item.nombre)}>Eliminar</button>
                   </div>
                 </article>
@@ -2781,41 +2857,43 @@ export function SasDashboard({ initialSection = 'dashboard' }: { initialSection?
 
             <div className="table-card">
               <div className="table-wrap">
-                <table>
-                  <thead>
-                    <tr>
-                      <th>ID</th>
-                      <th>Nombre</th>
-                      <th>RUT</th>
-                      <th>Email</th>
-                      <th>Teléfono</th>
-                      <th>Creada</th>
-                      <th>Acciones</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {empresas.map((item) => (
-                      <tr key={item.id}>
-                        <td className="mono muted">{item.id}</td>
-                        <td>{item.nombre}</td>
-                        <td className="mono">{item.rut_empresa || '—'}</td>
-                        <td className="mono muted">{item.email_contacto || '—'}</td>
-                        <td>{item.telefono || '—'}</td>
-                        <td className="mono muted">{item.created_at ? formatDate(item.created_at) : '—'}</td>
-                        <td>
-                          {item.id !== 1 && (
-                            <button className="btn btn-danger" type="button" onClick={() => handleDeleteEmpresa(item.id, item.nombre)}>
-                              Eliminar
-                            </button>
-                          )}
-                        </td>
-                      </tr>
-                    ))}
-                    {empresas.length === 0 && (
-                      <tr>
-                        <td colSpan={7} className="empty-state">No hay empresas registradas.</td>
-                      </tr>
-                    )}
+                    <table>
+                      <thead>
+                        <tr>
+                          <th>ID</th>
+                          <th>Nombre</th>
+                          <th>RUT</th>
+                          <th>Email</th>
+                          <th>Teléfono</th>
+                          <th>Dispositivos</th>
+                          <th>Creada</th>
+                          <th>Acciones</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {empresas.map((item) => (
+                          <tr key={item.id}>
+                            <td className="mono muted">{item.id}</td>
+                            <td>{item.nombre}</td>
+                            <td className="mono">{item.rut_empresa || '—'}</td>
+                            <td className="mono muted">{item.email_contacto || '—'}</td>
+                            <td>{item.telefono || '—'}</td>
+                            <td className="mono" style={{ textAlign: 'center' }}>{item.dispositivos_count ?? '—'}</td>
+                            <td className="mono muted">{item.created_at ? formatDate(item.created_at) : '—'}</td>
+                            <td>
+                              {item.id !== 1 && (
+                                <button className="btn btn-danger" type="button" onClick={() => handleDeleteEmpresa(item.id, item.nombre)}>
+                                  Eliminar
+                                </button>
+                              )}
+                            </td>
+                          </tr>
+                        ))}
+                        {empresas.length === 0 && (
+                          <tr>
+                            <td colSpan={8} className="empty-state">No hay empresas registradas.</td>
+                          </tr>
+                        )}
                   </tbody>
                 </table>
               </div>
@@ -3101,6 +3179,20 @@ export function SasDashboard({ initialSection = 'dashboard' }: { initialSection?
                   onChange={(e) => setDeviceForm((c) => ({ ...c, nombre: e.target.value }))}
                 />
               </div>
+              {user?.rol === 'admin' && (
+                <div className="field">
+                  <label>Empresa *</label>
+                  <select
+                    value={deviceEmpresaId}
+                    onChange={(e) => setDeviceEmpresaId(e.target.value ? Number(e.target.value) : '')}
+                  >
+                    <option value="">Seleccionar empresa...</option>
+                    {empresas.map((emp) => (
+                      <option key={emp.id} value={emp.id}>{emp.nombre}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
               {generatedPin && (
                 <div className="card" style={{ marginTop: 16, borderColor: 'var(--primary)', borderLeft: '4px solid var(--primary)', padding: 16 }}>
                   <div className="status-row">

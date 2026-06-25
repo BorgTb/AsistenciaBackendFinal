@@ -156,6 +156,50 @@ def update_dispositivo(dispositivo_id):
         conn.close()
 
 
+@dispositivos_bp.route('/api/dispositivos/<dispositivo_id>/reasignar', methods=['PUT'])
+@requiere_rol('admin')
+def reasignar_dispositivo(dispositivo_id):
+    """Admin-only: reasigna un dispositivo a otra empresa."""
+    data = request.json or {}
+    nueva_empresa_id = data.get('empresa_id')
+    if not nueva_empresa_id:
+        return jsonify({'error': 'empresa_id requerido'}), 400
+
+    conn = get_connection()
+    cur = conn.cursor()
+    try:
+        cur.execute("SELECT id, nombre, empresa_id, e.nombre as empresa_nombre FROM dispositivos d JOIN empresas e ON e.id = d.empresa_id WHERE d.id::text = %s", (str(dispositivo_id),))
+        row = cur.fetchone()
+        if not row:
+            return jsonify({'error': 'Dispositivo no encontrado'}), 404
+
+        _, nombre, empresa_actual, empresa_actual_nombre = row
+
+        cur.execute("SELECT id, nombre FROM empresas WHERE id = %s", (nueva_empresa_id,))
+        empresa_destino = cur.fetchone()
+        if not empresa_destino:
+            return jsonify({'error': 'Empresa destino no encontrada'}), 404
+
+        cur.execute(
+            "UPDATE dispositivos SET empresa_id = %s WHERE id::text = %s",
+            (nueva_empresa_id, str(dispositivo_id))
+        )
+        conn.commit()
+        return jsonify({
+            'ok': True,
+            'mensaje': f'Dispositivo "{nombre}" reasignado de "{empresa_actual_nombre}" a "{empresa_destino[1]}"',
+            'dispositivo_id': dispositivo_id,
+            'empresa_id_anterior': empresa_actual,
+            'empresa_id_nueva': nueva_empresa_id
+        })
+    except Exception as e:
+        conn.rollback()
+        return jsonify({'error': str(e)}), 500
+    finally:
+        cur.close()
+        conn.close()
+
+
 @dispositivos_bp.route('/api/dispositivos/verificar', methods=['POST'])
 @requiere_rol('admin', 'empleador')
 def verificar_dispositivo():

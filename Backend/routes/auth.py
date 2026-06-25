@@ -505,7 +505,11 @@ def listar_empresas():
     conn = get_connection()
     cur = conn.cursor()
     try:
-        cur.execute("SELECT id, nombre, rut_empresa, email_contacto, telefono, direccion, created_at FROM empresas ORDER BY id")
+        cur.execute("""
+            SELECT e.id, e.nombre, e.rut_empresa, e.email_contacto, e.telefono, e.direccion, e.created_at,
+                   (SELECT COUNT(*) FROM dispositivos d WHERE d.empresa_id = e.id) as dispositivos_count
+            FROM empresas e ORDER BY e.id
+        """)
         rows = cur.fetchall()
         empresas = []
         for r in rows:
@@ -516,7 +520,8 @@ def listar_empresas():
                 'email_contacto': r[3],
                 'telefono': r[4],
                 'direccion': r[5],
-                'created_at': str(r[6]) if r[6] else ''
+                'created_at': str(r[6]) if r[6] else '',
+                'dispositivos_count': r[7]
             })
         return jsonify(empresas)
     finally:
@@ -1050,11 +1055,18 @@ def resolver_solicitud_eliminacion(solicitud_id):
 @auth_bp.route('/api/auth/dispositivos/generar-pin', methods=['POST'])
 @requiere_rol('admin', 'empleador')
 def generar_pin_enrolamiento():
-    empresa_id = request.empresa_id
-    if not empresa_id:
-        return jsonify({'error': 'No autorizado: empresa no identificada'}), 401
     data = request.json or {}
     nombre = (data.get('nombre') or 'Nuevo dispositivo').strip()
+
+    # Admin puede especificar la empresa; empleador usa su propia empresa
+    if request.user_rol == 'admin':
+        empresa_id = data.get('empresa_id') or request.empresa_id
+    else:
+        empresa_id = request.empresa_id
+
+    if not empresa_id:
+        return jsonify({'error': 'No autorizado: empresa no identificada'}), 401
+
     pin = ''.join(secrets.choice(string.ascii_uppercase + string.digits) for _ in range(8))
 
     conn = get_connection()

@@ -1,0 +1,47 @@
+services:
+  odoo-postgres:
+    image: postgres:15
+    container_name: sas_odoo_postgres
+    environment:
+      POSTGRES_USER: odoo
+      POSTGRES_PASSWORD: odoo
+      POSTGRES_DB: odoo
+    volumes:
+      - odoo_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U odoo"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+    networks:
+      - teleasist_net
+
+  odoo:
+    image: odoo:17
+    container_name: sas_odoo
+    depends_on:
+      odoo-postgres:
+        condition: service_healthy
+    environment:
+      HOST: odoo-postgres
+      USER: odoo
+      PASSWORD: odoo
+    ports:
+      - "8069:8069"
+    volumes:
+      - odoo_data:/var/lib/odoo
+      - ../odoo_addons:/mnt/extra-addons:ro
+      - ./config:/etc/odoo:ro
+    restart: unless-stopped
+    networks:
+      - teleasist_net
+
+volumes:
+  odoo_postgres_data:
+  odoo_data:
+
+networks:
+  teleasist_net:
+    external: true
+    name: teleasist_network

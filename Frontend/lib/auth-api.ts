@@ -100,16 +100,26 @@ export async function changePassword(passwordActual: string, passwordNueva: stri
   });
 }
 
-export async function generarPinEnrolamiento(nombre?: string) {
+export async function generarPinEnrolamiento(nombre?: string, empresaId?: number) {
+  const body: Record<string, unknown> = {};
+  if (nombre) body.nombre = nombre;
+  if (empresaId) body.empresa_id = empresaId;
   return request<{ ok: boolean; pin: string; dispositivo_id: number }>('/api/auth/dispositivos/generar-pin', {
     method: 'POST',
-    body: nombre ? JSON.stringify({ nombre }) : undefined
+    body: JSON.stringify(body)
   });
 }
 
 export async function deleteDispositivo(dispositivoId: string) {
   return request<{ ok: boolean; mensaje: string }>(`/api/dispositivos/${dispositivoId}`, {
     method: 'DELETE'
+  });
+}
+
+export async function reasignarDispositivo(dispositivoId: string, empresaId: number) {
+  return request<{ ok: boolean; mensaje: string; empresa_id_anterior?: number; empresa_id_nueva?: number }>(`/api/dispositivos/${dispositivoId}/reasignar`, {
+    method: 'PUT',
+    body: JSON.stringify({ empresa_id: empresaId })
   });
 }
 
@@ -204,6 +214,7 @@ export interface Empresa {
   telefono: string;
   direccion: string;
   created_at: string;
+  dispositivos_count?: number;
 }
 
 export async function getEmpresas() {
