@@ -883,18 +883,54 @@ def enrolar_dispositivo():
                 )
 
         cur.execute(
-            "UPDATE personas SET empresa_id = %s WHERE dispositivo_origen_id = %s AND empresa_id IS NULL",
-            (empresa_id, target_id)
+            "SELECT id, rut FROM personas WHERE dispositivo_origen_id = %s AND empresa_id IS NULL",
+            (target_id,)
         )
-        migradas = cur.rowcount
+        huerfanas = cur.fetchall()
+        migradas = 0
+        duplicados = 0
+
+        for pid, rut in huerfanas:
+            if rut:
+                cur.execute(
+                    "SELECT id FROM personas WHERE rut = %s AND empresa_id = %s AND id != %s",
+                    (rut, empresa_id, pid)
+                )
+                existente = cur.fetchone()
+                if existente:
+                    cur.execute(
+                        "INSERT INTO duplicados_pendientes (empresa_id, persona_mantener_id, persona_eliminar_id, tipo_deteccion) VALUES (%s, %s, %s, 'rut')",
+                        (empresa_id, existente[0], pid)
+                    )
+                    duplicados += 1
+                    continue
+            cur.execute("UPDATE personas SET empresa_id = %s WHERE id = %s", (empresa_id, pid))
+            migradas += 1
 
         conn.commit()
 
-        mensaje = f'Dispositivo enrolado'
-        if migradas > 0:
-            mensaje += f' ({migradas} personas migradas a la empresa)'
+        # Notificar al dispositivo via MQTT para que refresque sus datos locales
+        if mac:
+            try:
+                from mqtt_handler import enviar_comando_dispositivo
+                enviar_comando_dispositivo(mac.replace(":", ""), 'sync')
+            except Exception:
+                pass
 
-        return jsonify({'ok': True, 'dispositivo_id': device_id, 'empresa_id': empresa_id, 'mensaje': mensaje, 'personas_migradas': migradas})
+        partes = ['Dispositivo enrolado']
+        if migradas > 0:
+            partes.append(f'{migradas} personas migradas a la empresa')
+        if duplicados > 0:
+            partes.append(f'{duplicados} duplicados pendientes de revision')
+
+        return jsonify({
+            'ok': True,
+            'dispositivo_id': device_id,
+            'empresa_id': empresa_id,
+            'mensaje': '. '.join(partes),
+            'personas_migradas': migradas,
+            'duplicados_pendientes': duplicados
+        })
     except Exception as e:
         conn.rollback()
         return jsonify({'error': str(e)}), 500

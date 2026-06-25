@@ -41,20 +41,23 @@ import {
   getAsignaciones,
   getAsistencias,
   getDispositivos,
+  getDuplicadosPendientes,
   getErp,
   getLogs,
   getPersonas,
   getPersonaById,
   getTurnos,
+  mergePersonas,
   registrarConsentimiento,
   eliminarDatosBiometricos,
+  syncDevices,
   testErp,
 
 } from '@/lib/api';
-import type { Asignacion, Asistencia, DeviceStatus, ErpIntegration, LogEntry, Persona, Turno } from '@/lib/types';
+import type { Asignacion, Asistencia, DeviceStatus, DuplicadoPendiente, ErpIntegration, LogEntry, Persona, Turno } from '@/lib/types';
 import { useDeviceWebSocket } from '@/lib/useDeviceWebSocket';
 
-type Section = 'dashboard' | 'asistencias' | 'personas' | 'turnos' | 'asignaciones' | 'dispositivos' | 'erp' | 'logs' | 'usuarios' | 'empresas';
+type Section = 'dashboard' | 'asistencias' | 'personas' | 'turnos' | 'asignaciones' | 'dispositivos' | 'erp' | 'logs' | 'usuarios' | 'empresas' | 'duplicados';
 type ToastState = { kind: 'success' | 'error'; message: string } | null;
 type ErpType = 'generic' | 'odoo' | 'defontana' | 'buk' | 'sap';
 type ErpFormState = {
@@ -78,7 +81,8 @@ const sectionPaths: Record<Section, string> = {
   erp: '/erp',
   logs: '/logs',
   usuarios: '/usuarios',
-  empresas: '/empresas'
+  empresas: '/empresas',
+  duplicados: '/duplicados'
 };
 
 const dayCodes = ['L', 'M', 'X', 'J', 'V', 'S', 'D'] as const;
@@ -201,6 +205,8 @@ export function SasDashboard({ initialSection = 'dashboard' }: { initialSection?
   const [deviceForm, setDeviceForm] = useState({ nombre: '', ip: '' });
   const [editingDeviceId, setEditingDeviceId] = useState<string | null>(null);
   const [editDeviceName, setEditDeviceName] = useState('');
+  const [editingDeviceColacion, setEditingDeviceColacion] = useState<string | null>(null);
+  const [editDeviceColacion, setEditDeviceColacion] = useState({ con_colacion: false, colacion_inicio: '13:00', colacion_fin: '14:00' });
   const [generatedDevicePassword, setGeneratedDevicePassword] = useState<string | null>(null);
   const [generatingPasswordFor, setGeneratingPasswordFor] = useState<string | null>(null);
   const [rostroPersonaId, setRostroPersonaId] = useState<string | null>(null);
@@ -225,6 +231,8 @@ export function SasDashboard({ initialSection = 'dashboard' }: { initialSection?
   const [personaForm, setPersonaForm] = useState({ nombre: '', rut: '', email: '', consentimiento: false });
   const [turnoForm, setTurnoForm] = useState({ nombre: '', inicio: '08:00', fin: '17:00', con_colacion: false, colacion_inicio: '13:00', colacion_fin: '14:00' });
   const [asignacionForm, setAsignacionForm] = useState({ rut: '', turnoId: '' });
+  const [duplicados, setDuplicados] = useState<DuplicadoPendiente[]>([]);
+  const [mergingPersonas, setMergingPersonas] = useState(false);
   const [erpForm, setErpForm] = useState<ErpFormState>({
     nombre: 'Nueva integración',
     tipo: 'generic',
@@ -241,8 +249,8 @@ export function SasDashboard({ initialSection = 'dashboard' }: { initialSection?
 
   const allowedSections: Section[] = useMemo(() => {
     if (!user) return [];
-    if (user.rol === 'admin') return ['dashboard', 'asistencias', 'personas', 'turnos', 'asignaciones', 'dispositivos', 'erp', 'logs', 'usuarios', 'empresas'];
-    if (user.rol === 'empleador') return ['dashboard', 'asistencias', 'personas', 'turnos', 'asignaciones', 'dispositivos', 'erp', 'logs', 'usuarios'];
+    if (user.rol === 'admin') return ['dashboard', 'asistencias', 'personas', 'turnos', 'asignaciones', 'dispositivos', 'erp', 'logs', 'usuarios', 'empresas', 'duplicados'];
+    if (user.rol === 'empleador') return ['dashboard', 'asistencias', 'personas', 'turnos', 'asignaciones', 'dispositivos', 'erp', 'logs', 'usuarios', 'duplicados'];
     return ['asistencias', 'usuarios'];
   }, [user]);
 
@@ -267,8 +275,9 @@ export function SasDashboard({ initialSection = 'dashboard' }: { initialSection?
       const needsUsuarios = !isTrabajador && view === 'usuarios';
       const needsEmpresas = !isTrabajador && (view === 'empresas' || (view === 'usuarios' && user?.rol === 'admin'));
       const needsPersonaActual = isTrabajador && view === 'usuarios';
+      const needsDuplicados = !isTrabajador && (view === 'dashboard' || view === 'duplicados');
 
-      const [personasRes, turnosRes, asignacionesRes, asistenciasRes, devicesRes, erpRes, logsRes, usuariosRes, empresasRes, personaActualRes] = await Promise.all([
+      const [personasRes, turnosRes, asignacionesRes, asistenciasRes, devicesRes, erpRes, logsRes, usuariosRes, empresasRes, personaActualRes, duplicadosRes] = await Promise.all([
         needsPersonas ? getPersonas() : Promise.resolve(null),
         needsTurnos ? getTurnos() : Promise.resolve(null),
         needsAsignaciones ? getAsignaciones() : Promise.resolve(null),
@@ -278,7 +287,8 @@ export function SasDashboard({ initialSection = 'dashboard' }: { initialSection?
         needsLogs ? getLogs() : Promise.resolve(null),
         needsUsuarios ? getUsuarios() : Promise.resolve(null),
         needsEmpresas ? getEmpresas() : Promise.resolve(null),
-        needsPersonaActual && user?.persona_id ? getPersonaById(user.persona_id) : Promise.resolve(null)
+        needsPersonaActual && user?.persona_id ? getPersonaById(user.persona_id) : Promise.resolve(null),
+        needsDuplicados ? getDuplicadosPendientes() : Promise.resolve(null)
       ]);
 
       if (!alive) return;
@@ -307,7 +317,10 @@ export function SasDashboard({ initialSection = 'dashboard' }: { initialSection?
             tienePassword: (item as Record<string, unknown>).tiene_password as boolean,
             codigoEnrol: (item as Record<string, unknown>).codigo_enrol as string | null | undefined,
             passwordPendiente: (item as Record<string, unknown>).password_pendiente as boolean,
-            ultimoHeartbeat
+            ultimoHeartbeat,
+            con_colacion: (item as Record<string, unknown>).con_colacion as boolean,
+            colacion_inicio: (item as Record<string, unknown>).colacion_inicio as string | null | undefined,
+            colacion_fin: (item as Record<string, unknown>).colacion_fin as string | null | undefined
           };
         }));
       }
@@ -339,6 +352,7 @@ export function SasDashboard({ initialSection = 'dashboard' }: { initialSection?
         setPersonaActual(personaActualRes);
         setConsentimientoActivo(!!(personaActualRes as { encoding_facial: string | null }).encoding_facial);
       }
+      if (duplicadosRes) setDuplicados(duplicadosRes);
     }
 
     loadData(section);
@@ -562,6 +576,11 @@ export function SasDashboard({ initialSection = 'dashboard' }: { initialSection?
           };
         }));
       }
+    }
+
+    if (view === 'dashboard' || view === 'duplicados') {
+      const duplicadosRes = await getDuplicadosPendientes();
+      if (duplicadosRes) setDuplicados(duplicadosRes);
     }
 
     if (view === 'erp') {
@@ -866,14 +885,29 @@ export function SasDashboard({ initialSection = 'dashboard' }: { initialSection?
     showToast('success', 'CSV exportado');
   }
 
-  function handleSyncAll() {
-    refreshData();
-    showToast('success', 'Sincronización iniciada');
+  async function handleSyncAll() {
+    pushLog('info', 'Enviando comando de sincronizacion a dispositivos...');
+    const res = await syncDevices();
+    if (res && 'ok' in res && res.ok) {
+      pushLog('ok', `Sync remoto: ${res.mensaje}`);
+      showToast('success', res.mensaje);
+    } else {
+      pushLog('err', 'Error enviando sync a dispositivos');
+      showToast('error', (res as { error?: string })?.error || 'No se pudo enviar sync');
+    }
+    await refreshData();
   }
 
-  function handleDeviceSync(ip: string) {
-    pushLog('info', `Sincronización solicitada para ${ip}`);
-    showToast('success', `Sincronización iniciada para el dispositivo`);
+  async function handleDeviceSync(ip: string) {
+    pushLog('info', `Sincronización solicitada para dispositivo`);
+    const res = await syncDevices();
+    if (res && 'ok' in res && res.ok) {
+      pushLog('ok', res.mensaje);
+      showToast('success', res.mensaje);
+    } else {
+      pushLog('err', 'Error enviando comando de sincronización');
+      showToast('error', (res as { error?: string })?.error || 'Error');
+    }
   }
 
   async function handleReiniciarDispositivo(id: string, nombre: string) {
@@ -1073,7 +1107,7 @@ export function SasDashboard({ initialSection = 'dashboard' }: { initialSection?
       showToast('error', 'El nombre no puede estar vacío');
       return;
     }
-    const result = await updateDispositivo(dispositivoId, nombre);
+    const result = await updateDispositivo(dispositivoId, { nombre });
     if (result && 'ok' in result && result.ok) {
       setDevices((current) => current.map((d) => (d.id === dispositivoId ? { ...d, nombre } : d)));
       pushLog('ok', `Dispositivo renombrado: ${nombre}`);
@@ -1082,6 +1116,28 @@ export function SasDashboard({ initialSection = 'dashboard' }: { initialSection?
       return;
     }
     showToast('error', 'No se pudo actualizar el nombre');
+  }
+
+  async function handleSaveDeviceColacion(dispositivoId: string) {
+    const result = await updateDispositivo(dispositivoId, {
+      con_colacion: editDeviceColacion.con_colacion,
+      colacion_inicio: editDeviceColacion.con_colacion ? editDeviceColacion.colacion_inicio : null,
+      colacion_fin: editDeviceColacion.con_colacion ? editDeviceColacion.colacion_fin : null
+    });
+    if (result && 'ok' in result && result.ok) {
+      setDevices((current) =>
+        current.map((d) =>
+          d.id === dispositivoId
+            ? { ...d, con_colacion: editDeviceColacion.con_colacion, colacion_inicio: editDeviceColacion.con_colacion ? editDeviceColacion.colacion_inicio : null, colacion_fin: editDeviceColacion.con_colacion ? editDeviceColacion.colacion_fin : null }
+            : d
+        )
+      );
+      pushLog('ok', `Colación del dispositivo actualizada`);
+      showToast('success', 'Configuración de colación actualizada');
+      setEditingDeviceColacion(null);
+      return;
+    }
+    showToast('error', 'No se pudo actualizar la configuración de colación');
   }
 
   async function handleCreateEmpresa() {
@@ -1308,6 +1364,7 @@ export function SasDashboard({ initialSection = 'dashboard' }: { initialSection?
     turnos: 'Turnos',
     asignaciones: 'Asignaciones',
     dispositivos: 'Dispositivos',
+    duplicados: 'Duplicados',
     erp: 'Integraciones',
     logs: 'Registro de actividad',
     usuarios: 'Usuarios',
@@ -1321,6 +1378,7 @@ export function SasDashboard({ initialSection = 'dashboard' }: { initialSection?
     turnos: 'Define los horarios y jornadas de trabajo.',
     asignaciones: 'Asigna turnos a las personas de la organización.',
     dispositivos: 'Supervisa y administra los dispositivos de registro.',
+    duplicados: 'Revisa y resuelve conflictos de personas duplicadas en el sistema.',
     erp: 'Conecta el sistema con tus plataformas externas.',
     logs: 'Revisa el historial de eventos y operaciones del sistema.',
     usuarios: 'Administra las cuentas de acceso y sus permisos.',
@@ -1379,6 +1437,9 @@ export function SasDashboard({ initialSection = 'dashboard' }: { initialSection?
             )}
             <SectionButton active={section === 'dispositivos'} href={sectionPaths.dispositivos} onClick={() => setSidebarOpen(false)}>
               <span>Dispositivos</span>
+            </SectionButton>
+            <SectionButton active={section === 'duplicados'} href={sectionPaths.duplicados} onClick={() => setSidebarOpen(false)}>
+              <span>Duplicados {duplicados.length > 0 ? <span className="badge danger" style={{ marginLeft: 6, fontSize: '0.7rem', padding: '1px 6px' }}>{duplicados.length}</span> : null}</span>
             </SectionButton>
             <SectionButton active={section === 'erp'} href={sectionPaths.erp} onClick={() => setSidebarOpen(false)}>
               <span>ERP</span>
@@ -1982,6 +2043,64 @@ export function SasDashboard({ initialSection = 'dashboard' }: { initialSection?
                     </div>
                   </div>
 
+                  <div className="card" style={{ marginTop: 12, padding: '10px 14px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                      <span className="muted" style={{ fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Colación</span>
+                      {(user?.rol === 'admin' || user?.rol === 'empleador') && (
+                        <button className="btn btn-secondary" type="button" style={{ fontSize: '0.7rem', padding: '2px 10px' }}
+                          onClick={() => {
+                            if (editingDeviceColacion === item.id) {
+                              setEditingDeviceColacion(null);
+                            } else {
+                              setEditingDeviceColacion(item.id);
+                              setEditDeviceColacion({
+                                con_colacion: item.con_colacion ?? false,
+                                colacion_inicio: item.colacion_inicio ?? '13:00',
+                                colacion_fin: item.colacion_fin ?? '14:00'
+                              });
+                            }
+                          }}>
+                          {editingDeviceColacion === item.id ? 'Cancelar' : item.con_colacion ? 'Editar' : 'Configurar'}
+                        </button>
+                      )}
+                    </div>
+                    {editingDeviceColacion === item.id ? (
+                      <div style={{ marginTop: 8 }}>
+                        <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: '0.85rem' }}>
+                          <input type="checkbox" checked={editDeviceColacion.con_colacion}
+                            onChange={(event) => setEditDeviceColacion((c) => ({ ...c, con_colacion: event.target.checked }))} />
+                          ¿Tiene colación?
+                        </label>
+                        {editDeviceColacion.con_colacion && (
+                          <div className="form-row" style={{ marginTop: 8 }}>
+                            <div className="field" style={{ flex: 1 }}>
+                              <label style={{ fontSize: '0.75rem' }}>Inicio</label>
+                              <input type="time" value={editDeviceColacion.colacion_inicio}
+                                onChange={(event) => setEditDeviceColacion((c) => ({ ...c, colacion_inicio: event.target.value }))}
+                                style={{ fontSize: '0.85rem' }} />
+                            </div>
+                            <div className="field" style={{ flex: 1 }}>
+                              <label style={{ fontSize: '0.75rem' }}>Fin</label>
+                              <input type="time" value={editDeviceColacion.colacion_fin}
+                                onChange={(event) => setEditDeviceColacion((c) => ({ ...c, colacion_fin: event.target.value }))}
+                                style={{ fontSize: '0.85rem' }} />
+                            </div>
+                          </div>
+                        )}
+                        <button className="btn btn-primary" type="button" style={{ fontSize: '0.75rem', padding: '4px 14px', marginTop: 8 }}
+                          onClick={() => handleSaveDeviceColacion(item.id)}>
+                          Guardar
+                        </button>
+                      </div>
+                    ) : (
+                      <div style={{ marginTop: 6, fontSize: '0.85rem', color: 'var(--muted)' }}>
+                        {item.con_colacion
+                          ? `${item.colacion_inicio ?? '—'} a ${item.colacion_fin ?? '—'}`
+                          : 'Sin colación'}
+                      </div>
+                    )}
+                  </div>
+
                   <div className="device-actions">
                     <button className="btn btn-secondary" type="button" onClick={() => { setEditingDeviceId(item.id); setEditDeviceName(item.nombre); }}>Renombrar</button>
                     {item.ip && item.ip !== '—' && (
@@ -2024,6 +2143,99 @@ export function SasDashboard({ initialSection = 'dashboard' }: { initialSection?
               ))}
                   {dashboardDevices.length === 0 ? <div className="empty-state">No hay dispositivos registrados.</div> : null}
             </div>
+          </section>
+        )}
+
+        {section === 'duplicados' && (
+          <section className="panel section">
+            <div className="section-head">
+              <div>
+                <h2 className="section-title">Duplicados pendientes</h2>
+                <p className="section-subtitle">Se detectaron personas con el mismo RUT durante el enrolamiento del dispositivo. Selecciona cuál conservar y cuál eliminar para fusionar sus datos biométricos.</p>
+              </div>
+              <button className="btn btn-secondary" type="button" onClick={() => refreshSection('duplicados')}>Actualizar</button>
+            </div>
+
+            {duplicados.length === 0 ? (
+              <div className="card" style={{ padding: 24, textAlign: 'center' }}>
+                <div style={{ fontSize: '2rem', marginBottom: 8 }}>✓</div>
+                <div style={{ fontWeight: 600 }}>No hay duplicados pendientes</div>
+                <div className="muted" style={{ marginTop: 4 }}>Todos los registros están consolidados.</div>
+              </div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+                {duplicados.map((dup) => (
+                  <div key={dup.id} className="card" style={{ padding: 24 }}>
+                    <div style={{ display: 'flex', gap: 20, flexWrap: 'wrap' }}>
+                      {/* Persona a mantener */}
+                      <div style={{ flex: 1, minWidth: 250, padding: 16, borderRadius: 'var(--radius-md)', background: '#f0fdf4', border: '2px solid #86efac' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                          <Badge tone="success">Conservar (existente)</Badge>
+                        </div>
+                        <div style={{ fontWeight: 600, fontSize: '1.1rem' }}>{dup.nombre_mantener}</div>
+                        <div className="mono muted" style={{ marginTop: 4 }}>RUT: {dup.rut_mantener}</div>
+                        <div className="muted" style={{ marginTop: 2, fontSize: '0.82rem' }}>ID: {dup.persona_mantener_id}</div>
+                        <div className="muted" style={{ marginTop: 2, fontSize: '0.82rem' }}>Tipo: {dup.tipo_deteccion === 'rut' ? 'Mismo RUT' : 'Mismo rostro'}</div>
+                        <button
+                          className="btn btn-primary"
+                          type="button"
+                          style={{ marginTop: 16 }}
+                          disabled={mergingPersonas}
+                          onClick={async () => {
+                            setMergingPersonas(true);
+                            const res = await mergePersonas(dup.persona_mantener_id, dup.persona_eliminar_id);
+                            setMergingPersonas(false);
+                            if (res && 'ok' in res && res.ok) {
+                              showToast('success', res.mensaje);
+                              pushLog('ok', `Duplicado resuelto: se conservó ${dup.nombre_mantener} (ID ${dup.persona_mantener_id})`);
+                              refreshSection('duplicados');
+                            } else {
+                              showToast('error', 'Error al fusionar personas');
+                            }
+                          }}
+                        >
+                          {mergingPersonas ? 'Fusionando...' : 'Mantener esta'}
+                        </button>
+                      </div>
+
+                      {/* Flecha */}
+                      <div style={{ display: 'flex', alignItems: 'center', fontSize: '1.5rem', color: 'var(--muted)' }}>→</div>
+
+                      {/* Persona a eliminar */}
+                      <div style={{ flex: 1, minWidth: 250, padding: 16, borderRadius: 'var(--radius-md)', background: '#fef2f2', border: '2px solid #fca5a5' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                          <Badge tone="danger">Eliminar (huérfana)</Badge>
+                        </div>
+                        <div style={{ fontWeight: 600, fontSize: '1.1rem' }}>{dup.nombre_eliminar}</div>
+                        <div className="mono muted" style={{ marginTop: 4 }}>RUT: {dup.rut_eliminar}</div>
+                        <div className="muted" style={{ marginTop: 2, fontSize: '0.82rem' }}>ID: {dup.persona_eliminar_id}</div>
+                        <div className="muted" style={{ marginTop: 2, fontSize: '0.82rem' }}>Registrada desde el dispositivo</div>
+                        <button
+                          className="btn btn-primary"
+                          type="button"
+                          style={{ marginTop: 16 }}
+                          disabled={mergingPersonas}
+                          onClick={async () => {
+                            setMergingPersonas(true);
+                            const res = await mergePersonas(dup.persona_eliminar_id, dup.persona_mantener_id);
+                            setMergingPersonas(false);
+                            if (res && 'ok' in res && res.ok) {
+                              showToast('success', res.mensaje);
+                              pushLog('ok', `Duplicado resuelto: se conservó ${dup.nombre_eliminar} (ID ${dup.persona_eliminar_id})`);
+                              refreshSection('duplicados');
+                            } else {
+                              showToast('error', 'Error al fusionar personas');
+                            }
+                          }}
+                        >
+                          {mergingPersonas ? 'Fusionando...' : 'Mantener esta'}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </section>
         )}
 

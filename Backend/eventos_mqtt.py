@@ -8,7 +8,7 @@ def notificar_sincronizacion(empresa_id, tipo, accion, registro_id=None):
 
     Args:
         empresa_id: ID de la empresa
-        tipo: 'personas', 'turnos', 'asignaciones' o 'todas'
+        tipo: 'personas', 'turnos', 'asignaciones', 'asistencias' o 'todas'
         accion: 'crear', 'actualizar' o 'eliminar'
         registro_id: ID del registro que cambió
     """
@@ -32,6 +32,12 @@ def notificar_sincronizacion(empresa_id, tipo, accion, registro_id=None):
                 cur.execute(
                     "SELECT p.empresa_id FROM personas p "
                     "JOIN asignaciones a ON a.persona_id = p.id WHERE a.id = %s",
+                    (registro_id,)
+                )
+            elif tipo == 'asistencias':
+                cur.execute(
+                    "SELECT p.empresa_id FROM personas p "
+                    "JOIN asistencias a ON a.persona_id = p.id WHERE a.id = %s",
                     (registro_id,)
                 )
             row = cur.fetchone()

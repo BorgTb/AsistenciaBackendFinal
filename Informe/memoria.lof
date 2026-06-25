@@ -31,11 +31,11 @@
 \contentsline {figure}{\numberline {4.24}{\ignorespaces Diagrama entidad-relación de la base de datos (14 tablas).}}{68}{}%
 \contentsline {figure}{\numberline {4.25}{\ignorespaces Flujo MQTT pub/sub — tópicos, direcciones y QoS entre el ESP32-CAM, el broker Mosquitto y el backend.}}{69}{}%
 \contentsline {figure}{\numberline {4.26}{\ignorespaces Arquitectura de despliegue Docker: servicios, puertos, volúmenes y dependencias en la red \texttt {teleasist\_network}.}}{73}{}%
-\contentsline {figure}{\numberline {4.27}{\ignorespaces Diagrama de secuencia del enrolamiento biométrico completo.}}{77}{}%
-\contentsline {figure}{\numberline {4.28}{\ignorespaces Marcaje automático — centinela facial con identificación 1:N y push asíncrono a ERP.}}{79}{}%
-\contentsline {figure}{\numberline {4.29}{\ignorespaces Pipeline de cifrado biométrico}}{82}{}%
-\contentsline {figure}{\numberline {4.30}{\ignorespaces Diagrama de secuencia del login multi-empresa con JWT.}}{87}{}%
-\contentsline {figure}{\numberline {4.31}{\ignorespaces Diagrama de secuencia de la integración ERP — push asíncrono con field mapping.}}{99}{}%
-\contentsline {figure}{\numberline {4.32}{\ignorespaces Diagrama de actividad: sincronización bidireccional entre los modos online y offline del ESP32-CAM.}}{106}{}%
+\contentsline {figure}{\numberline {4.27}{\ignorespaces Diagrama de secuencia del enrolamiento biométrico completo.}}{78}{}%
+\contentsline {figure}{\numberline {4.28}{\ignorespaces Marcaje automático — centinela facial con identificación 1:N y push asíncrono a ERP.}}{80}{}%
+\contentsline {figure}{\numberline {4.29}{\ignorespaces Pipeline de cifrado biométrico}}{83}{}%
+\contentsline {figure}{\numberline {4.30}{\ignorespaces Diagrama de secuencia del login multi-empresa con JWT.}}{88}{}%
+\contentsline {figure}{\numberline {4.31}{\ignorespaces Diagrama de secuencia de la integración ERP — push asíncrono con field mapping.}}{100}{}%
+\contentsline {figure}{\numberline {4.32}{\ignorespaces Diagrama de actividad: sincronización bidireccional entre los modos online y offline del ESP32-CAM.}}{108}{}%
 \addvspace {10\p@ }
 \addvspace {10\p@ }

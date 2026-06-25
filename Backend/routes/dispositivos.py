@@ -25,7 +25,8 @@ def get_dispositivos():
                    d.ultimo_heartbeat, d.created_at, d.enrolado,
                    e.nombre as empresa_nombre,
                    d.password_hash, d.password_pendiente,
-                   d.codigo_enrol
+                   d.codigo_enrol,
+                   d.con_colacion, d.colacion_inicio, d.colacion_fin
             FROM dispositivos d
             JOIN empresas e ON e.id = d.empresa_id
             ORDER BY d.id
@@ -36,7 +37,8 @@ def get_dispositivos():
                    d.ultimo_heartbeat, d.created_at, d.enrolado,
                    e.nombre as empresa_nombre,
                    d.password_hash, d.password_pendiente,
-                   d.codigo_enrol
+                   d.codigo_enrol,
+                   d.con_colacion, d.colacion_inicio, d.colacion_fin
             FROM dispositivos d
             JOIN empresas e ON e.id = d.empresa_id
             WHERE d.empresa_id = %s
@@ -48,7 +50,8 @@ def get_dispositivos():
                    d.ultimo_heartbeat, d.created_at, d.enrolado,
                    e.nombre as empresa_nombre,
                    d.password_hash, d.password_pendiente,
-                   d.codigo_enrol
+                   d.codigo_enrol,
+                   d.con_colacion, d.colacion_inicio, d.colacion_fin
             FROM dispositivos d
             JOIN empresas e ON e.id = d.empresa_id
             ORDER BY d.id
@@ -72,7 +75,10 @@ def get_dispositivos():
             'empresa_nombre': r[9],
             'tiene_password': r[10] is not None,
             'password_pendiente': r[11] if len(r) > 11 else False,
-            'codigo_enrol': r[12] if len(r) > 12 else None
+            'codigo_enrol': r[12] if len(r) > 12 else None,
+            'con_colacion': r[13] if len(r) > 13 else False,
+            'colacion_inicio': str(r[14]) if len(r) > 14 and r[14] else None,
+            'colacion_fin': str(r[15]) if len(r) > 15 and r[15] else None
         }
         for r in rows
     ])
@@ -105,23 +111,45 @@ def delete_dispositivo(dispositivo_id):
 @requiere_rol('admin', 'empleador')
 def update_dispositivo(dispositivo_id):
     data = request.json or {}
-    nombre = (data.get('nombre') or '').strip()
-    if not nombre:
-        return jsonify({'error': 'Nombre requerido'}), 400
-
     conn = get_connection()
     cur = conn.cursor()
     try:
-        if request.user_rol == 'admin':
-            cur.execute(
-                "UPDATE dispositivos SET nombre = %s WHERE id::text = %s RETURNING id, nombre",
-                (nombre, str(dispositivo_id))
-            )
-        else:
-            cur.execute(
-                "UPDATE dispositivos SET nombre = %s WHERE id::text = %s AND empresa_id = %s RETURNING id, nombre",
-                (nombre, str(dispositivo_id), request.empresa_id)
-            )
+        updates = []
+        params = []
+
+        if 'nombre' in data:
+            nombre = (data['nombre'] or '').strip()
+            if not nombre:
+                return jsonify({'error': 'Nombre requerido'}), 400
+            updates.append("nombre = %s")
+            params.append(nombre)
+
+        if 'con_colacion' in data:
+            updates.append("con_colacion = %s")
+            params.append(data['con_colacion'])
+
+        if 'colacion_inicio' in data:
+            updates.append("colacion_inicio = %s")
+            params.append(data.get('colacion_inicio') or None)
+
+        if 'colacion_fin' in data:
+            updates.append("colacion_fin = %s")
+            params.append(data.get('colacion_fin') or None)
+
+        if not updates:
+            return jsonify({'error': 'Sin campos para actualizar'}), 400
+
+        where = "id::text = %s"
+        params.append(str(dispositivo_id))
+
+        if request.user_rol != 'admin':
+            where += " AND empresa_id = %s"
+            params.append(request.empresa_id)
+
+        cur.execute(
+            f"UPDATE dispositivos SET {', '.join(updates)} WHERE {where} RETURNING id, nombre",
+            params
+        )
         row = cur.fetchone()
         if not row:
             return jsonify({'error': 'Dispositivo no encontrado'}), 404
@@ -373,6 +401,51 @@ def reiniciar_dispositivo(dispositivo_id):
             return jsonify({'ok': True, 'mensaje': f'Comando de reinicio enviado a {nombre}'})
         else:
             return jsonify({'error': 'MQTT no disponible'}), 503
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@dispositivos_bp.route('/api/dispositivos/sync', methods=['POST'])
+@requiere_rol('admin', 'empleador')
+def sync_dispositivos():
+    empresa_id = request.empresa_id
+
+    conn = get_connection()
+    cur = conn.cursor()
+    try:
+        if request.user_rol == 'admin':
+            cur.execute(
+                "SELECT REPLACE(mac_address, ':', '') as mac, nombre FROM dispositivos WHERE enrolado = TRUE AND mac_address IS NOT NULL AND mac_address != ''"
+            )
+        elif empresa_id:
+            cur.execute(
+                "SELECT REPLACE(mac_address, ':', '') as mac, nombre FROM dispositivos WHERE empresa_id = %s AND enrolado = TRUE AND mac_address IS NOT NULL AND mac_address != ''",
+                (empresa_id,)
+            )
+        else:
+            return jsonify({'error': 'No autorizado'}), 401
+
+        dispositivos = cur.fetchall()
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+    finally:
+        cur.close()
+        conn.close()
+
+    if not dispositivos:
+        return jsonify({'ok': False, 'mensaje': 'No hay dispositivos enrolados'}), 200
+
+    try:
+        from mqtt_handler import enviar_comando_dispositivo
+        enviados = 0
+        for mac, nombre in dispositivos:
+            if enviar_comando_dispositivo(mac, 'sync'):
+                enviados += 1
+
+        return jsonify({
+            'ok': True,
+            'mensaje': f'Comando de sincronizacion enviado a {enviados}/{len(dispositivos)} dispositivo(s)'
+        })
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 

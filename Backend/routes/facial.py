@@ -101,11 +101,11 @@ def _resolver_persona_id(data):
 def _validar_calidad_imagen(img_path):
     img = cv2.imread(img_path, cv2.IMREAD_GRAYSCALE)
     if img is None:
-        return False, "No se pudo leer la imagen"
+        return False, "No se pudo leer la imagen", 0.0
     varianza = cv2.Laplacian(img, cv2.CV_64F).var()
     if varianza < UMBRAL_NITIDEZ:
-        return False, f"Imagen con baja nitidez ({varianza:.1f}), posible spoof o captura borrosa"
-    return True, ""
+        return False, f"Imagen con baja nitidez ({varianza:.1f}), posible spoof o captura borrosa", varianza
+    return True, "", varianza
 
 def decodificar_y_guardar_temporal(imagen_b64):
     img_bytes = base64.b64decode(imagen_b64)
@@ -162,7 +162,7 @@ def registrar_facial():
         return jsonify({'error': f'Error al guardar imagen: {str(e)}'}), 500
 
     try:
-        ok_calidad, msg_calidad = _validar_calidad_imagen(file_path)
+        ok_calidad, msg_calidad, quality_score = _validar_calidad_imagen(file_path)
         if not ok_calidad:
             if os.path.exists(file_path):
                 os.unlink(file_path)
@@ -171,34 +171,29 @@ def registrar_facial():
 
         nuevo_embedding = np.array(extraer_embedding(file_path))
 
-        conn = get_connection()
-        cur = conn.cursor()
-
-        cur.execute("""
-            SELECT ef.persona_id, ef.encoding, p.nombre
-            FROM encodings_faciales ef
-            JOIN personas p ON p.id = ef.persona_id
-        """)
-        registros_existentes = cur.fetchall()
-
-        for ex_pid, ex_enc, ex_nombre in registros_existentes:
-            try:
-                embedding_db = np.array(descifrar_embedding(ex_enc))
-                distancia = np.linalg.norm(embedding_db - nuevo_embedding)
-                if distancia < UMBRAL_DISTANCIA and str(ex_pid) != str(persona_id):
-                    cur.close()
-                    conn.close()
+        embeddings_dict = _obtener_embeddings()
+        persona_id_str = str(persona_id)
+        for pid, lista_embs in embeddings_dict.items():
+            for emb in lista_embs:
+                distancia = np.linalg.norm(nuevo_embedding - emb)
+                if distancia < UMBRAL_DISTANCIA and str(pid) != persona_id_str:
                     if os.path.exists(file_path):
                         os.unlink(file_path)
                     _log_biometrico(persona_id, None, 'registro', 'duplicado')
+                    conn_name = get_connection()
+                    cur_name = conn_name.cursor()
+                    cur_name.execute("SELECT nombre FROM personas WHERE id = %s", (pid,))
+                    row_name = cur_name.fetchone()
+                    ex_nombre = row_name[0] if row_name else "Desconocido"
+                    cur_name.close()
+                    conn_name.close()
                     return jsonify({
                         'error': 'Rostro ya registrado',
-                        'mensaje': f'Esta persona ya esta registrada como "{ex_nombre}" (ID: {ex_pid})'
+                        'mensaje': f'Esta persona ya esta registrada como "{ex_nombre}" (ID: {pid})'
                     }), 409
-            except Exception:
-                pass
 
-        quality_score = float(cv2.Laplacian(cv2.imread(file_path, cv2.IMREAD_GRAYSCALE), cv2.CV_64F).var())
+        conn = get_connection()
+        cur = conn.cursor()
         encoding_json = cifrar_embedding(nuevo_embedding.tolist())
         cur.execute(
             "INSERT INTO encodings_faciales (persona_id, encoding, quality_score) VALUES (%s, %s, %s)",
@@ -246,7 +241,7 @@ def agregar_foto():
     file_path = guardar_imagen_de_registro(persona_id, imagen_b64, suffix=f'_{ts}')
 
     try:
-        ok_calidad, msg_calidad = _validar_calidad_imagen(file_path)
+        ok_calidad, msg_calidad, quality_score = _validar_calidad_imagen(file_path)
         if not ok_calidad:
             if os.path.exists(file_path):
                 os.unlink(file_path)
@@ -254,7 +249,6 @@ def agregar_foto():
             return jsonify({'error': msg_calidad}), 400
 
         nuevo_embedding = np.array(extraer_embedding(file_path))
-        quality_score = float(cv2.Laplacian(cv2.imread(file_path, cv2.IMREAD_GRAYSCALE), cv2.CV_64F).var())
         encoding_json = cifrar_embedding(nuevo_embedding.tolist())
 
         conn = get_connection()
@@ -322,14 +316,13 @@ def actualizar_facial(persona_id):
         img = Image.open(io.BytesIO(img_bytes)).convert('RGB')
         img.save(file_path)
 
-        ok_calidad, msg_calidad = _validar_calidad_imagen(file_path)
+        ok_calidad, msg_calidad, quality_score = _validar_calidad_imagen(file_path)
         if not ok_calidad:
             if os.path.exists(file_path):
                 os.unlink(file_path)
             return jsonify({'error': msg_calidad}), 400
 
         embedding = extraer_embedding(file_path, anti_spoofing=True)
-        quality_score = float(cv2.Laplacian(cv2.imread(file_path, cv2.IMREAD_GRAYSCALE), cv2.CV_64F).var())
         encoding_cifrado = cifrar_embedding(embedding)
 
         cur.execute(
@@ -375,7 +368,7 @@ def verificar_facial():
     try:
         tmp_path = decodificar_y_guardar_temporal(imagen_b64)
 
-        ok_calidad, msg_calidad = _validar_calidad_imagen(tmp_path)
+        ok_calidad, msg_calidad, _ = _validar_calidad_imagen(tmp_path)
         if not ok_calidad:
             _log_biometrico(persona_id, None, 'verificacion', 'fallo')
             return jsonify({'error': msg_calidad}), 400
@@ -474,7 +467,7 @@ def identificar_facial():
 
         print(f"[AUDITORIA] Foto guardada en: {file_path}")
 
-        ok_calidad, msg_calidad = _validar_calidad_imagen(file_path)
+        ok_calidad, msg_calidad, _ = _validar_calidad_imagen(file_path)
         if not ok_calidad:
             _log_biometrico(None, None, 'identificacion', 'fallo')
             return jsonify({'error': msg_calidad}), 400
@@ -543,7 +536,7 @@ def identificar_o_registrar():
 
     preview_path = None
     try:
-        ok_calidad, msg_calidad = _validar_calidad_imagen(tmp_path)
+        ok_calidad, msg_calidad, _ = _validar_calidad_imagen(tmp_path)
         if not ok_calidad:
             return jsonify({'error': msg_calidad}), 400
 

@@ -165,6 +165,7 @@ bool registrarRostroEnBackend(String rut);
 bool agregarFotoEnBackend(String rut);
 void completarRegistroPersona();
 void sincronizarAsistencias();
+void sincronizarAsistenciasDesdeBackend();
 void sincronizarPersonasDesdeBackend();
 void sincronizarTurnosDesdeBackend();
 void sincronizarAsignacionesDesdeBackend();
@@ -240,6 +241,8 @@ static void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_
       esp_mqtt_client_subscribe(mqtt_client, reiniciarTopic.c_str(), 0);
       String wifiReconnectTopic = "backend/comando/" + deviceMAC + "/wifi-reconnect";
       esp_mqtt_client_subscribe(mqtt_client, wifiReconnectTopic.c_str(), 0);
+      String syncTopic = "backend/comando/" + deviceMAC + "/sync";
+      esp_mqtt_client_subscribe(mqtt_client, syncTopic.c_str(), 0);
       sincronizacionPendiente = true;
       break;
     }
@@ -298,9 +301,13 @@ static void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_
         if (!err) {
           String tipo = doc["tipo"] | "";
           addLog("Notificacion MQTT recibida: " + tipo);
-          if (tipo == "personas" || tipo == "todas")    sincronizarPersonasDesdeBackend();
-          if (tipo == "turnos" || tipo == "todas")      sincronizarTurnosDesdeBackend();
+          if (tipo == "personas" || tipo == "todas")     sincronizarPersonasDesdeBackend();
+          if (tipo == "turnos" || tipo == "todas")       sincronizarTurnosDesdeBackend();
           if (tipo == "asignaciones" || tipo == "todas") sincronizarAsignacionesDesdeBackend();
+          if (tipo == "asistencias" || tipo == "todas") {
+            sincronizarAsistencias();
+            sincronizarAsistenciasDesdeBackend();
+          }
         }
       }
 
@@ -369,6 +376,12 @@ static void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_
         delay(500);
         WiFi.begin();
         addLog("Reconexion WiFi iniciada");
+      }
+
+      if (topic.startsWith("backend/comando/") && topic.endsWith("/sync")) {
+        addLog("Comando SINCRONIZAR recibido desde backend");
+        sincronizarTodo();
+        addLog("Sincronizacion completada por comando remoto");
       }
       break;
     }
@@ -798,6 +811,10 @@ void enrolarDispositivo() {
     pinEnrol = "";
     String ssid = savedSSID, pass = savedPASS, backend = backendURL, mqtt = mqttBroker;
     saveConfig(ssid, pass, backend, mqtt, "");
+    // Forzar sincronizacion completa para subir datos locales a la nueva empresa
+    addLog("Enrolamiento exitoso. Sincronizando datos con el servidor...");
+    delay(500);
+    sincronizarTodo();
   } else {
     addLog("Error enrolando: HTTP " + String(code) + " " + http.getString());
   }
@@ -1114,7 +1131,7 @@ String procesarAsistencia(String personaId, String metodo) {
     lenSec = 2;
   }
 
-  DynamicJsonDocument docA(8192);
+  DynamicJsonDocument docA(16384);
   JsonArray asist = loadArray("/asistencias.json", docA);
   
   String ultimoTipo = "";
@@ -1451,28 +1468,35 @@ bool agregarFotoEnBackend(String personaId) {
 
 
 void sincronizarAsistencias() {
-  if (!isOnline) return;
-  DynamicJsonDocument doc(8192);
+  if (!isOnline || WiFi.status() != WL_CONNECTED) return;
+  DynamicJsonDocument doc(16384);
   JsonArray asist = loadArray("/asistencias.json", doc);
 
-  bool hayPendientes = false;
-  for (JsonObject a : asist) {
-    if (a["sincronizado"] == false) { hayPendientes = true; break; }
+  if (asist.size() == 0) {
+    addLog("Sync asistencias: archivo vacio");
+    return;
   }
-  if (!hayPendientes) return;
 
-  DynamicJsonDocument payload(8192);
+  // Construir array de pendientes (evitar problemas con iterador y borrado)
+  DynamicJsonDocument payload(16384);
   JsonArray registros = payload.createNestedArray("registros");
+  int pendientes = 0;
   for (JsonObject a : asist) {
-    if (a["sincronizado"] == false) {
+    bool sync = a["sincronizado"] | false;
+    if (!sync) {
       JsonObject r = registros.createNestedObject();
       r["rut"]       = a["rut"];
       r["nombre"]     = a["nombre"];
       r["tipo"]       = a["tipo"];
       r["metodo"]     = a["metodo"];
-      if (a.containsKey("turno_id")) r["turno_id"] = a["turno_id"];
+      if (a.containsKey("turno_id") && a["turno_id"].as<String>().length() > 0) r["turno_id"] = a["turno_id"];
+      pendientes++;
     }
   }
+
+  addLog("Sync asistencias: " + String(pendientes) + " pendientes de " + String(asist.size()) + " totales");
+  if (pendientes == 0) return;
+
   String body; serializeJson(payload, body);
 
   HTTPClient http;
@@ -1485,7 +1509,74 @@ void sincronizarAsistencias() {
   if (code == 200) {
     for (JsonObject a : asist) a["sincronizado"] = true;
     saveArray("/asistencias.json", doc);
-    addLog("Sincronizacion completada");
+    addLog("Asistencias enviadas al backend: " + String(pendientes));
+  } else {
+    addLog("Sync asistencias ERROR HTTP: " + String(code));
+  }
+}
+
+void sincronizarAsistenciasDesdeBackend() {
+  if (!isOnline || WiFi.status() != WL_CONNECTED) return;
+
+  HTTPClient http;
+  beginHttp(http, backendURL + "/api/asistencias/device-sync");
+
+  int code = http.GET();
+  if (code != 200) {
+    addLog("Error HTTP al descargar asistencias: " + String(code));
+    http.end();
+    return;
+  }
+
+  DynamicJsonDocument docBackend(24576);
+  DeserializationError error = deserializeJson(docBackend, http.getStream());
+  http.end();
+  if (error || !docBackend.is<JsonArray>()) {
+    addLog("Error parseando asistencias del backend.");
+    return;
+  }
+
+  JsonArray backendArr = docBackend.as<JsonArray>();
+  if (backendArr.size() == 0) return;
+
+  DynamicJsonDocument docLocal(16384);
+  JsonArray localArr = loadArray("/asistencias.json", docLocal);
+
+  int agregadas = 0;
+  for (JsonObject remota : backendArr) {
+    String idBackend = remota["id"].as<String>();
+    if (idBackend.length() == 0) continue;
+
+    // Check if already exists locally by backend id
+    bool yaExiste = false;
+    for (JsonObject a : localArr) {
+      if (a.containsKey("id_backend") && a["id_backend"].as<String>() == idBackend) {
+        yaExiste = true;
+        break;
+      }
+    }
+    if (yaExiste) continue;
+
+    unsigned long timestamp = getTimestamp();
+
+    JsonObject a = localArr.createNestedObject();
+    a["id_backend"]  = idBackend;
+    a["persona_id"]  = remota["persona_id"].as<String>();
+    a["rut"]         = remota["rut"].as<String>();
+    a["nombre"]      = remota["nombre"].as<String>();
+    a["tipo"]        = remota["tipo"].as<String>();
+    a["metodo"]      = remota["metodo"].as<String>();
+    a["timestamp"]   = timestamp;
+    a["sincronizado"] = true;
+    if (remota.containsKey("turno_id") && remota["turno_id"].as<String>().length() > 0 && remota["turno_id"].as<String>() != "null") {
+      a["turno_id"] = remota["turno_id"].as<String>();
+    }
+    agregadas++;
+  }
+
+  if (agregadas > 0) {
+    saveArray("/asistencias.json", docLocal);
+    addLog("Asistencias descargadas del backend: " + String(agregadas) + " nuevas");
   }
 }
 
@@ -1760,7 +1851,7 @@ String buscarRutPersona(const String& personaId) {
 }
 
 void actualizarAsistenciasPorPersona(const String& oldId, const String& newId) {
-  DynamicJsonDocument doc(8192);
+  DynamicJsonDocument doc(16384);
   JsonArray asistencias = loadArray("/asistencias.json", doc);
   bool huboCambios = false;
   for (JsonObject a : asistencias) {
@@ -1821,8 +1912,24 @@ void sincronizarPersonasPendientes() {
       if (!err && respDoc.containsKey("id")) {
         String oldId = p["id"].as<String>();
         String realId = respDoc["id"].as<String>();
-        p["id"] = realId;
-        actualizarAsistenciasPorPersona(oldId, realId);
+        if (oldId != realId) {
+          p["id"] = realId;
+          // Re-vincular huella al nuevo ID si existia
+          if (p.containsKey("huella_id") && p["huella_id"].as<int>() > 0) {
+            HTTPClient httpHuella;
+            beginHttp(httpHuella, backendURL + "/api/personas/" + realId + "/huella");
+            httpHuella.addHeader("Content-Type", "application/json");
+            String huellaPayload = "{\"huella_id\":" + String(p["huella_id"].as<int>()) + "}";
+            int hCode = httpHuella.sendRequest("PUT", huellaPayload);
+            if (hCode == 200) {
+              addLog("Huella re-vinculada al ID " + realId);
+            } else {
+              addLog("Advertencia: No se pudo re-vincular huella (HTTP " + String(hCode) + ")");
+            }
+            httpHuella.end();
+          }
+          actualizarAsistenciasPorPersona(oldId, realId);
+        }
       }
       p["sincronizado"] = true;
       huboCambios = true;
@@ -1845,6 +1952,7 @@ void sincronizarTodo() {
   sincronizarPersonasDesdeBackend();
   sincronizarTurnosDesdeBackend();
   sincronizarAsignacionesDesdeBackend();
+  sincronizarAsistenciasDesdeBackend();
   enSync = false;
 }
 
@@ -2654,7 +2762,7 @@ void setup() {
 
     DynamicJsonDocument docPersonas(2048);
     DynamicJsonDocument docAsignaciones(1024);
-    DynamicJsonDocument docAsistencias(8192);
+    DynamicJsonDocument docAsistencias(16384);
     JsonArray personas = loadArray("/personas.json", docPersonas);
     JsonArray asignaciones = loadArray("/asignaciones.json", docAsignaciones);
     JsonArray asistencias = loadArray("/asistencias.json", docAsistencias);

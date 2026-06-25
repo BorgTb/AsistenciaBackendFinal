@@ -117,6 +117,13 @@ def create_asistencia():
     cur = conn.cursor()
     try:
         dispositivo_id = data.get('dispositivo_id')
+        if not dispositivo_id:
+            mac = request.headers.get('X-Device-MAC', '').replace(':', '')
+            if mac:
+                cur.execute("SELECT id FROM dispositivos WHERE REPLACE(mac_address, ':', '') = %s", (mac,))
+                row = cur.fetchone()
+                if row:
+                    dispositivo_id = row[0]
         nombre = data.get('nombre')
         tipo = data.get('tipo')
         metodo = data.get('metodo', 'huella')
@@ -160,6 +167,13 @@ def create_asistencia():
         _disparar_erp_push(persona_id, nombre, tipo, metodo, fecha_hora, empresa_id)
         _disparar_email_notificacion(persona_email, nombre, tipo, fecha_hora)
 
+        # Notificar a otros dispositivos via MQTT
+        try:
+            from eventos_mqtt import notificar_sincronizacion
+            notificar_sincronizacion(empresa_id, 'asistencias', 'crear', asist_id)
+        except Exception:
+            pass
+
         return jsonify({'ok': True, 'id': asist_id, 'rut': data.get('rut')})
     except Exception as e:
         conn.rollback()
@@ -175,6 +189,16 @@ def sync_asistencias():
     registros = data.get('registros', [])
     conn = get_connection()
     cur = conn.cursor()
+
+    # Resolver dispositivo por MAC header
+    dispositivo_sync = None
+    mac_sync = request.headers.get('X-Device-MAC', '').replace(':', '')
+    if mac_sync:
+        cur.execute("SELECT id FROM dispositivos WHERE REPLACE(mac_address, ':', '') = %s", (mac_sync,))
+        dev_sync = cur.fetchone()
+        if dev_sync:
+            dispositivo_sync = dev_sync[0]
+
     insertados = 0
     errores = 0
 
@@ -201,8 +225,8 @@ def sync_asistencias():
                     continue
 
             cur.execute(
-                "INSERT INTO asistencias (persona_id, nombre, tipo, metodo, origen, sincronizado, turno_id) VALUES (%s, %s, %s, %s, 'sync', TRUE, %s) RETURNING id, fecha_hora",
-                (persona_id_buscar, r.get('nombre'), tipo_buscar, r.get('metodo', 'huella'), turno_id_buscar)
+                "INSERT INTO asistencias (persona_id, dispositivo_id, nombre, tipo, metodo, origen, sincronizado, turno_id) VALUES (%s, %s, %s, %s, %s, 'sync', TRUE, %s) RETURNING id, fecha_hora",
+                (persona_id_buscar, dispositivo_sync, r.get('nombre'), tipo_buscar, r.get('metodo', 'huella'), turno_id_buscar)
             )
             row = cur.fetchone()
             conn.commit()
@@ -226,13 +250,33 @@ def sync_asistencias():
             errores += 1
 
     try:
+        # Resolver dispositivo desde header MAC o desde el payload
         dispositivo_id = data.get('dispositivo_id')
-        if dispositivo_id is None and registros:
+        if not dispositivo_id and registros:
             dispositivo_id = registros[0].get('dispositivo_id')
-        if dispositivo_id is not None:
-            cur.execute("SELECT 1 FROM dispositivos WHERE id = %s", (dispositivo_id,))
-            if not cur.fetchone():
-                dispositivo_id = None
+        mac_header = request.headers.get('X-Device-MAC', '').replace(':', '')
+        if mac_header:
+            cur.execute("SELECT id, empresa_id FROM dispositivos WHERE REPLACE(mac_address, ':', '') = %s", (mac_header,))
+            dev_row = cur.fetchone()
+            if dev_row:
+                dispositivo_id = str(dev_row[0])
+                empresa_notif = dev_row[1]
+            else:
+                empresa_notif = None
+        else:
+            empresa_notif = None
+            if dispositivo_id is not None:
+                cur.execute("SELECT empresa_id FROM dispositivos WHERE id::text = %s", (str(dispositivo_id),))
+                row = cur.fetchone()
+                empresa_notif = row[0] if row else None
+
+        # Notificar a otros dispositivos via MQTT
+        if insertados > 0 and empresa_notif:
+            try:
+                from eventos_mqtt import notificar_sincronizacion
+                notificar_sincronizacion(empresa_notif, 'asistencias', 'batch')
+            except Exception:
+                pass
 
         estado = 'ok' if errores == 0 else 'error'
         cur.execute(
@@ -243,6 +287,49 @@ def sync_asistencias():
         return jsonify({'ok': True, 'insertados': insertados, 'errores': errores})
     except Exception as e:
         conn.rollback()
+        return jsonify({'error': str(e)}), 500
+    finally:
+        cur.close()
+        conn.close()
+
+
+@asistencias_bp.route('/api/asistencias/device-sync', methods=['GET'])
+def device_sync_asistencias():
+    mac = request.headers.get('X-Device-MAC', '').replace(':', '')
+    if not mac:
+        return jsonify({'error': 'X-Device-MAC requerido'}), 400
+
+    conn = get_connection()
+    cur = conn.cursor()
+    try:
+        cur.execute("SELECT empresa_id FROM dispositivos WHERE REPLACE(mac_address, ':', '') = %s", (mac,))
+        row = cur.fetchone()
+        if not row:
+            return jsonify({'error': 'Dispositivo no encontrado'}), 404
+        empresa_id = row[0]
+
+        cur.execute("""
+            SELECT a.id, a.persona_id, p.rut, a.nombre, a.tipo, a.metodo,
+                   a.fecha_hora, a.turno_id
+            FROM asistencias a
+            JOIN personas p ON a.persona_id = p.id
+            WHERE p.empresa_id = %s
+              AND a.fecha_hora >= CURRENT_DATE - INTERVAL '7 days'
+            ORDER BY a.fecha_hora ASC
+        """, (empresa_id,))
+        rows = cur.fetchall()
+
+        return jsonify([{
+            "id": r[0],
+            "persona_id": str(r[1]),
+            "rut": r[2],
+            "nombre": r[3],
+            "tipo": r[4],
+            "metodo": r[5],
+            "fecha_hora": str(r[6]),
+            "turno_id": str(r[7]) if r[7] is not None else None
+        } for r in rows])
+    except Exception as e:
         return jsonify({'error': str(e)}), 500
     finally:
         cur.close()

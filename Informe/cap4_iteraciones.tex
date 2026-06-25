@@ -624,6 +624,26 @@ Se diseñaron las siguientes pruebas para validar la comunicación y el backend:
     \item \textbf{Prueba de latencia de transmisión}: Medir el tiempo total desde que el ESP32-CAM publica una imagen en MQTT hasta que recibe la respuesta de confirmación del backend. Se espera un tiempo menor a 5 segundos en condiciones de red local.
 \end{itemize}
 
+\paragraph{Nuevos tópicos MQTT para control y notificación}
+
+En iteraciones posteriores se agregaron los siguientes tópicos al ecosistema MQTT:
+
+\begin{itemize}
+    \item \texttt{backend/comando/<MAC>}: Permite al backend enviar comandos remotos al ESP32-CAM. La función \texttt{enviar\_comando\_dispositivo()} en \texttt{mqtt\_handler.py} publica un JSON con el campo \texttt{comando} en este tópico.
+
+    \item \texttt{backend/notificacion/<MAC>}: Utilizado por el módulo \texttt{eventos\_mqtt.py} para notificar a los dispositivos que deben sincronizar sus datos. Cada vez que se crea, actualiza o elimina una persona, turno o asignación, la función \texttt{notificar\_sincronizacion()} publica un mensaje indicando el tipo de entidad y la acción realizada.
+
+    \item \texttt{esp32/huella/resultado/<huella\_id>}: Tópico en el que el ESP32-CAM publica el resultado del enrolamiento de una huella. El backend se suscribe a \texttt{esp32/huella/resultado/\#} y procesa la respuesta, actualizando la persona correspondiente y notificando a través de SSE.
+\end{itemize}
+
+\paragraph{Módulo eventos\_mqtt.py}
+
+Se implementó el módulo \texttt{eventos\_mqtt.py} con la función \texttt{notificar\_sincronizacion(empresa\_id, tipo, accion, registro\_id)}. Esta función consulta los dispositivos enrolados de la empresa y publica un mensaje en \texttt{backend/notificacion/<MAC>} por cada uno, permitiendo que los ESP32-CAM reciban notificaciones en tiempo real sobre cambios en personas, turnos y asignaciones. Es invocada desde \texttt{routes/personas.py}, \texttt{routes/turnos.py} y \texttt{routes/asignaciones.py} tras cada operación de creación, actualización o eliminación.
+
+\paragraph{Streaming SSE de huellas}
+
+Para mantener actualizados los clientes web durante el enrolamiento de huellas, se implementó el endpoint \texttt{GET /sse/huellas} en \texttt{app.py}. La función \texttt{broadcast\_huella\_update()} difunde los resultados del enrolamiento (recibidos por MQTT en \texttt{esp32/huella/resultado/\#}) a todos los clientes conectados al SSE, permitiendo que el panel web muestre en tiempo real el progreso del registro biométrico.
+
 
 %% ============================================================
 %% ITERACIÓN 4: Reconocimiento facial, anti-spoofing y cifrado
@@ -777,6 +797,10 @@ Se diseñaron las siguientes pruebas para validar el módulo de reconocimiento f
     \item \textbf{Prueba de caché de embeddings}: Realizar una identificación exitosa y verificar los tiempos de respuesta. Realizar una segunda identificación inmediatamente después; verificar que el tiempo sea significativamente menor porque los embeddings se sirvieron desde la caché en memoria sin consultar la base de datos.
 \end{itemize}
 
+\paragraph{Endpoint identificar-o-registrar}
+
+Se implementó el endpoint \texttt{POST /api/facial/identificar-o-registrar} que combina ambos flujos en una sola llamada: primero intenta identificar a la persona por su rostro; si la identificación es exitosa, retorna los datos de la persona; si falla y se proporciona un RUT con consentimiento biométrico, registra automáticamente la nueva persona con el embedding facial extraído. Este endpoint facilita el enrolamiento progresivo en el dispositivo: un trabajador puede colocarse frente al ESP32-CAM y, si ya está registrado, se marca su asistencia; si no, el sistema lo registra sobre la marcha. El endpoint incluye validación de calidad de imagen, anti-spoofing y log biométrico tanto para identificación como para registro.
+
 
 %% ============================================================
 %% ITERACIÓN 5: Autenticación, multi-tenant y enrolamiento
@@ -870,7 +894,7 @@ El módulo \texttt{routes/auth.py} implementa:
     \item \texttt{register\_company()}: Endpoint público \texttt{POST /api/auth/register-company} que permite el auto-registro de una nueva empresa. Recibe los datos de la organización (nombre, RUT, email, teléfono, dirección) y del usuario administrador (nombre, email, contraseña). En una única transacción atómica crea la empresa, el usuario con hash bcrypt, y la asociación \texttt{usuario\_empresa} con rol \texttt{admin}. Retorna un token JWT para autenticar inmediatamente al nuevo administrador.
 \end{itemize}
 
-Los decoradores \texttt{@token\_required}, \texttt{@token\_opcional} y \texttt{@requiere\_rol} se definen en el mismo módulo. El decorador \texttt{@token\_opcional} incluye lógica para inferir la empresa a partir del header \texttt{X-Device-MAC} cuando no hay token JWT presente, buscando la MAC en la tabla de dispositivos.
+Los decoradores \texttt{@token\_required}, \texttt{@token\_opcional} y \texttt{@requiere\_rol} se definen en el mismo módulo. El decorador \texttt{@token\_opcional} incluye lógica para inferir la empresa a partir del header \texttt{X-Device-MAC} cuando no hay token JWT presente, buscando la MAC en la tabla de dispositivos. Si la MAC no existe, automáticamente crea un nuevo registro en \texttt{dispositivos} con estado \texttt{pendiente}, lo que permite que los ESP32-CAM comiencen a enviar datos incluso antes de ser formalmente enrolados.
 
 \paragraph{Gestión de dispositivos}
 
@@ -1190,6 +1214,20 @@ El módulo \texttt{routes/erp.py} implementa:
     \item \textbf{Estado de integración} (\texttt{GET /api/erp/<id>/estado}): Retorna el último envío y su estado.
 \end{itemize}
 
+\paragraph{Control remoto de dispositivos ESP32}
+
+Se implementaron tres endpoints en \texttt{routes/dispositivos.py} que permiten controlar remotamente los ESP32-CAM enrolados mediante comandos MQTT:
+
+\begin{itemize}
+    \item \textbf{Registrar huella} (\texttt{POST /api/dispositivos/<id>/registrar-huella}): Recibe un \texttt{persona\_id} y envía al dispositivo el comando para iniciar el enrolamiento de una huella digital. Verifica que el dispositivo exista, que pertenezca a la empresa del usuario autenticado, y que la persona exista en la misma empresa. Utiliza \texttt{enviar\_comando\_dispositivo(mac, 'registrar\_huella')} para publicar el comando en \texttt{backend/comando/<MAC>/registrar\_huella}. El resultado del enrolamiento se recibe luego por el tópico \texttt{esp32/huella/resultado/\#}.
+
+    \item \textbf{Reiniciar dispositivo} (\texttt{POST /api/dispositivos/<id>/reiniciar}): Envía el comando \texttt{reiniciar} al ESP32-CAM, provocando un reinicio remoto del dispositivo. Útil para recuperar un dispositivo que presenta fallos de conectividad o para aplicar cambios de configuración. Si el cliente MQTT no está disponible, retorna HTTP 503.
+
+    \item \textbf{Reconectar Wi-Fi} (\texttt{POST /api/dispositivos/<id>/wifi-reconnect}): Envía el comando \texttt{wifi-reconnect} para que el dispositivo reinicie su conexión Wi-Fi. Permite recuperar un dispositivo que ha perdido la conectividad sin necesidad de intervención física.
+\end{itemize}
+
+Los tres endpoints están protegidos con \texttt{@requiere\_rol('admin', 'empleador')} y verifican que el dispositivo pertenezca a la empresa del usuario autenticado. Los comandos se publican en el tópico \texttt{backend/comando/<MAC>/<comando>} mediante la función \texttt{enviar\_comando\_dispositivo()} del módulo \texttt{mqtt\_handler.py}.
+
 \subsubsection{Pruebas}
 
 Se diseñaron las siguientes pruebas para validar el panel web para la gestión del dispositivo y la integración ERP:
@@ -1269,7 +1307,7 @@ Además, el ESP32-CAM consulta \texttt{GET /api/dispositivos/erp-config} cada ho
 
 \paragraph{Deduplicación en el backend}
 
-El endpoint \texttt{POST /api/asistencias/sync} implementa una verificación previa a la inserción: para cada registro del lote, consulta si ya existe una asistencia de la misma persona con el mismo tipo en una ventana de 60 segundos. Si existe, omite la inserción. Esto garantiza idempotencia ante reenvíos.
+El endpoint \texttt{POST /api/asistencias/sync} implementa una verificación previa a la inserción: para cada registro del lote, consulta si ya existe una asistencia de la misma persona (\texttt{persona\_id}), mismo tipo (\texttt{entrada/salida}), mismo \texttt{turno\_id} y misma fecha (\texttt{DATE(fecha\_hora) = CURRENT\_DATE}). Si existe, omite la inserción. Esta verificación por \texttt{turno\_id} permite que un trabajador registre múltiples asistencias en un mismo día si pertenece a distintos turnos (por ejemplo, jornada diurna y jornada nocturna), sin generar duplicados dentro del mismo turno. Garantiza idempotencia ante reenvíos.
 
 \paragraph{Tablas de auditoría}
 
@@ -1308,6 +1346,10 @@ Las funciones de sincronización siguen un patrón común:
 \end{enumerate}
 
 Para las personas, además del envío de pendientes, se implementa la descarga completa desde el backend (\texttt{sincronizarPersonasDesdeBackend()}) que sobrescribe el archivo local si no hay registros locales pendientes, manteniendo el ESP32-CAM actualizado con los datos del servidor.
+
+\paragraph{Campo colación en turnos}
+
+Los turnos incorporaron los campos \texttt{con\_colacion} (booleano), \texttt{colacion\_inicio} (TIME) y \texttt{colacion\_fin} (TIME) para modelar el horario de colación de los trabajadores, en cumplimiento del artículo 34 del Código del Trabajo chileno. En la tabla \texttt{turnos} de PostgreSQL se almacenan como \texttt{TIME} (o NULL si \texttt{con\_colacion = FALSE}). Los endpoints CRUD de \texttt{routes/turnos.py} gestionan estos campos: al crear un turno, se envían \texttt{con\_colacion}, \texttt{colacion\_inicio} y \texttt{colacion\_fin}; al actualizar, se usa \texttt{COALESCE} para preservar valores existentes si no se envían. Las consultas GET retornan los horarios como string o null según corresponda. El campo \texttt{turno\_id} se agregó también a la tabla \texttt{asistencias} para asociar cada marcación al turno bajo el cual se registró, permitiendo el cálculo preciso de horas trabajadas descontando la colación.
 
 \paragraph{Sincronización de asistencias por lote}
 
@@ -1355,6 +1397,10 @@ Se diseñaron las siguientes pruebas para validar la sincronización diferida, l
 
     \item \textbf{Prueba de persistencia tras corte de energía}: Durante una sincronización en curso, cortar la alimentación del ESP32-CAM. Al reiniciar, verificar que los archivos JSON no estén corruptos y que los registros con \texttt{sincronizado = false} sigan estando disponibles para una nueva sincronización.
 
+    \item \textbf{Prueba de duplicados por turno}: Registrar dos asistencias con la misma persona, tipo, turno y fecha. Verificar que el sistema rechace la segunda inserción por duplicado. Registrar asistencias con diferentes turno\_id para un mismo día y verificar que ambas se registren sin conflictos.
+
+    \item \textbf{Prueba de colación en turnos}: Crear un turno con colación habilitada (con\_colación = true) especificando horario de colación. Verificar que los campos colacion\_inicio y colacion\_fin se almacenen correctamente como TIME en la base de datos. Crear un turno sin colación y verificar que ambos campos sean NULL.
+
     \item \textbf{Prueba de logs de sincronización}: Ejecutar 3 sincronizaciones con diferentes cantidades de registros. Verificar que en la tabla \texttt{sincronizacion\_log} del backend aparezcan 3 entradas con los conteos correctos de registros enviados y procesados.
 
     \item \textbf{Prueba de logs biométricos}: Realizar operaciones de registro facial, identificación exitosa, identificación fallida y verificación. Verificar que cada operación genere una entrada en \texttt{logs\_biometricos} con el tipo de operación y resultado correctos.
@@ -1370,7 +1416,7 @@ Se diseñaron las siguientes pruebas para validar la sincronización diferida, l
 
 \paragraph{Pruebas automatizadas}
 
-Además de las pruebas funcionales descritas, se implementó una suite de \textbf{284 pruebas automatizadas} para el backend y el firmware, utilizando pytest con PostgreSQL en Docker y mocks para DeepFace, OpenCV y MQTT. La suite se organiza en 19 archivos de prueba (10 en \texttt{Backend/tests/} y 9 en \texttt{Backend/tests/esp32\_emulator/}) y alcanza una cobertura de código del \textbf{90\%} sobre 3.925 líneas de código fuente, sin fallos en ninguna de las 284 pruebas.
+Además de las pruebas funcionales descritas, se implementó una suite de \textbf{334 pruebas automatizadas} para el backend y el firmware, utilizando pytest con PostgreSQL en Docker y mocks para DeepFace, OpenCV y MQTT. La suite se organiza en 19 archivos de prueba (10 en \texttt{Backend/tests/} y 9 en \texttt{Backend/tests/esp32\_emulator/}) y alcanza una cobertura de código del \textbf{90\%} sobre 4.881 líneas de código fuente, sin fallos en ninguna de las 334 pruebas.
 
 Las pruebas cubren los flujos de todas las iteraciones: inicialización de la aplicación, esquema de base de datos, cifrado de embeddings, servicio de correo electrónico (con mock de SMTP), handlers MQTT, autenticación JWT con roles jerárquicos y flujo multi-empresa, endpoints faciales, CRUD de personas/turnos/asignaciones/asistencias, verificación de dispositivos, integraciones ERP con tolerancia a fallos de conexión y timeout, enrolamiento de dispositivos mediante PIN, sincronización offline, y logs de auditoría. Entre los módulos con mayor cobertura destacan el cifrado de embeddings (100\%), el servicio de correo (100\%), la gestión de turnos (100\%), la base de datos (99\%) y el módulo de asignaciones (96\%). El detalle completo de los casos de prueba se incluye en el Anexo correspondiente.
 
@@ -1379,4 +1425,4 @@ Las pruebas cubren los flujos de todas las iteraciones: inicialización de la ap
 \section{Resumen del capítulo}
 El capítulo 4 presenta el desarrollo completo del prototipo a lo largo de ocho iteraciones, siguiendo la metodología de prototipado evolutivo incremental. Se documenta la integración del hardware (ESP32-CAM, lector AS608, sensor PIR, cámara OV2640), la implementación del almacenamiento local con LittleFS y JSON, el desarrollo del backend con Flask y PostgreSQL (14 tablas con soporte multi-tenant), la comunicación mediante HTTP y MQTT, el reconocimiento facial con DeepFace (modelo Facenet, detector configurable MTCNN/RetinaFace y anti-spoofing), el cifrado de embeddings biométricos con Fernet, la autenticación JWT con roles jerárquicos, el enrolamiento seguro de dispositivos mediante PIN, el sistema antifraude multicapa (PIR + flash PWM + anti-spoofing + cooldown), el panel web para la gestión del dispositivo con streaming SSE de estado en tiempo real, la integración con ERP externos vía webhooks con field mapping, los mecanismos de sincronización diferida con logs de auditoría, y la detección de desconexión mediante un sistema de tres capas (LWT, ping activo y watchdog pasivo).
 
-Cada iteración incluyó su respectivo análisis de requisitos, diseño de la solución, implementación detallada y un plan de pruebas de integración para validar el correcto funcionamiento de los componentes desarrollados. Adicionalmente, se documenta la suite de 284 pruebas unitarias automatizadas con pytest, que alcanzó una cobertura de código del 90\% sobre 3.925 líneas del backend, incluyendo pruebas de caja negra sobre los 28 endpoints de la API REST y verificación exhaustiva de todos los caminos de error.
+Cada iteración incluyó su respectivo análisis de requisitos, diseño de la solución, implementación detallada y un plan de pruebas de integración para validar el correcto funcionamiento de los componentes desarrollados. Adicionalmente, se documenta la suite de 334 pruebas unitarias automatizadas con pytest, que alcanzó una cobertura de código del 90\% sobre 4.881 líneas del backend, incluyendo pruebas de caja negra sobre los 28 endpoints de la API REST y verificación exhaustiva de todos los caminos de error.

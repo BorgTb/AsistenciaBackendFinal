@@ -1,4 +1,4 @@
-import type { Asignacion, Asistencia, ErpIntegration, Persona, Turno } from '@/lib/types';
+import type { Asignacion, Asistencia, DuplicadoPendiente, ErpIntegration, InfoBiometrica, Persona, Turno } from '@/lib/types';
 
 const baseUrl = '';
 
@@ -106,7 +106,7 @@ export async function getAsistencias() {
 }
 
 export async function getDispositivos() {
-  return request<Array<{ id: string; nombre: string; ip_local: string | null; estado: string; ultimo_heartbeat: string | null; tiene_password?: boolean; password_pendiente?: boolean; codigo_enrol?: string | null }>>('/api/dispositivos');
+  return request<Array<{ id: string; nombre: string; ip_local: string | null; estado: string; ultimo_heartbeat: string | null; tiene_password?: boolean; password_pendiente?: boolean; codigo_enrol?: string | null; con_colacion?: boolean; colacion_inicio?: string | null; colacion_fin?: string | null }>>('/api/dispositivos');
 }
 
 export async function getLogs() {
@@ -139,6 +139,27 @@ export async function deleteErp(erpId: string) {
 export async function testErp(erpId: string) {
   return request<{ ok: boolean; status_code?: number; mensaje: string; respuesta?: string } | { ok: boolean; mensaje: string }>(`/api/erp/${erpId}/test`, {
     method: 'POST'
+  });
+}
+
+export async function syncDevices() {
+  return request<{ ok: boolean; mensaje: string } | { error: string }>('/api/dispositivos/sync', {
+    method: 'POST'
+  });
+}
+
+export async function getDuplicadosPendientes() {
+  return request<DuplicadoPendiente[]>('/api/personas/duplicados');
+}
+
+export async function getPersonaBiometrico(personaId: string) {
+  return request<InfoBiometrica | { error: string }>(`/api/personas/${personaId}/biometrico`);
+}
+
+export async function mergePersonas(mantenerId: string, eliminarId: string) {
+  return request<{ ok: boolean; mensaje: string } | { error: string }>('/api/personas/merge', {
+    method: 'POST',
+    body: JSON.stringify({ mantener_id: mantenerId, eliminar_id: eliminarId })
   });
 }
 

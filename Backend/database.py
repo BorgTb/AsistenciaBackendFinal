@@ -60,6 +60,9 @@ def init_db():
         cur.execute("ALTER TABLE dispositivos ADD COLUMN IF NOT EXISTS password_hash VARCHAR(64)")
         cur.execute("ALTER TABLE dispositivos ADD COLUMN IF NOT EXISTS password_plain VARCHAR(20)")
         cur.execute("ALTER TABLE dispositivos ADD COLUMN IF NOT EXISTS password_pendiente BOOLEAN DEFAULT FALSE")
+        cur.execute("ALTER TABLE dispositivos ADD COLUMN IF NOT EXISTS con_colacion BOOLEAN DEFAULT FALSE")
+        cur.execute("ALTER TABLE dispositivos ADD COLUMN IF NOT EXISTS colacion_inicio TIME")
+        cur.execute("ALTER TABLE dispositivos ADD COLUMN IF NOT EXISTS colacion_fin TIME")
 
         cur.execute("""
             CREATE TABLE IF NOT EXISTS usuarios_web (
@@ -227,6 +230,18 @@ def init_db():
                 foto_path VARCHAR(500),
                 usuario_solicitante VARCHAR(100),
                 timestamp TIMESTAMP DEFAULT NOW()
+            )
+        """)
+
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS duplicados_pendientes (
+                id SERIAL PRIMARY KEY,
+                empresa_id INTEGER REFERENCES empresas(id),
+                persona_mantener_id INTEGER REFERENCES personas(id),
+                persona_eliminar_id INTEGER REFERENCES personas(id),
+                tipo_deteccion VARCHAR(20) NOT NULL,
+                resuelto BOOLEAN DEFAULT FALSE,
+                created_at TIMESTAMP DEFAULT NOW()
             )
         """)
 

@@ -48,9 +48,19 @@ def get_personas():
             )
         elif request.dispositivo_id:
             cur.execute(
-                "SELECT id, nombre, rut, email, huella_id, empresa_id, created_at FROM personas WHERE dispositivo_origen_id = %s AND empresa_id IS NULL AND activo = true ORDER BY id",
+                "SELECT empresa_id FROM dispositivos WHERE id = %s AND enrolado = TRUE",
                 (request.dispositivo_id,)
             )
+            if cur.fetchone():
+                cur.execute(
+                    "SELECT id, nombre, rut, email, huella_id, empresa_id, created_at FROM personas WHERE dispositivo_origen_id = %s AND activo = true ORDER BY id",
+                    (request.dispositivo_id,)
+                )
+            else:
+                cur.execute(
+                    "SELECT id, nombre, rut, email, huella_id, empresa_id, created_at FROM personas WHERE dispositivo_origen_id = %s AND empresa_id IS NULL AND activo = true ORDER BY id",
+                    (request.dispositivo_id,)
+                )
         else:
             cur.close()
             conn.close()
@@ -120,6 +130,186 @@ def create_persona():
     except Exception as e:
         conn.rollback()
         print(f"ERROR FATAL POSTGRESQL: {str(e)}")
+        return jsonify({'error': str(e)}), 500
+    finally:
+        cur.close()
+        conn.close()
+
+
+@personas_bp.route('/api/personas/duplicados', methods=['GET'])
+@token_opcional
+def get_duplicados_pendientes():
+    conn = get_connection()
+    cur = conn.cursor()
+    empresa_id = request.empresa_id
+    if not empresa_id:
+        cur.close()
+        conn.close()
+        return jsonify({'error': 'No autorizado'}), 401
+
+    try:
+        cur.execute("""
+            SELECT dp.id, dp.persona_mantener_id, dp.persona_eliminar_id,
+                   dp.tipo_deteccion, dp.created_at,
+                   pm.nombre AS nombre_mantener, pm.rut AS rut_mantener,
+                   pe.nombre AS nombre_eliminar, pe.rut AS rut_eliminar
+            FROM duplicados_pendientes dp
+            JOIN personas pm ON pm.id = dp.persona_mantener_id
+            JOIN personas pe ON pe.id = dp.persona_eliminar_id
+            WHERE dp.empresa_id = %s AND dp.resuelto = FALSE
+            ORDER BY dp.created_at DESC
+        """, (empresa_id,))
+        rows = cur.fetchall()
+        return jsonify([{
+            'id': r[0],
+            'persona_mantener_id': str(r[1]),
+            'persona_eliminar_id': str(r[2]),
+            'tipo_deteccion': r[3],
+            'created_at': str(r[4]),
+            'nombre_mantener': r[5],
+            'rut_mantener': r[6],
+            'nombre_eliminar': r[7],
+            'rut_eliminar': r[8]
+        } for r in rows])
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+    finally:
+        cur.close()
+        conn.close()
+
+
+@personas_bp.route('/api/personas/merge', methods=['POST'])
+@token_opcional
+def merge_personas():
+    data = request.json or {}
+    mantener_id = data.get('mantener_id')
+    eliminar_id = data.get('eliminar_id')
+
+    if not mantener_id or not eliminar_id:
+        return jsonify({'error': 'Faltan mantener_id y eliminar_id'}), 400
+
+    conn = get_connection()
+    cur = conn.cursor()
+    try:
+        cur.execute("SELECT id FROM personas WHERE id::text = %s", (str(mantener_id),))
+        if not cur.fetchone():
+            return jsonify({'error': 'Persona mantener no encontrada'}), 404
+
+        cur.execute("SELECT id FROM personas WHERE id::text = %s", (str(eliminar_id),))
+        if not cur.fetchone():
+            return jsonify({'error': 'Persona eliminar no encontrada'}), 404
+
+        mantener_id_int = int(mantener_id)
+        eliminar_id_int = int(eliminar_id)
+
+        # 1. Transferir encodings faciales
+        cur.execute(
+            "UPDATE encodings_faciales SET persona_id = %s WHERE persona_id = %s",
+            (mantener_id_int, eliminar_id_int)
+        )
+
+        # 2. Transferir huella_id si mantener no tiene una
+        cur.execute("SELECT huella_id FROM personas WHERE id = %s", (mantener_id_int,))
+        mantener_huella = cur.fetchone()[0]
+        if not mantener_huella or mantener_huella == 0:
+            cur.execute("SELECT huella_id FROM personas WHERE id = %s", (eliminar_id_int,))
+            eliminar_huella = cur.fetchone()[0]
+            if eliminar_huella and eliminar_huella > 0:
+                cur.execute(
+                    "UPDATE personas SET huella_id = %s WHERE id = %s",
+                    (eliminar_huella, mantener_id_int)
+                )
+
+        # 3. Reasignar asistencias
+        cur.execute(
+            "UPDATE asistencias SET persona_id = %s WHERE persona_id = %s",
+            (mantener_id_int, eliminar_id_int)
+        )
+
+        # 4. Reasignar asignaciones
+        cur.execute(
+            "UPDATE asignaciones SET persona_id = %s WHERE persona_id = %s",
+            (mantener_id_int, eliminar_id_int)
+        )
+
+        # 5. Transferir consentimiento si mantener no tiene
+        cur.execute("SELECT id FROM consentimientos WHERE persona_id = %s", (mantener_id_int,))
+        if not cur.fetchone():
+            cur.execute(
+                "UPDATE consentimientos SET persona_id = %s WHERE persona_id = %s",
+                (mantener_id_int, eliminar_id_int)
+            )
+
+        # 6. Marcar duplicados_pendientes como resueltos
+        cur.execute(
+            "UPDATE duplicados_pendientes SET resuelto = TRUE WHERE (persona_mantener_id = %s AND persona_eliminar_id = %s) OR (persona_mantener_id = %s AND persona_eliminar_id = %s)",
+            (mantener_id_int, eliminar_id_int, eliminar_id_int, mantener_id_int)
+        )
+
+        # 7. Eliminar la persona duplicada
+        cur.execute("DELETE FROM personas WHERE id = %s", (eliminar_id_int,))
+
+        conn.commit()
+
+        try:
+            from routes.facial import _invalidar_cache
+            _invalidar_cache()
+        except Exception:
+            pass
+
+        return jsonify({'ok': True, 'mensaje': f'Personas fusionadas. {mantener_id_int} conservado, {eliminar_id_int} eliminado.'})
+    except Exception as e:
+        conn.rollback()
+        return jsonify({'error': str(e)}), 500
+    finally:
+        cur.close()
+        conn.close()
+
+
+@personas_bp.route('/api/personas/<persona_id>/biometrico', methods=['GET'])
+@token_opcional
+def get_persona_biometrico(persona_id):
+    conn = get_connection()
+    cur = conn.cursor()
+    try:
+        if request.empresa_id and request.user_rol != 'admin':
+            cur.execute(
+                "SELECT id, huella_id FROM personas WHERE id::text = %s AND empresa_id = %s",
+                (str(persona_id), request.empresa_id)
+            )
+        else:
+            cur.execute(
+                "SELECT id, huella_id FROM personas WHERE id::text = %s",
+                (str(persona_id),)
+            )
+
+        row = cur.fetchone()
+        if not row:
+            return jsonify({'error': 'Persona no encontrada'}), 404
+
+        pid, huella_id = row
+
+        cur.execute(
+            "SELECT COUNT(*) FROM encodings_faciales WHERE persona_id = %s",
+            (pid,)
+        )
+        total_encodings = cur.fetchone()[0]
+
+        cur.execute("SELECT id FROM consentimientos WHERE persona_id = %s", (pid,))
+        tiene_consentimiento = cur.fetchone() is not None
+
+        import os
+        preview_path = os.path.join(os.getcwd(), 'static', 'previews', f'{pid}.jpg')
+        tiene_preview = os.path.exists(preview_path)
+
+        return jsonify({
+            'persona_id': str(pid),
+            'huella_id': huella_id if huella_id else 0,
+            'total_encodings': total_encodings,
+            'tiene_consentimiento': tiene_consentimiento,
+            'tiene_preview': tiene_preview
+        })
+    except Exception as e:
         return jsonify({'error': str(e)}), 500
     finally:
         cur.close()

@@ -57,6 +57,9 @@ export interface DeviceStatus {
   passwordPendiente?: boolean;
   ultimoHeartbeat?: string | null;
   codigoEnrol?: string | null;
+  con_colacion?: boolean;
+  colacion_inicio?: string | null;
+  colacion_fin?: string | null;
 }
 
 export interface ErpIntegration {
@@ -71,6 +74,26 @@ export interface ErpIntegration {
   ultimoEnvio?: string | null;
   ultimoEstado?: string;
   createdAt?: string | null;
+}
+
+export interface DuplicadoPendiente {
+  id: string;
+  persona_mantener_id: string;
+  persona_eliminar_id: string;
+  tipo_deteccion: 'rut' | 'facial';
+  created_at: string;
+  nombre_mantener: string;
+  rut_mantener: string;
+  nombre_eliminar: string;
+  rut_eliminar: string;
+}
+
+export interface InfoBiometrica {
+  persona_id: string;
+  huella_id: number;
+  total_encodings: number;
+  tiene_consentimiento: boolean;
+  tiene_preview: boolean;
 }
 
 export interface LogEntry {
