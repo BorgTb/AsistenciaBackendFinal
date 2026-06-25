@@ -1,4 +1,5 @@
 import os
+import uuid
 import datetime
 import secrets
 import string
@@ -8,6 +9,7 @@ import bcrypt
 import jwt
 
 from database import get_connection
+from services.email_service import enviar_codigo_seguimiento, notificar_resolucion_eliminacion
 
 auth_bp = Blueprint('auth', __name__)
 
@@ -794,6 +796,228 @@ def me():
                 'empresas': empresas
             }
         })
+    finally:
+        cur.close()
+        conn.close()
+
+
+@auth_bp.route('/api/auth/solicitar-eliminacion-datos', methods=['POST'])
+def solicitar_eliminacion_datos():
+    data = request.json or {}
+    rut = (data.get('rut') or '').strip()
+    email_contacto = (data.get('email') or '').strip()
+    motivo = (data.get('motivo') or '').strip()
+
+    if not rut:
+        return jsonify({'error': 'El RUT es obligatorio'}), 400
+
+    conn = get_connection()
+    cur = conn.cursor()
+    try:
+        cur.execute(
+            "SELECT id, nombre, email, empresa_id FROM personas WHERE rut = %s AND activo = TRUE",
+            (rut,)
+        )
+        row = cur.fetchone()
+        if not row:
+            return jsonify({'error': 'No se encontró una persona con ese RUT'}), 404
+
+        persona_id, nombre, email_bd, empresa_id = row
+
+        cur.execute(
+            "SELECT id FROM solicitudes_eliminacion WHERE persona_id = %s AND estado = 'pendiente'",
+            (persona_id,)
+        )
+        if cur.fetchone():
+            return jsonify({'error': 'Ya existe una solicitud pendiente para esta persona'}), 409
+
+        codigo = str(uuid.uuid4())
+        email_final = email_contacto or email_bd or ''
+
+        cur.execute(
+            "INSERT INTO solicitudes_eliminacion (persona_id, codigo_seguimiento, email_contacto, motivo) VALUES (%s, %s, %s, %s)",
+            (persona_id, codigo, email_final if email_final else None, motivo or None)
+        )
+        conn.commit()
+
+        if email_final:
+            try:
+                enviar_codigo_seguimiento(email_final, nombre, codigo)
+            except Exception:
+                pass
+
+        return jsonify({
+            'ok': True,
+            'codigo_seguimiento': codigo,
+            'mensaje': 'Solicitud creada correctamente. Guarda tu código de seguimiento.'
+        })
+    except Exception as e:
+        conn.rollback()
+        return jsonify({'error': str(e)}), 500
+    finally:
+        cur.close()
+        conn.close()
+
+
+@auth_bp.route('/api/auth/solicitud-eliminacion/<codigo_seguimiento>', methods=['GET'])
+def consultar_solicitud_eliminacion(codigo_seguimiento):
+    conn = get_connection()
+    cur = conn.cursor()
+    try:
+        cur.execute(
+            "SELECT estado, fecha_solicitud, fecha_resolucion FROM solicitudes_eliminacion WHERE codigo_seguimiento = %s",
+            (codigo_seguimiento,)
+        )
+        row = cur.fetchone()
+        if not row:
+            return jsonify({'error': 'Código de seguimiento no válido'}), 404
+
+        return jsonify({
+            'ok': True,
+            'estado': row[0],
+            'fecha_solicitud': str(row[1]) if row[1] else None,
+            'fecha_resolucion': str(row[2]) if row[2] else None
+        })
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+    finally:
+        cur.close()
+        conn.close()
+
+
+@auth_bp.route('/api/auth/solicitudes-eliminacion', methods=['GET'])
+@requiere_rol('admin', 'empleador')
+def listar_solicitudes_eliminacion():
+    conn = get_connection()
+    cur = conn.cursor()
+    try:
+        if request.user_rol == 'admin':
+            cur.execute("""
+                SELECT s.id, s.persona_id, p.nombre, p.rut, s.email_contacto,
+                       s.estado, s.motivo, s.codigo_seguimiento, s.fecha_solicitud, s.fecha_resolucion
+                FROM solicitudes_eliminacion s
+                JOIN personas p ON p.id = s.persona_id
+                ORDER BY s.fecha_solicitud DESC
+            """)
+        else:
+            cur.execute("""
+                SELECT s.id, s.persona_id, p.nombre, p.rut, s.email_contacto,
+                       s.estado, s.motivo, s.codigo_seguimiento, s.fecha_solicitud, s.fecha_resolucion
+                FROM solicitudes_eliminacion s
+                JOIN personas p ON p.id = s.persona_id
+                WHERE p.empresa_id = %s
+                ORDER BY s.fecha_solicitud DESC
+            """, (request.empresa_id,))
+
+        rows = cur.fetchall()
+        return jsonify([{
+            'id': r[0],
+            'persona_id': str(r[1]),
+            'nombre': r[2],
+            'rut': r[3],
+            'email_contacto': r[4] or '',
+            'estado': r[5],
+            'motivo': r[6] or '',
+            'codigo_seguimiento': r[7],
+            'fecha_solicitud': str(r[8]) if r[8] else None,
+            'fecha_resolucion': str(r[9]) if r[9] else None
+        } for r in rows])
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+    finally:
+        cur.close()
+        conn.close()
+
+
+@auth_bp.route('/api/auth/solicitudes-eliminacion/<int:solicitud_id>', methods=['PUT'])
+@requiere_rol('admin', 'empleador')
+def resolver_solicitud_eliminacion(solicitud_id):
+    data = request.json or {}
+    nuevo_estado = (data.get('estado') or '').strip().lower()
+
+    if nuevo_estado not in ('aprobada', 'rechazada'):
+        return jsonify({'error': 'Estado debe ser "aprobada" o "rechazada"'}), 400
+
+    conn = get_connection()
+    cur = conn.cursor()
+    try:
+        cur.execute("""
+            SELECT s.id, s.persona_id, s.estado, s.email_contacto,
+                   p.nombre, p.email, p.rut, p.empresa_id
+            FROM solicitudes_eliminacion s
+            JOIN personas p ON p.id = s.persona_id
+            WHERE s.id = %s
+        """, (solicitud_id,))
+        row = cur.fetchone()
+        if not row:
+            return jsonify({'error': 'Solicitud no encontrada'}), 404
+
+        _, persona_id, estado_actual, email_solicitud, nombre, email_persona, rut, empresa_id = row
+
+        if estado_actual != 'pendiente':
+            return jsonify({'error': 'Esta solicitud ya fue resuelta'}), 400
+
+        if request.user_rol != 'admin' and empresa_id != request.empresa_id:
+            return jsonify({'error': 'No autorizado para resolver esta solicitud'}), 403
+
+        if nuevo_estado == 'aprobada':
+            preview_path = os.path.join(os.getcwd(), 'static', 'previews', f'{persona_id}.jpg')
+
+            cur.execute(
+                "SELECT encoding, foto_path FROM encodings_faciales WHERE persona_id = %s LIMIT 1",
+                (persona_id,)
+            )
+            ef_row = cur.fetchone()
+            embedding_anterior = ef_row[0] if ef_row else None
+            foto_path = ef_row[1] if ef_row else f"static/previews/{persona_id}.jpg"
+
+            cur.execute(
+                "INSERT INTO eliminaciones_biometricas (persona_id, embedding_anterior, foto_path, usuario_solicitante) VALUES (%s, %s, %s, %s)",
+                (persona_id, embedding_anterior, foto_path, str(request.user_id))
+            )
+
+            cur.execute("UPDATE personas SET rut = 'ELIMINADO-' || id, huella_id = NULL WHERE id = %s", (persona_id,))
+
+            if os.path.exists(preview_path):
+                os.unlink(preview_path)
+
+            cur.execute("DELETE FROM consentimientos WHERE persona_id = %s", (persona_id,))
+            cur.execute("DELETE FROM encodings_faciales WHERE persona_id = %s", (persona_id,))
+
+            try:
+                from eventos_mqtt import notificar_sincronizacion
+                notificar_sincronizacion(empresa_id, 'personas', 'actualizar', persona_id)
+            except Exception:
+                pass
+
+            try:
+                from routes.facial import _invalidar_cache
+                _invalidar_cache()
+            except Exception:
+                pass
+
+        cur.execute(
+            "UPDATE solicitudes_eliminacion SET estado = %s, revisado_por = %s, fecha_resolucion = NOW() WHERE id = %s",
+            (nuevo_estado, request.user_id, solicitud_id)
+        )
+        conn.commit()
+
+        email_notif = email_solicitud or email_persona
+        if email_notif:
+            try:
+                notificar_resolucion_eliminacion(email_notif, nombre, nuevo_estado, '')
+            except Exception:
+                pass
+
+        if nuevo_estado == 'aprobada':
+            mensaje = f'Solicitud aprobada. Datos de {nombre} eliminados correctamente.'
+        else:
+            mensaje = f'Solicitud rechazada. No se modificaron los datos de {nombre}.'
+
+        return jsonify({'ok': True, 'mensaje': mensaje})
+    except Exception as e:
+        conn.rollback()
+        return jsonify({'error': str(e)}), 500
     finally:
         cur.close()
         conn.close()

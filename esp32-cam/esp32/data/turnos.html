@@ -37,11 +37,26 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Oxygen,sans-
 .btn-secondary:hover{color:var(--text);background:var(--surface-2)}
 
 .item{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:12px 14px;margin-bottom:6px;display:flex;justify-content:space-between;align-items:center;gap:8px}
-.item-info{flex:1}
+.item-info{flex:1;min-width:0}
 .item-name{font-size:12px;font-weight:600;color:var(--text)}
 .item-meta{font-size:10px;color:var(--muted);margin-top:2px}
+.item-actions{display:flex;gap:4px;flex-shrink:0}
+.action-btn{background:none;border:1px solid var(--border);color:var(--muted);padding:4px 8px;border-radius:4px;font-family:inherit;font-size:9px;font-weight:600;cursor:pointer;white-space:nowrap;transition:.15s}
+.action-btn:hover{border-color:var(--danger);color:var(--danger)}
+.action-btn.edit:hover{border-color:var(--primary);color:var(--primary)}
 .del-btn{background:none;border:1px solid var(--border);color:var(--muted);padding:5px 10px;border-radius:4px;font-family:inherit;font-size:10px;font-weight:600;cursor:pointer;white-space:nowrap;transition:.15s}
 .del-btn:hover{border-color:var(--danger);color:var(--danger)}
+
+.overlay{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.7);z-index:9999;display:flex;align-items:center;justify-content:center}
+.modal{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:24px;max-width:360px;width:90%;text-align:center}
+.modal h2{color:var(--text);margin:0 0 16px;font-size:16px}
+.modal .field{margin-bottom:12px;text-align:left}
+.modal .field label{display:block;font-size:10px;color:var(--muted-2);text-transform:uppercase;letter-spacing:.6px;margin-bottom:4px;font-weight:600}
+.modal .field input,.modal .field select{width:100%;padding:10px;border:1px solid var(--border);border-radius:6px;background:var(--surface-2);color:var(--text);font-family:inherit;font-size:13px;outline:none;box-sizing:border-box}
+.modal .field select option{background:var(--surface)}
+.modal .btn{width:100%;padding:10px;border:none;border-radius:6px;font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;margin-bottom:6px;display:block;text-align:center}
+.modal .btn-primary{background:var(--primary);color:#fff}
+.modal .btn-secondary{background:var(--surface);border:1px solid var(--border);color:var(--muted)}
 
 .empty{text-align:center;padding:30px;color:var(--muted-2);font-size:12px}
 .status{font-size:11px;color:var(--muted);text-align:center;padding:6px;margin-top:4px}
@@ -85,8 +100,36 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Oxygen,sans-
   <button class="btn btn-secondary" onclick="location.href='/gestion'" style="margin-top:8px">← Volver</button>
 </div>
 
+<div class="overlay" id="editOverlay" style="display:none" onclick="this.style.display='none'">
+  <div class="modal" onclick="event.stopPropagation()">
+    <h2 id="editTitle">Editar turno</h2>
+    <div class="field">
+      <label>Nombre del Turno</label>
+      <input type="text" id="editNombre" placeholder="Ej: Turno Mañana">
+    </div>
+    <div class="trow">
+      <div class="field"><label>Inicio</label><input type="time" id="editInicio" value="08:00"></div>
+      <div class="field"><label>Fin</label><input type="time" id="editFin" value="16:00"></div>
+    </div>
+    <label style="font-size:10px;color:var(--muted-2);text-transform:uppercase;letter-spacing:.6px;font-weight:600;display:block;margin-bottom:4px">Días</label>
+    <div class="dgrid" id="editDiasPicker">
+      <button class="dia on" data-dia="L" onclick="toggleEditDia(this)">L</button>
+      <button class="dia on" data-dia="M" onclick="toggleEditDia(this)">M</button>
+      <button class="dia on" data-dia="X" onclick="toggleEditDia(this)">X</button>
+      <button class="dia on" data-dia="J" onclick="toggleEditDia(this)">J</button>
+      <button class="dia on" data-dia="V" onclick="toggleEditDia(this)">V</button>
+      <button class="dia" data-dia="S" onclick="toggleEditDia(this)">S</button>
+      <button class="dia" data-dia="D" onclick="toggleEditDia(this)">D</button>
+    </div>
+    <div class="hint" id="editDiasPreview">Días: L, M, X, J, V</div>
+    <button class="btn btn-primary" id="editGuardarBtn">Guardar cambios</button>
+    <button class="btn btn-secondary" onclick="document.getElementById('editOverlay').style.display='none'">Cancelar</button>
+  </div>
+</div>
+
 <script>
 const ordenDias=['L','M','X','J','V','S','D'];
+const editSelec=new Set(['L','M','X','J','V']);
 const selec=new Set(['L','M','X','J','V']);
 const ADMIN_PW_KEY='sas_admin_session';
 let adminHabilitado=false;
@@ -155,7 +198,10 @@ async function cargarTurnos(){
           <div class="item-name">${t.nombre}</div>
           <div class="item-meta">${t.inicio} – ${t.fin} &nbsp;|&nbsp; ${t.dias} &nbsp;|&nbsp; ID: ${t.id}</div>
         </div>
-        <button class="del-btn" onclick="borrarTurno('${t.id}')">Borrar</button>
+        <div class="item-actions">
+          <button class="action-btn edit" onclick="editarTurno('${t.id}','${t.nombre.replace(/'/g,"\\'")}','${t.inicio}','${t.fin}','${t.dias}')">Editar</button>
+          <button class="del-btn" onclick="borrarTurno('${t.id}')">Borrar</button>
+        </div>
       </div>`).join('');
   }catch(e){document.getElementById('listaTurnos').innerHTML='<div class="empty">Error</div>';}
 }
@@ -164,6 +210,43 @@ async function borrarTurno(id){
   try{const r=await fetchProtegido('/borrar_turno?id='+encodeURIComponent(id));if(!r)return;alert(await r.text());cargarTurnos();}
   catch(e){alert('Error al borrar');}
 }
+function toggleEditDia(b){const d=b.dataset.dia;editSelec.has(d)?editSelec.delete(d):editSelec.add(d);renderEditDias();}
+function renderEditDias(){
+  const dias=ordenDias.filter(d=>editSelec.has(d));
+  document.getElementById('editDiasPreview').textContent='Días: '+(dias.length?dias.join(', '):'(ninguno)');
+  document.querySelectorAll('#editDiasPicker .dia').forEach(b=>b.classList.toggle('on',editSelec.has(b.dataset.dia)));
+}
+let editTurnoId='';
+function editarTurno(id,nombre,inicio,fin,dias){
+  editTurnoId=id;
+  document.getElementById('editNombre').value=nombre;
+  document.getElementById('editInicio').value=inicio;
+  document.getElementById('editFin').value=fin;
+  editSelec.clear();
+  (dias||'').split('').forEach(d=>{if(ordenDias.includes(d))editSelec.add(d);});
+  renderEditDias();
+  document.getElementById('editOverlay').style.display='flex';
+}
+document.getElementById('editGuardarBtn').onclick=async function(){
+  const nombre=document.getElementById('editNombre').value.trim();
+  const inicio=document.getElementById('editInicio').value;
+  const fin=document.getElementById('editFin').value;
+  const dias=ordenDias.filter(d=>editSelec.has(d)).join(',');
+  if(!nombre||!inicio||!fin){alert('Complete todos los campos');return;}
+  if(!dias){alert('Seleccione al menos un día');return;}
+  try{
+    const r=await fetchProtegido('/editar_turno?id='+encodeURIComponent(editTurnoId)+
+      '&nombre='+encodeURIComponent(nombre)+
+      '&inicio='+encodeURIComponent(inicio)+
+      '&fin='+encodeURIComponent(fin)+
+      '&dias='+encodeURIComponent(dias));
+    if(!r)return;
+    const msg=await r.text();
+    document.getElementById('editOverlay').style.display='none';
+    alert(msg);
+    cargarTurnos();
+  }catch(e){alert('Error al editar');}
+};
 async function crearTurno(){
   const nombre=document.getElementById('turnoNombre').value;
   const inicio=document.getElementById('turnoInicio').value;

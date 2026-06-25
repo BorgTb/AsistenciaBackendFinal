@@ -490,6 +490,225 @@ class TestRoutesAuth:
             json={'usuario_id': 1, 'empresa_id': 1, 'rol': 'owner'})
         assert resp.status_code == 400
 
+    # ── Solicitar eliminacion de datos (publico) ──────────
+    def test_solicitar_eliminacion_exito(self, client, empleador_token):
+        client.post('/api/personas',
+            headers={'Authorization': f'Bearer {empleador_token}'},
+            json={'nombre': 'Test', 'rut': '11.111.111-1', 'email': 'test@test.cl'})
+        resp = client.post('/api/auth/solicitar-eliminacion-datos', json={
+            'rut': '11.111.111-1', 'email': 'test@test.cl', 'motivo': 'Quiero borrar mis datos'
+        })
+        assert resp.status_code == 200
+        data = resp.get_json()
+        assert data['ok'] is True
+        assert 'codigo_seguimiento' in data
+        assert len(data['codigo_seguimiento']) == 36
+
+    def test_solicitar_eliminacion_rut_inexistente(self, client):
+        resp = client.post('/api/auth/solicitar-eliminacion-datos', json={
+            'rut': '99.999.999-9'
+        })
+        assert resp.status_code == 404
+
+    def test_solicitar_eliminacion_sin_rut(self, client):
+        resp = client.post('/api/auth/solicitar-eliminacion-datos', json={})
+        assert resp.status_code == 400
+
+    def test_solicitar_eliminacion_duplicada(self, client, empleador_token):
+        client.post('/api/personas',
+            headers={'Authorization': f'Bearer {empleador_token}'},
+            json={'nombre': 'Test', 'rut': '11.111.111-2', 'email': 'test2@test.cl'})
+        client.post('/api/auth/solicitar-eliminacion-datos', json={
+            'rut': '11.111.111-2'
+        })
+        resp = client.post('/api/auth/solicitar-eliminacion-datos', json={
+            'rut': '11.111.111-2'
+        })
+        assert resp.status_code == 409
+
+    # ── Consultar solicitud (publico) ─────────────────────
+    def test_consultar_solicitud_exito(self, client, empleador_token):
+        client.post('/api/personas',
+            headers={'Authorization': f'Bearer {empleador_token}'},
+            json={'nombre': 'Test', 'rut': '11.111.111-3', 'email': 'test3@test.cl'})
+        crear = client.post('/api/auth/solicitar-eliminacion-datos', json={
+            'rut': '11.111.111-3'
+        })
+        codigo = crear.get_json()['codigo_seguimiento']
+        resp = client.get(f'/api/auth/solicitud-eliminacion/{codigo}')
+        assert resp.status_code == 200
+        data = resp.get_json()
+        assert data['ok'] is True
+        assert data['estado'] == 'pendiente'
+
+    def test_consultar_solicitud_codigo_invalido(self, client):
+        resp = client.get('/api/auth/solicitud-eliminacion/00000000-0000-0000-0000-000000000000')
+        assert resp.status_code == 404
+
+    # ── Listar solicitudes (admin/empleador) ──────────────
+    def test_listar_solicitudes_admin(self, client, admin_token, empleador_token):
+        client.post('/api/personas',
+            headers={'Authorization': f'Bearer {empleador_token}'},
+            json={'nombre': 'Test', 'rut': '11.111.111-4', 'email': 'test4@test.cl'})
+        client.post('/api/auth/solicitar-eliminacion-datos', json={'rut': '11.111.111-4'})
+        resp = client.get('/api/auth/solicitudes-eliminacion',
+            headers={'Authorization': f'Bearer {admin_token}'})
+        assert resp.status_code == 200
+        data = resp.get_json()
+        assert isinstance(data, list)
+        assert len(data) >= 1
+
+    def test_listar_solicitudes_sin_auth(self, client):
+        resp = client.get('/api/auth/solicitudes-eliminacion')
+        assert resp.status_code == 401
+
+    def test_listar_solicitudes_trabajador(self, client, trabajador_token):
+        resp = client.get('/api/auth/solicitudes-eliminacion',
+            headers={'Authorization': f'Bearer {trabajador_token}'})
+        assert resp.status_code == 403
+
+    # ── Resolver solicitud (aprobar) ─────────────────────
+    def test_aprobar_solicitud_eliminacion(self, client, admin_token, empleador_token):
+        from database import get_connection
+        client.post('/api/personas',
+            headers={'Authorization': f'Bearer {empleador_token}'},
+            json={'nombre': 'Eliminar', 'rut': '33.333.333-3', 'email': 'elim@test.cl'})
+        crear = client.post('/api/auth/solicitar-eliminacion-datos', json={
+            'rut': '33.333.333-3'
+        })
+        sol_id = None
+        lista = client.get('/api/auth/solicitudes-eliminacion',
+            headers={'Authorization': f'Bearer {admin_token}'})
+        for s in lista.get_json():
+            if s['rut'] == '33.333.333-3':
+                sol_id = s['id']
+                break
+        assert sol_id is not None
+        resp = client.put(f'/api/auth/solicitudes-eliminacion/{sol_id}',
+            headers={'Authorization': f'Bearer {admin_token}'},
+            json={'estado': 'aprobada'})
+        assert resp.status_code == 200
+        data = resp.get_json()
+        assert data['ok'] is True
+        conn = get_connection()
+        cur = conn.cursor()
+        cur.execute("SELECT rut, huella_id FROM personas WHERE id = (SELECT persona_id FROM solicitudes_eliminacion WHERE id = %s)", (sol_id,))
+        row = cur.fetchone()
+        cur.close()
+        conn.close()
+        assert row[0].startswith('ELIMINADO-')
+        assert row[1] is None
+
+    def test_rechazar_solicitud_eliminacion(self, client, admin_token, empleador_token):
+        from database import get_connection
+        client.post('/api/personas',
+            headers={'Authorization': f'Bearer {empleador_token}'},
+            json={'nombre': 'Rechazar', 'rut': '44.444.444-4', 'email': 'rech@test.cl'})
+        crear = client.post('/api/auth/solicitar-eliminacion-datos', json={
+            'rut': '44.444.444-4'
+        })
+        lista = client.get('/api/auth/solicitudes-eliminacion',
+            headers={'Authorization': f'Bearer {admin_token}'})
+        sol_id = None
+        for s in lista.get_json():
+            if s['rut'] == '44.444.444-4':
+                sol_id = s['id']
+                break
+        assert sol_id is not None
+        rut_original = None
+        conn = get_connection()
+        cur = conn.cursor()
+        cur.execute("SELECT rut FROM personas WHERE id = (SELECT persona_id FROM solicitudes_eliminacion WHERE id = %s)", (sol_id,))
+        rut_original = cur.fetchone()[0]
+        cur.close()
+        conn.close()
+        resp = client.put(f'/api/auth/solicitudes-eliminacion/{sol_id}',
+            headers={'Authorization': f'Bearer {admin_token}'},
+            json={'estado': 'rechazada'})
+        assert resp.status_code == 200
+        conn = get_connection()
+        cur = conn.cursor()
+        cur.execute("SELECT rut FROM personas WHERE id = (SELECT persona_id FROM solicitudes_eliminacion WHERE id = %s)", (sol_id,))
+        row = cur.fetchone()
+        cur.close()
+        conn.close()
+        assert row[0] == rut_original
+
+    def test_resolver_solicitud_ya_resuelta(self, client, admin_token, empleador_token):
+        client.post('/api/personas',
+            headers={'Authorization': f'Bearer {empleador_token}'},
+            json={'nombre': 'YaResuelta', 'rut': '55.555.555-5', 'email': 'yares@test.cl'})
+        client.post('/api/auth/solicitar-eliminacion-datos', json={'rut': '55.555.555-5'})
+        lista = client.get('/api/auth/solicitudes-eliminacion',
+            headers={'Authorization': f'Bearer {admin_token}'})
+        sol_id = lista.get_json()[0]['id']
+        client.put(f'/api/auth/solicitudes-eliminacion/{sol_id}',
+            headers={'Authorization': f'Bearer {admin_token}'},
+            json={'estado': 'aprobada'})
+        resp = client.put(f'/api/auth/solicitudes-eliminacion/{sol_id}',
+            headers={'Authorization': f'Bearer {admin_token}'},
+            json={'estado': 'rechazada'})
+        assert resp.status_code == 400
+
+    def test_resolver_solicitud_estado_invalido(self, client, admin_token):
+        client.post('/api/personas',
+            headers={'Authorization': f'Bearer {admin_token}'},
+            json={'nombre': 'Invalido', 'rut': '66.666.666-6', 'email': 'inv@test.cl'})
+        client.post('/api/auth/solicitar-eliminacion-datos', json={'rut': '66.666.666-6'})
+        lista = client.get('/api/auth/solicitudes-eliminacion',
+            headers={'Authorization': f'Bearer {admin_token}'})
+        sol_id = lista.get_json()[0]['id']
+        resp = client.put(f'/api/auth/solicitudes-eliminacion/{sol_id}',
+            headers={'Authorization': f'Bearer {admin_token}'},
+            json={'estado': 'cancelada'})
+        assert resp.status_code == 400
+
+    def test_resolver_solicitud_sin_auth(self, client):
+        resp = client.put('/api/auth/solicitudes-eliminacion/1',
+            json={'estado': 'aprobada'})
+        assert resp.status_code == 401
+
+    # ── Asistencias se mantienen tras aprobacion ──────────
+    def test_asistencias_persisten_tras_eliminacion(self, client, admin_token, empleador_token):
+        from database import get_connection
+        client.post('/api/personas',
+            headers={'Authorization': f'Bearer {empleador_token}'},
+            json={'nombre': 'AsistenciaTest', 'rut': '77.777.777-7', 'email': 'asist@test.cl'})
+        lista = client.get('/api/personas',
+            headers={'Authorization': f'Bearer {empleador_token}'})
+        pid = None
+        for p in lista.get_json():
+            if p['rut'] == '77.777.777-7':
+                pid = int(p['id'])
+                break
+        assert pid is not None
+        conn = get_connection()
+        cur = conn.cursor()
+        cur.execute(
+            "INSERT INTO asistencias (persona_id, tipo, metodo, nombre) VALUES (%s, 'entrada', 'huella', 'AsistenciaTest') RETURNING id",
+            (pid,)
+        )
+        asis_id = cur.fetchone()[0]
+        conn.commit()
+        cur.close()
+        conn.close()
+        client.post('/api/auth/solicitar-eliminacion-datos', json={'rut': '77.777.777-7'})
+        lista = client.get('/api/auth/solicitudes-eliminacion',
+            headers={'Authorization': f'Bearer {admin_token}'})
+        sol_id = lista.get_json()[0]['id']
+        client.put(f'/api/auth/solicitudes-eliminacion/{sol_id}',
+            headers={'Authorization': f'Bearer {admin_token}'},
+            json={'estado': 'aprobada'})
+        conn = get_connection()
+        cur = conn.cursor()
+        cur.execute("SELECT persona_id, tipo FROM asistencias WHERE id = %s", (asis_id,))
+        row = cur.fetchone()
+        cur.close()
+        conn.close()
+        assert row is not None
+        assert row[0] == pid
+        assert row[1] == 'entrada'
+
     # ── Device PIN edge cases ─────────────────────────────
     def test_enrolar_pin_ya_usado(self, client, empleador_token):
         pin_resp = client.post('/api/auth/dispositivos/generar-pin',

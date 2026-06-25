@@ -235,6 +235,51 @@ export async function asignarUsuarioEmpresa(usuarioId: number, empresaId: number
   });
 }
 
+export interface SolicitudEliminacion {
+  id: number;
+  persona_id: string;
+  nombre: string;
+  rut: string;
+  email_contacto: string;
+  estado: 'pendiente' | 'aprobada' | 'rechazada';
+  motivo: string;
+  codigo_seguimiento: string;
+  fecha_solicitud: string | null;
+  fecha_resolucion: string | null;
+}
+
+export async function solicitarEliminacionDatos(payload: { rut: string; email?: string; motivo?: string }) {
+  const response = await fetch('/api/auth/solicitar-eliminacion-datos', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+    cache: 'no-store'
+  });
+  const data = await response.json();
+  if (!response.ok) throw new Error(data.error || `HTTP ${response.status}`);
+  return data as { ok: boolean; codigo_seguimiento: string; mensaje: string };
+}
+
+export async function consultarSolicitudEliminacion(codigo: string) {
+  const response = await fetch(`/api/auth/solicitud-eliminacion/${codigo}`, {
+    cache: 'no-store'
+  });
+  const data = await response.json();
+  if (!response.ok) throw new Error(data.error || `HTTP ${response.status}`);
+  return data as { ok: boolean; estado: string; fecha_solicitud: string | null; fecha_resolucion: string | null };
+}
+
+export async function getSolicitudesEliminacion() {
+  return request<SolicitudEliminacion[]>('/api/auth/solicitudes-eliminacion');
+}
+
+export async function resolverSolicitudEliminacion(solicitudId: number, estado: 'aprobada' | 'rechazada') {
+  return request<{ ok: boolean; mensaje: string }>(`/api/auth/solicitudes-eliminacion/${solicitudId}`, {
+    method: 'PUT',
+    body: JSON.stringify({ estado })
+  });
+}
+
 export function saveToken(token: string) {
   if (typeof window !== 'undefined') {
     localStorage.setItem('sas_token', token);

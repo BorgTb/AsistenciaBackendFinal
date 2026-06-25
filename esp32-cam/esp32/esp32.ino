@@ -146,8 +146,7 @@ String personaEditandoId = "";
 int huellaAnteriorEditando = -1;
 bool modoRegistroRemoto = false;
 String personaRemotaId = "";
-volatile bool sincronizacionPendiente = false;
-bool enSync = false;
+unsigned long lastSyncedBackendId = 0;
 unsigned long ultimoLogDiagnosticoOffline = 0;
 String wifiDisconnectReason = "";
 int wifiDisconnectCount = 0;
@@ -160,7 +159,7 @@ unsigned long wifiUptimeStart = 0;
 // ============================================================
 JsonArray loadArray(const char* path, DynamicJsonDocument& doc);
 void saveArray(const char* path, DynamicJsonDocument& doc);
-bool enviarFotoIdentificacion(String& personaIdOut);
+bool enviarFotoIdentificacion(String& personaIdOut, String& rutOut);
 bool registrarRostroEnBackend(String rut);
 bool agregarFotoEnBackend(String rut);
 void completarRegistroPersona();
@@ -173,7 +172,7 @@ void sincronizarErpConfigDesdeBackend();
 void enviarAsistenciaAErp(const String& personaId, const String& rut, const String& nombre, const String& tipo, const String& metodo);
 void sincronizarPendientes();
 void sincronizarTodo();
-String procesarAsistencia(String personaId, String metodo);
+String procesarAsistencia(String personaId, String metodo, String rutBusqueda = "");
 String buscarPersonaPorHuella(int huellaID);
 void addLog(String msg);
 unsigned long getTimestamp();
@@ -181,6 +180,10 @@ void actualizarBloqueoAsistencia(unsigned long duracionMs = BLOQUEO_MENU_MS);
 bool asistenciaAutomaticaHabilitada(unsigned long ahora);
 bool detectarMovimientoCamara();
 uint32_t calcularFirmaMovimiento(const uint8_t* data, size_t len);
+void loadSyncState();
+void saveSyncState();
+bool deleteFromBackend(const String& endpoint);
+void migrarPersonasAntiguas();
 String jsonEscape(const String& src);
 bool datosOfflineListos(String& motivo);
 String motivoAsistenciaAutomatica(unsigned long ahora);
@@ -212,6 +215,9 @@ void handleActualizarRostroPersona();
 void handleAgregarFotosPersona();
 void handleBorrarPersona();
 void handleBorrarTurno();
+void handleEditarTurno();
+void handleBorrarAsistencia();
+void handleEditarAsistencia();
 void handleBorrarAsignacion();
 void handleGetPersonas();
 void handleGetTurnos();
@@ -243,7 +249,6 @@ static void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_
       esp_mqtt_client_subscribe(mqtt_client, wifiReconnectTopic.c_str(), 0);
       String syncTopic = "backend/comando/" + deviceMAC + "/sync";
       esp_mqtt_client_subscribe(mqtt_client, syncTopic.c_str(), 0);
-      sincronizacionPendiente = true;
       break;
     }
     case MQTT_EVENT_DISCONNECTED:
@@ -332,7 +337,10 @@ static void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_
         JsonObject objetivo;
         bool encontrado = false;
         for (JsonObject p : arr) {
-          if (p["id"].as<String>() == persona_id) { objetivo = p; encontrado = true; break; }
+          if (p["id"].as<String>() == persona_id ||
+              (p.containsKey("backend_id") && p["backend_id"].as<String>() == persona_id)) {
+            objetivo = p; encontrado = true; break;
+          }
         }
         if (!encontrado) {
           String errTopic = "esp32/huella/resultado/" + deviceMAC;
@@ -690,7 +698,7 @@ void verificarConexionWiFi() {
       mqtt_client = NULL;
       mqttConnected = false;
     }
-    sincronizacionPendiente = true;
+    if (isOnline) sincronizarPendientes();
   } else if (reintentosWifi >= 5) {
     addLog("5 intentos fallidos. Activando AP para reconfigurar...");
     WiFi.disconnect(true);
@@ -827,6 +835,20 @@ void beginHttp(HTTPClient& http, const String& url) {
   if (deviceMAC.length() > 0) http.addHeader("X-Device-MAC", deviceMAC);
 }
 
+bool deleteFromBackend(const String& endpoint) {
+  if (!isOnline || WiFi.status() != WL_CONNECTED) return false;
+  HTTPClient http;
+  beginHttp(http, backendURL + endpoint);
+  int code = http.sendRequest("DELETE");
+  http.end();
+  if (code == 200) {
+    addLog("DELETE " + endpoint + " -> OK");
+    return true;
+  }
+  addLog("DELETE " + endpoint + " -> " + String(code));
+  return false;
+}
+
 // ============================================================
 // ADMIN LOCAL — SHA256 + Password
 // ============================================================
@@ -958,18 +980,6 @@ void sincronizarPersonasDesdeBackend() {
   DynamicJsonDocument docLocal(8192);
   JsonArray locales = loadArray("/personas.json", docLocal);
 
-  // Migrar entradas antiguas: reemplazar id local-* por backend_id si existe
-  for (JsonObject p : locales) {
-    if (p.containsKey("backend_id") && p["id"].as<String>().startsWith("local-")) {
-      String oldId = p["id"].as<String>();
-      String realId = p["backend_id"].as<String>();
-      p["id"] = realId;
-      p.remove("backend_id");
-      p["sincronizado"] = true;
-      actualizarAsistenciasPorPersona(oldId, realId);
-    }
-  }
-
   HTTPClient http;
   beginHttp(http, backendURL + "/api/personas");
 
@@ -980,12 +990,32 @@ void sincronizarPersonasDesdeBackend() {
 
     if (!error) {
       JsonArray backendArr = docBackend.as<JsonArray>();
-      for (JsonObject p : backendArr) {
-        p["sincronizado"] = true;
+
+      // Preservar backend_id de personas locales que ya tienen mapeo
+      for (JsonObject loc : locales) {
+        if (loc.containsKey("backend_id")) {
+          String locBackendId = loc["backend_id"].as<String>();
+          for (JsonObject rem : backendArr) {
+            if (rem["id"].as<String>() == locBackendId) {
+              rem["id"] = loc["id"].as<String>();
+              rem["backend_id"] = locBackendId;
+              break;
+            }
+          }
+        }
       }
 
-      // Limpiar del array local las entradas que ya están en backend (mismo id)
-      // para evitar duplicados al hacer merge
+      for (JsonObject p : backendArr) {
+        if (!p.containsKey("backend_id")) {
+          if (!p["id"].as<String>().startsWith("local-")) {
+            String origId = p["id"].as<String>();
+            p["backend_id"] = origId;
+            p["id"] = "local-import-" + origId;
+          }
+          p["sincronizado"] = true;
+        }
+      }
+
       int localesReagregadas = 0;
       for (JsonObject p : locales) {
         if (!p["sincronizado"].as<bool>()) {
@@ -997,6 +1027,7 @@ void sincronizarPersonasDesdeBackend() {
           if (p.containsKey("huella_id")) obj["huella_id"] = p["huella_id"];
           if (p.containsKey("fecha_registro")) obj["fecha_registro"] = p["fecha_registro"];
           obj["sincronizado"] = false;
+          if (p.containsKey("backend_id")) obj["backend_id"] = p["backend_id"];
           localesReagregadas++;
         }
       }
@@ -1021,8 +1052,9 @@ void sincronizarPersonasDesdeBackend() {
 // ============================================================
 // LÓGICA DE ASISTENCIA BIOMÉTRICA
 // ============================================================
-bool enviarFotoIdentificacion(String& personaIdOut) {
+bool enviarFotoIdentificacion(String& personaIdOut, String& rutOut) {
   personaIdOut = "";
+  rutOut = "";
   if (!camaraIniciada || !isOnline || WiFi.status() != WL_CONNECTED) return false;
 
   sensor_t* s = esp_camera_sensor_get();
@@ -1053,6 +1085,7 @@ bool enviarFotoIdentificacion(String& personaIdOut) {
     DeserializationError err = deserializeJson(doc, response);
     if (!err && doc.containsKey("persona_id")) {
       personaIdOut = doc["persona_id"].as<String>();
+      rutOut = doc["rut"] | "";
       exito = true;
       addLog("Rostro identificado via HTTP: " + personaIdOut);
     }
@@ -1083,7 +1116,7 @@ bool turnoActivo(const String& personaId) {
   return false;
 }
 
-String procesarAsistencia(String personaId, String metodo) {
+String procesarAsistencia(String personaId, String metodo, String rutBusqueda) {
   DynamicJsonDocument docP(2048);
   JsonArray personas = loadArray("/personas.json", docP);
   String nombre = "";
@@ -1097,64 +1130,103 @@ String procesarAsistencia(String personaId, String metodo) {
     }
   }
 
+  if (nombre == "") {
+    for (JsonObject p : personas) {
+      if (p.containsKey("backend_id") && p["backend_id"].as<String>() == personaId) {
+        personaId = p["id"].as<String>();
+        nombre = p["nombre"].as<String>();
+        rut = p["rut"].as<String>();
+        break;
+      }
+    }
+  }
+
+  if (nombre == "" && rutBusqueda.length() > 0) {
+    for (JsonObject p : personas) {
+      if (p["rut"].as<String>() == rutBusqueda) {
+        personaId = p["id"].as<String>();
+        nombre = p["nombre"].as<String>();
+        rut = p["rut"].as<String>();
+        break;
+      }
+    }
+  }
+
   if (nombre == "") return "Persona ID no existe localmente";
 
   DynamicJsonDocument docAsig(4096);
   JsonArray asign = loadArray("/asignaciones.json", docAsig);
   String turnoIdActivo = "";
+  String personaBackendId = "";
+  for (JsonObject p : personas) {
+    if (p["id"].as<String>() == personaId) {
+      if (p.containsKey("backend_id")) personaBackendId = p["backend_id"].as<String>();
+      break;
+    }
+  }
   for (JsonObject aObj : asign) {
-    if (aObj["persona_id"] == personaId) {
+    String pid = aObj["persona_id"].as<String>();
+    if (pid == personaId || (personaBackendId.length() > 0 && pid == personaBackendId)) {
       turnoIdActivo = aObj["turno_id"].as<String>();
       break;
     }
   }
-  if (turnoIdActivo == "") return "Sin turno asignado: " + nombre;
 
-  DynamicJsonDocument docT(8192);
-  JsonArray turnos = loadArray("/turnos.json", docT);
-  bool conColacion = false;
-  for (JsonObject t : turnos) {
-    if (t["id"] == turnoIdActivo) {
-      conColacion = t.containsKey("con_colacion") && t["con_colacion"].as<bool>();
-      break;
-    }
-  }
+  String tipo;
 
-  String secuencia[4];
-  int lenSec;
-  if (conColacion) {
-    secuencia[0] = "entrada"; secuencia[1] = "colacion_entrada";
-    secuencia[2] = "colacion_salida"; secuencia[3] = "salida";
-    lenSec = 4;
+  if (turnoIdActivo == "") {
+    return "Sin turno asignado: " + nombre;
   } else {
-    secuencia[0] = "entrada"; secuencia[1] = "salida";
-    lenSec = 2;
+    DynamicJsonDocument docT(8192);
+    JsonArray turnos = loadArray("/turnos.json", docT);
+    bool conColacion = false;
+    for (JsonObject t : turnos) {
+      if (t["id"] == turnoIdActivo) {
+        conColacion = t.containsKey("con_colacion") && t["con_colacion"].as<bool>();
+        break;
+      }
+    }
+
+    String secuencia[4];
+    int lenSec;
+    if (conColacion) {
+      secuencia[0] = "entrada"; secuencia[1] = "colacion_entrada";
+      secuencia[2] = "colacion_salida"; secuencia[3] = "salida";
+      lenSec = 4;
+    } else {
+      secuencia[0] = "entrada"; secuencia[1] = "salida";
+      lenSec = 2;
+    }
+
+    DynamicJsonDocument docA(16384);
+    JsonArray asist = loadArray("/asistencias.json", docA);
+    
+    String ultimoTipo = "";
+    String ultimoTurno = "";
+    for (int i = asist.size() - 1; i >= 0; i--) {
+      JsonObject aReg = asist[i];
+      String apt = aReg["persona_id"].as<String>();
+      if (apt == personaId || (personaBackendId.length() > 0 && apt == personaBackendId)) {
+        ultimoTipo = aReg["tipo"].as<String>();
+        ultimoTurno = aReg.containsKey("turno_id") ? aReg["turno_id"].as<String>() : "";
+        break;
+      }
+    }
+
+    tipo = secuencia[0];
+    if (ultimoTipo.length() > 0 && ultimoTurno == turnoIdActivo) {
+      int idx = -1;
+      for (int i = 0; i < lenSec; i++) {
+        if (ultimoTipo == secuencia[i]) { idx = i; break; }
+      }
+      if (idx >= 0 && idx < lenSec - 1) {
+        tipo = secuencia[idx + 1];
+      }
+    }
   }
 
   DynamicJsonDocument docA(16384);
   JsonArray asist = loadArray("/asistencias.json", docA);
-  
-  String ultimoTipo = "";
-  String ultimoTurno = "";
-  for (int i = asist.size() - 1; i >= 0; i--) {
-    JsonObject aReg = asist[i];
-    if (aReg["persona_id"] == personaId) {
-      ultimoTipo = aReg["tipo"].as<String>();
-      ultimoTurno = aReg.containsKey("turno_id") ? aReg["turno_id"].as<String>() : "";
-      break;
-    }
-  }
-
-  String tipo = secuencia[0];
-  if (ultimoTipo.length() > 0 && ultimoTurno == turnoIdActivo) {
-    int idx = -1;
-    for (int i = 0; i < lenSec; i++) {
-      if (ultimoTipo == secuencia[i]) { idx = i; break; }
-    }
-    if (idx >= 0 && idx < lenSec - 1) {
-      tipo = secuencia[idx + 1];
-    }
-  }
 
   JsonObject a = asist.createNestedObject();
   if (a.isNull()) { addLog("[WARN] Overflow en docA — createNestedObject fallo"); }
@@ -1165,7 +1237,7 @@ String procesarAsistencia(String personaId, String metodo) {
   a["metodo"]       = metodo;
   a["timestamp"]    = getTimestamp();
   a["sincronizado"] = false;
-  a["turno_id"]     = turnoIdActivo;
+  if (turnoIdActivo.length() > 0) a["turno_id"] = turnoIdActivo;
 
   if (postAsistenciaEnBackend(rut, nombre, tipo, metodo, turnoIdActivo)) {
     a["sincronizado"] = true;
@@ -1301,6 +1373,15 @@ String obtenerTurnoBackendId(const String& turnoLocalId) {
   return "";
 }
 
+String obtenerBackendId(JsonObject persona) {
+  if (persona.containsKey("backend_id") && persona["backend_id"].as<String>().length() > 0) {
+    return persona["backend_id"].as<String>();
+  }
+  String id = persona["id"].as<String>();
+  if (!id.startsWith("local-")) return id;
+  return "";
+}
+
 // ============================================================
 // REGISTRO DE USUARIOS
 // ============================================================
@@ -1321,7 +1402,8 @@ void completarRegistroPersona() {
   ultimoErrorRegistro = "";
   rostroRegistroExitoso = false;
 
-  String idReal = "";
+  String localId = "local-" + String(getTimestamp()) + "-" + String(slotRegistrando);
+  String backendId = "";
   bool personaCreadaEnBackend = false;
 
   if (isOnline && WiFi.status() == WL_CONNECTED) {
@@ -1345,9 +1427,9 @@ void completarRegistroPersona() {
       DynamicJsonDocument respDoc(256);
       DeserializationError err = deserializeJson(respDoc, response);
       if (!err && respDoc.containsKey("id")) {
-        idReal = respDoc["id"].as<String>();
+        backendId = respDoc["id"].as<String>();
         personaCreadaEnBackend = true;
-        addLog("Usuario creado en BD ID: " + idReal);
+        addLog("Usuario creado en BD ID: " + backendId);
       } else {
         addLog("Advertencia: backend no devolvio ID. Guardando registro local.");
       }
@@ -1359,23 +1441,19 @@ void completarRegistroPersona() {
     addLog("Sin internet: guardando persona solo en memoria local.");
   }
 
-  if (idReal == "") {
-    idReal = "local-" + String(getTimestamp()) + "-" + String(slotRegistrando);
-  }
-
   DynamicJsonDocument doc(2048);
   JsonArray personas = loadArray("/personas.json", doc);
 
-  // Buscar si ya existe una persona con el mismo RUT para NO duplicar
   bool encontrada = false;
   for (JsonObject p : personas) {
     if (p["rut"].as<String>() == rutRegistrando) {
-      p["id"]             = idReal;
+      p["id"]             = localId;
       p["nombre"]         = nombreRegistrando;
       p["email"]          = emailRegistrando;
       p["huella_id"]      = slotRegistrando;
       p["fecha_registro"] = getTimestamp();
       p["sincronizado"]   = personaCreadaEnBackend;
+      if (backendId.length() > 0) p["backend_id"] = backendId;
       if (consentimientoRegistrando) p["consentimiento"] = true;
       encontrada = true;
       break;
@@ -1384,24 +1462,26 @@ void completarRegistroPersona() {
 
   if (!encontrada) {
     JsonObject p = personas.createNestedObject();
-    p["id"]             = idReal;
+    p["id"]             = localId;
     p["nombre"]         = nombreRegistrando;
     p["rut"]            = rutRegistrando;
     p["email"]          = emailRegistrando;
     p["huella_id"]      = slotRegistrando;
     p["fecha_registro"] = getTimestamp();
     p["sincronizado"]   = personaCreadaEnBackend;
+    if (backendId.length() > 0) p["backend_id"] = backendId;
     if (consentimientoRegistrando) p["consentimiento"] = true;
   }
 
   saveArray("/personas.json", doc);
   
+  String refId = backendId.length() > 0 ? backendId : localId;
   if (personaCreadaEnBackend && camaraIniciada) {
     addLog("Mire a la cámara para la foto...");
-    idParaRostro = idReal;   
+    idParaRostro = refId;
     intentosFacial = 0;
     fotosTomadas = 0;
-    actualizarBloqueoAsistencia(60000); // 1 minuto de bloqueo para la foto es suficiente
+    actualizarBloqueoAsistencia(60000);
     estadoActual = ESTADO_REGISTRO_FACIAL;
     tiempoUltimoEstado = millis();
   } else {
@@ -1518,8 +1598,13 @@ void sincronizarAsistencias() {
 void sincronizarAsistenciasDesdeBackend() {
   if (!isOnline || WiFi.status() != WL_CONNECTED) return;
 
+  String url = backendURL + "/api/asistencias/device-sync";
+  if (lastSyncedBackendId > 0) {
+    url += "?since_id=" + String(lastSyncedBackendId);
+  }
+
   HTTPClient http;
-  beginHttp(http, backendURL + "/api/asistencias/device-sync");
+  beginHttp(http, url);
 
   int code = http.GET();
   if (code != 200) {
@@ -1531,13 +1616,23 @@ void sincronizarAsistenciasDesdeBackend() {
   DynamicJsonDocument docBackend(24576);
   DeserializationError error = deserializeJson(docBackend, http.getStream());
   http.end();
-  if (error || !docBackend.is<JsonArray>()) {
+  if (error || !docBackend.is<JsonObject>() || !docBackend["registros"].is<JsonArray>()) {
     addLog("Error parseando asistencias del backend.");
     return;
   }
 
-  JsonArray backendArr = docBackend.as<JsonArray>();
-  if (backendArr.size() == 0) return;
+  unsigned long newMaxId = docBackend["max_id"] | 0;
+  JsonArray backendArr = docBackend["registros"].as<JsonArray>();
+  if (backendArr.size() == 0) {
+    if (newMaxId > lastSyncedBackendId) {
+      lastSyncedBackendId = newMaxId;
+      saveSyncState();
+    }
+    return;
+  }
+
+  DynamicJsonDocument docPersonas(8192);
+  JsonArray personasLocales = loadArray("/personas.json", docPersonas);
 
   DynamicJsonDocument docLocal(16384);
   JsonArray localArr = loadArray("/asistencias.json", docLocal);
@@ -1547,7 +1642,6 @@ void sincronizarAsistenciasDesdeBackend() {
     String idBackend = remota["id"].as<String>();
     if (idBackend.length() == 0) continue;
 
-    // Check if already exists locally by backend id
     bool yaExiste = false;
     for (JsonObject a : localArr) {
       if (a.containsKey("id_backend") && a["id_backend"].as<String>() == idBackend) {
@@ -1559,9 +1653,19 @@ void sincronizarAsistenciasDesdeBackend() {
 
     unsigned long timestamp = getTimestamp();
 
+    String remotePid = remota["persona_id"].as<String>();
+    String localPid = remotePid;
+    for (JsonObject lp : personasLocales) {
+      if ((lp.containsKey("backend_id") && lp["backend_id"].as<String>() == remotePid) ||
+          lp["id"].as<String>() == remotePid) {
+        localPid = lp["id"].as<String>();
+        break;
+      }
+    }
+
     JsonObject a = localArr.createNestedObject();
     a["id_backend"]  = idBackend;
-    a["persona_id"]  = remota["persona_id"].as<String>();
+    a["persona_id"]  = localPid;
     a["rut"]         = remota["rut"].as<String>();
     a["nombre"]      = remota["nombre"].as<String>();
     a["tipo"]        = remota["tipo"].as<String>();
@@ -1577,6 +1681,11 @@ void sincronizarAsistenciasDesdeBackend() {
   if (agregadas > 0) {
     saveArray("/asistencias.json", docLocal);
     addLog("Asistencias descargadas del backend: " + String(agregadas) + " nuevas");
+  }
+
+  if (newMaxId > lastSyncedBackendId) {
+    lastSyncedBackendId = newMaxId;
+    saveSyncState();
   }
 }
 
@@ -1720,13 +1829,25 @@ void sincronizarAsignacionesDesdeBackend() {
     return;
   }
 
+  DynamicJsonDocument pDoc(8192);
+  JsonArray personasLocales = loadArray("/personas.json", pDoc);
+
   JsonArray arr = doc.as<JsonArray>();
   for (JsonObject a : arr) {
     a["backend_id"] = a["id"].as<String>();
     a["sincronizado"] = true;
-    // Corregir types: backend manda persona_id y turno_id como number,
-    // pero personas.json y turnos.json los tienen como string
-    if (a.containsKey("persona_id")) a["persona_id"] = a["persona_id"].as<String>();
+    if (a.containsKey("persona_id")) {
+      String remotePid = a["persona_id"].as<String>();
+      String localPid = remotePid;
+      for (JsonObject lp : personasLocales) {
+        if ((lp.containsKey("backend_id") && lp["backend_id"].as<String>() == remotePid) ||
+            lp["id"].as<String>() == remotePid) {
+          localPid = lp["id"].as<String>();
+          break;
+        }
+      }
+      a["persona_id"] = localPid;
+    }
     if (a.containsKey("turno_id")) a["turno_id"] = a["turno_id"].as<String>();
   }
   saveArray("/asignaciones.json", doc);
@@ -1846,6 +1967,7 @@ String buscarRutPersona(const String& personaId) {
   JsonArray personas = loadArray("/personas.json", doc);
   for (JsonObject p : personas) {
     if (p["id"].as<String>() == personaId) return p["rut"].as<String>();
+    if (p.containsKey("backend_id") && p["backend_id"].as<String>() == personaId) return p["rut"].as<String>();
   }
   return "";
 }
@@ -1873,21 +1995,6 @@ void sincronizarPersonasPendientes() {
   JsonArray personas = loadArray("/personas.json", doc);
   bool huboCambios = false;
 
-  // Migrar entradas antiguas que tienen backend_id pero aún id local-*
-  for (JsonObject p : personas) {
-    if (p.containsKey("backend_id")) {
-      String realId = p["backend_id"].as<String>();
-      String oldId = p["id"].as<String>();
-      if (oldId != realId) {
-        p["id"] = realId;
-        p["sincronizado"] = true;
-        p.remove("backend_id");
-        actualizarAsistenciasPorPersona(oldId, realId);
-        huboCambios = true;
-      }
-    }
-  }
-
   for (JsonObject p : personas) {
     bool sincronizado = p.containsKey("sincronizado") ? p["sincronizado"].as<bool>() : false;
     if (sincronizado) continue;
@@ -1910,25 +2017,20 @@ void sincronizarPersonasPendientes() {
       DynamicJsonDocument respDoc(256);
       DeserializationError err = deserializeJson(respDoc, response);
       if (!err && respDoc.containsKey("id")) {
-        String oldId = p["id"].as<String>();
         String realId = respDoc["id"].as<String>();
-        if (oldId != realId) {
-          p["id"] = realId;
-          // Re-vincular huella al nuevo ID si existia
-          if (p.containsKey("huella_id") && p["huella_id"].as<int>() > 0) {
-            HTTPClient httpHuella;
-            beginHttp(httpHuella, backendURL + "/api/personas/" + realId + "/huella");
-            httpHuella.addHeader("Content-Type", "application/json");
-            String huellaPayload = "{\"huella_id\":" + String(p["huella_id"].as<int>()) + "}";
-            int hCode = httpHuella.sendRequest("PUT", huellaPayload);
-            if (hCode == 200) {
-              addLog("Huella re-vinculada al ID " + realId);
-            } else {
-              addLog("Advertencia: No se pudo re-vincular huella (HTTP " + String(hCode) + ")");
-            }
-            httpHuella.end();
+        p["backend_id"] = realId;
+        if (p.containsKey("huella_id") && p["huella_id"].as<int>() > 0) {
+          HTTPClient httpHuella;
+          beginHttp(httpHuella, backendURL + "/api/personas/" + realId + "/huella");
+          httpHuella.addHeader("Content-Type", "application/json");
+          String huellaPayload = "{\"huella_id\":" + String(p["huella_id"].as<int>()) + "}";
+          int hCode = httpHuella.sendRequest("PUT", huellaPayload);
+          if (hCode == 200) {
+            addLog("Huella vinculada al backend_id " + realId);
+          } else {
+            addLog("Advertencia: No se pudo vincular huella (HTTP " + String(hCode) + ")");
           }
-          actualizarAsistenciasPorPersona(oldId, realId);
+          httpHuella.end();
         }
       }
       p["sincronizado"] = true;
@@ -1947,13 +2049,11 @@ void sincronizarPersonasPendientes() {
 
 void sincronizarTodo() {
   if (!isOnline) return;
-  enSync = true;
   sincronizarPendientes();
   sincronizarPersonasDesdeBackend();
   sincronizarTurnosDesdeBackend();
   sincronizarAsignacionesDesdeBackend();
   sincronizarAsistenciasDesdeBackend();
-  enSync = false;
 }
 
 void sincronizarPendientes() {
@@ -1980,7 +2080,63 @@ void saveArray(const char* path, DynamicJsonDocument& doc) {
   File file = LittleFS.open(path, "w");
   serializeJson(doc, file);
   file.close();
-  if (isOnline && !enSync) sincronizacionPendiente = true;
+}
+
+void loadSyncState() {
+  if (!LittleFS.exists("/sync_state.json")) return;
+  File file = LittleFS.open("/sync_state.json", "r");
+  if (!file) return;
+  DynamicJsonDocument doc(128);
+  DeserializationError err = deserializeJson(doc, file);
+  file.close();
+  if (err) return;
+  lastSyncedBackendId = doc["asistencias_sync_id"] | 0;
+}
+
+void saveSyncState() {
+  DynamicJsonDocument doc(128);
+  doc["asistencias_sync_id"] = lastSyncedBackendId;
+  File file = LittleFS.open("/sync_state.json", "w");
+  if (!file) return;
+  serializeJson(doc, file);
+  file.close();
+}
+
+void migrarPersonasAntiguas() {
+  DynamicJsonDocument doc(8192);
+  JsonArray personas = loadArray("/personas.json", doc);
+  bool huboCambios = false;
+
+  for (JsonObject p : personas) {
+    String oldId = p["id"].as<String>();
+    bool sincronizado = p.containsKey("sincronizado") ? p["sincronizado"].as<bool>() : false;
+
+    if (sincronizado && !oldId.startsWith("local-") && !p.containsKey("backend_id")) {
+      p["backend_id"] = oldId;
+      String newLocalId = "local-mig-" + oldId;
+      p["id"] = newLocalId;
+      huboCambios = true;
+      addLog("Migrada persona: id " + oldId + " -> " + newLocalId);
+
+      DynamicJsonDocument docAsig(4096);
+      JsonArray asign = loadArray("/asignaciones.json", docAsig);
+      bool asigChanged = false;
+      for (JsonObject a : asign) {
+        if (a["persona_id"].as<String>() == oldId) {
+          a["persona_id"] = newLocalId;
+          asigChanged = true;
+        }
+      }
+      if (asigChanged) {
+        saveArray("/asignaciones.json", docAsig);
+        addLog("Asignaciones actualizadas: " + oldId + " -> " + newLocalId);
+      }
+    }
+  }
+
+  if (huboCambios) {
+    saveArray("/personas.json", doc);
+  }
 }
 
 void initLittleFS() {
@@ -2204,15 +2360,51 @@ void handleLimpiarDatos() {
     server.send(403, "text/plain", "Codigo incorrecto");
     return;
   }
-  const char* files[] = {"/personas.json", "/turnos.json", "/asignaciones.json", "/asistencias.json"};
-  for (auto f : files) {
-    File file = LittleFS.open(f, "w");
+
+  String tipo = server.hasArg("tipo") ? server.arg("tipo") : "datos";
+  String modo = server.hasArg("modo") ? server.arg("modo") : "local";
+  bool confirmar = server.hasArg("confirmar") && server.arg("confirmar") == "1";
+
+  bool pendienteBackend = false;
+
+  if (tipo == "asistencias") {
+    File file = LittleFS.open("/asistencias.json", "w");
     file.println("[]");
     file.close();
+    addLog("Asistencias locales limpiadas");
+    if (modo == "ambos" && isOnline) {
+      if (confirmar) {
+        bool ok = deleteFromBackend("/api/asistencias/device");
+        addLog(ok ? "Asistencias borradas del backend OK" : "Error borrando asistencias del backend");
+      } else {
+        pendienteBackend = true;
+      }
+    }
+  } else {
+    const char* files[] = {"/personas.json", "/turnos.json", "/asignaciones.json", "/asistencias.json"};
+    for (auto f : files) {
+      File fh = LittleFS.open(f, "w");
+      fh.println("[]");
+      fh.close();
+    }
+    for (int id = 1; id < 127; id++) finger.deleteModel(id);
+    addLog("Datos locales limpiados");
+    if (modo == "ambos" && isOnline) {
+      if (confirmar) {
+        bool ok = deleteFromBackend("/api/asistencias/device");
+        addLog(ok ? "Datos borrados del backend OK" : "Error borrando datos del backend");
+      } else {
+        pendienteBackend = true;
+      }
+    }
   }
-  for (int id = 1; id < 127; id++) finger.deleteModel(id);
-  addLog("Sistema limpiado");
-  server.send(200, "text/plain", "Sistema limpiado correctamente");
+
+  if (pendienteBackend) {
+    server.send(200, "application/json",
+      "{\"local_ok\":true,\"online\":true,\"pendiente_backend\":true,\"mensaje\":\"Datos locales limpiados. Envie mismo request con &confirmar=1 para borrar del backend.\"}");
+  } else {
+    server.send(200, "text/plain", "Datos limpiados correctamente");
+  }
 }
 
 void handleSincronizar() {
@@ -2281,9 +2473,10 @@ void handleEditarPersona() {
   objetivo["sincronizado"] = false;
 
   bool synced = false;
-  if (isOnline && WiFi.status() == WL_CONNECTED && !id.startsWith("local-")) {
+  String backendId = obtenerBackendId(objetivo);
+  if (isOnline && WiFi.status() == WL_CONNECTED && backendId.length() > 0) {
     HTTPClient http;
-  beginHttp(http, backendURL + "/api/personas/" + id);
+  beginHttp(http, backendURL + "/api/personas/" + backendId);
     http.addHeader("Content-Type", "application/json");
     
 
@@ -2373,8 +2566,19 @@ void handleActualizarRostroPersona() {
   }
 
   String id = server.arg("id");
-  if (id.startsWith("local-")) {
-    server.send(409, "text/plain", "Persona local sin ID remoto, sincronice primero");
+  String rostroBackendId = "";
+  {
+    DynamicJsonDocument d(2048);
+    JsonArray ps = loadArray("/personas.json", d);
+    for (JsonObject p : ps) {
+      if (p["id"].as<String>() == id) {
+        rostroBackendId = obtenerBackendId(p);
+        break;
+      }
+    }
+  }
+  if (rostroBackendId.length() == 0) {
+    server.send(409, "text/plain", "Persona sin ID remoto, sincronice primero");
     return;
   }
   if (!isOnline || WiFi.status() != WL_CONNECTED) {
@@ -2408,8 +2612,19 @@ void handleAgregarFotosPersona() {
   }
 
   String id = server.arg("id");
-  if (id.startsWith("local-")) {
-    server.send(409, "text/plain", "Persona local sin ID remoto, sincronice primero");
+  String rostroBackendId = "";
+  {
+    DynamicJsonDocument d(2048);
+    JsonArray ps = loadArray("/personas.json", d);
+    for (JsonObject p : ps) {
+      if (p["id"].as<String>() == id) {
+        rostroBackendId = obtenerBackendId(p);
+        break;
+      }
+    }
+  }
+  if (rostroBackendId.length() == 0) {
+    server.send(409, "text/plain", "Persona sin ID remoto, sincronice primero");
     return;
   }
   if (!isOnline || WiFi.status() != WL_CONNECTED) {
@@ -2471,9 +2686,11 @@ void completarEdicionHuellaExistente() {
     synced = true;
     objetivo["sincronizado"] = true;
     addLog("Resultado de huella enviado por MQTT para persona " + personaRemotaId);
-  } else if (isOnline && WiFi.status() == WL_CONNECTED && !personaEditandoId.startsWith("local-")) {
+  } else if (isOnline && WiFi.status() == WL_CONNECTED) {
+    String backId = obtenerBackendId(objetivo);
+    if (backId.length() > 0) {
     HTTPClient http;
-  beginHttp(http, backendURL + "/api/personas/" + personaEditandoId + "/huella");
+  beginHttp(http, backendURL + "/api/personas/" + backId + "/huella");
     http.addHeader("Content-Type", "application/json");
     
 
@@ -2490,6 +2707,7 @@ void completarEdicionHuellaExistente() {
       addLog("Huella local actualizada, backend pendiente. Codigo: " + String(code));
     }
     http.end();
+    }
   }
 
   saveArray("/personas.json", doc);
@@ -2510,9 +2728,20 @@ void handleBorrarPersona() {
   if (!server.hasArg("id")) { server.send(400, "text/plain", "Falta ID"); return; }
   String id = server.arg("id");
 
-  if (isOnline && WiFi.status() == WL_CONNECTED && !id.startsWith("local-")) {
+  DynamicJsonDocument doc(2048);
+  JsonArray arr = loadArray("/personas.json", doc);
+  String backendId = "";
+  for (JsonObject p : arr) {
+    if (p["id"].as<String>() == id) {
+      if (p.containsKey("backend_id")) backendId = p["backend_id"].as<String>();
+      else if (!id.startsWith("local-")) backendId = id;
+      break;
+    }
+  }
+
+  if (isOnline && WiFi.status() == WL_CONNECTED && backendId.length() > 0) {
     HTTPClient http;
-  beginHttp(http, backendURL + "/api/personas/" + id);
+  beginHttp(http, backendURL + "/api/personas/" + backendId);
     int httpCode = http.sendRequest("DELETE");
     if (httpCode == 200) {
       addLog("Persona borrada en BD remota OK");
@@ -2522,8 +2751,6 @@ void handleBorrarPersona() {
     http.end();
   }
 
-  DynamicJsonDocument doc(2048);
-  JsonArray arr = loadArray("/personas.json", doc);
   for (JsonArray::iterator it = arr.begin(); it != arr.end(); ++it) {
     if ((*it)["id"].as<String>() == id) {
       int huella = (*it)["huella_id"].as<int>();
@@ -2559,6 +2786,134 @@ void handleBorrarTurno() {
       arr.remove(it);
       saveArray("/turnos.json", doc);
       server.send(200, "text/plain", "Turno eliminado");
+      return;
+    }
+  }
+  server.send(404, "text/plain", "Turno no encontrado");
+}
+
+void handleBorrarAsistencia() {
+  if (!requiereAdmin(server)) return;
+  actualizarBloqueoAsistencia();
+  if (!server.hasArg("persona_id") || !server.hasArg("timestamp")) { server.send(400, "text/plain", "Faltan datos"); return; }
+  String personaId = server.arg("persona_id");
+  String timestamp = server.arg("timestamp");
+
+  DynamicJsonDocument doc(16384);
+  JsonArray arr = loadArray("/asistencias.json", doc);
+  for (JsonArray::iterator it = arr.begin(); it != arr.end(); ++it) {
+    if ((*it)["persona_id"].as<String>() == personaId && (*it)["timestamp"].as<String>() == timestamp) {
+      String idBackend = (*it).containsKey("id_backend") ? (*it)["id_backend"].as<String>() : "";
+      if (isOnline && WiFi.status() == WL_CONNECTED && idBackend.length() > 0) {
+        HTTPClient http;
+        beginHttp(http, backendURL + "/api/asistencias/" + idBackend);
+        int httpCode = http.sendRequest("DELETE");
+        if (httpCode == 200) addLog("Asistencia borrada en BD remota OK");
+        else addLog("Error borrando asistencia remota (Cod: " + String(httpCode) + ")");
+        http.end();
+      }
+      arr.remove(it);
+      saveArray("/asistencias.json", doc);
+      server.send(200, "text/plain", "Asistencia eliminada");
+      return;
+    }
+  }
+  server.send(404, "text/plain", "Asistencia no encontrada");
+}
+
+void handleEditarAsistencia() {
+  if (!requiereAdmin(server)) return;
+  actualizarBloqueoAsistencia();
+  if (!server.hasArg("persona_id") || !server.hasArg("timestamp") || !server.hasArg("nombre") || !server.hasArg("tipo") || !server.hasArg("metodo")) {
+    server.send(400, "text/plain", "Faltan datos");
+    return;
+  }
+  String personaId = server.arg("persona_id");
+  String timestamp = server.arg("timestamp");
+  String nombre = server.arg("nombre");
+  String tipo = server.arg("tipo");
+  String metodo = server.arg("metodo");
+
+  DynamicJsonDocument doc(16384);
+  JsonArray arr = loadArray("/asistencias.json", doc);
+  for (JsonObject a : arr) {
+    if (a["persona_id"].as<String>() == personaId && a["timestamp"].as<String>() == timestamp) {
+      a["nombre"] = nombre;
+      a["tipo"] = tipo;
+      a["metodo"] = metodo;
+      a["sincronizado"] = false;
+      saveArray("/asistencias.json", doc);
+
+      String idBackend = a.containsKey("id_backend") ? a["id_backend"].as<String>() : "";
+      if (isOnline && WiFi.status() == WL_CONNECTED && idBackend.length() > 0) {
+        HTTPClient http;
+        beginHttp(http, backendURL + "/api/asistencias/" + idBackend);
+        http.addHeader("Content-Type", "application/json");
+        DynamicJsonDocument payloadDoc(512);
+        payloadDoc["nombre"] = nombre;
+        payloadDoc["tipo"] = tipo;
+        payloadDoc["metodo"] = metodo;
+        String payload;
+        serializeJson(payloadDoc, payload);
+        int httpCode = http.sendRequest("PUT", payload);
+        if (httpCode == 200) {
+          a["sincronizado"] = true;
+          saveArray("/asistencias.json", doc);
+          addLog("Asistencia actualizada en backend OK");
+        } else addLog("Error actualizando asistencia remota (Cod: " + String(httpCode) + ")");
+        http.end();
+      }
+      server.send(200, "text/plain", "Asistencia actualizada");
+      return;
+    }
+  }
+  server.send(404, "text/plain", "Asistencia no encontrada");
+}
+
+void handleEditarTurno() {
+  if (!requiereAdmin(server)) return;
+  actualizarBloqueoAsistencia();
+  if (!server.hasArg("id") || !server.hasArg("nombre") || !server.hasArg("inicio") || !server.hasArg("fin") || !server.hasArg("dias")) {
+    server.send(400, "text/plain", "Datos incompletos");
+    return;
+  }
+  String id = server.arg("id");
+  String nombre = server.arg("nombre");
+  String inicio = server.arg("inicio");
+  String fin = server.arg("fin");
+  String dias = server.arg("dias");
+
+  DynamicJsonDocument doc(4096);
+  JsonArray arr = loadArray("/turnos.json", doc);
+  for (JsonObject t : arr) {
+    if (t["id"].as<String>() == id) {
+      t["nombre"] = nombre;
+      t["inicio"] = inicio;
+      t["fin"] = fin;
+      t["dias"] = dias;
+      t["sincronizado"] = false;
+      saveArray("/turnos.json", doc);
+
+      if (isOnline && WiFi.status() == WL_CONNECTED && !id.startsWith("local-")) {
+        HTTPClient http;
+        beginHttp(http, backendURL + "/api/turnos/" + id);
+        http.addHeader("Content-Type", "application/json");
+        DynamicJsonDocument payloadDoc(512);
+        payloadDoc["nombre"] = nombre;
+        payloadDoc["inicio"] = inicio;
+        payloadDoc["fin"] = fin;
+        payloadDoc["dias"] = dias;
+        String payload;
+        serializeJson(payloadDoc, payload);
+        int httpCode = http.sendRequest("PUT", payload);
+        if (httpCode == 200) {
+          t["sincronizado"] = true;
+          saveArray("/turnos.json", doc);
+          addLog("Turno actualizado en backend OK");
+        } else addLog("Error actualizando turno remoto (Cod: " + String(httpCode) + ")");
+        http.end();
+      }
+      server.send(200, "text/plain", "Turno actualizado");
       return;
     }
   }
@@ -2678,9 +3033,11 @@ void setup() {
   digitalWrite(GREEN_LED_PIN, LOW);
 
   initLittleFS(); delay(500); loadWiFiConfig(); tryConnectWiFi();
+  migrarPersonasAntiguas();
   
   if (isOnline) {
-    sincronizarTodo();
+    loadSyncState();
+    sincronizarPendientes();
   } else {
       delay(500);
       WiFi.mode(WIFI_AP);
@@ -2729,6 +3086,9 @@ void setup() {
   server.on("/agregar_fotos", handleAgregarFotosPersona);
   server.on("/borrar_persona", handleBorrarPersona);
   server.on("/borrar_turno", handleBorrarTurno);
+  server.on("/editar_turno", handleEditarTurno);
+  server.on("/borrar_asistencia", handleBorrarAsistencia);
+  server.on("/editar_asistencia", handleEditarAsistencia);
   server.on("/borrar_asignacion", handleBorrarAsignacion);
   
   // Rutas API REST
@@ -2943,10 +3303,10 @@ void loop() {
       // -- INTENTO FACIAL (HTTP directo, PIR solo para rostro, respeta bloqueo de menú) --
       if (asistenciaAutomaticaHabilitada(ahora) && isOnline && (ahora - cooldownAsistencia > COOLDOWN_TIEMPO) && (ahora - lastFaceCheck > FACE_CHECK_INTERVAL)) {
         lastFaceCheck = ahora;
-        String personaIdFacial = "";
-        if (enviarFotoIdentificacion(personaIdFacial) && personaIdFacial != "") {
+        String personaIdFacial = "", rutFacial = "";
+        if (enviarFotoIdentificacion(personaIdFacial, rutFacial) && personaIdFacial != "") {
             estadoActual = ESTADO_PROCESANDO_ASISTENCIA;
-            String res = procesarAsistencia(personaIdFacial, "facial");
+            String res = procesarAsistencia(personaIdFacial, "facial", rutFacial);
             addLog(res);
             if (resultadoAsistenciaExitosa(res)) flashExito(); else flashError();
             cooldownAsistencia = millis();
@@ -3077,11 +3437,6 @@ void loop() {
   if (isOnline && (ahora - lastPwdCheck) > 60000UL) {
     lastPwdCheck = ahora;
     verificarPasswordPendiente();
-  }
-
-  if (isOnline && sincronizacionPendiente && estadoActual == ESTADO_IDLE) {
-    sincronizacionPendiente = false;
-    sincronizarTodo();
   }
 
   delay(20);

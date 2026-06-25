@@ -294,42 +294,220 @@ def sync_asistencias():
 
 
 @asistencias_bp.route('/api/asistencias/device-sync', methods=['GET'])
+@token_opcional
 def device_sync_asistencias():
-    mac = request.headers.get('X-Device-MAC', '').replace(':', '')
-    if not mac:
+    if not request.dispositivo_id:
         return jsonify({'error': 'X-Device-MAC requerido'}), 400
 
+    since_id = request.args.get('since_id')
     conn = get_connection()
     cur = conn.cursor()
     try:
-        cur.execute("SELECT empresa_id FROM dispositivos WHERE REPLACE(mac_address, ':', '') = %s", (mac,))
+        cur.execute("SELECT empresa_id FROM dispositivos WHERE id = %s", (request.dispositivo_id,))
         row = cur.fetchone()
         if not row:
             return jsonify({'error': 'Dispositivo no encontrado'}), 404
         empresa_id = row[0]
 
-        cur.execute("""
+        if since_id is not None:
+            try:
+                since_id = int(since_id)
+            except (TypeError, ValueError):
+                since_id = 0
+
+        sql = """
             SELECT a.id, a.persona_id, p.rut, a.nombre, a.tipo, a.metodo,
                    a.fecha_hora, a.turno_id
             FROM asistencias a
             JOIN personas p ON a.persona_id = p.id
             WHERE p.empresa_id = %s
+              AND a.dispositivo_id = %s
               AND a.fecha_hora >= CURRENT_DATE - INTERVAL '7 days'
-            ORDER BY a.fecha_hora ASC
-        """, (empresa_id,))
+        """
+        params = [empresa_id, request.dispositivo_id]
+
+        if since_id and since_id > 0:
+            sql += " AND a.id > %s"
+            params.append(since_id)
+
+        sql += " ORDER BY a.fecha_hora ASC"
+        cur.execute(sql, params)
         rows = cur.fetchall()
 
-        return jsonify([{
-            "id": r[0],
-            "persona_id": str(r[1]),
-            "rut": r[2],
-            "nombre": r[3],
-            "tipo": r[4],
-            "metodo": r[5],
-            "fecha_hora": str(r[6]),
-            "turno_id": str(r[7]) if r[7] is not None else None
-        } for r in rows])
+        max_id = max([r[0] for r in rows]) if rows else 0
+
+        return jsonify({
+            "registros": [{
+                "id": r[0],
+                "persona_id": str(r[1]),
+                "rut": r[2],
+                "nombre": r[3],
+                "tipo": r[4],
+                "metodo": r[5],
+                "fecha_hora": str(r[6]),
+                "turno_id": str(r[7]) if r[7] is not None else None
+            } for r in rows],
+            "max_id": max_id
+        })
     except Exception as e:
+        return jsonify({'error': str(e)}), 500
+    finally:
+        cur.close()
+        conn.close()
+
+
+@asistencias_bp.route('/api/asistencias/device', methods=['DELETE'])
+@token_opcional
+def delete_asistencias_device():
+    conn = get_connection()
+    cur = conn.cursor()
+    try:
+        dispositivo_id = request.dispositivo_id
+        if not dispositivo_id:
+            return jsonify({'error': 'X-Device-MAC requerido'}), 400
+
+        cur.execute(
+            "SELECT empresa_id FROM dispositivos WHERE id = %s",
+            (dispositivo_id,)
+        )
+        row = cur.fetchone()
+        if not row:
+            return jsonify({'error': 'Dispositivo no encontrado'}), 404
+        empresa_id = row[0]
+
+        cur.execute(
+            "DELETE FROM asistencias WHERE dispositivo_id = %s RETURNING id",
+            (dispositivo_id,)
+        )
+        eliminadas = cur.rowcount
+        conn.commit()
+
+        if eliminadas > 0 and empresa_id:
+            try:
+                from eventos_mqtt import notificar_sincronizacion
+                notificar_sincronizacion(empresa_id, 'asistencias', 'eliminar')
+            except Exception:
+                pass
+
+        return jsonify({'ok': True, 'eliminadas': eliminadas})
+    except Exception as e:
+        conn.rollback()
+        return jsonify({'error': str(e)}), 500
+    finally:
+        cur.close()
+        conn.close()
+
+
+@asistencias_bp.route('/api/asistencias/<asistencia_id>', methods=['PUT'])
+@token_opcional
+def update_asistencia(asistencia_id):
+    data = request.json or {}
+    conn = get_connection()
+    cur = conn.cursor()
+    try:
+        cur.execute("SELECT id, persona_id, dispositivo_id, nombre, tipo, metodo FROM asistencias WHERE id::text = %s", (str(asistencia_id),))
+        existing = cur.fetchone()
+        if not existing:
+            return jsonify({'error': 'Asistencia no encontrada'}), 404
+
+        rol = request.user_rol
+        empresa_id = request.empresa_id
+        dispositivo_id = request.dispositivo_id
+
+        if rol == 'admin':
+            pass
+        elif rol == 'empleador' and empresa_id:
+            cur.execute("""
+                SELECT 1 FROM asistencias a
+                JOIN personas p ON a.persona_id = p.id
+                WHERE a.id::text = %s AND p.empresa_id = %s
+            """, (str(asistencia_id), empresa_id))
+            if not cur.fetchone():
+                return jsonify({'error': 'No autorizado'}), 403
+        elif dispositivo_id:
+            cur.execute(
+                "SELECT 1 FROM asistencias WHERE id::text = %s AND dispositivo_id = %s",
+                (str(asistencia_id), dispositivo_id)
+            )
+            if not cur.fetchone():
+                return jsonify({'error': 'No autorizado'}), 403
+        else:
+            return jsonify({'error': 'No autorizado'}), 403
+
+        updates = []
+        params = []
+        for field, col in [('nombre', 'nombre'), ('tipo', 'tipo'), ('metodo', 'metodo'), ('persona_id', 'persona_id')]:
+            if field in data:
+                updates.append(f"{col} = %s")
+                params.append(data[field])
+
+        if not updates:
+            return jsonify({'ok': True, 'mensaje': 'Sin cambios'})
+
+        params.append(str(asistencia_id))
+        cur.execute(
+            f"UPDATE asistencias SET {', '.join(updates)} WHERE id::text = %s RETURNING id, fecha_hora",
+            params
+        )
+        row = cur.fetchone()
+        conn.commit()
+
+        # Notificar sync
+        try:
+            from eventos_mqtt import notificar_sincronizacion
+            notificar_sincronizacion(empresa_id, 'asistencias', 'actualizar', row[0])
+        except Exception:
+            pass
+
+        return jsonify({'ok': True, 'id': row[0]})
+    except Exception as e:
+        conn.rollback()
+        return jsonify({'error': str(e)}), 500
+    finally:
+        cur.close()
+        conn.close()
+
+
+@asistencias_bp.route('/api/asistencias/<asistencia_id>', methods=['DELETE'])
+@token_opcional
+def delete_asistencia(asistencia_id):
+    conn = get_connection()
+    cur = conn.cursor()
+    try:
+        rol = request.user_rol
+        empresa_id = request.empresa_id
+        dispositivo_id = request.dispositivo_id
+
+        if rol == 'admin':
+            cur.execute(
+                "DELETE FROM asistencias WHERE id::text = %s RETURNING id",
+                (str(asistencia_id),)
+            )
+        elif rol == 'empleador' and empresa_id:
+            cur.execute("""
+                DELETE FROM asistencias a
+                USING personas p
+                WHERE a.id::text = %s
+                  AND a.persona_id = p.id
+                  AND p.empresa_id = %s
+                RETURNING a.id
+            """, (str(asistencia_id), empresa_id))
+        elif dispositivo_id:
+            cur.execute(
+                "DELETE FROM asistencias WHERE id::text = %s AND dispositivo_id = %s RETURNING id",
+                (str(asistencia_id), dispositivo_id)
+            )
+        else:
+            return jsonify({'error': 'No autorizado'}), 403
+
+        if cur.rowcount == 0:
+            conn.rollback()
+            return jsonify({'error': 'Asistencia no encontrada o sin permisos'}), 404
+
+        conn.commit()
+        return jsonify({'ok': True})
+    except Exception as e:
+        conn.rollback()
         return jsonify({'error': str(e)}), 500
     finally:
         cur.close()

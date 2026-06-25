@@ -259,6 +259,23 @@ def init_db():
         cur.execute("CREATE INDEX IF NOT EXISTS idx_logs_biometricos_timestamp ON logs_biometricos(timestamp)")
         cur.execute("CREATE INDEX IF NOT EXISTS idx_eliminaciones_biometricas_persona ON eliminaciones_biometricas(persona_id)")
 
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS solicitudes_eliminacion (
+                id SERIAL PRIMARY KEY,
+                persona_id INTEGER NOT NULL REFERENCES personas(id),
+                codigo_seguimiento VARCHAR(36) UNIQUE NOT NULL,
+                email_contacto VARCHAR(100),
+                estado VARCHAR(20) DEFAULT 'pendiente',
+                motivo TEXT,
+                revisado_por INTEGER REFERENCES usuarios_web(id),
+                fecha_solicitud TIMESTAMP DEFAULT NOW(),
+                fecha_resolucion TIMESTAMP
+            )
+        """)
+        cur.execute("CREATE INDEX IF NOT EXISTS idx_solicitudes_eliminacion_estado ON solicitudes_eliminacion(estado)")
+        cur.execute("CREATE INDEX IF NOT EXISTS idx_solicitudes_eliminacion_persona ON solicitudes_eliminacion(persona_id)")
+        cur.execute("CREATE INDEX IF NOT EXISTS idx_solicitudes_eliminacion_codigo ON solicitudes_eliminacion(codigo_seguimiento)")
+
         cur.execute("CREATE INDEX IF NOT EXISTS idx_asistencias_persona ON asistencias(persona_id)")
         cur.execute("CREATE INDEX IF NOT EXISTS idx_asistencias_dispositivo ON asistencias(dispositivo_id)")
         cur.execute("CREATE INDEX IF NOT EXISTS idx_asistencias_fecha ON asistencias(fecha_hora)")

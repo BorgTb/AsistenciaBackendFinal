@@ -379,6 +379,18 @@ def reiniciar_dispositivo(dispositivo_id):
 @dispositivos_bp.route('/api/dispositivos/sync', methods=['POST'])
 @requiere_rol('admin', 'empleador')
 def sync_dispositivos():
+    return _sync_por_tipo('todas')
+
+
+@dispositivos_bp.route('/api/dispositivos/sync/<tipo>', methods=['POST'])
+@requiere_rol('admin', 'empleador')
+def sync_dispositivos_por_tipo(tipo):
+    if tipo not in ('personas', 'turnos', 'asistencias', 'asignaciones', 'todas'):
+        return jsonify({'error': f'Tipo de sincronizacion no valido: {tipo}'}), 400
+    return _sync_por_tipo(tipo)
+
+
+def _sync_por_tipo(tipo):
     empresa_id = request.empresa_id
 
     conn = get_connection()
@@ -386,11 +398,11 @@ def sync_dispositivos():
     try:
         if request.user_rol == 'admin':
             cur.execute(
-                "SELECT REPLACE(mac_address, ':', '') as mac, nombre FROM dispositivos WHERE enrolado = TRUE AND mac_address IS NOT NULL AND mac_address != ''"
+                "SELECT REPLACE(mac_address, ':', '') as mac, nombre, empresa_id FROM dispositivos WHERE enrolado = TRUE AND mac_address IS NOT NULL AND mac_address != ''"
             )
         elif empresa_id:
             cur.execute(
-                "SELECT REPLACE(mac_address, ':', '') as mac, nombre FROM dispositivos WHERE empresa_id = %s AND enrolado = TRUE AND mac_address IS NOT NULL AND mac_address != ''",
+                "SELECT REPLACE(mac_address, ':', '') as mac, nombre, empresa_id FROM dispositivos WHERE empresa_id = %s AND enrolado = TRUE AND mac_address IS NOT NULL AND mac_address != ''",
                 (empresa_id,)
             )
         else:
@@ -408,15 +420,26 @@ def sync_dispositivos():
 
     try:
         from mqtt_handler import enviar_comando_dispositivo
-        enviados = 0
-        for mac, nombre in dispositivos:
-            if enviar_comando_dispositivo(mac, 'sync'):
-                enviados += 1
 
-        return jsonify({
-            'ok': True,
-            'mensaje': f'Comando de sincronizacion enviado a {enviados}/{len(dispositivos)} dispositivo(s)'
-        })
+        if tipo == 'todas':
+            enviados = 0
+            for mac, nombre, _ in dispositivos:
+                if enviar_comando_dispositivo(mac, 'sync'):
+                    enviados += 1
+            return jsonify({
+                'ok': True,
+                'mensaje': f'Sincronizacion total enviada a {enviados}/{len(dispositivos)} dispositivo(s)'
+            })
+        else:
+            from eventos_mqtt import notificar_sincronizacion
+            empresa_notif = empresa_id
+            if not empresa_notif and dispositivos:
+                empresa_notif = dispositivos[0][2]
+            notificar_sincronizacion(empresa_notif, tipo, 'sync')
+            return jsonify({
+                'ok': True,
+                'mensaje': f'Sincronizacion de {tipo} enviada a {len(dispositivos)} dispositivo(s)'
+            })
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 

@@ -28,9 +28,26 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Oxygen,sans-
 .be{background:rgba(22,163,74,.12);color:var(--success)}
 .bs{background:rgba(217,119,6,.12);color:var(--warning)}
 
-.body{flex:1}
+.action-btn{background:none;border:1px solid var(--border);color:var(--muted);padding:4px 8px;border-radius:4px;font-family:inherit;font-size:9px;font-weight:600;cursor:pointer;white-space:nowrap;transition:.15s;flex-shrink:0}
+.action-btn:hover{border-color:var(--danger);color:var(--danger)}
+.action-btn.edit:hover{border-color:var(--primary);color:var(--primary)}
+
+.body{flex:1;min-width:0}
 .nombre{font-size:13px;font-weight:600}
 .info{font-size:10px;color:var(--muted);margin-top:2px}
+
+.actions{display:flex;gap:4px;flex-shrink:0;margin-left:auto}
+
+.overlay{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.7);z-index:9999;display:flex;align-items:center;justify-content:center}
+.modal{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:24px;max-width:360px;width:90%;text-align:center}
+.modal h2{color:var(--text);margin:0 0 16px;font-size:16px}
+.modal .field{margin-bottom:12px;text-align:left}
+.modal .field label{display:block;font-size:10px;color:var(--muted-2);text-transform:uppercase;letter-spacing:.6px;margin-bottom:4px;font-weight:600}
+.modal .field input,.modal .field select{width:100%;padding:10px;border:1px solid var(--border);border-radius:6px;background:var(--surface-2);color:var(--text);font-family:inherit;font-size:13px;outline:none;box-sizing:border-box}
+.modal .field select option{background:var(--surface)}
+.modal .btn{width:100%;padding:10px;border:none;border-radius:6px;font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;margin-bottom:6px;display:block;text-align:center}
+.modal .btn-primary{background:var(--primary);color:#fff}
+.modal .btn-secondary{background:var(--surface);border:1px solid var(--border);color:var(--muted)}
 
 .empty{text-align:center;padding:50px 20px;color:var(--muted-2);font-size:13px}
 </style>
@@ -50,25 +67,111 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Oxygen,sans-
   <div id="lista"><div class="empty">Cargando...</div></div>
 </div>
 
+<div class="overlay" id="editOverlay" style="display:none" onclick="this.style.display='none'">
+  <div class="modal" onclick="event.stopPropagation()">
+    <h2 id="editTitle">Editar asistencia</h2>
+    <div class="field">
+      <label>Nombre</label>
+      <input type="text" id="editNombre" placeholder="Nombre">
+    </div>
+    <div class="field">
+      <label>Tipo</label>
+      <select id="editTipo">
+        <option value="entrada">Entrada</option>
+        <option value="salida">Salida</option>
+        <option value="colacion_entrada">Colación Entrada</option>
+        <option value="colacion_salida">Colación Salida</option>
+      </select>
+    </div>
+    <div class="field">
+      <label>Método</label>
+      <select id="editMetodo">
+        <option value="huella">Huella dactilar</option>
+        <option value="facial">Rostro</option>
+        <option value="facial+huella">Rostro + Huella</option>
+      </select>
+    </div>
+    <button class="btn btn-primary" id="editGuardarBtn">Guardar cambios</button>
+    <button class="btn btn-secondary" onclick="document.getElementById('editOverlay').style.display='none'">Cancelar</button>
+  </div>
+</div>
+
 <script>
+let cachedAsistencias=[];
+
 async function cargar(){
   const lista=document.getElementById('lista');
   try{
     const text=await fetch('/api/asistencias').then(r=>r.text());
-    if(!text||text===''){lista.innerHTML='<div class="empty">No hay asistencias registradas</div>';document.getElementById('totalNum').textContent='0';return;}
-    const asistencias=JSON.parse(text);
-    document.getElementById('totalNum').textContent=asistencias.length;
-    if(!asistencias.length){lista.innerHTML='<div class="empty">No hay asistencias registradas</div>';return;}
-    lista.innerHTML=[...asistencias].reverse().map(a=>`
-      <div class="item ${a.tipo==='entrada'?'e':'s'}">
+    if(!text||text===''){lista.innerHTML='<div class="empty">No hay asistencias registradas</div>';document.getElementById('totalNum').textContent='0';cachedAsistencias=[];return;}
+    cachedAsistencias=JSON.parse(text);
+    document.getElementById('totalNum').textContent=cachedAsistencias.length;
+    if(!cachedAsistencias.length){lista.innerHTML='<div class="empty">No hay asistencias registradas</div>';return;}
+    let html='';
+    const reversed=[...cachedAsistencias].reverse();
+    reversed.forEach((a,i)=>{
+      const idx=cachedAsistencias.length-1-i;
+      const pid=a.persona_id||'';
+      const ts=a.timestamp||'';
+      html+=`<div class="item ${a.tipo==='entrada'?'e':'s'}" data-idx="${idx}">
         <div class="badge ${a.tipo==='entrada'?'be':'bs'}">${a.tipo}</div>
         <div class="body">
-          <div class="nombre">${a.nombre}</div>
-          <div class="info">${a.timestamp} &nbsp;|&nbsp; ID: ${a.persona_id}</div>
+          <div class="nombre">${a.nombre||''}</div>
+          <div class="info">${ts} &nbsp;|&nbsp; ID: ${pid}</div>
         </div>
-      </div>`).join('');
-  }catch(e){lista.innerHTML='<div class="empty">No hay asistencias registradas</div>';document.getElementById('totalNum').textContent='0';}
+        <div class="actions">
+          <button class="action-btn edit" data-idx="${idx}">Editar</button>
+          <button class="action-btn" data-idx="${idx}">Eliminar</button>
+        </div>
+      </div>`;
+    });
+    lista.innerHTML=html;
+  }catch(e){lista.innerHTML='<div class="empty">No hay asistencias registradas</div>';document.getElementById('totalNum').textContent='0';cachedAsistencias=[];}
 }
+
+document.getElementById('lista').addEventListener('click',function(e){
+  const btn=e.target.closest('.action-btn');
+  if(!btn)return;
+  const idx=parseInt(btn.dataset.idx);
+  const a=cachedAsistencias[idx];
+  if(!a)return;
+  const pid=a.persona_id||'';
+  const ts=a.timestamp||'';
+
+  if(btn.classList.contains('edit')){
+    document.getElementById('editNombre').value=a.nombre||'';
+    document.getElementById('editTipo').value=a.tipo||'entrada';
+    document.getElementById('editMetodo').value=a.metodo||'huella';
+    document.getElementById('editOverlay').dataset.pid=pid;
+    document.getElementById('editOverlay').dataset.ts=ts;
+    document.getElementById('editOverlay').style.display='flex';
+  }else{
+    if(!confirm('¿Eliminar esta asistencia?'))return;
+    fetch('/borrar_asistencia?persona_id='+encodeURIComponent(pid)+'&timestamp='+encodeURIComponent(ts))
+      .then(r=>r.text()).then(msg=>{alert(msg);cargar();}).catch(()=>alert('Error al eliminar'));
+  }
+});
+
+document.getElementById('editGuardarBtn').onclick=async function(){
+  const nombre=document.getElementById('editNombre').value.trim();
+  const tipo=document.getElementById('editTipo').value;
+  const metodo=document.getElementById('editMetodo').value;
+  if(!nombre){alert('El nombre es obligatorio');return;}
+  const overlay=document.getElementById('editOverlay');
+  try{
+    const r=await fetch('/editar_asistencia?persona_id='+encodeURIComponent(overlay.dataset.pid)+
+      '&timestamp='+encodeURIComponent(overlay.dataset.ts)+
+      '&nombre='+encodeURIComponent(nombre)+
+      '&tipo='+encodeURIComponent(tipo)+
+      '&metodo='+encodeURIComponent(metodo));
+    if(!r)return;
+    const msg=await r.text();
+    overlay.style.display='none';
+    alert(msg);
+    cargar();
+  }catch(e){alert('Error al editar');}
+};
+
 cargar();setInterval(cargar,10000);
 </script>
 </body>

@@ -25,8 +25,11 @@ import {
   getEmpresas,
   getUsuarios,
   registerUser,
+  getSolicitudesEliminacion,
+  resolverSolicitudEliminacion,
   type Empresa,
-  type UsuarioWeb
+  type UsuarioWeb,
+  type SolicitudEliminacion
 } from '@/lib/auth-api';
 import {
   clearLogs,
@@ -35,6 +38,7 @@ import {
   createPersona,
   createTurno,
   deleteAsignacion,
+  deleteAsistencia,
   deleteErp,
   deletePersona,
   deleteTurno,
@@ -51,13 +55,16 @@ import {
   registrarConsentimiento,
   eliminarDatosBiometricos,
   syncDevices,
+  syncPorTipo,
+  updateAsistencia,
+  updateTurno,
   testErp,
 
 } from '@/lib/api';
-import type { Asignacion, Asistencia, DeviceStatus, DuplicadoPendiente, ErpIntegration, LogEntry, Persona, Turno } from '@/lib/types';
+import type { Asignacion, Asistencia, AttendanceType, DeviceStatus, DuplicadoPendiente, ErpIntegration, LogEntry, Persona, Turno } from '@/lib/types';
 import { useDeviceWebSocket } from '@/lib/useDeviceWebSocket';
 
-type Section = 'dashboard' | 'asistencias' | 'personas' | 'turnos' | 'asignaciones' | 'dispositivos' | 'erp' | 'logs' | 'usuarios' | 'empresas' | 'duplicados';
+type Section = 'dashboard' | 'asistencias' | 'personas' | 'turnos' | 'asignaciones' | 'dispositivos' | 'erp' | 'logs' | 'usuarios' | 'empresas' | 'duplicados' | 'configuracion';
 type ToastState = { kind: 'success' | 'error'; message: string } | null;
 type ErpType = 'generic' | 'odoo' | 'defontana' | 'buk' | 'sap';
 type ErpFormState = {
@@ -82,7 +89,8 @@ const sectionPaths: Record<Section, string> = {
   logs: '/logs',
   usuarios: '/usuarios',
   empresas: '/empresas',
-  duplicados: '/duplicados'
+  duplicados: '/duplicados',
+  configuracion: '/configuracion'
 };
 
 const dayCodes = ['L', 'M', 'X', 'J', 'V', 'S', 'D'] as const;
@@ -181,7 +189,7 @@ export function SasDashboard({ initialSection = 'dashboard' }: { initialSection?
   const [erpList, setErpList] = useState<ErpIntegration[]>([]);
   const [logs, setLogs] = useState<LogEntry[]>([]);
   const [toast, setToast] = useState<ToastState>(null);
-  const [modal, setModal] = useState<'persona' | 'turno' | 'asignacion' | 'erp' | 'usuario' | 'password' | 'empresa' | 'dispositivo' | null>(null);
+  const [modal, setModal] = useState<'persona' | 'turno' | 'asignacion' | 'erp' | 'usuario' | 'password' | 'empresa' | 'dispositivo' | 'editar_asistencia' | 'editar_turno' | null>(null);
   const [filterDate, setFilterDate] = useState('');
   const [filterType, setFilterType] = useState('');
   const [filterMethod, setFilterMethod] = useState('');
@@ -228,9 +236,15 @@ export function SasDashboard({ initialSection = 'dashboard' }: { initialSection?
 
   const [personaForm, setPersonaForm] = useState({ nombre: '', rut: '', email: '', consentimiento: false });
   const [turnoForm, setTurnoForm] = useState({ nombre: '', inicio: '08:00', fin: '17:00', con_colacion: false, colacion_inicio: '13:00', colacion_fin: '14:00' });
+  const [editingTurnoId, setEditingTurnoId] = useState<string | null>(null);
   const [asignacionForm, setAsignacionForm] = useState({ rut: '', turnoId: '' });
+  const [editingAsistencia, setEditingAsistencia] = useState<Asistencia | null>(null);
+  const [editingAsistenciaForm, setEditingAsistenciaForm] = useState({ nombre: '', tipo: '', metodo: '' });
   const [duplicados, setDuplicados] = useState<DuplicadoPendiente[]>([]);
   const [mergingPersonas, setMergingPersonas] = useState(false);
+  const [solicitudesEliminacion, setSolicitudesEliminacion] = useState<SolicitudEliminacion[]>([]);
+  const [resolviendoSolicitud, setResolviendoSolicitud] = useState<number | null>(null);
+  const [usuariosSubTab, setUsuariosSubTab] = useState<'usuarios' | 'solicitudes'>('usuarios');
   const [erpForm, setErpForm] = useState<ErpFormState>({
     nombre: 'Nueva integración',
     tipo: 'generic',
@@ -247,8 +261,8 @@ export function SasDashboard({ initialSection = 'dashboard' }: { initialSection?
 
   const allowedSections: Section[] = useMemo(() => {
     if (!user) return [];
-    if (user.rol === 'admin') return ['dashboard', 'asistencias', 'personas', 'turnos', 'asignaciones', 'dispositivos', 'erp', 'logs', 'usuarios', 'empresas', 'duplicados'];
-    if (user.rol === 'empleador') return ['dashboard', 'asistencias', 'personas', 'turnos', 'asignaciones', 'dispositivos', 'erp', 'logs', 'usuarios', 'duplicados'];
+    if (user.rol === 'admin') return ['dashboard', 'asistencias', 'personas', 'turnos', 'asignaciones', 'dispositivos', 'erp', 'logs', 'usuarios', 'empresas', 'duplicados', 'configuracion'];
+    if (user.rol === 'empleador') return ['dashboard', 'asistencias', 'personas', 'turnos', 'asignaciones', 'dispositivos', 'erp', 'logs', 'usuarios', 'duplicados', 'configuracion'];
     return ['asistencias', 'usuarios'];
   }, [user]);
 
@@ -273,9 +287,10 @@ export function SasDashboard({ initialSection = 'dashboard' }: { initialSection?
       const needsUsuarios = !isTrabajador && view === 'usuarios';
       const needsEmpresas = !isTrabajador && (view === 'empresas' || (view === 'usuarios' && user?.rol === 'admin'));
       const needsPersonaActual = isTrabajador && view === 'usuarios';
+      const needsSolicitudes = !isTrabajador && view === 'usuarios';
       const needsDuplicados = !isTrabajador && (view === 'dashboard' || view === 'duplicados');
 
-      const [personasRes, turnosRes, asignacionesRes, asistenciasRes, devicesRes, erpRes, logsRes, usuariosRes, empresasRes, personaActualRes, duplicadosRes] = await Promise.all([
+      const [personasRes, turnosRes, asignacionesRes, asistenciasRes, devicesRes, erpRes, logsRes, usuariosRes, empresasRes, personaActualRes, solicitudesRes, duplicadosRes] = await Promise.all([
         needsPersonas ? getPersonas() : Promise.resolve(null),
         needsTurnos ? getTurnos() : Promise.resolve(null),
         needsAsignaciones ? getAsignaciones() : Promise.resolve(null),
@@ -286,6 +301,7 @@ export function SasDashboard({ initialSection = 'dashboard' }: { initialSection?
         needsUsuarios ? getUsuarios() : Promise.resolve(null),
         needsEmpresas ? getEmpresas() : Promise.resolve(null),
         needsPersonaActual && user?.persona_id ? getPersonaById(user.persona_id) : Promise.resolve(null),
+        needsSolicitudes ? getSolicitudesEliminacion() : Promise.resolve(null),
         needsDuplicados ? getDuplicadosPendientes() : Promise.resolve(null)
       ]);
 
@@ -347,6 +363,7 @@ export function SasDashboard({ initialSection = 'dashboard' }: { initialSection?
         setPersonaActual(personaActualRes);
         setConsentimientoActivo(!!(personaActualRes as { encoding_facial: string | null }).encoding_facial);
       }
+      if (solicitudesRes) setSolicitudesEliminacion(solicitudesRes);
       if (duplicadosRes) setDuplicados(duplicadosRes);
     }
 
@@ -515,6 +532,11 @@ export function SasDashboard({ initialSection = 'dashboard' }: { initialSection?
     setEditingUsuario(null);
     setRegisterForm({ nombre: '', email: '', password: '', rol: 'trabajador', empresa_id: undefined });
     setEmpresaForm({ nombre: '', rut_empresa: '', email_contacto: '', telefono: '', direccion: '', nombre_usuario: '', email_usuario: '', password_usuario: '', usuario_existente_id: undefined, rol_usuario: 'empleador' });
+    setEditingAsistencia(null);
+    setEditingAsistenciaForm({ nombre: '', tipo: '', metodo: '' });
+    setEditingTurnoId(null);
+    setTurnoForm({ nombre: '', inicio: '08:00', fin: '17:00', con_colacion: false, colacion_inicio: '13:00', colacion_fin: '14:00' });
+    setDays(['L', 'M', 'X', 'J', 'V']);
   }
 
   async function refreshData() {
@@ -576,6 +598,11 @@ export function SasDashboard({ initialSection = 'dashboard' }: { initialSection?
     if (view === 'dashboard' || view === 'duplicados') {
       const duplicadosRes = await getDuplicadosPendientes();
       if (duplicadosRes) setDuplicados(duplicadosRes);
+    }
+
+    if (view === 'usuarios') {
+      const solicitudesRes = await getSolicitudesEliminacion();
+      if (solicitudesRes) setSolicitudesEliminacion(solicitudesRes);
     }
 
     if (view === 'erp') {
@@ -802,6 +829,95 @@ export function SasDashboard({ initialSection = 'dashboard' }: { initialSection?
     }
 
     showToast('error', 'No se pudo eliminar la asignación');
+  }
+
+  async function handleSyncPorTipo(tipo: 'personas' | 'turnos' | 'asistencias' | 'asignaciones' | 'todas') {
+    pushLog('info', `Sincronizando ${tipo}...`);
+    const res = await syncPorTipo(tipo);
+    if (res && 'ok' in res && res.ok) {
+      pushLog('ok', `${tipo} sincronizado: ${res.mensaje}`);
+      showToast('success', res.mensaje);
+    } else {
+      pushLog('err', `Error sincronizando ${tipo}`);
+      showToast('error', (res as { error?: string })?.error || `Error al sincronizar ${tipo}`);
+    }
+  }
+
+  async function handleDeleteAsistencia(asistenciaId: string) {
+    if (!confirm('¿Eliminar esta asistencia? Esta accion no se puede deshacer.')) return;
+    const result = await deleteAsistencia(asistenciaId);
+    if (result && 'ok' in result && result.ok) {
+      setAsistencias((current) => current.filter((item) => item.id !== asistenciaId));
+      pushLog('ok', `Asistencia eliminada: ${asistenciaId}`);
+      showToast('success', 'Asistencia eliminada');
+      return;
+    }
+    showToast('error', 'No se pudo eliminar la asistencia');
+  }
+
+  function handleEditarAsistencia(item: Asistencia) {
+    setEditingAsistencia(item);
+    setEditingAsistenciaForm({ nombre: item.nombre, tipo: item.tipo, metodo: item.metodo });
+    setFormError('');
+    setModal('editar_asistencia');
+  }
+
+  async function handleUpdateAsistencia() {
+    if (!editingAsistencia) return;
+    const payload: { nombre?: string; tipo?: string; metodo?: string } = {};
+    if (editingAsistenciaForm.nombre !== editingAsistencia.nombre) payload.nombre = editingAsistenciaForm.nombre;
+    if (editingAsistenciaForm.tipo !== editingAsistencia.tipo) payload.tipo = editingAsistenciaForm.tipo;
+    if (editingAsistenciaForm.metodo !== editingAsistencia.metodo) payload.metodo = editingAsistenciaForm.metodo;
+    if (Object.keys(payload).length === 0) {
+      closeModal();
+      return;
+    }
+    const result = await updateAsistencia(editingAsistencia.id, payload);
+    if (result && 'ok' in result && result.ok) {
+      setAsistencias((current) => current.map((item) =>
+        item.id === editingAsistencia.id ? { ...item, ...payload, tipo: (payload.tipo || item.tipo) as AttendanceType } : item
+      ));
+      pushLog('ok', `Asistencia actualizada: ${editingAsistencia.id}`);
+      showToast('success', 'Asistencia actualizada');
+      closeModal();
+      return;
+    }
+    showToast('error', 'No se pudo actualizar la asistencia');
+  }
+
+  function handleEditarTurno(item: Turno) {
+    setTurnoForm({ nombre: item.nombre, inicio: item.inicio, fin: item.fin, con_colacion: item.con_colacion, colacion_inicio: item.colacion_inicio || '13:00', colacion_fin: item.colacion_fin || '14:00' });
+    setDays(item.dias.split('').filter((c) => c.trim()));
+    setEditingTurnoId(item.id);
+    setFormError('');
+    setModal('editar_turno');
+  }
+
+  async function handleUpdateTurno() {
+    if (!editingTurnoId) return;
+    const nombre = turnoForm.nombre.trim();
+    if (!nombre) {
+      setFormError('El nombre del turno es obligatorio');
+      return;
+    }
+    const dias = days.join('');
+    const result = await updateTurno(editingTurnoId, {
+      nombre, inicio: turnoForm.inicio, fin: turnoForm.fin, dias,
+      con_colacion: turnoForm.con_colacion,
+      colacion_inicio: turnoForm.con_colacion ? turnoForm.colacion_inicio : null,
+      colacion_fin: turnoForm.con_colacion ? turnoForm.colacion_fin : null
+    });
+    if (result && 'ok' in result && result.ok) {
+      pushLog('ok', `Turno actualizado: ${nombre}`);
+      showToast('success', `Turno ${nombre} actualizado`);
+      closeModal();
+      setTurnoForm({ nombre: '', inicio: '08:00', fin: '17:00', con_colacion: false, colacion_inicio: '13:00', colacion_fin: '14:00' });
+      setEditingTurnoId(null);
+      setDays(['L', 'M', 'X', 'J', 'V']);
+      await refreshData();
+      return;
+    }
+    showToast('error', 'No se pudo actualizar el turno');
   }
 
   async function handleDeleteDispositivo(dispositivoId: string, deviceName: string) {
@@ -1341,7 +1457,8 @@ export function SasDashboard({ initialSection = 'dashboard' }: { initialSection?
     erp: 'Integraciones',
     logs: 'Registro de actividad',
     usuarios: 'Usuarios',
-    empresas: 'Empresas'
+    empresas: 'Empresas',
+    configuracion: 'Sincronización'
   }[section];
 
   const currentSubtitle = {
@@ -1355,7 +1472,8 @@ export function SasDashboard({ initialSection = 'dashboard' }: { initialSection?
     erp: 'Conecta el sistema con tus plataformas externas.',
     logs: 'Revisa el historial de eventos y operaciones del sistema.',
     usuarios: 'Administra las cuentas de acceso y sus permisos.',
-    empresas: 'Cada empresa opera con sus propios datos y configuraciones.'
+    empresas: 'Cada empresa opera con sus propios datos y configuraciones.',
+    configuracion: 'Selecciona qué datos sincronizar con los dispositivos.'
   }[section];
 
   return (
@@ -1414,6 +1532,9 @@ export function SasDashboard({ initialSection = 'dashboard' }: { initialSection?
             <SectionButton active={section === 'duplicados'} href={sectionPaths.duplicados} onClick={() => setSidebarOpen(false)}>
               <span>Duplicados {duplicados.length > 0 ? <span className="badge danger" style={{ marginLeft: 6, fontSize: '0.7rem', padding: '1px 6px' }}>{duplicados.length}</span> : null}</span>
             </SectionButton>
+            <SectionButton active={section === 'configuracion'} href={sectionPaths.configuracion} onClick={() => setSidebarOpen(false)}>
+              <span>Sincronización</span>
+            </SectionButton>
             <SectionButton active={section === 'erp'} href={sectionPaths.erp} onClick={() => setSidebarOpen(false)}>
               <span>ERP</span>
             </SectionButton>
@@ -1467,7 +1588,7 @@ export function SasDashboard({ initialSection = 'dashboard' }: { initialSection?
             )}
             {(user?.rol === 'admin' || user?.rol === 'empleador') && (
               <>
-                <button className="btn btn-secondary" type="button" onClick={handleSyncAll}>
+                <button className="btn btn-secondary" type="button" onClick={() => setSection('configuracion')}>
                   Sincronizar
                 </button>
                 <button className="btn btn-primary" type="button" onClick={() => openModal(section === 'personas' ? 'persona' : section === 'turnos' ? 'turno' : section === 'asignaciones' ? 'asignacion' : section === 'usuarios' ? 'usuario' : 'erp')}>
@@ -1680,6 +1801,7 @@ export function SasDashboard({ initialSection = 'dashboard' }: { initialSection?
                       <th>Método</th>
                       <th>Fecha y hora</th>
                       <th>Sync</th>
+                      <th>Acciones</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -1698,11 +1820,17 @@ export function SasDashboard({ initialSection = 'dashboard' }: { initialSection?
                           <td>
                             <Badge tone={item.sincronizado ? 'success' : 'warning'}>{item.sincronizado ? 'sincronizado' : 'pendiente'}</Badge>
                           </td>
+                          <td>
+                            <div className="toolbar" style={{ gap: 4 }}>
+                              <button className="btn btn-secondary" type="button" onClick={() => handleEditarAsistencia(item)} style={{ padding: '4px 10px', fontSize: '0.75rem' }}>Editar</button>
+                              <button className="btn btn-danger" type="button" onClick={() => handleDeleteAsistencia(item.id)} style={{ padding: '4px 10px', fontSize: '0.75rem' }}>Eliminar</button>
+                            </div>
+                          </td>
                         </tr>
                       ))
                     ) : (
                       <tr>
-                        <td colSpan={6}>
+                        <td colSpan={7}>
                           <div className="empty-state">No hay registros con esos filtros.</div>
                         </td>
                       </tr>
@@ -1805,7 +1933,10 @@ export function SasDashboard({ initialSection = 'dashboard' }: { initialSection?
                           </div>
                         </td>
                         <td>
-                          <button className="btn btn-danger" type="button" onClick={() => handleDeleteTurno(item.id)}>Eliminar</button>
+                          <div className="toolbar" style={{ gap: 4 }}>
+                            <button className="btn btn-secondary" type="button" onClick={() => handleEditarTurno(item)} style={{ padding: '4px 10px', fontSize: '0.75rem' }}>Editar</button>
+                            <button className="btn btn-danger" type="button" onClick={() => handleDeleteTurno(item.id)} style={{ padding: '4px 10px', fontSize: '0.75rem' }}>Eliminar</button>
+                          </div>
                         </td>
                       </tr>
                     ))}
@@ -2154,6 +2285,59 @@ export function SasDashboard({ initialSection = 'dashboard' }: { initialSection?
           </section>
         )}
 
+        {section === 'configuracion' && (
+          <section className="panel section">
+            <div className="section-head">
+              <div>
+                <h2 className="section-title">Sincronización</h2>
+                <p className="section-subtitle">Selecciona qué datos sincronizar con los dispositivos.</p>
+              </div>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 16 }}>
+              <div className="card sync-card" style={{ padding: 24 }}>
+                <h3 className="section-title" style={{ margin: 0 }}>Personas</h3>
+                <p className="section-subtitle">Sincroniza los datos de personas registradas.</p>
+                <button className="btn btn-secondary" type="button" onClick={() => handleSyncPorTipo('personas')} style={{ width: '100%', marginTop: 12 }}>
+                  Sincronizar Personas
+                </button>
+              </div>
+
+              <div className="card sync-card" style={{ padding: 24 }}>
+                <h3 className="section-title" style={{ margin: 0 }}>Turnos</h3>
+                <p className="section-subtitle">Sincroniza horarios y jornadas.</p>
+                <button className="btn btn-secondary" type="button" onClick={() => handleSyncPorTipo('turnos')} style={{ width: '100%', marginTop: 12 }}>
+                  Sincronizar Turnos
+                </button>
+              </div>
+
+              <div className="card sync-card" style={{ padding: 24 }}>
+                <h3 className="section-title" style={{ margin: 0 }}>Asistencias</h3>
+                <p className="section-subtitle">Sincroniza registros de asistencia.</p>
+                <button className="btn btn-secondary" type="button" onClick={() => handleSyncPorTipo('asistencias')} style={{ width: '100%', marginTop: 12 }}>
+                  Sincronizar Asistencias
+                </button>
+              </div>
+
+              <div className="card sync-card" style={{ padding: 24 }}>
+                <h3 className="section-title" style={{ margin: 0 }}>Asignaciones</h3>
+                <p className="section-subtitle">Sincroniza asignaciones turno-persona.</p>
+                <button className="btn btn-secondary" type="button" onClick={() => handleSyncPorTipo('asignaciones')} style={{ width: '100%', marginTop: 12 }}>
+                  Sincronizar Asignaciones
+                </button>
+              </div>
+
+              <div className="card sync-card" style={{ padding: 24, borderColor: 'var(--primary)' }}>
+                <h3 className="section-title" style={{ margin: 0 }}>Sincronización Completa</h3>
+                <p className="section-subtitle">Ejecuta la sincronización de todos los datos.</p>
+                <button className="btn btn-primary" type="button" onClick={() => handleSyncPorTipo('todas')} style={{ width: '100%', marginTop: 12 }}>
+                  Sincronizar Todo
+                </button>
+              </div>
+            </div>
+          </section>
+        )}
+
         {section === 'erp' && (
           <section className="panel section">
             <div className="section-head">
@@ -2372,60 +2556,171 @@ export function SasDashboard({ initialSection = 'dashboard' }: { initialSection?
                 <button className="btn btn-secondary" type="button" onClick={() => openModal('password')}>
                   Cambiar contraseña
                 </button>
-                <button className="btn btn-primary" type="button" onClick={() => openModal('usuario')}>
-                  Nuevo usuario
-                </button>
+                {usuariosSubTab === 'usuarios' && (
+                  <button className="btn btn-primary" type="button" onClick={() => openModal('usuario')}>
+                    Nuevo usuario
+                  </button>
+                )}
               </div>
             </div>
 
-            <div className="table-card">
-              <div className="table-wrap">
-                <table>
-                  <thead>
-                    <tr>
-                      <th>Nombre</th>
-                      <th>Email</th>
-                      {user?.rol === 'admin' && <th>Empresa</th>}
-                      <th>Rol</th>
-                      <th>Activo</th>
-                      <th>Creado</th>
-                      <th>Acciones</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {usuarios.map((item) => (
-                      <tr key={`${item.id}-${item.empresa_id}`}>
-                        <td>{item.nombre}</td>
-                        <td className="mono muted">{item.email}</td>
-                        {user?.rol === 'admin' && <td>{item.empresa_nombre}</td>}
-                        <td>
-                          <Badge tone={item.rol === 'admin' ? 'danger' : item.rol === 'empleador' ? 'warning' : 'info'}>
-                            {item.rol === 'admin' ? 'Admin sistema' : item.rol === 'empleador' ? 'Admin empresa' : 'Trabajador'}
-                          </Badge>
-                        </td>
-                        <td>{item.activo ? 'Sí' : 'No'}</td>
-                        <td className="mono muted">{item.created_at ? formatDate(item.created_at) : '—'}</td>
-                        <td>
-                          <button className="btn btn-ghost" type="button" onClick={() => handleEditUsuario(item)} style={{ marginRight: 8 }}>
-                            Editar
-                          </button>
-                          {(user?.rol === 'admin' || (user?.rol === 'empleador' && (item.rol === 'empleador' || item.rol === 'trabajador'))) && item.id !== user?.id && (
-                            <button className="btn btn-danger" type="button" onClick={() => handleDeleteUsuario(item.id, item.empresa_id, item.nombre)}>
-                              Eliminar
-                            </button>
-                          )}
-                        </td>
-                      </tr>
-                    ))}
-                    {usuarios.length === 0 && (
-                      <tr>
-                        <td colSpan={user?.rol === 'admin' ? 7 : 6} className="empty-state">No hay usuarios registrados.</td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
-              </div>
+            <div style={{ display: 'flex', gap: 8, marginBottom: 20 }}>
+              <button
+                type="button"
+                className={`btn btn-sm ${usuariosSubTab === 'usuarios' ? 'btn-primary' : 'btn-secondary'}`}
+                onClick={() => setUsuariosSubTab('usuarios')}
+              >
+                Usuarios
+              </button>
+              <button
+                type="button"
+                className={`btn btn-sm ${usuariosSubTab === 'solicitudes' ? 'btn-primary' : 'btn-secondary'}`}
+                onClick={() => { setUsuariosSubTab('solicitudes'); refreshSection('usuarios'); }}
+              >
+                Solicitudes de eliminación {solicitudesEliminacion.filter(s => s.estado === 'pendiente').length > 0 && (
+                  <span className="badge danger" style={{ marginLeft: 6, fontSize: '0.7rem', padding: '1px 6px' }}>{solicitudesEliminacion.filter(s => s.estado === 'pendiente').length}</span>
+                )}
+              </button>
             </div>
+
+            {usuariosSubTab === 'usuarios' && (
+              <div className="table-card">
+                <div className="table-wrap">
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>Nombre</th>
+                        <th>Email</th>
+                        {user?.rol === 'admin' && <th>Empresa</th>}
+                        <th>Rol</th>
+                        <th>Activo</th>
+                        <th>Creado</th>
+                        <th>Acciones</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {usuarios.map((item) => (
+                        <tr key={`${item.id}-${item.empresa_id}`}>
+                          <td>{item.nombre}</td>
+                          <td className="mono muted">{item.email}</td>
+                          {user?.rol === 'admin' && <td>{item.empresa_nombre}</td>}
+                          <td>
+                            <Badge tone={item.rol === 'admin' ? 'danger' : item.rol === 'empleador' ? 'warning' : 'info'}>
+                              {item.rol === 'admin' ? 'Admin sistema' : item.rol === 'empleador' ? 'Admin empresa' : 'Trabajador'}
+                            </Badge>
+                          </td>
+                          <td>{item.activo ? 'Sí' : 'No'}</td>
+                          <td className="mono muted">{item.created_at ? formatDate(item.created_at) : '—'}</td>
+                          <td>
+                            <button className="btn btn-ghost" type="button" onClick={() => handleEditUsuario(item)} style={{ marginRight: 8 }}>
+                              Editar
+                            </button>
+                            {(user?.rol === 'admin' || (user?.rol === 'empleador' && (item.rol === 'empleador' || item.rol === 'trabajador'))) && item.id !== user?.id && (
+                              <button className="btn btn-danger" type="button" onClick={() => handleDeleteUsuario(item.id, item.empresa_id, item.nombre)}>
+                                Eliminar
+                              </button>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                      {usuarios.length === 0 && (
+                        <tr>
+                          <td colSpan={user?.rol === 'admin' ? 7 : 6} className="empty-state">No hay usuarios registrados.</td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+
+            {usuariosSubTab === 'solicitudes' && (
+              <div className="table-card">
+                {solicitudesEliminacion.length === 0 ? (
+                  <div className="empty-state" style={{ padding: 40 }}>No hay solicitudes de eliminación.</div>
+                ) : (
+                  <div className="table-wrap">
+                    <table>
+                      <thead>
+                        <tr>
+                          <th>Nombre</th>
+                          <th>RUT</th>
+                          <th>Email</th>
+                          <th>Motivo</th>
+                          <th>Estado</th>
+                          <th>Solicitado</th>
+                          <th>Acciones</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {solicitudesEliminacion.map((sol) => (
+                          <tr key={sol.id}>
+                            <td>{sol.nombre}</td>
+                            <td className="mono muted">{sol.rut}</td>
+                            <td className="mono muted">{sol.email_contacto || '—'}</td>
+                            <td style={{ maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{sol.motivo || '—'}</td>
+                            <td>
+                              <Badge tone={sol.estado === 'pendiente' ? 'warning' : sol.estado === 'aprobada' ? 'success' : 'danger'}>
+                                {sol.estado === 'pendiente' ? 'Pendiente' : sol.estado === 'aprobada' ? 'Aprobada' : 'Rechazada'}
+                              </Badge>
+                            </td>
+                            <td className="mono muted">{sol.fecha_solicitud ? formatDate(sol.fecha_solicitud) : '—'}</td>
+                            <td>
+                              {sol.estado === 'pendiente' ? (
+                                <div className="toolbar" style={{ gap: 6 }}>
+                                  <button
+                                    className="btn btn-primary btn-sm"
+                                    type="button"
+                                    disabled={resolviendoSolicitud === sol.id}
+                                    onClick={async () => {
+                                      if (!window.confirm(`¿Aprobar la eliminación de datos de ${sol.nombre}? Esta acción no se puede deshacer.`)) return;
+                                      setResolviendoSolicitud(sol.id);
+                                      const res = await resolverSolicitudEliminacion(sol.id, 'aprobada');
+                                      setResolviendoSolicitud(null);
+                                      if (res && 'ok' in res && res.ok) {
+                                        showToast('success', res.mensaje);
+                                        pushLog('ok', res.mensaje);
+                                        refreshSection('usuarios');
+                                      } else {
+                                        showToast('error', 'Error al aprobar solicitud');
+                                      }
+                                    }}
+                                  >
+                                    {resolviendoSolicitud === sol.id ? '...' : 'Aprobar'}
+                                  </button>
+                                  <button
+                                    className="btn btn-secondary btn-sm"
+                                    type="button"
+                                    disabled={resolviendoSolicitud === sol.id}
+                                    onClick={async () => {
+                                      if (!window.confirm(`¿Rechazar la solicitud de ${sol.nombre}?`)) return;
+                                      setResolviendoSolicitud(sol.id);
+                                      const res = await resolverSolicitudEliminacion(sol.id, 'rechazada');
+                                      setResolviendoSolicitud(null);
+                                      if (res && 'ok' in res && res.ok) {
+                                        showToast('success', res.mensaje);
+                                        pushLog('ok', res.mensaje);
+                                        refreshSection('usuarios');
+                                      } else {
+                                        showToast('error', 'Error al rechazar solicitud');
+                                      }
+                                    }}
+                                  >
+                                    {resolviendoSolicitud === sol.id ? '...' : 'Rechazar'}
+                                  </button>
+                                </div>
+                              ) : (
+                                <span className="muted">—</span>
+                              )}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+            )}
           </section>
         )}
 
@@ -2659,6 +2954,49 @@ export function SasDashboard({ initialSection = 'dashboard' }: { initialSection?
         </div>
       )}
 
+      {modal === 'editar_asistencia' && editingAsistencia && (
+        <div className="overlay" onClick={closeModal} role="presentation">
+          <div className="modal" onClick={(event) => event.stopPropagation()} role="dialog" aria-modal="true" aria-label="Editar asistencia">
+            <div className="modal-head">
+              <div>
+                <span className="eyebrow">Asistencias</span>
+                <h3 className="modal-title">Editar asistencia</h3>
+                <p className="section-subtitle">Modifica los datos del registro de asistencia.</p>
+              </div>
+              <button className="btn btn-ghost" type="button" onClick={closeModal}>Cerrar</button>
+            </div>
+            <div className="modal-body">
+              <div className="field">
+                <label>Nombre</label>
+                <input value={editingAsistenciaForm.nombre} onChange={(e) => setEditingAsistenciaForm((c) => ({ ...c, nombre: e.target.value }))} />
+              </div>
+              <div className="field">
+                <label>Tipo</label>
+                <select value={editingAsistenciaForm.tipo} onChange={(e) => setEditingAsistenciaForm((c) => ({ ...c, tipo: e.target.value }))}>
+                  <option value="entrada">Entrada</option>
+                  <option value="salida">Salida</option>
+                  <option value="colacion_entrada">Colación Entrada</option>
+                  <option value="colacion_salida">Colación Salida</option>
+                </select>
+              </div>
+              <div className="field">
+                <label>Método</label>
+                <select value={editingAsistenciaForm.metodo} onChange={(e) => setEditingAsistenciaForm((c) => ({ ...c, metodo: e.target.value }))}>
+                  <option value="huella">Huella dactilar</option>
+                  <option value="facial">Rostro</option>
+                  <option value="facial+huella">Rostro + Huella</option>
+                </select>
+              </div>
+              {formError ? <div className="badge danger">{formError}</div> : null}
+            </div>
+            <div className="modal-footer">
+              <button className="btn btn-secondary" type="button" onClick={closeModal}>Cancelar</button>
+              <button className="btn btn-primary" type="button" onClick={handleUpdateAsistencia}>Guardar cambios</button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {modal === 'password' && (
         <div className="overlay" onClick={closeModal} role="presentation">
           <div className="modal" onClick={(e) => e.stopPropagation()} role="presentation">
@@ -2823,14 +3161,14 @@ export function SasDashboard({ initialSection = 'dashboard' }: { initialSection?
         </div>
       )}
 
-      {modal === 'turno' && (
+      {(modal === 'turno' || modal === 'editar_turno') && (
         <div className="overlay" onClick={closeModal} role="presentation">
-          <div className="modal" onClick={(event) => event.stopPropagation()} role="dialog" aria-modal="true" aria-label="Nuevo turno">
+          <div className="modal" onClick={(event) => event.stopPropagation()} role="dialog" aria-modal="true" aria-label={editingTurnoId ? 'Editar turno' : 'Nuevo turno'}>
             <div className="modal-head">
               <div>
                 <span className="eyebrow">Calendario</span>
-                <h3 className="modal-title">Nuevo turno</h3>
-                <p className="section-subtitle">Define nombre, horario y días activos en una sola vista.</p>
+                <h3 className="modal-title">{editingTurnoId ? 'Editar turno' : 'Nuevo turno'}</h3>
+                <p className="section-subtitle">{editingTurnoId ? 'Modifica los datos del turno.' : 'Define nombre, horario y días activos en una sola vista.'}</p>
               </div>
               <button className="btn btn-ghost" type="button" onClick={closeModal}>Cerrar</button>
             </div>
@@ -2889,7 +3227,11 @@ export function SasDashboard({ initialSection = 'dashboard' }: { initialSection?
             </div>
             <div className="modal-footer">
               <button className="btn btn-secondary" type="button" onClick={closeModal}>Cancelar</button>
-              <button className="btn btn-primary" type="button" onClick={handleCreateTurno}>Crear turno</button>
+              {editingTurnoId ? (
+                <button className="btn btn-primary" type="button" onClick={handleUpdateTurno}>Guardar cambios</button>
+              ) : (
+                <button className="btn btn-primary" type="button" onClick={handleCreateTurno}>Crear turno</button>
+              )}
             </div>
           </div>
         </div>

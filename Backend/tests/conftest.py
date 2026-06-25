@@ -131,7 +131,7 @@ def app(_schema):
             consentimientos, asistencias, asignaciones, turnos,
             integraciones_erp, dispositivos, personas,
             usuario_empresa, usuarios_web, empresas,
-            sincronizacion_log
+            sincronizacion_log, solicitudes_eliminacion
         RESTART IDENTITY CASCADE
     """)
     conn.commit()

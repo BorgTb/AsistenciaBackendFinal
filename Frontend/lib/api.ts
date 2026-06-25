@@ -148,6 +148,25 @@ export async function syncDevices() {
   });
 }
 
+export async function syncPorTipo(tipo: 'personas' | 'turnos' | 'asistencias' | 'asignaciones' | 'todas') {
+  return request<{ ok: boolean; mensaje: string } | { error: string }>(`/api/dispositivos/sync/${tipo}`, {
+    method: 'POST'
+  });
+}
+
+export async function deleteAsistencia(asistenciaId: string) {
+  return request<{ ok: boolean } | { error: string }>(`/api/asistencias/${asistenciaId}`, {
+    method: 'DELETE'
+  });
+}
+
+export async function updateAsistencia(asistenciaId: string, payload: { nombre?: string; tipo?: string; metodo?: string; persona_id?: string }) {
+  return request<{ ok: boolean; id: string } | { error: string }>(`/api/asistencias/${asistenciaId}`, {
+    method: 'PUT',
+    body: JSON.stringify(payload)
+  });
+}
+
 export async function getDuplicadosPendientes() {
   return request<DuplicadoPendiente[]>('/api/personas/duplicados');
 }
