@@ -84,6 +84,26 @@ def delete_dispositivo(dispositivo_id):
     conn = get_connection()
     cur = conn.cursor()
     try:
+        # 1. Desvincular personas: SET NULL dispositivo_origen_id
+        #    (personas con empresa permanecen; huerfanas quedan sin device pero se preservan)
+        cur.execute(
+            "UPDATE personas SET dispositivo_origen_id = NULL WHERE dispositivo_origen_id::text = %s",
+            (str(dispositivo_id),)
+        )
+
+        # 2. Desvincular asistencias: SET NULL dispositivo_id
+        cur.execute(
+            "UPDATE asistencias SET dispositivo_id = NULL WHERE dispositivo_id::text = %s",
+            (str(dispositivo_id),)
+        )
+
+        # 3. Desvincular logs de sincronizacion: SET NULL dispositivo_id
+        cur.execute(
+            "UPDATE sincronizacion_log SET dispositivo_id = NULL WHERE dispositivo_id::text = %s",
+            (str(dispositivo_id),)
+        )
+
+        # 4. Ahora es seguro eliminar el dispositivo
         if request.user_rol == 'admin':
             cur.execute("DELETE FROM dispositivos WHERE id::text = %s", (str(dispositivo_id),))
         else:
@@ -91,8 +111,9 @@ def delete_dispositivo(dispositivo_id):
                 "DELETE FROM dispositivos WHERE id::text = %s AND empresa_id = %s",
                 (str(dispositivo_id), request.empresa_id)
             )
+
         conn.commit()
-        return jsonify({'ok': True})
+        return jsonify({'ok': True, 'mensaje': 'Dispositivo eliminado. Datos vinculados desasociados correctamente.'})
     except Exception as e:
         conn.rollback()
         return jsonify({'error': str(e)}), 500

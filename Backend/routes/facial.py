@@ -2,6 +2,7 @@ from flask import Blueprint, request, jsonify
 from database import get_connection, resolver_rut_a_id
 from deepface import DeepFace
 from encryption import cifrar_embedding, descifrar_embedding
+from routes.auth import token_opcional, requiere_dispositivo_enrolado
 import numpy as np
 import cv2
 import base64
@@ -26,6 +27,27 @@ CACHE_TTL = int(os.getenv('FACIAL_CACHE_TTL', '60'))
 _cache_embeddings = {}
 _cache_timestamp = 0
 _cache_lock = threading.Lock()
+
+def _precargar_modelos():
+    precarga_dir = os.path.join(tempfile.gettempdir(), 'deepface_precarga')
+    os.makedirs(precarga_dir, exist_ok=True)
+    img_path = os.path.join(precarga_dir, 'warmup.jpg')
+    if not os.path.exists(img_path):
+        img = np.zeros((160, 160, 3), dtype=np.uint8)
+        cv2.imwrite(img_path, img)
+    try:
+        DeepFace.represent(
+            img_path=img_path,
+            model_name="Facenet",
+            enforce_detection=False,
+            detector_backend=DETECTOR_BACKEND,
+            anti_spoofing=False
+        )
+        print(f"[FACIAL] Modelos precargados (detector={DETECTOR_BACKEND})", flush=True)
+    except Exception as e:
+        print(f"[FACIAL] Aviso: precarga de modelos fallo (se cargaran en la 1era peticion): {e}", flush=True)
+
+_precargar_modelos()
 
 def _obtener_embeddings():
     global _cache_embeddings, _cache_timestamp
@@ -142,14 +164,25 @@ def extraer_embedding(img_path, anti_spoofing=False):
     return resultado[0]['embedding']
 
 @facial_bp.route('/api/facial/registrar', methods=['POST'])
+@token_opcional
+@requiere_dispositivo_enrolado
 def registrar_facial():
-    data = request.json or {}
-    imagen_b64 = data.get('imagen')
+    content_type = (request.content_type or '').lower()
 
-    if (not data.get('rut') and not data.get('persona_id')) or not imagen_b64:
-        return jsonify({'error': 'Faltan datos (persona_id o rut requerido)'}), 400
-
-    persona_id = _resolver_persona_id(data)
+    if 'octet-stream' in content_type or (not content_type and len(request.data) > 0 and request.data[0:2] == b'\xff\xd8'):
+        img_bytes = request.data
+        rut = (request.headers.get('X-RUT', '') or request.headers.get('X-Persona-ID', '')).strip()
+        persona_id = _resolver_persona_id({'rut': rut, 'persona_id': request.headers.get('X-Persona-ID', '')})
+    else:
+        data = request.get_json(force=True, silent=True) or {}
+        imagen_b64 = data.get('imagen')
+        if (not data.get('rut') and not data.get('persona_id')) or not imagen_b64:
+            return jsonify({'error': 'Faltan datos (persona_id o rut requerido)'}), 400
+        try:
+            img_bytes = base64.b64decode(imagen_b64)
+        except Exception:
+            return jsonify({'error': 'Base64 invalido'}), 400
+        persona_id = _resolver_persona_id(data)
     if not persona_id:
         return jsonify({'error': 'Persona no encontrada'}), 404
 
@@ -157,7 +190,9 @@ def registrar_facial():
         return jsonify({'error': 'Consentimiento biometrico requerido. Acepte la politica de privacidad antes de registrar datos biometricos.'}), 403
 
     try:
-        file_path = guardar_imagen_de_registro(persona_id, imagen_b64)
+        img = Image.open(io.BytesIO(img_bytes)).convert('RGB')
+        file_path = os.path.join(tempfile.gettempdir(), f"{persona_id}.jpg")
+        img.save(file_path)
     except Exception as e:
         return jsonify({'error': f'Error al guardar imagen: {str(e)}'}), 500
 
@@ -224,13 +259,23 @@ def registrar_facial():
 
 @facial_bp.route('/api/facial/agregar-foto', methods=['POST'])
 def agregar_foto():
-    data = request.json or {}
-    imagen_b64 = data.get('imagen')
+    content_type = (request.content_type or '').lower()
 
-    if (not data.get('rut') and not data.get('persona_id')) or not imagen_b64:
-        return jsonify({'error': 'Faltan datos (persona_id o rut requerido)'}), 400
+    if 'octet-stream' in content_type or (not content_type and len(request.data) > 0 and request.data[0:2] == b'\xff\xd8'):
+        img_bytes = request.data
+        rut = (request.headers.get('X-RUT', '')).strip()
+        persona_id = _resolver_persona_id({'rut': rut, 'persona_id': request.headers.get('X-Persona-ID', '')})
+    else:
+        data = request.get_json(force=True, silent=True) or {}
+        imagen_b64 = data.get('imagen')
+        if (not data.get('rut') and not data.get('persona_id')) or not imagen_b64:
+            return jsonify({'error': 'Faltan datos (persona_id o rut requerido)'}), 400
+        try:
+            img_bytes = base64.b64decode(imagen_b64)
+        except Exception:
+            return jsonify({'error': 'Base64 invalido'}), 400
+        persona_id = _resolver_persona_id(data)
 
-    persona_id = _resolver_persona_id(data)
     if not persona_id:
         return jsonify({'error': 'Persona no encontrada'}), 404
 
@@ -238,7 +283,12 @@ def agregar_foto():
         return jsonify({'error': 'Consentimiento biometrico requerido'}), 403
 
     ts = datetime.now().strftime('%Y%m%d_%H%M%S')
-    file_path = guardar_imagen_de_registro(persona_id, imagen_b64, suffix=f'_{ts}')
+    file_path = os.path.join(tempfile.gettempdir(), f"{persona_id}_{ts}.jpg")
+    try:
+        img = Image.open(io.BytesIO(img_bytes)).convert('RGB')
+        img.save(file_path)
+    except Exception as e:
+        return jsonify({'error': f'Error al guardar imagen: {str(e)}'}), 500
 
     try:
         ok_calidad, msg_calidad, quality_score = _validar_calidad_imagen(file_path)
@@ -423,6 +473,8 @@ def verificar_facial():
             os.unlink(tmp_path)
 
 @facial_bp.route('/api/facial/identificar', methods=['POST'])
+@token_opcional
+@requiere_dispositivo_enrolado
 def identificar_facial():
     content_type = (request.content_type or '').lower()
     print(f"[IDENTIFICAR] Content-Type recibido: '{content_type}' | Body size: {len(request.data)} bytes", flush=True)
@@ -514,19 +566,28 @@ def identificar_facial():
 
 
 @facial_bp.route('/api/facial/identificar-o-registrar', methods=['POST'])
+@token_opcional
+@requiere_dispositivo_enrolado
 def identificar_o_registrar():
-    data = request.json or {}
-    imagen_b64 = data.get('imagen')
-    rut = (data.get('rut') or '').strip()
-    consentimiento = data.get('consentimiento', False)
+    content_type = (request.content_type or '').lower()
 
-    if not imagen_b64:
-        return jsonify({'error': 'Falta imagen'}), 400
+    if 'octet-stream' in content_type or (not content_type and len(request.data) > 0 and request.data[0:2] == b'\xff\xd8'):
+        img_bytes = request.data
+        rut = (request.headers.get('X-RUT', '') or request.headers.get('X-Persona-ID', '')).strip()
+        consentimiento = request.headers.get('X-Consentimiento', '0') == '1'
+    else:
+        data = request.get_json(force=True, silent=True) or {}
+        imagen_b64 = data.get('imagen')
+        rut = (data.get('rut') or '').strip()
+        consentimiento = data.get('consentimiento', False)
 
-    try:
-        img_bytes = base64.b64decode(imagen_b64)
-    except Exception:
-        return jsonify({'error': 'Base64 invalido'}), 400
+        if not imagen_b64:
+            return jsonify({'error': 'Falta imagen'}), 400
+
+        try:
+            img_bytes = base64.b64decode(imagen_b64)
+        except Exception:
+            return jsonify({'error': 'Base64 invalido'}), 400
 
     img = Image.open(io.BytesIO(img_bytes)).convert('RGB')
     tmp = tempfile.NamedTemporaryFile(suffix='.jpg', delete=False)
@@ -627,7 +688,9 @@ def identificar_o_registrar():
                     else:
                         return jsonify({'error': 'Consentimiento biometrico requerido'}), 403
 
-            preview_path = guardar_imagen_de_registro(persona_id, imagen_b64, suffix=f'_reg_{uuid.uuid4().hex[:4]}')
+            preview_path = os.path.join(tempfile.gettempdir(), f"{persona_id}_reg_{uuid.uuid4().hex[:4]}.jpg")
+            preview_img = Image.open(io.BytesIO(img_bytes)).convert('RGB')
+            preview_img.save(preview_path)
             quality_score = float(cv2.Laplacian(cv2.imread(preview_path, cv2.IMREAD_GRAYSCALE), cv2.CV_64F).var())
             encoding_json = cifrar_embedding(embedding_captura.tolist())
 

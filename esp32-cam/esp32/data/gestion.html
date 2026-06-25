@@ -51,7 +51,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Oxygen,sans-
   <button class="btn" onclick="location.href='/asignaciones'">Gestionar Asignaciones</button>
 
   <div class="section-label">Sincronización</div>
-  <button class="btn btn-success" onclick="sincronizarTodo()">Sincronizar todo con la plataforma</button>
+  <button class="btn btn-success" id="btnSincronizar" onclick="sincronizarTodo()">Sincronizar todo con la plataforma</button>
+  <div id="noEnroladoMsg" style="display:none;padding:8px 12px;background:rgba(217,119,6,.08);border:1px solid rgba(217,119,6,.2);border-radius:6px;color:var(--warning);font-size:11px;margin-bottom:6px">Dispositivo sin enrolar. Sincronizacion no disponible.</div>
   <button class="btn btn-secondary" onclick="location.href='/'">Volver al inicio</button>
 </div>
 
@@ -134,7 +135,15 @@ async function sincronizarTodo(){
   try{const r=await fetchProtegido('/sincronizar');if(!r)return;alert(await r.text());await Promise.all([cargarPersonas(),cargarTurnos(),cargarAsignaciones()]);}
   catch(e){alert('Error: '+e.message);}
 }
-async function init(){await cargarPersonas();await Promise.all([cargarTurnos(),cargarAsignaciones()]);}
+async function init(){
+  await cargarPersonas();
+  await Promise.all([cargarTurnos(),cargarAsignaciones()]);
+  try{
+    const e = await fetch('/estado').then(r=>r.json());
+    document.getElementById('btnSincronizar').style.display = e.enrolado ? 'block' : 'none';
+    document.getElementById('noEnroladoMsg').style.display = (!e.enrolado && e.online) ? 'block' : 'none';
+  }catch(err){}
+}
 (async function(){
   if(!await verificarAcceso())return;
   init();setInterval(()=>{cargarPersonas();cargarTurnos();cargarAsignaciones();},30000);

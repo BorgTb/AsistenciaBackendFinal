@@ -102,16 +102,17 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Oxygen,sans-
     </button>
   </div>
 
-  <div class="nav-section">
-    <div class="nav-label">Sincronización</div>
-    <button class="btn btn-success" onclick="sincronizarTodo()">
+  <div class="nav-section" id="syncSection">
+    <div class="nav-label" id="syncLabel">Sincronización</div>
+    <button class="btn btn-success" id="btnSincronizar" onclick="sincronizarTodo()">
       <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
       <span class="label">Sincronizar con plataforma</span><span class="arrow">→</span>
     </button>
-    <button class="btn btn-warning" onclick="location.href='/wifi-setup'">
+    <button class="btn btn-warning" id="btnWifiSetup" onclick="location.href='/wifi-setup'">
       <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12.55a10.94 10.94 0 0 1 5.17-2.39"/><path d="M10.71 5.05A16 16 0 0 1 22.58 9"/><path d="M1.42 9a15.91 15.91 0 0 1 4.7-2.88"/><path d="M8.53 16.11a6 6 0 0 1 6.95 0"/><circle cx="12" cy="20" r="1"/></svg>
       <span class="label">Configurar WiFi</span><span class="arrow">→</span>
     </button>
+    <div id="noEnroladoMsg" style="display:none;padding:8px 12px;background:rgba(217,119,6,.08);border:1px solid rgba(217,119,6,.2);border-radius:6px;color:var(--warning);font-size:11px;margin-top:6px">Dispositivo sin enrolar. Sincronizacion no disponible.</div>
   </div>
 
   <div class="danger-zone">
@@ -216,6 +217,16 @@ async function actualizarEstado(){
       document.getElementById('pinToggle').textContent='Mostrar';
     }else{
       document.getElementById('pinSection').style.display='none';
+    }
+    const syncBtn = document.getElementById('btnSincronizar');
+    const noEnrMsg = document.getElementById('noEnroladoMsg');
+    if(e.enrolado){
+      syncBtn.style.display='flex';
+      noEnrMsg.style.display='none';
+    }else{
+      syncBtn.style.display='none';
+      if(e.online) noEnrMsg.style.display='block';
+      else noEnrMsg.style.display='none';
     }
   }catch(err){}
 }

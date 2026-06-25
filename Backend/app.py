@@ -3,6 +3,12 @@ import json
 import queue
 import threading
 from collections import deque
+
+os.environ.setdefault('OMP_NUM_THREADS', '2')
+os.environ.setdefault('TF_NUM_INTRAOP_THREADS', '2')
+os.environ.setdefault('TF_NUM_INTEROP_THREADS', '2')
+os.environ.setdefault('TF_CPP_MIN_LOG_LEVEL', '2')
+
 from flask import Flask, Response, stream_with_context
 from flask_cors import CORS
 from database import init_db

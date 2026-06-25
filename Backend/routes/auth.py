@@ -62,6 +62,7 @@ def token_opcional(fn):
         request.user_rol = None
         request.persona_id = None
         request.dispositivo_id = None
+        request._device_header_present = False
 
         header = request.headers.get('Authorization', '')
         if header.startswith('Bearer '):
@@ -91,12 +92,7 @@ def token_opcional(fn):
                         if row[1] is not None:
                             request.empresa_id = row[1]
                     else:
-                        cur.execute(
-                            "INSERT INTO dispositivos (mac_address, empresa_id, nombre, enrolado, estado) VALUES (%s, NULL, 'ESP32 (auto)', FALSE, 'pendiente') RETURNING id",
-                            (device_mac,)
-                        )
-                        request.dispositivo_id = cur.fetchone()[0]
-                        conn.commit()
+                        request._device_header_present = True
                     cur.close()
                     conn.close()
                 except Exception:
@@ -116,6 +112,33 @@ def _puede_crear_rol(rol_creador, rol_a_crear):
     if rol_creador == 'empleador':
         return rol_a_crear in ('empleador', 'trabajador')
     return False
+
+
+def verificar_dispositivo_enrolado():
+    if not request.dispositivo_id:
+        return not getattr(request, '_device_header_present', False)
+    conn = get_connection()
+    cur = conn.cursor()
+    try:
+        cur.execute("SELECT enrolado, empresa_id FROM dispositivos WHERE id = %s", (request.dispositivo_id,))
+        row = cur.fetchone()
+        if not row or not row[0]:
+            return False
+    except Exception:
+        return False
+    finally:
+        cur.close()
+        conn.close()
+    return True
+
+
+def requiere_dispositivo_enrolado(fn):
+    @wraps(fn)
+    def wrapper(*args, **kwargs):
+        if not verificar_dispositivo_enrolado():
+            return jsonify({'error': 'Dispositivo no enrolado. Complete el enrolamiento primero.'}), 403
+        return fn(*args, **kwargs)
+    return wrapper
 
 
 def _puede_gestionar(rol_gestor, rol_objetivo):
@@ -1151,6 +1174,7 @@ def enrolar_dispositivo():
             'ok': True,
             'dispositivo_id': device_id,
             'empresa_id': empresa_id,
+            'mac': mac,
             'mensaje': '. '.join(partes),
             'personas_migradas': migradas,
             'duplicados_pendientes': duplicados

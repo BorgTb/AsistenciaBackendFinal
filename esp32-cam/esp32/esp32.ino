@@ -154,6 +154,8 @@ unsigned long wifiUptimeStart = 0;
 
 // Identificación facial: HTTP directo (respuesta sincrónica)
 
+bool isCloudReady() { return isOnline && estaEnrolado; }
+
 // ============================================================
 // PROTOTIPOS
 // ============================================================
@@ -553,16 +555,12 @@ String capturarImagenBase64Identificacion() {
 String capturarImagenBase64() {
   if (!camaraIniciada) return "";
 
-  // 1. ILUMINACIÓN (Consumo alto: Flash ON al 50%)
   ledcWrite(FLASH_PIN, FLASH_DUTY_LOW);
-  delay(200); // Damos tiempo al sensor OV2640 para ajustar brillo y enfoque
+  delay(120);
 
-  // 2. CAPTURA DE HARDWARE (Guardamos la foto en la RAM)
   camera_fb_t* fb = esp_camera_fb_get();
 
-  // 3. APAGADO INMEDIATO (Liberamos carga eléctrica de la fuente)
   ledcWrite(FLASH_PIN, 0);
-  delay(150);
   if (!fb) {
     addLog("Error: Falla al capturar frame");
     return "";
@@ -716,7 +714,7 @@ void verificarConexionWiFi() {
   }
 }
 void mantenerConexionMQTT() {
-  if (mqttBroker == "" || !isOnline) return;
+  if (mqttBroker == "" || !isCloudReady()) return;
   if (mqtt_client != NULL) return;
   
   String brokerUrl = mqttBroker;
@@ -836,7 +834,7 @@ void beginHttp(HTTPClient& http, const String& url) {
 }
 
 bool deleteFromBackend(const String& endpoint) {
-  if (!isOnline || WiFi.status() != WL_CONNECTED) return false;
+  if (!isCloudReady() || WiFi.status() != WL_CONNECTED) return false;
   HTTPClient http;
   beginHttp(http, backendURL + endpoint);
   int code = http.sendRequest("DELETE");
@@ -971,8 +969,8 @@ bool requiereAdmin(WebServer& srv) {
 }
 
 void sincronizarPersonasDesdeBackend() {
-  if (!isOnline || WiFi.status() != WL_CONNECTED) {
-    addLog("Sin WiFi: No se puede fetchear personas.");
+  if (!isCloudReady() || WiFi.status() != WL_CONNECTED) {
+    addLog("Sin enrolar/WiFi: No se puede fetchear personas.");
     return;
   }
   addLog("Fetcheando lista de personas desde Backend...");
@@ -1055,7 +1053,7 @@ void sincronizarPersonasDesdeBackend() {
 bool enviarFotoIdentificacion(String& personaIdOut, String& rutOut) {
   personaIdOut = "";
   rutOut = "";
-  if (!camaraIniciada || !isOnline || WiFi.status() != WL_CONNECTED) return false;
+  if (!camaraIniciada || !isCloudReady() || WiFi.status() != WL_CONNECTED) return false;
 
   sensor_t* s = esp_camera_sensor_get();
   s->set_quality(s, 10);
@@ -1245,7 +1243,7 @@ String procesarAsistencia(String personaId, String metodo, String rutBusqueda) {
   
   saveArray("/asistencias.json", docA);
 
-  if (isOnline) enviarAsistenciaAErp(personaId, rut, nombre, tipo, metodo);
+  if (isCloudReady()) enviarAsistenciaAErp(personaId, rut, nombre, tipo, metodo);
 
   String tipoMayus = tipo;
   tipoMayus.toUpperCase();
@@ -1253,7 +1251,7 @@ String procesarAsistencia(String personaId, String metodo, String rutBusqueda) {
 }
 
 bool postAsistenciaEnBackend(const String& rut, const String& nombre, const String& tipo, const String& metodo, const String& turnoId) {
-  if (!isOnline || WiFi.status() != WL_CONNECTED) return false;
+  if (!isCloudReady() || WiFi.status() != WL_CONNECTED) return false;
   if (rut.length() == 0) return false;
 
   HTTPClient http;
@@ -1285,7 +1283,7 @@ bool postAsistenciaEnBackend(const String& rut, const String& nombre, const Stri
 
 bool crearTurnoEnBackend(const String& nombre, const String& inicio, const String& fin, const String& dias, String& idBackend) {
   idBackend = "";
-  if (!isOnline || WiFi.status() != WL_CONNECTED) return false;
+  if (!isCloudReady() || WiFi.status() != WL_CONNECTED) return false;
 
   HTTPClient http;
   beginHttp(http, backendURL + "/api/turnos");
@@ -1321,7 +1319,7 @@ bool crearTurnoEnBackend(const String& nombre, const String& inicio, const Strin
 
 bool crearAsignacionEnBackend(const String& personaId, const String& turnoIdBackend, String& idBackend) {
   idBackend = "";
-  if (!isOnline || WiFi.status() != WL_CONNECTED) return false;
+  if (!isCloudReady() || WiFi.status() != WL_CONNECTED) return false;
   if (turnoIdBackend.length() == 0) return false;
 
   HTTPClient http;
@@ -1406,7 +1404,7 @@ void completarRegistroPersona() {
   String backendId = "";
   bool personaCreadaEnBackend = false;
 
-  if (isOnline && WiFi.status() == WL_CONNECTED) {
+  if (isCloudReady() && WiFi.status() == WL_CONNECTED) {
     HTTPClient http;
   beginHttp(http, backendURL + "/api/personas");
     http.addHeader("Content-Type", "application/json");
@@ -1495,22 +1493,32 @@ void completarRegistroPersona() {
 }
 
 bool registrarRostroEnBackend(String personaId) {
-  if (!camaraIniciada || !isOnline || WiFi.status() != WL_CONNECTED) return false;
+  if (!camaraIniciada || !isCloudReady() || WiFi.status() != WL_CONNECTED) return false;
 
   String rut = buscarRutPersona(personaId);
   if (rut.length() == 0) rut = personaId;
 
-  String imgBase64 = capturarImagenBase64();
-  if (imgBase64.length() == 0) return false;
+  sensor_t* s = esp_camera_sensor_get();
+  s->set_quality(s, 10);
+  ledcWrite(FLASH_PIN, FLASH_DUTY_LOW);
+  delay(120);
+  camera_fb_t* fb = esp_camera_fb_get();
+  ledcWrite(FLASH_PIN, 0);
+  s->set_quality(s, 8);
+
+  if (!fb) {
+    addLog("Error: No se pudo capturar frame para registro");
+    return false;
+  }
 
   HTTPClient http;
   beginHttp(http, backendURL + "/api/facial/registrar");
-  http.addHeader("Content-Type", "application/json");
+  http.addHeader("Content-Type", "application/octet-stream");
+  http.addHeader("X-RUT", rut);
+  http.setTimeout(6000);
 
-  String payload = "{\"rut\":\"" + rut + "\",\"imagen\":\"" + imgBase64 + "\"}";
-  addLog("Enviando rostro HTTP: " + String(payload.length()) + " bytes para RUT " + rut);
-
-  int code = http.POST(payload);
+  int code = http.POST(fb->buf, fb->len);
+  esp_camera_fb_return(fb);
   http.end();
 
   if (code == 200) {
@@ -1522,33 +1530,45 @@ bool registrarRostroEnBackend(String personaId) {
 }
 
 bool agregarFotoEnBackend(String personaId) {
-  if (!camaraIniciada || !isOnline || WiFi.status() != WL_CONNECTED) return false;
+  if (!camaraIniciada || !isCloudReady() || WiFi.status() != WL_CONNECTED) return false;
 
   String rut = buscarRutPersona(personaId);
   if (rut.length() == 0) rut = personaId;
 
-  String imgBase64 = capturarImagenBase64();
-  if (imgBase64.length() == 0) return false;
+  sensor_t* s = esp_camera_sensor_get();
+  s->set_quality(s, 10);
+  ledcWrite(FLASH_PIN, FLASH_DUTY_LOW);
+  delay(120);
+  camera_fb_t* fb = esp_camera_fb_get();
+  ledcWrite(FLASH_PIN, 0);
+  s->set_quality(s, 8);
+
+  if (!fb) {
+    addLog("Error: No se pudo capturar frame para foto extra");
+    return false;
+  }
 
   HTTPClient http;
   beginHttp(http, backendURL + "/api/facial/agregar-foto");
-  http.addHeader("Content-Type", "application/json");
+  http.addHeader("Content-Type", "application/octet-stream");
+  http.addHeader("X-RUT", rut);
+  http.setTimeout(6000);
 
-  String payload = "{\"rut\":\"" + rut + "\",\"imagen\":\"" + imgBase64 + "\"}";
-  int code = http.POST(payload);
+  int code = http.POST(fb->buf, fb->len);
+  esp_camera_fb_return(fb);
   http.end();
 
   if (code == 200) {
-    addLog("Foto adicional guardada en backend para RUT " + rut);
+    addLog("Foto extra agregada OK en backend para RUT " + rut);
     return true;
   }
-  addLog("Error agregando foto extra: HTTP " + String(code));
+  addLog("Error agregando foto: HTTP " + String(code));
   return false;
 }
 
 
 void sincronizarAsistencias() {
-  if (!isOnline || WiFi.status() != WL_CONNECTED) return;
+  if (!isCloudReady() || WiFi.status() != WL_CONNECTED) return;
   DynamicJsonDocument doc(16384);
   JsonArray asist = loadArray("/asistencias.json", doc);
 
@@ -1596,7 +1616,7 @@ void sincronizarAsistencias() {
 }
 
 void sincronizarAsistenciasDesdeBackend() {
-  if (!isOnline || WiFi.status() != WL_CONNECTED) return;
+  if (!isCloudReady() || WiFi.status() != WL_CONNECTED) return;
 
   String url = backendURL + "/api/asistencias/device-sync";
   if (lastSyncedBackendId > 0) {
@@ -1690,7 +1710,7 @@ void sincronizarAsistenciasDesdeBackend() {
 }
 
 void sincronizarTurnosPendientes() {
-  if (!isOnline || WiFi.status() != WL_CONNECTED) return;
+  if (!isCloudReady() || WiFi.status() != WL_CONNECTED) return;
 
   DynamicJsonDocument doc(8192);
   JsonArray turnos = loadArray("/turnos.json", doc);
@@ -1724,7 +1744,7 @@ void sincronizarTurnosPendientes() {
 }
 
 void sincronizarAsignacionesPendientes() {
-  if (!isOnline || WiFi.status() != WL_CONNECTED) return;
+  if (!isCloudReady() || WiFi.status() != WL_CONNECTED) return;
 
   DynamicJsonDocument doc(8192);
   JsonArray asignaciones = loadArray("/asignaciones.json", doc);
@@ -1758,7 +1778,7 @@ void sincronizarAsignacionesPendientes() {
 }
 
 void sincronizarTurnosDesdeBackend() {
-  if (!isOnline || WiFi.status() != WL_CONNECTED) return;
+  if (!isCloudReady() || WiFi.status() != WL_CONNECTED) return;
 
   DynamicJsonDocument docLocal(8192);
   JsonArray turnosLocales = loadArray("/turnos.json", docLocal);
@@ -1799,7 +1819,7 @@ void sincronizarTurnosDesdeBackend() {
 }
 
 void sincronizarAsignacionesDesdeBackend() {
-  if (!isOnline || WiFi.status() != WL_CONNECTED) return;
+  if (!isCloudReady() || WiFi.status() != WL_CONNECTED) return;
 
   DynamicJsonDocument docLocal(8192);
   JsonArray asignLocales = loadArray("/asignaciones.json", docLocal);
@@ -1854,7 +1874,7 @@ void sincronizarAsignacionesDesdeBackend() {
 }
 
 void sincronizarErpConfigDesdeBackend() {
-  if (!isOnline || WiFi.status() != WL_CONNECTED) return;
+  if (!isCloudReady() || WiFi.status() != WL_CONNECTED) return;
 
   HTTPClient http;
   beginHttp(http, backendURL + "/api/dispositivos/erp-config");
@@ -1872,7 +1892,7 @@ void sincronizarErpConfigDesdeBackend() {
 }
 
 void verificarPasswordPendiente() {
-  if (!isOnline || WiFi.status() != WL_CONNECTED || deviceMAC.length() == 0) return;
+  if (!isCloudReady() || WiFi.status() != WL_CONNECTED || deviceMAC.length() == 0) return;
 
   HTTPClient http;
   beginHttp(http, backendURL + "/api/dispositivos/check-password");
@@ -1989,7 +2009,7 @@ void actualizarAsistenciasPorPersona(const String& oldId, const String& newId) {
 }
 
 void sincronizarPersonasPendientes() {
-  if (!isOnline || WiFi.status() != WL_CONNECTED) return;
+  if (!isCloudReady() || WiFi.status() != WL_CONNECTED) return;
 
   DynamicJsonDocument doc(8192);
   JsonArray personas = loadArray("/personas.json", doc);
@@ -2048,7 +2068,7 @@ void sincronizarPersonasPendientes() {
 }
 
 void sincronizarTodo() {
-  if (!isOnline) return;
+  if (!isCloudReady()) return;
   sincronizarPendientes();
   sincronizarPersonasDesdeBackend();
   sincronizarTurnosDesdeBackend();
@@ -2167,6 +2187,7 @@ void loadWiFiConfig() {
       while (mqttBroker.startsWith(":")) mqttBroker = mqttBroker.substring(1);
     }
     if (doc.containsKey("pin")) pinEnrol = doc["pin"].as<String>();
+    if (doc.containsKey("enrolado")) estaEnrolado = doc["enrolado"].as<bool>();
     if (doc.containsKey("secure")) secureMode = doc["secure"].as<bool>();
     if (doc.containsKey("mqtt_user")) mqttUser = doc["mqtt_user"].as<String>();
     if (doc.containsKey("mqtt_pass")) mqttPass = doc["mqtt_pass"].as<String>();
@@ -2179,6 +2200,7 @@ void saveConfig(String ssid, String pass, String backend, String mqtt, String pi
   DynamicJsonDocument doc(512);
   doc["ssid"] = ssid; doc["pass"] = pass; doc["backend"] = backend; doc["mqtt"] = mqtt; doc["pin"] = pin;
   doc["secure"] = secureMode; doc["mqtt_user"] = mqttUser; doc["mqtt_pass"] = mqttPass;
+  doc["enrolado"] = estaEnrolado;
   File file = LittleFS.open("/wifi.json", "w");
   serializeJson(doc, file); file.close();
   savedSSID = ssid; savedPASS = pass; backendURL = backend; mqttBroker = mqtt; pinEnrol = pin;
@@ -2293,7 +2315,7 @@ void handleAssignTurn() {
   String backendAsignacionId = "";
   bool synced = false;
   String turnoBackendId = obtenerTurnoBackendId(turnoId);
-  if (turnoBackendId.length() == 0 && isOnline) {
+  if (turnoBackendId.length() == 0 && isCloudReady()) {
     sincronizarTurnosPendientes();
     turnoBackendId = obtenerTurnoBackendId(turnoId);
   }
@@ -2372,7 +2394,7 @@ void handleLimpiarDatos() {
     file.println("[]");
     file.close();
     addLog("Asistencias locales limpiadas");
-    if (modo == "ambos" && isOnline) {
+    if (modo == "ambos" && isCloudReady()) {
       if (confirmar) {
         bool ok = deleteFromBackend("/api/asistencias/device");
         addLog(ok ? "Asistencias borradas del backend OK" : "Error borrando asistencias del backend");
@@ -2389,7 +2411,7 @@ void handleLimpiarDatos() {
     }
     for (int id = 1; id < 127; id++) finger.deleteModel(id);
     addLog("Datos locales limpiados");
-    if (modo == "ambos" && isOnline) {
+    if (modo == "ambos" && isCloudReady()) {
       if (confirmar) {
         bool ok = deleteFromBackend("/api/asistencias/device");
         addLog(ok ? "Datos borrados del backend OK" : "Error borrando datos del backend");
@@ -2410,7 +2432,7 @@ void handleLimpiarDatos() {
 void handleSincronizar() {
   if (!requiereAdmin(server)) return;
   actualizarBloqueoAsistencia();
-  if (!isOnline) { server.send(503, "text/plain", "Sin conexion"); return; }
+  if (!isCloudReady()) { server.send(503, "text/plain", "Dispositivo sin enrolar o sin conexion"); return; }
   sincronizarTodo();
   server.send(200, "text/plain", "Sincronizacion ejecutada");
 }
@@ -2418,7 +2440,7 @@ void handleSincronizar() {
 void handleFetchPersonas() {
   if (!requiereAdmin(server)) return;
   actualizarBloqueoAsistencia();
-  if (!isOnline) { server.send(503, "text/plain", "Sin conexion WiFi"); return; }
+  if (!isCloudReady()) { server.send(503, "text/plain", "Sin enrolar o sin conexion WiFi"); return; }
   sincronizarPersonasDesdeBackend();
   server.send(200, "text/plain", "Personas obtenidas. Revisa los logs.");
 }
@@ -2474,7 +2496,7 @@ void handleEditarPersona() {
 
   bool synced = false;
   String backendId = obtenerBackendId(objetivo);
-  if (isOnline && WiFi.status() == WL_CONNECTED && backendId.length() > 0) {
+  if (isCloudReady() && WiFi.status() == WL_CONNECTED && backendId.length() > 0) {
     HTTPClient http;
   beginHttp(http, backendURL + "/api/personas/" + backendId);
     http.addHeader("Content-Type", "application/json");
@@ -2581,8 +2603,8 @@ void handleActualizarRostroPersona() {
     server.send(409, "text/plain", "Persona sin ID remoto, sincronice primero");
     return;
   }
-  if (!isOnline || WiFi.status() != WL_CONNECTED) {
-    server.send(503, "text/plain", "Sin conexion para actualizar rostro");
+  if (!isCloudReady() || WiFi.status() != WL_CONNECTED) {
+    server.send(503, "text/plain", "Sin enrolar o sin conexion para actualizar rostro");
     return;
   }
 
@@ -2627,8 +2649,8 @@ void handleAgregarFotosPersona() {
     server.send(409, "text/plain", "Persona sin ID remoto, sincronice primero");
     return;
   }
-  if (!isOnline || WiFi.status() != WL_CONNECTED) {
-    server.send(503, "text/plain", "Sin conexion para agregar fotos");
+  if (!isCloudReady() || WiFi.status() != WL_CONNECTED) {
+    server.send(503, "text/plain", "Sin enrolar o sin conexion para agregar fotos");
     return;
   }
 
@@ -2677,7 +2699,7 @@ void completarEdicionHuellaExistente() {
   objetivo["sincronizado"] = false;
   bool synced = false;
 
-  if (modoRegistroRemoto && mqtt_client != NULL && isOnline) {
+  if (modoRegistroRemoto && mqtt_client != NULL && isCloudReady()) {
     String rTopic = "esp32/huella/resultado/" + deviceMAC;
     String rPayload = "{\"persona_id\":\"" + personaRemotaId
                     + "\",\"huella_id\":" + String(slotRegistrando)
@@ -2686,7 +2708,7 @@ void completarEdicionHuellaExistente() {
     synced = true;
     objetivo["sincronizado"] = true;
     addLog("Resultado de huella enviado por MQTT para persona " + personaRemotaId);
-  } else if (isOnline && WiFi.status() == WL_CONNECTED) {
+  } else if (isCloudReady() && WiFi.status() == WL_CONNECTED) {
     String backId = obtenerBackendId(objetivo);
     if (backId.length() > 0) {
     HTTPClient http;
@@ -2739,7 +2761,7 @@ void handleBorrarPersona() {
     }
   }
 
-  if (isOnline && WiFi.status() == WL_CONNECTED && backendId.length() > 0) {
+  if (isCloudReady() && WiFi.status() == WL_CONNECTED && backendId.length() > 0) {
     HTTPClient http;
   beginHttp(http, backendURL + "/api/personas/" + backendId);
     int httpCode = http.sendRequest("DELETE");
@@ -2770,7 +2792,7 @@ void handleBorrarTurno() {
   if (!server.hasArg("id")) { server.send(400, "text/plain", "Falta ID"); return; }
   String id = server.arg("id");
 
-  if (isOnline && WiFi.status() == WL_CONNECTED && !id.startsWith("local-")) {
+      if (isCloudReady() && WiFi.status() == WL_CONNECTED && !id.startsWith("local-")) {
     HTTPClient http;
   beginHttp(http, backendURL + "/api/turnos/" + id);
     int httpCode = http.sendRequest("DELETE");
@@ -2804,7 +2826,7 @@ void handleBorrarAsistencia() {
   for (JsonArray::iterator it = arr.begin(); it != arr.end(); ++it) {
     if ((*it)["persona_id"].as<String>() == personaId && (*it)["timestamp"].as<String>() == timestamp) {
       String idBackend = (*it).containsKey("id_backend") ? (*it)["id_backend"].as<String>() : "";
-      if (isOnline && WiFi.status() == WL_CONNECTED && idBackend.length() > 0) {
+      if (isCloudReady() && WiFi.status() == WL_CONNECTED && idBackend.length() > 0) {
         HTTPClient http;
         beginHttp(http, backendURL + "/api/asistencias/" + idBackend);
         int httpCode = http.sendRequest("DELETE");
@@ -2845,7 +2867,7 @@ void handleEditarAsistencia() {
       saveArray("/asistencias.json", doc);
 
       String idBackend = a.containsKey("id_backend") ? a["id_backend"].as<String>() : "";
-      if (isOnline && WiFi.status() == WL_CONNECTED && idBackend.length() > 0) {
+      if (isCloudReady() && WiFi.status() == WL_CONNECTED && idBackend.length() > 0) {
         HTTPClient http;
         beginHttp(http, backendURL + "/api/asistencias/" + idBackend);
         http.addHeader("Content-Type", "application/json");
@@ -2894,7 +2916,7 @@ void handleEditarTurno() {
       t["sincronizado"] = false;
       saveArray("/turnos.json", doc);
 
-      if (isOnline && WiFi.status() == WL_CONNECTED && !id.startsWith("local-")) {
+  if (isCloudReady() && WiFi.status() == WL_CONNECTED && !id.startsWith("local-")) {
         HTTPClient http;
         beginHttp(http, backendURL + "/api/turnos/" + id);
         http.addHeader("Content-Type", "application/json");
@@ -2935,7 +2957,7 @@ void handleBorrarAsignacion() {
       
       String backendId = (*it).containsKey("backend_id") ? (*it)["backend_id"].as<String>() : "";
       
-      if (isOnline && WiFi.status() == WL_CONNECTED && backendId.length() > 0) {
+      if (isCloudReady() && WiFi.status() == WL_CONNECTED && backendId.length() > 0) {
         HTTPClient http;
   beginHttp(http, backendURL + "/api/asignaciones/" + backendId);
         int httpCode = http.sendRequest("DELETE");
@@ -3097,7 +3119,6 @@ void setup() {
   server.on("/api/asignaciones", handleGetAsignaciones);
   server.on("/api/asistencias", handleGetAsistencias);
   server.on("/api/logs", []() {
-    addLog("[API] GET /api/logs");
     if (!requiereAdmin(server)) return;
     String contenido = logBuffer;
     if (contenido.length() == 0) contenido = "Sin logs disponibles";
@@ -3239,7 +3260,7 @@ void loop() {
               addLog("[Huella] Match ID:" + String(finger.fingerID) + " conf:" + String(finger.confidence));
               String personaId = buscarPersonaPorHuella(finger.fingerID);
               if (personaId != "") {
-                String res = procesarAsistencia(personaId, isOnline ? "huella_online" : "huella_offline");
+                String res = procesarAsistencia(personaId, isCloudReady() ? "huella_online" : "huella_offline");
                 addLog(res);
                 if (resultadoAsistenciaExitosa(res)) flashExito(); else flashError();
                 cooldownAsistencia = millis();
@@ -3301,7 +3322,7 @@ void loop() {
       }
 
       // -- INTENTO FACIAL (HTTP directo, PIR solo para rostro, respeta bloqueo de menú) --
-      if (asistenciaAutomaticaHabilitada(ahora) && isOnline && (ahora - cooldownAsistencia > COOLDOWN_TIEMPO) && (ahora - lastFaceCheck > FACE_CHECK_INTERVAL)) {
+      if (asistenciaAutomaticaHabilitada(ahora) && isCloudReady() && (ahora - cooldownAsistencia > COOLDOWN_TIEMPO) && (ahora - lastFaceCheck > FACE_CHECK_INTERVAL)) {
         lastFaceCheck = ahora;
         String personaIdFacial = "", rutFacial = "";
         if (enviarFotoIdentificacion(personaIdFacial, rutFacial) && personaIdFacial != "") {
@@ -3428,13 +3449,13 @@ void loop() {
   }
 
   static unsigned long lastErpSync = 0;
-  if (isOnline && (ahora - lastErpSync) > 360000UL) {
+  if (isCloudReady() && (ahora - lastErpSync) > 360000UL) {
     lastErpSync = ahora;
     sincronizarErpConfigDesdeBackend();
   }
 
   static unsigned long lastPwdCheck = 0;
-  if (isOnline && (ahora - lastPwdCheck) > 60000UL) {
+  if (isCloudReady() && (ahora - lastPwdCheck) > 60000UL) {
     lastPwdCheck = ahora;
     verificarPasswordPendiente();
   }

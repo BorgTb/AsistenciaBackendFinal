@@ -1,6 +1,6 @@
 from flask import Blueprint, request, jsonify
 from database import get_connection, resolver_rut_a_id
-from routes.auth import token_opcional
+from routes.auth import token_opcional, requiere_dispositivo_enrolado
 from services.email_service import enviar_notificacion_marcacion
 import os
 import threading
@@ -111,6 +111,8 @@ def get_asistencias():
 
 
 @asistencias_bp.route('/api/asistencias', methods=['POST'])
+@token_opcional
+@requiere_dispositivo_enrolado
 def create_asistencia():
     data = request.json or {}
     conn = get_connection()
@@ -184,6 +186,8 @@ def create_asistencia():
 
 
 @asistencias_bp.route('/api/asistencias/sync', methods=['POST'])
+@token_opcional
+@requiere_dispositivo_enrolado
 def sync_asistencias():
     data = request.json or {}
     registros = data.get('registros', [])

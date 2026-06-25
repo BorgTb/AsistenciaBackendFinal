@@ -94,7 +94,7 @@ def init_db():
             CREATE TABLE IF NOT EXISTS personas (
                 id SERIAL PRIMARY KEY,
                 empresa_id INTEGER REFERENCES empresas(id),
-                dispositivo_origen_id INTEGER REFERENCES dispositivos(id),
+                dispositivo_origen_id INTEGER REFERENCES dispositivos(id) ON DELETE SET NULL,
                 nombre VARCHAR(100) NOT NULL,
                 rut VARCHAR(20) UNIQUE NOT NULL,
                 email VARCHAR(100),
@@ -105,7 +105,7 @@ def init_db():
         """)
         cur.execute("ALTER TABLE personas ADD COLUMN IF NOT EXISTS empresa_id INTEGER REFERENCES empresas(id)")
         cur.execute("ALTER TABLE personas ALTER COLUMN empresa_id DROP DEFAULT")
-        cur.execute("ALTER TABLE personas ADD COLUMN IF NOT EXISTS dispositivo_origen_id INTEGER REFERENCES dispositivos(id)")
+        cur.execute("ALTER TABLE personas ADD COLUMN IF NOT EXISTS dispositivo_origen_id INTEGER REFERENCES dispositivos(id) ON DELETE SET NULL")
         cur.execute("ALTER TABLE personas ADD COLUMN IF NOT EXISTS activo BOOLEAN DEFAULT TRUE")
 
         cur.execute("""
@@ -144,7 +144,7 @@ def init_db():
             CREATE TABLE IF NOT EXISTS asistencias (
                 id SERIAL PRIMARY KEY,
                 persona_id INTEGER REFERENCES personas(id),
-                dispositivo_id INTEGER REFERENCES dispositivos(id) DEFAULT 1,
+                dispositivo_id INTEGER REFERENCES dispositivos(id) ON DELETE SET NULL DEFAULT 1,
                 nombre VARCHAR(100),
                 tipo VARCHAR(20),
                 metodo VARCHAR(50) DEFAULT 'huella',
@@ -156,7 +156,7 @@ def init_db():
                 sincronizado_at TIMESTAMP
             )
         """)
-        cur.execute("ALTER TABLE asistencias ADD COLUMN IF NOT EXISTS dispositivo_id INTEGER REFERENCES dispositivos(id) DEFAULT 1")
+        cur.execute("ALTER TABLE asistencias ADD COLUMN IF NOT EXISTS dispositivo_id INTEGER REFERENCES dispositivos(id) ON DELETE SET NULL DEFAULT 1")
         cur.execute("ALTER TABLE asistencias ADD COLUMN IF NOT EXISTS timestamp_local VARCHAR(50)")
         cur.execute("ALTER TABLE asistencias ADD COLUMN IF NOT EXISTS sincronizado_at TIMESTAMP")
         cur.execute("ALTER TABLE asistencias ADD COLUMN IF NOT EXISTS turno_id INTEGER REFERENCES turnos(id)")
@@ -167,7 +167,7 @@ def init_db():
         cur.execute("""
             CREATE TABLE IF NOT EXISTS sincronizacion_log (
                 id SERIAL PRIMARY KEY,
-                dispositivo_id INTEGER REFERENCES dispositivos(id) DEFAULT 1,
+                dispositivo_id INTEGER REFERENCES dispositivos(id) ON DELETE SET NULL DEFAULT 1,
                 registros_enviados INTEGER DEFAULT 0,
                 registros_ok INTEGER DEFAULT 0,
                 estado VARCHAR(20) DEFAULT 'ok',

@@ -518,6 +518,10 @@ export function SasDashboard({ initialSection = 'dashboard' }: { initialSection?
   async function openModal(nextModal: NonNullable<typeof modal>) {
     setFormError('');
     setModal(nextModal);
+    if (nextModal === 'dispositivo') {
+      setGeneratedPin('');
+      setGeneratedDevicePassword('');
+    }
     if (nextModal === 'empresa') {
       setEmpresaUserMode('new');
       const usuariosData = await getUsuarios();
@@ -529,6 +533,8 @@ export function SasDashboard({ initialSection = 'dashboard' }: { initialSection?
     setModal(null);
     setFormError('');
     setDeviceForm({ nombre: '', ip: '' });
+    setGeneratedPin('');
+    setGeneratedDevicePassword('');
     setEditingUsuario(null);
     setRegisterForm({ nombre: '', email: '', password: '', rol: 'trabajador', empresa_id: undefined });
     setEmpresaForm({ nombre: '', rut_empresa: '', email_contacto: '', telefono: '', direccion: '', nombre_usuario: '', email_usuario: '', password_usuario: '', usuario_existente_id: undefined, rol_usuario: 'empleador' });
