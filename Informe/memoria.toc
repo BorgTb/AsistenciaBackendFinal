@@ -63,7 +63,7 @@
 \contentsline {subsubsection}{Pruebas de caja negra}{37}{}%
 \contentsline {subsubsection}{Pruebas unitarias automatizadas}{38}{}%
 \contentsline {section}{\numberline {3.4}Resultados Esperados de los Objetivos Específicos}{39}{}%
-\contentsline {section}{\numberline {3.5}Resumen del capítulo}{39}{}%
+\contentsline {section}{\numberline {3.5}Resumen del capítulo}{40}{}%
 \contentsline {chapter}{\numberline {4}Desarrollo e implementación}{41}{}%
 \contentsline {section}{\numberline {4.1}Diseño de software}{41}{}%
 \contentsline {subsection}{\numberline {4.1.1}Arquitectura física}{41}{}%
@@ -189,6 +189,13 @@
 \contentsline {subsection}{\numberline {5.4.1}Escenario 1: Desconexión total}{118}{}%
 \contentsline {subsection}{\numberline {5.4.2}Escenario 2: Conectividad intermitente}{118}{}%
 \contentsline {subsection}{\numberline {5.4.3}Escenario 3: Reconexión prolongada}{119}{}%
-\contentsline {section}{\numberline {5.5}Resumen del capítulo}{119}{}%
-\contentsline {chapter}{\numberline {6}Bibliografía}{120}{}%
-\contentsline {chapter}{Anexo A: Preguntas complementarias de usabilidad}{124}{}%
+\contentsline {section}{\numberline {5.5}Análisis de aceptabilidad}{119}{}%
+\contentsline {section}{\numberline {5.6}Análisis de sostenibilidad}{120}{}%
+\contentsline {section}{\numberline {5.7}Resumen del capítulo}{120}{}%
+\contentsline {chapter}{\numberline {6}Conclusiones}{122}{}%
+\contentsline {section}{\numberline {6.1}Recapitulación del trabajo desarrollado}{122}{}%
+\contentsline {section}{\numberline {6.2}Cumplimiento de los objetivos planteados}{122}{}%
+\contentsline {section}{\numberline {6.3}Discusión y limitaciones}{123}{}%
+\contentsline {section}{\numberline {6.4}Proyecciones futuras}{124}{}%
+\contentsline {chapter}{\numberline {7}Bibliografía}{125}{}%
+\contentsline {chapter}{Anexo A: Preguntas complementarias de usabilidad}{129}{}%

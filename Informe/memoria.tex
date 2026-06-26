@@ -139,8 +139,8 @@ A continuación se detallan los conceptos generales vinculados a la gestión cor
 \begin{itemize}
     \item Control de asistencia: Proceso por el cual una empresa u organización registra las horas de entrada y salida de sus trabajadores.
     \item Sistema ERP: EntERPrise Resource Planning, sistema de gestión empresarial que permite procesos de una empresa u organización, tales como recursos humanos, contabilidad, finanzas, inventario, asistencia.
-    \item Internet de las cosas (IoT): Paradigma tecnologico que permite la conexión entre dispositivos físico a través de redes de comunicación.
-    \item Resolucion exenta n°38: Norma promulgada por la dirección del trabajo (DT) en 2024 (actualizada en 2025), que establece los requisitos obligatorios para los sistemas electrónicos de registro y control de asistencia.
+    \item Internet de las cosas (IoT): Paradigma tecnológico que permite la conexión entre dispositivos físicos a través de redes de comunicación.
+    \item Resolución exenta N°38: Norma promulgada por la Dirección del Trabajo (DT) en 2024 (actualizada en 2025), que establece los requisitos obligatorios para los sistemas electrónicos de registro y control de asistencia.
     \item Biometria: La biometría corresponde al conjunto de técnicas utilizadas para identificar personas mediante características físicas o conductuales únicas, tales como el rostro o la huella digital. Este tipo de autenticación es ampliamente utilizada en sistemas de control de asistencia por su alta precisión y dificultad de suplantación [36].
     \item Sincronización offline-online: Proceso mediante el cual un dispositivo opera sin conexión utilizando almacenamiento local y, una vez restablecida la conectividad, transmite los datos acumulados hacia un servidor o ERP. Es necesario en entornos con conectividad inestable.
 \end{itemize}
@@ -170,7 +170,7 @@ A continuación se presentarán todas las tecnologías que harán presente duran
 El ESP32-CAM es un dispositivo de desarrollo que integra un microcontrolador ESP32-CAM con conectividad Wi-Fi y Bluetooth, además de una cámara OV2640. La elección de este dispositivo se debe a su bajo costo, capacidad de procesamiento local, compatibilidad con el entorno de Arduino y su amplia comunidad de soporte. De las características que se pueden destacar encontramos la captura de imágenes para el reconocimiento facial, gestionar sensores biométricos y mantener conectividad directa con el servidor o la red local. Otras alternativas como la Raspberry Pi Zero W o Arduino MKR1000 fueron descartadas por su mayor consumo y costo implementación. [12]
 \subsection{Lector de huella digital AS608}
 El lector de huellas digital usa el sensor AS608, un lector de huella con la capacidad de registrar y verificar la identidad de los usuarios mediante patrones dactilares. La elección de este dispositivo fue por la compatibilidad con el ESP32-CAM, su bajo consumo y su resistencia a condiciones de luz ambiental en comparación a otros sensores ópticos tradicionales como el R307.
-El AS608 se comunica con el microcontrolador a través de una interfaz UART, y la integración de este ser realiza mediante la biblioteca Adafruit FingERPrint Sensor Library, lo que facilita el registro, búsqueda y verificación de huellas directamente desde el dispositivo IoT. [13]
+El AS608 se comunica con el microcontrolador a través de una interfaz UART, y su integración se realiza mediante la biblioteca Adafruit FingERPrint Sensor Library, lo que facilita el registro, búsqueda y verificación de huellas directamente desde el dispositivo IoT. [13]
 \subsection{Protocolos de comunicación HTTP}
 El protocolo de comunicación HTTP (Hypertext Transfer Protocol) es un protocolo cliente-servidor utilizado para transmitir información mediante solicitudes y respuestas que se transmite a través de los métodos GET, POST, PUT Y DELETE, generalmente utilizando formatos estructurados como JSON (JavaScript Object Notation). Permite la comunicación directa entre dispositivos y servidores, por lo que para este proyecto se le puede dar un buen uso para realizar la peticion de información.[14]
 \subsection{Protocolo de comunicación MQTT}
@@ -180,7 +180,7 @@ Docker es una plataforma de virtualización ligera que permite empaquetar aplica
 \subsection{Sistemas de bases de datos}
 Un sistema de gestor de bases de datos es un conjunto de programas que permiten administrar bases de datos de manera estructurada. La principal función es proporcionar una interfaz entre los usuarios y los datos almacenados, garantizando integridad consistencia y seguridad de la información.
 Los  SGBD relacionales, basado en el modelo propuesto por Edgar F. Codd (1970), organizan los datos en tablas vinculadas mediante relaciones, lo que facilita su consulta a través del lenguaje SQL.
-Lo SGBD más utilizados que se destacan son MySql, MariaDb, Oracle Database y PostgreSQL. Estos sistemas ofrecen las características fundamentales, tales como el control de concurrencia, mecanismos de respaldo y recuperación, gestión de usuarios y soporte para transacciones atómicas (ACID). PostgreSQL es un sistema de base de datos relacional y orientado a objetos de código abierto, desarrollado inicialmente en la Universidad de California en Berkeley, caracterizada principalmente por ofrece un motor avanzado con soporte para consultas complejas, procedimientos almacenados, tipos de datos personalizados, indices avanzados y compatibilidad con JSON y XML, lo que permite la fácil integración con aplicaciones web e IoT. [17]
+Los SGBD más utilizados que se destacan son MySql, MariaDb, Oracle Database y PostgreSQL. Estos sistemas ofrecen las características fundamentales, tales como el control de concurrencia, mecanismos de respaldo y recuperación, gestión de usuarios y soporte para transacciones atómicas (ACID). PostgreSQL es un sistema de base de datos relacional y orientado a objetos de código abierto, desarrollado inicialmente en la Universidad de California en Berkeley, caracterizada principalmente por ofrece un motor avanzado con soporte para consultas complejas, procedimientos almacenados, tipos de datos personalizados, indices avanzados y compatibilidad con JSON y XML, lo que permite la fácil integración con aplicaciones web e IoT. [17]
 Para el contexto del proyecto PostgreSQL se utiliza como base de datos, ya que tiene compatibilidad con entornos de desarrollo como python. 
 
 \subsection{Sensor PIR (HC-SR501)}
@@ -203,12 +203,12 @@ A continuación se revisaran los sistemas y tecnológicas existentes relacionado
 Si bien los sistemas de control de asistencia es un campo del cual se tienen variados recursos y sistemas, la gran mayoría se encuentran ligados a un software propio, restringiendo a los sistemas ERP tener que pagar suscripciones a estos sistemas.
 
 \subsection{Soluciones basadas en hardware}
-En esta sección hará énfasis en aquellos dispositivos de reloj control biométricos que permiten registrar la asistencia de los trabajadores mediante la verificación de características únicas, como huellas digitales, reconocimiento facial, entre otras. Estos equipos incluyen funcionalidad tales como almacenamiento interno, conectividad por red (LAN/Wi-Fi), a continuación se describirán los principales dispositivos utilizados en Chile.
+En esta sección se hará énfasis en aquellos dispositivos de reloj control biométrico que permiten registrar la asistencia de los trabajadores mediante la verificación de características únicas, como huellas digitales o reconocimiento facial, entre otras. Estos equipos incluyen funcionalidades tales como almacenamiento interno y conectividad por red (LAN/Wi-Fi); a continuación se describirán los principales dispositivos utilizados en Chile.
 
 \begin{enumerate}
-    \item GeoVictoria, relojes de control: GeoVictoria dentro de sus planes y productos se encuentran hardware biométrica con una plataforma en la nube para realizar el control de asistencia. Estos dispositivos pueden operar mediante una conexión LAN o 3G para zonas remotas. Sin embargo, dentro de sus limitantes encontramos que su API esta sujeto a restricciones comerciales y acceso mediante suscripcion, lo que limita la personalizacion o integración libre. Además se tiene un ecosistema cerra que dificulta modificaciones independientes por parte del cliente [18].
-    \item ZKTeco, terminales biométricas de asistencia: ZKTeco es una marca internacional con presencia en Chile y Latinoamerica en general, esta compañia ofrece terminales de control de asistencia "stand-alone" que combinan distintos métodos de registro tales como huella, rostro, PIN y tarjeta. Su limitante es que se encuentra cerrado totalmente a su sistema o quedan sin integración directa con un ERP, además ofrece exportacion de datos mediante archivos csv siendo poco amigable para su uso en un ERP [19]. 
-    \item Dispositivos genericos: Consideramos como dispositivos genericos cualquier tipo de reloj control que se pueda adquirir en algun portal de venta web, que incluyan caracteristicas tales marcaje mediante huella o rostro. En base a lo anterior la gran mayoria de estos dispositivos tienen la capacidad de aplicar estas funciones pero al costo que su información solo queda en el dispositivo, teniendo métodos como exportacion de datos por usb en un formato que solo se pueden visualizar y dificil de integrar a ERP.
+    \item GeoVictoria, relojes de control: GeoVictoria, dentro de sus planes y productos, ofrece hardware biométrico junto con una plataforma en la nube para realizar el control de asistencia. Estos dispositivos pueden operar mediante una conexión LAN o 3G para zonas remotas. Sin embargo, dentro de sus limitantes encontramos que su API está sujeta a restricciones comerciales y acceso mediante suscripción, lo que limita la personalización o integración libre. Además, se tiene un ecosistema cerrado que dificulta modificaciones independientes por parte del cliente [18].
+    \item ZKTeco, terminales biométricas de asistencia: ZKTeco es una marca internacional con presencia en Chile y Latinoamérica en general; esta compañía ofrece terminales de control de asistencia ``stand-alone'' que combinan distintos métodos de registro tales como huella, rostro, PIN y tarjeta. Su limitante es que se encuentra cerrado totalmente a su sistema o queda sin integración directa con un ERP; además, ofrece exportación de datos mediante archivos CSV, siendo poco amigable para su uso en un ERP [19].
+    \item Dispositivos genéricos: consideramos como dispositivos genéricos cualquier tipo de reloj control que se pueda adquirir en algún portal de venta web, que incluya características tales como marcaje mediante huella o rostro. En base a lo anterior, la gran mayoría de estos dispositivos tiene la capacidad de aplicar estas funciones, pero con el costo de que su información solo queda en el dispositivo, teniendo métodos como exportación de datos por USB en un formato que solo se puede visualizar y es difícil de integrar a un ERP.
 \end{enumerate}
 
 \subsection{Soluciones basadas en software}
@@ -242,7 +242,7 @@ La metodología de prototipado evolutivo con un enfoque incremental propone un d
 \begin{itemize}
     \item Diseño y planificación: Se definen los objetivos específicos de cada iteración, se seleccionan componentes y se diseña la arquitectura.
     \item Implementación y prueba: Se desarrolla la funcionalidad planificada, se integra con los módulos que ya existen y se verifica su correcto funcionamiento
-    \item Evaluación y mejora: Una vez desarrollado los procesos anteriores se analizan los resultados obtenidos identificación errores y planificando ajustes para la siguiente iteración.
+    \item Evaluación y mejora: Una vez desarrollados los procesos anteriores se analizan los resultados obtenidos, identificando errores y planificando ajustes para la siguiente iteración.
 \end{itemize} [27] 
 
 Cada una de estas fases termina con un incremento funcional validado, lo que permite mantener un progreso controlado y documentado del prototipo.
@@ -250,15 +250,14 @@ Cada una de estas fases termina con un incremento funcional validado, lo que per
 \subsection{Metodología de evaluación}
 Para la evaluación del proyecto se deben considerar 5 aspectos claves
 para determinar la viabilidad del proyecto, de los cuales nos permiten evaluar y verificar nuestros objetivos. 
-Las pruebas evaluarán el prototipo, enfocandose en  como funciona con todas las piezas y/o software en conjunto, saber que tan útil puede llegar a ser, validar la lógica del backend desde sus endpoints sin conocer la implementación interna, verificar cada módulo de forma aislada y automatizada, y finalmente al tener como objetivo su uso en un ERP, se necesita 
-saber el nivel de satisfacción que se tiene por el prototipo final.
+Las pruebas evaluarán el prototipo, enfocándose en cómo funciona con todas las piezas y/o software en conjunto, en qué tan útil puede llegar a ser, en validar la lógica del backend desde sus endpoints sin conocer la implementación interna, en verificar cada módulo de forma aislada y automatizada, y finalmente, dado que se tiene como objetivo su uso en un ERP, en conocer el nivel de satisfacción que se tiene del prototipo final.
 \subsubsection{Pruebas de integración}
 Las pruebas de integración permiten evaluar diferentes componentes de un sistema  
 ya sea hardware software o base de datos, asegurando que todos estos componentes 
 funcionen correctamente en conjunto asegurando la comunicación e interoperabilidad 
 entre ellos. Para este caso se realizarán pruebas de integración ascendentes de manera que 
 se vayan realizando pruebas de los módulos más pequeños hasta llegar al módulo más 
-grande [28]. La selección de esta prueba va relacionada con la metodología de desarrollo que consite en el prototipado evolutivo, el cual se integran progresivamente los módulos validos en etapas previas.
+grande [28]. La selección de esta prueba está relacionada con la metodología de desarrollo que consiste en el prototipado evolutivo, en el cual se integran progresivamente los módulos validados en etapas previas.
 
 \subsubsection{Pruebas de usabilidad}
 Las pruebas de usabilidad tienen como objetivo evaluar la facilidad de uso, comprensión y satisfacción del usuario con el sistema, conforme a los estándares de calidad de software [29] [30]. Para llevar a cabo las pruebas de usabilidad se utilizará el System Usability Scale (SUS) [31]. El SUS es un método reconocido por su simplicidad de aplicación y por permitir una evaluación rápida y fiable de la usabilidad de un sistema [32]. La metodología del SUS consiste en obtener una puntuación global de usabilidad mediante la aplicación de un cuestionario basado en una escala de Likert de 5 puntos, compuesto por 10 preguntas que abordan diferentes aspectos de la experiencia de usuario, como la facilidad de uso, la claridad de la interfaz y la eficacia del sistema [31].
@@ -276,7 +275,7 @@ Las pruebas unitarias automatizadas permiten verificar de forma aislada y repeti
 Esta estrategia de simulación permite ejecutar las pruebas de forma determinista en cualquier entorno (incluyendo pipelines de integración continua) sin depender de hardware físico ni de servicios externos reales. Las pruebas unitarias se enfocan específicamente en validar la corrección de la lógica de negocio, la integridad del cifrado de datos biométricos, la robustez ante condiciones de error como fallos de conexión a la base de datos o webhooks ERP inaccesibles, y la precisión de los mecanismos de control de acceso por roles.
 
 \subsubsection{Pruebas de confiabilidad y disponibilidad}
-Las pruebas de confiabilidad y disponibilidad son cruciales en sistemas que operan en entornos con conectividad intermitente o hardware limitado, como los dispositivos IoT[33]. La finalidad de la prueba de confiabilidad es medir la capacidad del sistema para funcionar correctamente bajo condiciones normales durante un periodo prolongado sin errores ni pérdidas de datos, mientras que las pruebas de disponibilidad hace referencia a la capacidad del sistema para mantenerse operativo incluso cuando  se presentan condiciones extremás, tales como pérdidas conexión, desconexión temporal de energía[34], etc. P Según Perry \& Petry, estas pruebas son esenciales para garantizar que el sistema mantenga la integridad de los datos y su disponibilidad en todo momento[35]. 
+Las pruebas de confiabilidad y disponibilidad son cruciales en sistemas que operan en entornos con conectividad intermitente o hardware limitado, como los dispositivos IoT[33]. La finalidad de la prueba de confiabilidad es medir la capacidad del sistema para funcionar correctamente bajo condiciones normales durante un periodo prolongado sin errores ni pérdidas de datos, mientras que las pruebas de disponibilidad hacen referencia a la capacidad del sistema para mantenerse operativo incluso cuando se presentan condiciones extremas, tales como pérdida de conexión o desconexión temporal de energía[34], etc. Según Perry, estas pruebas son esenciales para garantizar que el sistema mantenga la integridad de los datos y su disponibilidad en todo momento[35]. 
 
 \section{Resumen del capítulo}
 El capítulo 2 presenta el marco teórico que sustenta el proyecto, describiendo los conceptos esenciales relacionados con control de asistencia, IoT, ERP, y los requisitos normativos definidos por la Resolución Exenta N.°38. Luego se detallan las tecnologías utilizadas, incluyendo el microcontrolador ESP32-CAM, el lector de huellas AS608, los protocolos HTTP y MQTT, el uso de contenedores Docker y la base de datos PostgreSQL.
@@ -550,26 +549,31 @@ Tiempo total de ejecución de la suite & $<$ 3 minutos \\
 \end{table}
 
 \section{Resultados Esperados de los Objetivos Específicos}
-A continuación en esta sección se presentarán los resultados esperados para los objetivos específicos.
+A continuación en esta sección se presentarán los resultados esperados para cada uno de los objetivos específicos planteados en el capítulo 1.
 \begin{itemize}
-    \item Objetivo especifico 2: Implementar el módulo biométrico de registro de asistencia mediante reconocimiento
-facial y huella digital.
+    \item Objetivo específico 1: Diseñar la arquitectura física y lógica del prototipo IoT, seleccionando componentes que garanticen el funcionamiento autónomo y demostrando su viabilidad económica.
     \begin{itemize}
-        \item  Resultado esperado: Para este objetivo se espera tener un protipo que permita registrar asistencia de un trabajador, mediante reconocimiento facial o huella digital.
+        \item Resultado esperado: Se espera obtener una arquitectura física y lógica funcional basada en el ESP32-CAM, con los componentes seleccionados integrados y operando de forma autónoma, alcanzando un presupuesto de hardware total que no supere los \textbf{50 USD}.
     \end{itemize}
-    \item Objetivo especifico 3: Incorporar capacidad de funcionamiento offline con almacenamiento local y sincronización
-posterior.
+    \item Objetivo específico 2: Implementar el módulo de autenticación biométrica híbrida.
     \begin{itemize}
-        \item  Resultado esperado: Para este objetivo se espera que el prototipo pueda tener la capacidad de funcionamiento offline almacenando los registros de manera local para su posterior sincronización con el servidor.
+        \item Resultado esperado: Se espera que el prototipo permita registrar la asistencia de un trabajador mediante autenticación biométrica, logrando un tiempo de procesamiento inferior a \textbf{5 segundos} por marcación facial y una precisión superior al \textbf{90\%} en la identificación correcta durante las pruebas de laboratorio.
     \end{itemize}
-    \item Objetivo especifico 6: Integrar y validar el funcionamiento conjunto del hardware y software desarrollado.
+    \item Objetivo específico 3: Integrar el sistema de archivos local (LittleFS) para la operación offline.
     \begin{itemize}
-        \item  Resultado esperado: Para este objetivo se espera que el hardware construidor funcione correctamente en conjunto como así su operabilidad con el backend y software.
+        \item Resultado esperado: Se espera que el prototipo opere en modo offline almacenando localmente al menos \textbf{1.000 registros} de asistencia en formato JSON, sin pérdida de datos ante simulaciones de corte de energía o desconexión de red, para su posterior sincronización con el servidor.
     \end{itemize}
-    \item Objetivo especifico 7: Evaluar el desempeño, confiabilidad y usabilidad del sistema en escenarios de prueba
-reales.
+    \item Objetivo específico 4: Construir una interfaz web embebida y un panel de administración para la configuración del sistema.
     \begin{itemize}
-        \item  Resultado esperado: Para este objetivo se espera obtener alta disponibilidad con al menos un 90\% de sus funcionamiento en los escenarios en donde el dispositivo se encuentre offline, o con conexión intermitente.
+        \item Resultado esperado: Se espera disponer de una interfaz web embebida y un panel de administración funcionales para la configuración del sistema, validando su facilidad de uso mediante la obtención de un puntaje igual o superior a \textbf{68 puntos} en la evaluación de usabilidad SUS.
+    \end{itemize}
+    \item Objetivo específico 5: Desarrollar una API RESTful que permita la integración automatizada con sistemas ERP externos.
+    \begin{itemize}
+        \item Resultado esperado: Se espera contar con una API RESTful que permita la integración automatizada con sistemas ERP externos, logrando sincronizar y transmitir el \textbf{100\%} de los paquetes de datos generados en modo offline una vez restablecida la conectividad.
+    \end{itemize}
+    \item Objetivo específico 6: Evaluar la robustez y disponibilidad del prototipo integrado en escenarios de conectividad intermitente.
+    \begin{itemize}
+        \item Resultado esperado: Se espera que el hardware y el software funcionen correctamente en conjunto, comprobando la correcta ejecución de los mecanismos de reintento automático en escenarios de conectividad intermitente y obteniendo una disponibilidad de al menos un \textbf{90\%} cuando el dispositivo se encuentre offline o con conexión inestable.
     \end{itemize}
 \end{itemize}
 
@@ -731,8 +735,57 @@ Reintentos automáticos & N/A & Pendiente & Pendiente \\
 \caption{Resultados de pruebas de estrés offline (pendiente de ejecutar)}
 \end{table}
 
+\section{Análisis de aceptabilidad}
+Este apartado evalúa el grado en que el prototipo cumple los requisitos técnicos que aseguran su correcto funcionamiento en condiciones reales de operación, así como la consistencia y reproducibilidad de la metodología empleada.
+
+Desde el punto de vista de los requisitos técnicos, el sistema incorpora mecanismos diseñados específicamente para sostener su funcionamiento ante desviaciones del entorno: el modo Access Point de respaldo ante ausencia de Wi-Fi, el almacenamiento local en LittleFS con sincronización diferida ante pérdida de conectividad, el filtro de calidad de imagen basado en la varianza del Laplaciano antes de invocar DeepFace, y el cifrado Fernet de los embeddings faciales en reposo. Estos mecanismos no fueron incorporados de forma incidental, sino como respuesta directa a las limitaciones identificadas en el estado del arte (Sección 2.3) y a los riesgos técnicos propios de un dispositivo embebido con recursos acotados (Sección 4.1.1).
+
+Desde el punto de vista de la robustez ante desviaciones del entorno, el diseño contempla explícitamente los escenarios de conectividad intermitente y desconexión prolongada descritos en la Sección 3.3.3, mediante reintentos automáticos de sincronización y persistencia de los registros generados offline. La reproducibilidad de los resultados se sustenta en que la suite de pruebas unitarias automatizadas (Sección 3.3.5) emplea mocks para las dependencias externas (DeepFace, OpenCV, broker MQTT, SMTP), permitiendo que terceros ejecuten la misma batería de pruebas en cualquier entorno —incluyendo integración continua— sin depender de hardware físico ni de credenciales de servicios externos, obteniendo resultados consistentes.
+
+En conjunto, estos elementos permiten sostener que el prototipo cumple con un nivel de aceptabilidad adecuado para un sistema de control de asistencia orientado a pequeñas y medianas empresas, si bien la validación cuantitativa definitiva de estos mecanismos bajo carga real (porcentaje de disponibilidad, tasa de recuperación ante fallos) queda sujeta a la ejecución de las pruebas de estrés descritas en la Sección 5.4, cuyos valores numéricos se encuentran pendientes de completar en este informe.
+
+\section{Análisis de sostenibilidad}
+Este apartado analiza el impacto del diseño del sistema sobre el consumo de recursos computacionales y energéticos, en línea con un enfoque de software sostenible.
+
+En cuanto al consumo de recursos computacionales, la arquitectura del backend incorpora dos decisiones orientadas explícitamente a minimizar el uso de procesamiento y memoria: la precarga del modelo Facenet al iniciar el servidor (evitando recargas repetidas del modelo en cada solicitud) y el mantenimiento de una caché en memoria de los embeddings faciales de los trabajadores, lo que elimina consultas redundantes a la base de datos en cada intento de identificación. La elección del detector facial MTCNN por defecto, en lugar de RetinaFace, responde al mismo criterio: un balance favorable entre precisión y consumo de cómputo, siendo aproximadamente tres veces más rápido sin una pérdida significativa de exactitud (Sección 2.3.10).
+
+En el hardware embebido, el uso del sensor PIR como mecanismo de activación (en lugar de mantener la cámara y el lector de huellas en estado activo de forma continua) reduce directamente el consumo energético del dispositivo durante los períodos de inactividad, lo cual es relevante considerando que el ESP32-CAM puede operar de forma autónoma alimentado por baterías o fuentes de bajo amperaje en escenarios de campo. Asimismo, el uso de SPIFFS/LittleFS para el almacenamiento local evita la dependencia de transmisión constante de datos hacia el servidor, reduciendo el tráfico de red y el consumo asociado a comunicaciones innecesarias durante la operación offline.
+
+Estas decisiones de diseño —precarga de modelos, cacheo de embeddings, detección de presencia por PIR y almacenamiento diferido— constituyen el aporte concreto del proyecto en materia de sostenibilidad del software y del hardware, balanceando el rendimiento del sistema con un uso racional de los recursos disponibles, sin que ello implique la medición de métricas energéticas absolutas (consumo en mA/h) en el alcance del presente trabajo.
+
 \section{Resumen del capítulo}
-El capítulo 5 presentó los resultados obtenidos en las cuatro dimensiones de evaluación definidas en la metodología. El análisis de costos, usabilidad, desempeño biométrico y confiabilidad offline permite validar el cumplimiento de los objetivos específicos planteados en el capítulo 1 y determinar la viabilidad técnica y operativa del prototipo propuesto.
+El capítulo 5 presentó los resultados obtenidos en las dimensiones de evaluación definidas en la metodología: costos, usabilidad, desempeño biométrico, confiabilidad offline, aceptabilidad y sostenibilidad. El análisis permite validar el cumplimiento de los objetivos específicos planteados en el capítulo 1 y determinar la viabilidad técnica y operativa del prototipo propuesto, quedando pendiente la incorporación de los valores numéricos obtenidos de la ejecución de las pruebas descritas en las secciones 5.1 a 5.4.
+
+
+\chapter{Conclusiones}
+En el presente capítulo se presenta una recapitulación de lo desarrollado a lo largo del proyecto, contrastando los resultados obtenidos con los objetivos planteados en el Capítulo 1, junto con una discusión de las limitaciones encontradas y las proyecciones futuras del sistema.
+
+\section{Recapitulación del trabajo desarrollado}
+El proyecto abordó el desarrollo de un sistema IoT de control de asistencia biométrico basado en un ESP32-CAM, concebido como alternativa modular, de bajo costo y de código abierto frente a las limitaciones identificadas en los dispositivos comerciales y plataformas SaaS analizadas en el estado del arte (Sección 2.3). A través de una metodología de prototipado evolutivo incremental, se construyeron y validaron de manera progresiva ocho componentes funcionales: integración de hardware biométrico, almacenamiento local offline, backend con base de datos PostgreSQL, reconocimiento facial con anti-spoofing, autenticación JWT multi-tenant, módulo antifraude con sensor PIR, panel web de administración e integración con sistemas ERP mediante API RESTful.
+
+\section{Cumplimiento de los objetivos planteados}
+A continuación se contrasta cada objetivo específico definido en la Sección 1.4.2 con el estado de su cumplimiento:
+
+\begin{itemize}
+    \item Objetivo específico 1 (arquitectura física y lógica, presupuesto $\leq$ 50 USD): la arquitectura fue diseñada e implementada en su totalidad (Sección 4.1), integrando el ESP32-CAM, el lector AS608 y el sensor PIR de forma funcional. La verificación del presupuesto final se encuentra pendiente de completar (Sección 5.1).
+    \item Objetivo específico 2 (autenticación biométrica híbrida, $<$5 s, $>$90\% de precisión): el módulo de reconocimiento facial con DeepFace/Facenet y el módulo de huella con el AS608 fueron implementados y se encuentran operativos. Las métricas de tiempo de procesamiento y precisión quedan pendientes de medición final (Sección 5.3).
+    \item Objetivo específico 3 (almacenamiento offline, $\geq$1.000 registros sin pérdida): el sistema de archivos local fue implementado mediante LittleFS/SPIFFS con persistencia de usuarios, turnos y asistencias en formato JSON. La validación cuantitativa ante cortes de energía está pendiente de ejecución (Sección 5.4).
+    \item Objetivo específico 4 (interfaz web embebida, SUS $\geq$68): el panel de administración y la interfaz embebida fueron construidos e integrados con todas las vistas funcionales descritas en el Capítulo 4. La aplicación de las encuestas SUS y su puntaje final quedan pendientes (Sección 5.2).
+    \item Objetivo específico 5 (API RESTful, sincronización 100\% offline-online): se desarrolló e integró la API REST con 28 endpoints, incluyendo el mecanismo de sincronización diferida. La verificación cuantitativa del porcentaje de paquetes sincronizados queda pendiente (Sección 5.4).
+    \item Objetivo específico 6 (robustez ante conectividad intermitente, disponibilidad $\geq$90\%): los mecanismos de reintento automático fueron implementados en el firmware y el backend. La medición de la disponibilidad acumulada bajo escenarios de prueba está pendiente de ejecución (Sección 5.4).
+\end{itemize}
+
+En términos generales, los seis objetivos específicos fueron abordados desde el punto de vista de diseño e implementación; la validación cuantitativa final de cada criterio de éxito numérico se encuentra sujeta a la ejecución de las pruebas de evaluación descritas en el Capítulo 5, cuyos resultados deberán incorporarse a este documento antes de su cierre definitivo.
+
+\section{Discusión y limitaciones}
+Durante el desarrollo se identificaron limitaciones que condicionan el alcance de las conclusiones. En el plano del hardware, la escasez de pines GPIO disponibles en el ESP32-CAM tras la asignación del bus de la cámara obligó a descartar el sensor IR activo originalmente planificado en favor del sensor PIR (Sección 2.3.10), y a reasignar los pines UART utilizados por el lector AS608. En el plano del software, la dependencia de un detector de anti-spoofing basado en software (DeepFace) en lugar de un sensor de profundidad dedicado implica que la robustez ante ataques de suplantación más sofisticados no ha sido evaluada exhaustivamente, y queda como una limitación reconocida del sistema.
+
+Asimismo, al tratarse de un proyecto desarrollado por un único integrante, el rol de cliente o contraparte fue asumido por el profesor guía, lo que pudo limitar la diversidad de retroalimentación recibida en comparación con un entorno con múltiples usuarios reales durante todas las iteraciones. Finalmente, la principal limitación de este documento en su estado actual es que los resultados cuantitativos del Capítulo 5 (costos finales, puntajes SUS, métricas de reconocimiento facial y resultados de las pruebas de estrés offline) no han sido completados con datos de ejecución real, por lo que las conclusiones aquí presentadas deben entenderse como preliminares hasta la incorporación de dichos valores.
+
+\section{Proyecciones futuras}
+Como líneas de trabajo futuro se identifican: la migración del anti-spoofing basado en software hacia un sensor de profundidad o infrarrojo activo que incremente la robustez ante ataques de suplantación; la incorporación de un conector o adaptador genérico que facilite la integración con ERP comerciales sin requerir desarrollo a medida por parte del cliente; la evaluación del sistema en un entorno productivo real con múltiples empresas simultáneas para validar el modelo multi-tenant bajo condiciones de carga; y la extensión del módulo de gestión de turnos hacia escenarios de turnos rotativos complejos, no cubiertos en el alcance actual del prototipo.
+
+En síntesis, el prototipo desarrollado demuestra ser una alternativa técnicamente viable y coherente con la normativa vigente (Resolución Exenta N°38) frente a las limitaciones identificadas en las soluciones comerciales, sentando una base funcional sólida para su evolución hacia un producto con mayor madurez operativa.
 
 
 \chapter{Bibliografía}
@@ -844,6 +897,3 @@ El capítulo 5 presentó los resultados obtenidos en las cuatro dimensiones de e
 
 %% fin
 \end{document}
-
-   
-

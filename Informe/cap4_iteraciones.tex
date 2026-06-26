@@ -11,22 +11,24 @@ En el siguiente capítulo se presentan en detalle las 8 iteraciones del proyecto
 Esta sección está destinada a presentar las arquitecturas desarrolladas para este proyecto como así diagramas y mockups que permitan dar entender la lógica del proyecto como así futuras vistas.
 
 \subsection{Arquitectura física}
-La arquitectura física propuesta se basa en una arquitectura basada en microservicios. En la figura 4.1 se puede presenciar como sería la comunicación entre el dispositivo IoT que emite el evento para realizar el registro, para luego que el servidor con el broker MQTT reciba las imágenes y utilice el servicio de reconocimiento facial, para luego enviarlas al servidor backend en donde se distribuyen para el sistema ERP y para la registrarlo en la base de datos, además de disponer del panel web para la visualización de los datos de manera remota.
+La arquitectura física propuesta se basa en una arquitectura basada en microservicios. En la Fig.~\ref{fig:arq_fisica} se puede presenciar cómo sería la comunicación entre el dispositivo IoT que emite el evento para realizar el registro, para luego que el servidor con el broker MQTT reciba las imágenes y utilice el servicio de reconocimiento facial, para luego enviarlas al servidor backend en donde se distribuyen para el sistema ERP y para registrarlo en la base de datos, además de disponer del panel web para la visualización de los datos de manera remota.
 \begin{figure}[H]
   \centering
   \includegraphics[width=\linewidth]{Imagenes/arqui2.drawio.png}
-  \caption{Arquitectura física}
+  \caption{Arquitectura física.}
+  \label{fig:arq_fisica}
 \end{figure}
 
 \subsection{Arquitectura lógica}
-La arquitectura lógica del sistema organiza los módulos de software que permiten el funcionamiento del dispositivo IoT y su comunicación con el backend. Tal como se muestra en la Figura 4.2, el ESP32-CAM integra los componentes encargados de la captura de imágenes, la lectura de la huella digital, el almacenamiento local mediante SPIFFS y el servidor web embebido, los cuales interactúan entre sí para registrar usuarios, capturar datos biométricos y almacenar o enviar asistencias.
+La arquitectura lógica del sistema organiza los módulos de software que permiten el funcionamiento del dispositivo IoT y su comunicación con el backend. Tal como se muestra en la Fig.~\ref{fig:arq_logica}, el ESP32-CAM integra los componentes encargados de la captura de imágenes, la lectura de la huella digital, el almacenamiento local mediante SPIFFS y el servidor web embebido, los cuales interactúan entre sí para registrar usuarios, capturar datos biométricos y almacenar o enviar asistencias.
 
 El backend recibe la información enviada por el dispositivo, procesa las imágenes, administra la base de datos y expone una API que permite la integración con sistemas externos como ERP. Finalmente, la arquitectura lógica contempla la comunicación entre cada módulo mediante protocolos HTTP o MQTT, lo que posibilita el funcionamiento offline, la sincronización posterior y la consulta remota de los datos desde el panel web.
 
 \begin{figure}[H]
   \centering
   \includegraphics[width=\linewidth]{Imagenes/arquilogica.png}
-  \caption{Arquitectura lógica}
+  \caption{Arquitectura lógica.}
+  \label{fig:arq_logica}
 \end{figure}
 
 \begin{figure}[H]
@@ -38,7 +40,7 @@ El backend recibe la información enviada por el dispositivo, procesa las imáge
 
 \section{Implementación}
 
-Es este apartado se procederá a explicar como se llevaron a cabo las iteraciones planteadas en el capítulo 3.1.
+En este apartado se procederá a explicar cómo se llevaron a cabo las iteraciones planteadas en el capítulo 3.1.
 
 %% ============================================================
 %% ITERACIÓN 1: Diseño y planificación inicial
@@ -71,9 +73,9 @@ Como resultado del análisis, se establecieron los criterios de diseño que guia
 En esta iteración se elaboraron los primeros elementos arquitectónicos del sistema:
 
 \begin{itemize}
-    \item \textbf{Arquitectura física}, representando los componentes utilizados y su interconexión, la cual se puede revisar en la Figura 4.1 del 4.1.1 Arquitectura física.
+    \item \textbf{Arquitectura física}, representando los componentes utilizados y su interconexión, la cual se puede revisar en la Fig.~\ref{fig:arq_fisica} de la sección 4.1.1.
 
-    \item \textbf{Arquitectura lógica}, definiendo los módulos internos del firmware tales como captura de imágenes, lectura de huella, almacenamiento y conectividad, la cual se puede revisar en la Figura 4.2 del 4.1.2 Arquitectura lógica.
+    \item \textbf{Arquitectura lógica}, definiendo los módulos internos del firmware tales como captura de imágenes, lectura de huella, almacenamiento y conectividad, la cual se puede revisar en la Fig.~\ref{fig:arq_logica} de la sección 4.1.2.
 
     \item \textbf{Mockups iniciales} de la interfaz embebida del ESP32-CAM, incluyendo:
     \begin{itemize}
@@ -81,57 +83,65 @@ En esta iteración se elaboraron los primeros elementos arquitectónicos del sis
         \begin{figure}[H]
             \centering
             \includegraphics[width=.8\linewidth]{Imagenes/menu.drawio.png}
-            \caption{Mockup menú principal en el ESP32-CAM}
+            \caption{Mockup menú principal en el ESP32-CAM.}
+            \label{fig:mockup_menu}
         \end{figure}
 
         \item Panel de configuración de Wi-Fi.
         \begin{figure}[H]
             \centering
             \includegraphics[width=.8\linewidth]{Imagenes/configwifi.drawio.png}
-            \caption{Mockup panel de configuración Wi-Fi}
+            \caption{Mockup panel de configuración Wi-Fi.}
+            \label{fig:mockup_wifi}
         \end{figure}
 
         \item Vista de registro de usuario.
         \begin{figure}[H]
             \centering
             \includegraphics[width=.8\linewidth]{Imagenes/registeruser.jpg}
-            \caption{Mockup registro usuario en el ESP32-CAM}
+            \caption{Mockup registro de usuario en el ESP32-CAM.}
+            \label{fig:mockup_registro}
         \end{figure}
 
         \item Vista de usuarios almacenados localmente.
         \begin{figure}[H]
             \centering
             \includegraphics[width=.8\linewidth]{Imagenes/lista user.jpg}
-            \caption{Mockup usuarios almacenados en el ESP32-CAM}
+            \caption{Mockup de usuarios almacenados en el ESP32-CAM.}
+            \label{fig:mockup_usuarios}
         \end{figure}
 
         \item Vista de turnos almacenados localmente.
         \begin{figure}[H]
             \centering
             \includegraphics[width=.8\linewidth]{Imagenes/ver turnos.drawio.png}
-            \caption{Mockup visualización de turnos en el ESP32-CAM}
+            \caption{Mockup de visualización de turnos en el ESP32-CAM.}
+            \label{fig:mockup_turnos}
         \end{figure}
 
         \item Vista de crear turnos.
         \begin{figure}[H]
             \centering
             \includegraphics[width=.8\linewidth]{Imagenes/crearturnosmockup.png}
-            \caption{Mockup creación de turnos en el ESP32-CAM}
+            \caption{Mockup de creación de turnos en el ESP32-CAM.}
+            \label{fig:mockup_crear_turnos}
         \end{figure}
 
-        \item Vista de Asignación de turnos.
+        \item Vista de asignación de turnos.
         \begin{figure}[H]
             \centering
             \includegraphics[width=.8\linewidth]{Imagenes/asigncaiondeturnomockup2.png}
-            \caption{Mockup asignación de turnos en el ESP32-CAM}
+            \caption{Mockup de asignación de turnos en el ESP32-CAM.}
+            \label{fig:mockup_asignacion}
         \end{figure}
     \end{itemize}
 
-    \item \textbf{Diseño del flujo operacional}: Representa el flujo del proceso de marcación para los casos en se cuente con conexión a internet y sin internet.
+    \item \textbf{Diseño del flujo operacional}: representa el flujo del proceso de marcación para los casos en que se cuente con conexión a internet y sin internet.
     \begin{figure}[H]
         \centering
         \includegraphics[width=.8\linewidth]{Imagenes/diagramaflujo2 (1).png}
         \caption{Flujo operacional para el registro de asistencia.}
+        \label{fig:flujo_operacional}
     \end{figure}
 
 \end{itemize}
@@ -169,7 +179,7 @@ Una vez establecida la comunicación, el firmware puede ejecutar operaciones com
     \item Identificación mediante búsqueda de coincidencias en memoria.
 \end{itemize}
 
-El fragmento de código que se ve en la Figura 4.12 es un ejemplo que se construyó para ser utilizado en iteraciones posteriores para el uso del lector de huellas junto al ESP32-CAM.
+El fragmento de código que se observa en la Fig.~\ref{fig:codigo_huella} es un ejemplo que se construyó para ser utilizado en iteraciones posteriores para el uso del lector de huellas junto al ESP32-CAM.
 
 \begin{figure}[H]
     \centering

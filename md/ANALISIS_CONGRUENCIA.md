@@ -1,9 +1,9 @@
 # Análisis de Congruencia: Código Real vs Informe de Tesis
 
-**Fecha**: 2026-06-24  
+**Fecha**: 2026-06-26  
 **Documento revisado**: `Informe/memoria.tex` (capítulos 2–5) + `Informe/cap4_iteraciones.tex`  
 **Código revisado**: `esp32-cam/**/*.ino`, `Backend/**/*.py`, `Backend/**/*.yml`, `Backend/tests/**/*.py`, `Frontend/**/*.tsx`  
-**Evaluador**: Análisis manual línea por línea + grep de patrones sobre ~11000 líneas de código
+**Evaluador**: Análisis manual línea por línea + grep de patrones sobre ~15000 líneas de código
 
 ---
 
@@ -11,26 +11,26 @@
 
 | Métrica | Valor |
 |---|---|
-| **Congruencia global** | **95%** |
-| Afirmaciones del informe verificadas en código | 68 ✅ |
-| Afirmaciones con divergencia leve | 4 ⚠️ |
+| **Congruencia global** | **94%** |
+| Afirmaciones del informe verificadas en código | 72 ✅ |
+| Afirmaciones con divergencia leve | 6 ⚠️ |
 | Afirmaciones NO implementadas | 0 ❌ |
-| Elementos en código NO documentados | 20 ➕ |
+| Elementos en código NO documentados | 50 ➕ |
 | Código muerto (legacy que el informe da por activo) | 0 (eliminado) |
 | Correcciones de texto necesarias | 0 |
 
 ### Porcentaje por iteración (capítulo 4)
 
 | Iter | Tema | % |
-|---|---|---|
-| 1 | Integración HW + servidor embebido | **95%** |
+|---|---|---|---|
+| 1 | Integración HW + servidor embebido | **94%** |
 | 2 | LittleFS + modo offline | **95%** |
-| 3 | Backend + BD + HTTP/MQTT | **92%** |
-| 4 | Facial + anti-spoofing + cifrado | **95%** |
-| 5 | JWT + multi-tenant + enrolamiento | **93%** |
+| 3 | Backend + BD + HTTP/MQTT | **90%** |
+| 4 | Facial + anti-spoofing + cifrado | **92%** |
+| 5 | JWT + multi-tenant + enrolamiento | **91%** |
 | 6 | Antifraude PIR + flash + cooldown | **100%** |
-| 7 | Panel web para la gestión del dispositivo + integración ERP | **88%** |
-| 8 | Sincronización + logs + cierre | **85%** |
+| 7 | Panel web para la gestión del dispositivo + integración ERP | **86%** |
+| 8 | Sincronización + logs + cierre | **82%** |
 
 ---
 
@@ -160,7 +160,7 @@ El capítulo 3 fue reestructurado para presentar un plan de trabajo compacto (la
 ### 5.1 Iteración 1: Integración de hardware y servidor embebido — **95%** ✅
 
 | Afirmación | Verificación | Estado |
-|---|---|---|
+|---|---|---|---|
 | Cámara OV2640 configurada en VGA JPEG calidad 8 | `esp32.ino:341-348` — calidad 8, XCLK 20 MHz, formato PIXFORMAT_JPEG, tamaño FRAMESIZE_VGA | ✅ |
 | Flash PWM controlado (5 kHz, 50% duty, GPIO4) | `esp32.ino:22,26-28,1863,378,664` — GPIO4, 5 kHz, 8 bits, duty 128/255 | ✅ |
 | AS608 UART en GPIO14/15, 57600 baud | `esp32.ino:30-32` — `HardwareSerial FingerSerial(2)`, `Adafruit_Fingerprint finger(&FingerSerial)` | ✅ |
@@ -169,7 +169,10 @@ El capítulo 3 fue reestructurado para presentar un plan de trabajo compacto (la
 | Servidor web puerto 80 con 9 rutas HTML | `esp32.ino:1899-1906` — 10 rutas HTML: `/`, `/register`, `/gestion`, `/personas`, `/asistencias`, `/turnos`, `/asignaciones`, `/wifi-setup`, `/logs`, más `/admin` no documentado en informe | ✅ |
 | 14+ endpoints de acción (handlers) | `esp32.ino:1910-1942` — handlers: wifi-config, registrar, crear_turno, asignar, marcar, limpiar, sincronizar, fetch-personas, set-backend, editar_persona, actualizar_huella, actualizar_rostro, borrar_persona, borrar_turno, borrar_asignacion, + API/ultimo_registro, /api/logs, /api/logs/clear, /wifi-diag, /estado | ✅ |
 | Vistas HTML servidas desde LittleFS | `esp32.ino` almacena HTML en `data/` como archivos `.html`. El informe ahora documenta correctamente que se sirven mediante `servirArchivo()` desde LittleFS. Discrepancia corregida en Iter 1. | ✅ |
-| **Elementos no documentados** | Endpoints `/wifi-diag` (diagnóstico Wi-Fi), `/estado` (estado del dispositivo), `/ultimo_registro` (última asistencia) — existen en `esp32.ino:1942,1981,1940` | ➕ |
+| **Nuevo endpoint `/capturar_foto_registro`** | `esp32.ino` — handler manual para captura de foto durante registro facial. Reemplaza el bucle automático anterior. No documentado en informe. | ➕ |
+| **`isCloudReady()` como guardia de conectividad** | `esp32.ino:156` — nueva función que verifica `isOnline && estaEnrolado`. Reemplaza `isOnline` en todas las operaciones cloud. No documentado en informe. | ➕ |
+| **Captura facial cambia calidad a 10 (antes 8)** | `esp32.ino:1505-1510,1548-1553` — `s->set_quality(s, 10)` antes de capturar para registro, luego restaura a 8. No documentado en informe. | ➕ |
+| **Elementos no documentados** | Endpoints `/wifi-diag` (diagnóstico Wi-Fi), `/estado` (estado del dispositivo), `/ultimo_registro` (última asistencia), `/capturar_foto_registro` — existen en `esp32.ino:1942,1981,1940,3189` | ➕ |
 
 ---
 
@@ -185,6 +188,7 @@ El capítulo 3 fue reestructurado para presentar un plan de trabajo compacto (la
 | Búsqueda de slot libre (1–127) | `esp32.ino` — función `encontrarSlotLibre()` (mencionada en informe, verificada en prototipos) | ✅ |
 | Alternancia entrada/salida automática | `esp32.ino` — lógica en procesamiento de asistencia | ✅ |
 | `erp-config.json` mencionado | Existe el prototipo en `esp32.ino` pero el archivo real en `data/` no se encontró. La función `sincronizarErpConfigDesdeBackend()` existe en `esp32.ino:1180-1196` | ⚠️ |
+| **Campo `enrolado` en wifi.json** | `esp32.ino:2194,2207` — `doc["enrolado"]` se guarda/carga en wifi.json. No documentado en informe. | ➕ |
 | **Elementos no documentados** | Función `encontrarSlotLibre()` no mencionada por nombre en el informe | ➕ |
 
 ---
@@ -231,18 +235,25 @@ El capítulo 3 fue reestructurado para presentar un plan de trabajo compacto (la
 | **Tópico `backend/comando/<MAC>`** | `mqtt_handler.py` — publicado para enviar comandos remotos (reiniciar, reconectar WiFi). No documentado en informe. | ➕ |
 | **`POST /api/facial/identificar-o-registrar`** | `routes/facial.py` — new endpoint que primero intenta identificar; si no hay match facial, registra la persona (con RUT opcional). No documentado en informe. | ➕ |
 | **`_invalidar_cache()`** | `routes/facial.py` — función para limpiar caché de embeddings. Usada al eliminar datos biométricos. No documentado en informe. | ➕ |
-| **`token_opcional` auto-crea dispositivo por MAC** | `routes/auth.py` — cuando llega un `X-Device-MAC` desconocido, `token_opcional` crea automáticamente un nuevo dispositivo. No documentado en informe. | ➕ |
+| **`token_opcional` ya NO auto-crea dispositivos** | `routes/auth.py:96` — cambio de comportamiento: ahora solo marca `_device_header_present = True`. El informe mencionaba creación automática. **Comportamiento anterior ya no existe.** | ⚠️ |
+| **Nuevo decorador `@requiere_dispositivo_enrolado`** | `routes/auth.py` + `routes/asistencias.py` + `routes/facial.py` — exige dispositivo enrolado antes de procesar asistencia/identificación. No documentado en informe. | ➕ |
+| **Nueva función `verificar_dispositivo_enrolado()`** | `routes/auth.py:117-136` — consulta BD si el dispositivo está enrolado. No documentado en informe. | ➕ |
+| **MQTT handler `esp32/asistencia/<MAC>`** | `mqtt_handler.py:92-168` — nuevo tópico que procesa asistencias automáticas desde el ESP32 vía MQTT (creación de persona, detección de duplicados por día, ERP push). No documentado en informe. | ➕ |
+| **`_huella_broadcast_callback` almacenado globalmente** | `mqtt_handler.py` — reemplaza import directo de `app.py`, evita circular imports. | ➕ |
+| **`start_mqtt()` acepta `huella_broadcast_callback`** | `mqtt_handler.py:307-310` — nuevo parámetro para callback SSE de huella. | ➕ |
+| **`ON DELETE SET NULL` en FKs** | `database.py:97,157,171` — persona FK `dispositivo_origen_id`, asistencias/sincronizacion_log `dispositivo_id`. Previene errores al eliminar dispositivos. | ➕ |
+| **`rut` nullable en personas** | `database.py:108` — `ALTER COLUMN rut DROP NOT NULL`. Permite eliminar datos de personas conservando el registro. | ➕ |
 
 ---
 
-### 5.4 Iteración 4: Facial, anti-spoofing y cifrado — **95%** ✅
+### 5.4 Iteración 4: Facial, anti-spoofing y cifrado — **92%** ✅
 
 | Afirmación | Verificación | Estado |
 |---|---|---|
-| Endpoint `POST /api/facial/registrar` | `routes/facial.py:90-148` — implementado con verificación de consentimiento + filtro de calidad Laplacian. **Ahora acepta `persona_id` o `rut` vía `_resolver_persona_id()`** | ✅ |
-| Endpoint `POST /api/facial/identificar` | `routes/facial.py:264-348` — implementado con soporte JPEG crudo, JSON/Base64 y datos sin content-type. **Ahora valida existencia de embeddings antes de procesar** | ✅ |
+| Endpoint `POST /api/facial/registrar` | `routes/facial.py:90-148` — implementado con verificación de consentimiento + filtro de calidad Laplacian. **Ahora con `@token_opcional` + `@requiere_dispositivo_enrolado` y soporte octet-stream** | ✅ |
+| Endpoint `POST /api/facial/identificar` | `routes/facial.py:264-348` — implementado con soporte JPEG crudo, JSON/Base64 y datos sin content-type. **Ahora con `@token_opcional` + `@requiere_dispositivo_enrolado`** | ✅ |
 | Endpoint `POST /api/facial/verificar` | `routes/facial.py:197-261` — implementado con descifrado + comparación multi-encoding. **Eliminada copia debug a `static/capturas_prueba/`** | ✅ |
-| Endpoint `POST /api/facial/agregar-foto` | `routes/facial.py` — endpoint que permite enrolamiento progresivo. **Ahora acepta `persona_id` o `rut`** | ✅ |
+| Endpoint `POST /api/facial/agregar-foto` | `routes/facial.py` — endpoint que permite enrolamiento progresivo. **Ahora acepta octet-stream + `X-RUT` header** | ✅ |
 | **Helper `_resolver_persona_id()`** | `routes/facial.py:94-101` — nueva función helper que acepta `persona_id` o `rut` del payload. No documentada en informe. | ➕ |
 | Modelo Facenet, detector configurable (MTCNN por defecto) | `routes/facial.py` — detector configurable vía `FACIAL_DETECTOR`. **Documentado en informe** (memoria.tex líneas 157, 184). | ✅ |
 | Cifrado Fernet (AES-128 CBC + HMAC-SHA256) | `encryption.py:1-31` — `from cryptography.fernet import Fernet`, clave derivada SHA-256 | ✅ |
@@ -257,12 +268,14 @@ El capítulo 3 fue reestructurado para presentar un plan de trabajo compacto (la
 | Eliminación de datos biométricos (DELETE) | `routes/personas.py:292-339` — endpoint `/api/personas/<id>/datos-biometricos` implementado completo | ✅ |
 | `anti_spoofing` en simulación facial | Suite automatizada con mocks: 284 tests total, ~90% cobertura. `deteccion.py` eliminado del repo. | ✅ |
 | `PUT /api/facial/actualizar/<id>` | `routes/facial.py:149-194` — implementado con anti_spoofing=True | ✅ |
-| **POST /api/facial/registrar acepta `persona_id` o `rut`** | `routes/facial.py:146-156` — acepta ambos campos vía `_resolver_persona_id()`. **Actualizado en informe** (cap4 línea 668). | ✅ |
-| **POST /api/facial/agregar-foto acepta `persona_id` o `rut`** | `routes/facial.py:232-242` — acepta ambos campos. **Actualizado en informe** (cap4 línea 731). | ✅ |
-| **POST /api/facial/verificar acepta `persona_id` o `rut`** | `routes/facial.py:361-370` — acepta ambos campos. **Actualizado en informe** (cap4 línea 688). | ✅ |
+| **POST /api/facial/registrar acepta octet-stream + X-RUT** | `routes/facial.py:155-162` — el ESP32 ahora envía raw JPEG en vez de Base64 JSON. El endpoint procesa ambos formatos. **Informe no documenta octet-stream.** | ⚠️ |
+| **POST /api/facial/agregar-foto acepta octet-stream + X-RUT** | `routes/facial.py:278-286` — mismo cambio que registrar. **Informe no actualizado.** | ⚠️ |
 | **POST /api/facial/identificar retorna `rut`** | `routes/facial.py:472-481` — respuesta incluye `rut` además de `persona_id`. **Actualizado en informe** (cap4 línea 564, 683). | ✅ |
-| **PUT /api/facial/actualizar/<id> acepta `persona_id` o `rut`** | `routes/facial.py:153-157` — acepta ambos campos. **Actualizado en informe** (cap4 línea 729). | ✅ |
-| **identificar_facial() content-type mejorado** | `routes/facial.py:438-455` — maneja octet-stream, JSON/Base64 y datos sin content-type. Mueve `_obtener_embeddings()` antes del procesamiento para validar BD no vacía temprano. No documentado en informe. | ➕ |
+| **identificar_facial() content-type mejorado** | `routes/facial.py:438-455` — maneja octet-stream, JSON/Base64 y datos sin content-type. No documentado en informe. | ➕ |
+| **`guardar_imagen_raw()`** | `routes/facial.py:136-142` — nueva función que guarda raw JPEG en temp. No documentada en informe. | ➕ |
+| **Debug fotos en `debug_fotos/`** | `routes/facial.py` — imágenes se guardan en `Backend/debug_fotos/` para depuración. No documentado en informe. | ➕ |
+| **`@token_opcional` + `@requiere_dispositivo_enrolado` en endpoints faciales** | `routes/facial.py:152-153,423-424,521-522,619-620` — nuevos decoradores de seguridad. No documentados en informe. | ➕ |
+| **Mejora en logging con traceback** | `routes/facial.py` — todos los endpoints ahora registran traceback completo en errores. No documentado en informe. | ➕ |
 
 ---
 
@@ -295,8 +308,15 @@ El capítulo 3 fue reestructurado para presentar un plan de trabajo compacto (la
 | **Register POST /api/auth/register** — 409 en email duplicado | `routes/auth.py:254-267` — ahora retorna 409 si el email ya existe (antes reasignaba el usuario a la empresa). No documentado en informe. | ➕ |
 | **POST /api/asignaciones acepta `persona_id` o `rut`** | `routes/asignaciones.py:82-85` — ahora acepta `persona_id` directamente, con `rut` como fallback. Retorna `persona_id` en lugar de `rut`. **Documentado en informe** (cap4 línea 505). | ✅ |
 | **`DISABLE_ASYNC_DISPATCH`** | `routes/asistencias.py:5,30` — nueva variable de entorno para deshabilitar dispatches asíncronos (ERP push + email) en tests. No documentado en informe. | ➕ |
+| **`token_opcional` ya NO crea dispositivo automáticamente** | `routes/auth.py:93-96` — cambio mayor: si MAC no existe, solo marca `_device_header_present = True`. El ESP32 ahora debe pasar por enrolamiento antes de cualquier operación. **Informe no actualizado.** | ⚠️ |
+| **Nuevo decorador `@requiere_dispositivo_enrolado`** | `routes/auth.py:140-147` — bloquea endpoints si el dispositivo no está enrolado. Aplicado en `create_asistencia()`, `sync_asistencias()`, `registrar_facial()`, `identificar_facial()`, `identificar_o_registrar()`. No documentado en informe. | ➕ |
+| **`verificar_dispositivo_enrolado()`** | `routes/auth.py:117-136` — consulta BD `SELECT enrolado FROM dispositivos`. No documentado en informe. | ➕ |
+| **Admin puede generar PIN para cualquier empresa** | `routes/auth.py:1061-1066` — `generar_pin_enrolamiento()` acepta `empresa_id` del body si el rol es admin. No documentado en informe. | ➕ |
+| **`listar_empresas()` retorna `dispositivos_count`** | `routes/auth.py:509-514` — nuevo campo con COUNT de dispositivos por empresa. No documentado en informe. | ➕ |
+| **`enrolar_dispositivo()` retorna `mac`** | `routes/auth.py:1190` — respuesta incluye campo `mac`. No documentado en informe. | ➕ |
+| **`check-password` para MAC inexistente retorna 404** | `routes/dispositivos.py` — antes retornaba 200 (auto-creaba), ahora 404. Tests actualizados. No documentado en informe. | ➕ |
 
-**Iteración 5 baja de 100%→99% por cambio de rutas de enrolamiento no documentado en el informe.**
+**Iteración 5 baja de 99%→91% por cambios de seguridad (enrolamiento requerido, token_opcional ya no auto-crea) no documentados en el informe.**
 
 ---
 
@@ -319,7 +339,7 @@ El capítulo 3 fue reestructurado para presentar un plan de trabajo compacto (la
 
 ---
 
-### 5.7 Iteración 7: Panel web para la gestión del dispositivo e integración ERP — **88%** ✅
+### 5.7 Iteración 7: Panel web para la gestión del dispositivo e integración ERP — **86%** ✅
 
 | Afirmación | Verificación | Estado |
 |---|---|---|
@@ -353,11 +373,22 @@ El capítulo 3 fue reestructurado para presentar un plan de trabajo compacto (la
 | **POST /api/erp/<id>/enviar payload usa rut** | `routes/erp.py:315-326` — envío por lotes obtiene `rut` vía JOIN con personas. **Ahora documentado en informe** (cap4 línea 1151). | ✅ |
 | **Field map simplificado** | `routes/erp.py:13-28` — ya no necesita resolución especial de RUT porque el campo `rut` está directamente en el payload default. Los presets Defontana y SAP ya mapeaban `"rut"`. **Ahora documentado en informe** (cap4 líneas 1086-1093). | ✅ |
 
-**Análisis del "panel web"**: Todas las funcionalidades del frontend y las contraseñas de dispositivos están documentadas en el informe. Se detectó que las rutas de enrolamiento y PIN cambiaron a `/api/auth/dispositivos/...`. El informe documenta las rutas anteriores. Congruencia subió de 84%→90%→92%.
+| **Frontend: captura facial multi-foto (3 fotos)** | `Frontend/components/SasDashboard.tsx` — nuevo flujo: captura 3 fotos (frontal, perfil izquierdo, perfil derecho) con progreso visual por dots. No documentado en informe. | ➕ |
+| **Frontend: reasignación de dispositivos por admin** | `Frontend/components/SasDashboard.tsx` — selector de empresa + confirmación para reasignar dispositivo a otra empresa. No documentado en informe. | ➕ |
+| **Frontend: admin puede seleccionar empresa al generar PIN** | `Frontend/components/SasDashboard.tsx` — si el rol es admin, aparece selector de empresa en el modal de PIN. No documentado en informe. | ➕ |
+| **Frontend: badge de empresa en nombre del dispositivo** | `Frontend/components/SasDashboard.tsx` — admin ve el nombre de la empresa al lado del dispositivo. No documentado en informe. | ➕ |
+| **Frontend: tabla de empresas muestra contador de dispositivos** | `Frontend/components/SasDashboard.tsx` — nueva columna "Dispositivos" con `dispositivos_count`. No documentado en informe. | ➕ |
+| **Frontend: sección "Duplicados" eliminada del sidebar** | `Frontend/components/SasDashboard.tsx` — el botón de duplicados ya no aparece en el menú lateral. No documentado en informe. | ➕ |
+| **Frontend: token en header para `registrarRostro` y `agregarFotoRostro`** | `Frontend/lib/auth-api.ts` — las funciones de API ahora envían `Authorization` header. No documentado en informe. | ➕ |
+| **Nuevo endpoint: `PUT /api/dispositivos/<id>/reasignar`** | `routes/dispositivos.py:159-195` — admin-only: reasigna dispositivo a otra empresa con safe SET NULL en FKs. No documentado en informe. | ➕ |
+| **Eliminación segura de dispositivos con SET NULL** | `routes/dispositivos.py:87-107` — `delete_dispositivo()` ahora limpia FKs en personas, asistencias y sincronizacion_log antes de eliminar. No documentado en informe. | ➕ |
+| **Chile Timezone (America/Santiago) en ERP** | `routes/erp.py:8-12,63-70` — `_fmt_chile()` convierte timestamps a Chile TZ. Todos los webhooks ahora envían fecha/hora chilena. No documentado en informe. | ➕ |
+
+**Análisis del "panel web"**: Se agregaron nuevas funcionalidades significativas al frontend (captura multi-foto, reasignación, selector empresa para PIN, badge empresa) y al backend (reasignación, SET NULL, Chile TZ). El informe no documenta estos cambios. Congruencia baja de 88%→86%.
 
 ---
 
-### 5.8 Iteración 8: Sincronización, logs y cierre — **85%** ✅
+### 5.8 Iteración 8: Sincronización, logs y cierre — **82%** ✅
 
 | Afirmación | Verificación | Estado |
 |---|---|---|
@@ -379,7 +410,13 @@ El capítulo 3 fue reestructurado para presentar un plan de trabajo compacto (la
 | **Detección de duplicados en asistencias** | `routes/asistencias.py:133-140,193-201` — create_asistencia() y sync_asistencias() detectan duplicados por persona_id + tipo + turno_id + fecha actual. Retorna `duplicado: True` en lugar de crear un nuevo registro. No documentado en informe. | ➕ |
 | **Campo `turno_id` en asistencias** | `routes/asistencias.py:130,143` — nueva columna en la tabla asistencias que relaciona cada marcación con un turno. No documentado en informe. | ➕ |
 | **Campos de colación en turnos** | `routes/turnos.py:63-89,92-121` — `con_colacion`, `colacion_inicio`, `colacion_fin` en el endpoint de turnos. **Documentado en informe** (cap4 Iter 7). | ✅ |
-| **Suite de pruebas: 334 tests, 90% cobertura** | `Backend/tests/` — crecimiento de 284→334 tests. Nuevos archivos: `test_eventos_mqtt.py` (7 tests). Nuevas clases: `TestRoutesDispositivosNuevos` (control remoto, 12 tests), `TestRoutesAsistenciasNuevos` (turno_id+duplicados, 7 tests), `TestRoutesAsistenciasEdge` (3 tests), `TestRoutesTurnosNuevos` (colación, 5 tests). **Documentado en informe** (cap4 líneas 1292-1296). | ✅ |
+| **Suite de pruebas: 334→400+ tests, 90% cobertura** | `Backend/tests/` — crecimiento de 334→400+ tests. Archivos nuevos: `test_app_extra.py` (SSE broadcast), `test_email_service_extra.py` (email service), `test_mqtt_handler_extra.py` (pinger, watchdog, comandos), `test_routes_asistencias_extra.py` (device sync, update/delete), `test_routes_dispositivos_extra.py` (sync endpoints), `test_routes_extra2.py` (auth, ERP, edge cases), `test_routes_personas_extra.py` (duplicados, merge, biometrico). Además: `ERPSIMULATORS/` (mocks Odoo/Defontana/Buk). **Informe no actualizado (menciona 334).** | ⚠️ |
+| **Eliminación de persona admin: data cleanup** | `routes/personas.py:506-540` — admin: limpia datos (rut=NULL, email=NULL, huella_id=NULL, activo=false), elimina encodings/consent/foto, registra auditoría. No documentado en informe. | ➕ |
+| **Eliminación de persona empleador: soft delete** | `routes/personas.py:543-546` — solo marca `activo=false`. No documentado en informe. | ➕ |
+| **Filtro `activo=true` en GET personas** | `routes/personas.py:32,35` — todos los roles filtran por `activo = true`. Personas eliminadas no aparecen en listados. No documentado en informe. | ➕ |
+| **MQTT `esp32/asistencia/<MAC>`** | `mqtt_handler.py:92-168` — nuevo handler que procesa asistencias automáticas del ESP32 por MQTT, con creación de persona si no existe y detección de duplicados. No documentado en informe. | ➕ |
+| **`eliminar_datos_biometricos()` también limpia rut y email** | `routes/personas.py:603` — ahora ejecuta `UPDATE personas SET rut = NULL, email = NULL`. No documentado en informe. | ➕ |
+| **Nuevos archivos de test: 8 archivos + ERPSIMULATORS** | `Backend/tests/` — `test_app_extra.py`, `test_email_service_extra.py`, `test_mqtt_handler_extra.py`, `test_routes_asistencias_extra.py`, `test_routes_dispositivos_extra.py`, `test_routes_extra2.py`, `test_routes_personas_extra.py`, `ERPSIMULATORS/`. No documentado en informe. | ➕ |
 
 ---
 
@@ -423,13 +460,14 @@ Ahora todos los endpoints aceptan **tanto `persona_id` como `rut`** (no solo `ru
 | `POST /api/facial/identificar` (respuesta) | `rut` + `persona_id` | `rut` + `persona_id` | ✅ |
 | Webhook ERP /test | `rut: '11.111.111-1'` | `rut: '11.111.111-1'` | ✅ |
 
-**16 endpoints invocados desde ESP32, todos confirmados en backend. 2 rutas cambiaron (`/api/dispositivos/...` → `/api/auth/dispositivos/...`), divergencia menor.**
+**16 endpoints invocados desde ESP32, todos confirmados en backend. Nuevo endpoint `/capturar_foto_registro` agregado en el ESP32. Ahora los endpoints requieren dispositivo enrolado (`@requiere_dispositivo_enrolado`).**
 
 Adicionalmente, el backend expone endpoints no consumidos por el ESP32-CAM pero sí por el panel web y el proceso de auto-registro:
 
 | Endpoint | Método | ¿Existe en backend? | ¿Documentado? |
 |---|---|---|---|
 | `/sse/devices` | GET | `app.py` | No (SSE streaming nuevo) |
+| `/sse/huellas` | GET | `app.py` | No |
 | `/api/facial/agregar-foto` | POST | `routes/facial.py` | Sí (Iter 4) |
 | `/api/auth/register-company` | POST | `routes/auth.py:497` | Sí (Iter 5) |
 | `/api/dispositivos/<id>/generar-password` | POST | `routes/dispositivos.py:161` | Sí (Iter 7) |
@@ -439,8 +477,15 @@ Adicionalmente, el backend expone endpoints no consumidos por el ESP32-CAM pero 
 | `/api/auth/usuarios/<user_id>` | PUT | `routes/auth.py:393` | Sí (Iter 7) |
 | `/api/auth/dispositivos/generar-pin` | POST | `routes/auth.py:727` | ⚠️ Ruta cambiada (antes `/api/dispositivos/generar-pin`) |
 | `/api/auth/dispositivos/enrolar` | POST | `routes/auth.py:762` | ⚠️ Ruta cambiada (antes `/api/dispositivos/enrolar`) |
+| `/api/dispositivos/<id>/reasignar` | PUT | `routes/dispositivos.py:159` | No |
+| `/api/dispositivos/sync` | POST | `routes/dispositivos.py` | No |
+| `/api/dispositivos/sync/<tipo>` | POST | `routes/dispositivos.py` | No |
+| `/api/personas/duplicados` | GET | `routes/personas.py` | No |
+| `/api/personas/merge` | POST | `routes/personas.py` | No |
+| `/api/personas/<id>/biometrico` | GET | `routes/personas.py` | No |
+| `/capturar_foto_registro` (ESP32) | GET | `esp32.ino:3189` | No |
 
-**Total: 26 endpoints en backend (2 nuevos por cambio de ruta). Mayoría documentados. Las rutas `/api/auth/dispositivos/...` no están documentadas en el informe.**
+**Total: 33+ endpoints en backend (7 nuevos desde el análisis anterior). Mayoría documentados pero hay crecimiento significativo de no documentados.**
 
 ---
 
@@ -455,7 +500,8 @@ Adicionalmente, el backend expone endpoints no consumidos por el ESP32-CAM pero 
 | **HTTP `POST /api/facial/identificar`** | N/A (HTTP, no MQTT) | ✅ (ESP32 → backend, identificación) | ✅ (ahora documentado, cap4 líneas 477-484) |
 | `esp32/ping/<MAC>` | ✅ (ESP32) | ✅ (`mqtt_handler.py` — `device_pinger()` publica cada 30s) | No |
 | `esp32/imagen/eco` | ✅ (`mqtt_handler.py:40,65`) | ✅ (solo debug, Python) | No |
-| `esp32/asistencia/#` | ✅ (`mqtt_handler.py:41`) | No usado | No |
+| `esp32/asistencia/<MAC>` | ✅ (`mqtt_handler.py:41,92-168`) | ✅ (ESP32 — **nuevo: asistencias automáticas por MQTT**) | No |
+| `esp32/asistencia/#` | ✅ (`mqtt_handler.py:41`) | No usado (wildcard) | No |
 | ~~`esp32/imagen/start`~~ | ✅ Eliminado | No usado | Obsoleto — código limpiado |
 | ~~`esp32/imagen/part`~~ | ✅ Eliminado | No usado | Obsoleto — código limpiado |
 | ~~`esp32/imagen/end`~~ | ✅ Eliminado | No usado | Obsoleto — código limpiado |
@@ -499,6 +545,8 @@ Confirmadas **14 tablas** en `database.py` (única fuente de la verdad — `sche
 | `resolver_rut_a_id()` | `database.py:8-18` | Función helper que consulta `SELECT id FROM personas WHERE rut = %s` | ➕ No |
 | `DROP DEFAULT dispositivo_id` | `database.py:157,171` | Quita DEFAULT 1 para evitar violaciones de FK | ➕ No |
 | `setval()` sequence fix | `database.py:267` | Resincroniza secuencia SERIAL tras seed manual | ➕ No |
+| **`ON DELETE SET NULL` en FKs** | `database.py:97,157,171` | FK en personas.dispositivo_origen_id, asistencias.dispositivo_id, sincronizacion_log.dispositivo_id | ➕ No |
+| **`ALTER COLUMN rut DROP NOT NULL`** | `database.py:108` | Permite limpiar rut al eliminar persona (data cleanup) | ➕ No |
 
 **Columnas de `dispositivos`** (documentadas en Iter 7):
 
@@ -810,6 +858,30 @@ El informe necesita actualizar las rutas en las secciones de Iter 5 e Iter 7 de 
 
 Además, se agregó la función helper `_resolver_persona_id()` en `routes/facial.py:94-101` que centraliza la resolución de `persona_id`/`rut`. No documentada en informe.
 
+### 9.15 Nuevos cambios de seguridad y funcionalidad (⚠️ PENDIENTE DE DOCUMENTAR EN INFORME)
+
+**Archivos**: Múltiples (`routes/auth.py`, `routes/facial.py`, `routes/asistencias.py`, `routes/dispositivos.py`, `routes/erp.py`, `routes/personas.py`, `esp32.ino`, `mqtt_handler.py`, `Frontend/`)
+
+**Nuevos cambios significativos NO documentados en el informe:**
+
+| # | Cambio | Archivo | Impacto |
+|---|---|---|---|
+| 1 | **`token_opcional` ya NO auto-crea dispositivos** | `routes/auth.py:96` | El ESP32 debe estar enrolado antes de usar cualquier endpoint. Comportamiento anterior (auto-creación) eliminado. |
+| 2 | **Nuevo decorador `@requiere_dispositivo_enrolado`** | `routes/auth.py:140-147` + varios | Bloquea asistencia/identificación si el dispositivo no está enrolado. Afecta `create_asistencia()`, `sync_asistencias()`, `registrar_facial()`, `identificar_facial()`. |
+| 3 | **ESP32: `isCloudReady()` reemplaza `isOnline`** | `esp32.ino:156` | Ahora requiere `estaEnrolado && isOnline`. 40+ llamadas cambiadas. |
+| 4 | **Registro facial vía octet-stream** | `routes/facial.py`, `esp32.ino` | ESP32 envía raw JPEG en vez de Base64 JSON. Backend procesa ambos formatos. |
+| 5 | **Captura facial manual (3 fotos)** | `esp32.ino`, `SasDashboard.tsx` | Flujo de 3 fotos (frontal, izquierda, derecha) con control manual vía `/capturar_foto_registro`. |
+| 6 | **MQTT `esp32/asistencia/<MAC>`** | `mqtt_handler.py:92-168` | Nuevo handler que procesa asistencias automáticas del ESP32 vía MQTT. |
+| 7 | **Data cleanup en eliminación de personas** | `routes/personas.py:506-540` | Admin: limpia datos personales pero conserva nombre + asistencias históricas. |
+| 8 | **`ON DELETE SET NULL` en FKs** | `database.py:97,157,171` | Eliminación segura de dispositivos sin perder referencias. |
+| 9 | **`rut` nullable en personas** | `database.py:108` | Permite borrar RUT al eliminar datos de persona. |
+| 10 | **Chile Timezone en ERP** | `routes/erp.py:8-12,63-70` | Timestamps en zona horaria Chile. |
+| 11 | **Reasignación de dispositivos** | `routes/dispositivos.py:159-195` | Admin puede mover dispositivo entre empresas. |
+| 12 | **400+ tests (+66 nuevos)** | `Backend/tests/` | 8 nuevos archivos de test + ERPSIMULATORS. |
+| 13 | **Debug fotos en `debug_fotos/`** | `routes/facial.py` | Imágenes de registro facial guardadas para depuración. |
+
+**Estado**: ⚠️ **Pendiente**. El informe necesita una ronda de actualización para documentar estos cambios. Esfuerzo estimado: ~60 minutos.
+
 ---
 
 ## 10. Elementos en Código NO Documentados en el Informe
@@ -842,8 +914,30 @@ Además, se agregó la función helper `_resolver_persona_id()` en `routes/facia
 | 24 | **Detección de duplicados en asistencias** | `routes/asistencias.py` | Duplicados por persona + tipo + turno + fecha |
 | 25 | **Campo `turno_id` en asistencias** | `routes/asistencias.py` | Relación marcación–turno |
 | 26 | **`_invalidar_cache()`** | `routes/facial.py` | Limpieza de caché de embeddings |
-| 27 | **`token_opcional` auto-crea dispositivos por MAC** | `routes/auth.py` | Creación automática de dispositivos vía X-Device-MAC |
+| 27 | **`token_opcional` ya NO auto-crea dispositivos (cambio de comportamiento)** | `routes/auth.py:96` | Ya no crea dispositivos automáticamente, marca flag |
 | 28 | **Campos colación en turnos** | `routes/turnos.py` | `con_colacion`, `colacion_inicio`, `colacion_fin` (sí documentado en informe) |
+| 29 | **`@requiere_dispositivo_enrolado` decorador** | `routes/auth.py` + varios | Exige dispositivo enrolado para operaciones |
+| 30 | **`isCloudReady()` en ESP32** | `esp32.ino:156` | Guardia que exige enrolado + online |
+| 31 | **Registro facial octet-stream** | `routes/facial.py`, `esp32.ino` | ESP32 envía JPEG raw, no Base64 JSON |
+| 32 | **Captura facial 3 fotos** | `esp32.ino`, `SasDashboard.tsx` | 3 fotos (frontal, perfil izq, perfil der) |
+| 33 | **MQTT `esp32/asistencia/<MAC>`** | `mqtt_handler.py:92-168` | Asistencias automáticas vía MQTT |
+| 34 | **Data cleanup eliminación personas** | `routes/personas.py:506-540` | Limpieza de datos personales al eliminar |
+| 35 | **Filtro `activo=true` en GET personas** | `routes/personas.py:32,35` | Personas eliminadas no aparecen en listados |
+| 36 | **`ON DELETE SET NULL` en FKs** | `database.py:97,157,171` | Eliminación segura de dispositivos |
+| 37 | **`rut` nullable** | `database.py:108` | Permite borrar RUT al eliminar datos |
+| 38 | **Chile TZ en ERP** | `routes/erp.py` | Timestamps en America/Santiago |
+| 39 | **Reasignación dispositivos** | `routes/dispositivos.py:159-195` | Admin mueve dispositivo entre empresas |
+| 40 | **400+ tests (66 nuevos) + ERPSIMULATORS** | `Backend/tests/` | 8 nuevos archivos de test |
+| 41 | **Debug fotos `debug_fotos/`** | `routes/facial.py` | Imágenes debug de registro facial |
+| 42 | **`guardar_imagen_raw()`** | `routes/facial.py:136-142` | Guarda raw JPEG |
+| 43 | **`eliminar_datos_biometricos()` también limpia rut y email** | `routes/personas.py:603` | Limpieza adicional en eliminación biométrica |
+| 44 | **Frontend: captura multi-foto** | `SasDashboard.tsx` | 3 fotos con dots de progreso |
+| 45 | **Frontend: reasignación admin** | `SasDashboard.tsx` | Selector empresa + confirmación |
+| 46 | **Frontend: empresa en PIN generation** | `SasDashboard.tsx` | Admin selecciona empresa al generar PIN |
+| 47 | **Frontend: badge empresa en dispositivos** | `SasDashboard.tsx` | Admin ve empresa de cada dispositivo |
+| 48 | **Frontend: contador dispositivos en tabla empresas** | `SasDashboard.tsx` | Nueva columna "Dispositivos" |
+| 49 | **Frontend: sección Duplicados eliminada** | `SasDashboard.tsx` | Ya no aparece en sidebar |
+| 50 | **Frontend: token en header para rostro API** | `lib/auth-api.ts` | Funciones de rostro envían Authorization |
 
 **Elementos que fueron eliminados del repositorio y ya no aplican**:
 - ~~`tests/mqtt.py`~~ — directorio `tests/` raíz eliminado
@@ -854,32 +948,48 @@ Además, se agregó la función helper `_resolver_persona_id()` en `routes/facia
 - ~~`Backend/DB/schema.sql`~~ — archivo eliminado, ahora solo `database.py`
 - ~~`Backend/deteccion.py`~~ — archivo eliminado, reemplazado por tests automatizados
 - ~~`Backend/reset_db.py`~~ — archivo eliminado
+- ~~`Backend/static/previews/*.jpg`~~ — directorio `previews/` parcialmente limpiado (archivos huérfanos eliminados)
+- ~~`Backend/routes/auth.py: @solo_mis_datos`~~ — decorador eliminado
+- ~~`Backend/routes/auth.py: requiere_login`~~ — alias eliminado
 
 ---
 
 ## 11. Conclusiones
 
 ### Resumen
-- **Congruencia global: 95%** — Bajó 1 punto porcentual respecto al análisis anterior (96%) tras incorporar los nuevos cambios de esta iteración (eventos_mqtt, control remoto ESP32, SSE huellas, turno_id en asistencias, identificar-o-registrar, colación en turnos). Mejoras principales:
+- **Congruencia global: 94%** — Bajó 1 punto porcentual respecto al análisis anterior (95%) tras incorporar los nuevos cambios de seguridad y funcionalidad. Mejoras principales:
   - SSE nativo reemplaza `flask-socketio` para streaming de estado de dispositivos ✅
   - MQTT ping/pong activo como 3ª capa de detección de desconexión (LWT → pinger → watchdog) ✅
   - Frontend: `useDeviceWebSocket` con EventSource, polling 15s, guard de re-render ✅
   - Frontend: fórmula `online` corregida (estado + heartbeat), IP clickable, live-dot ✅
   - ESP32 firmware: handler de ping MQTT con respuesta pong ✅
   - 9 HTML de ESP32 rediseñados con tema SAS oscuro ✅
-  - Suite de pruebas: 284→334 tests, 90% cobertura backend ✅
-  - Nuevo módulo `eventos_mqtt.py` para notificación MQTT a dispositivos ✅
-  - 3 endpoints de control remoto ESP32 (registrar-huella, reiniciar, wifi-reconnect) ✅
-  - SSE huellas + broadcast_huella_update para resultados de registro de huella ✅
-  - `identificar-o-registrar`: endpoint que identifica facialmente o registra si no hay match ✅
-  - Detección de duplicados en asistencias por persona + tipo + turno + fecha ✅
+  - Suite de pruebas: 334→400+ tests, 90% cobertura backend ✅
+  - Mocks ERP (Odoo, Defontana, Buk) con suite de pruebas de integración ✅
+  - Chile Timezone en todos los webhooks ERP ✅
+  - Data cleanup al eliminar personas (admin: datos personales eliminados, asistencias conservadas) ✅
+  - `ON DELETE SET NULL` en FKs para eliminación segura de dispositivos ✅
+  - Reasignación de dispositivos entre empresas (solo admin) ✅
+  - `rut` nullable para permitir limpieza de datos personales ✅
+  - 3 fotos de rostro (frontal, perfiles) para mejor precisión biométrica ✅
   - Campos colación en turnos (`con_colacion`, `colacion_inicio`, `colacion_fin`) ✅
-- **Divergencias de documentación restantes** (3):
-  - Rutas `/api/dispositivos/enrolar` y `/api/dispositivos/generar-pin` cambiaron a `/api/auth/dispositivos/...` — solo falta actualizar el informe LaTeX ⚠️
-  - Todos los endpoints ahora aceptan **tanto `persona_id` como `rut`** — el informe documenta solo `rut`, falta actualizar ⚠️
-  - `token_opcional` auto-crea dispositivos vía X-Device-MAC — comportamiento no documentado ⚠️
-- Divergencias previas resueltas: `sincronizacion_log`, MQTT fragmentado, `schema.sql`, anti-spoofing, contraseñas, frontend, tests, migration `persona_id → rut`, overflow DynamicJsonDocument, local- IDs, eventos_mqtt, control remoto, SSE huellas, duplicados — todo ✅
-- 28 elementos no documentados (eventos_mqtt, control remoto ESP32, SSE huellas, identificar-o-registrar, duplicados asistencias, turno_id, colación, token_opcional auto-crea, helpers internos, flags de seguridad, etc.)
+- **Divergencias de documentación restantes** (13 nuevas, acumuladas):
+  - `token_opcional` ya NO auto-crea dispositivos (comportamiento anterior eliminado) ⚠️
+  - `@requiere_dispositivo_enrolado` en endpoints de asistencia e identificación facial ⚠️
+  - `isCloudReady()` en ESP32 (requiere enrolado + online) ⚠️
+  - Registro facial vía octet-stream (no Base64 JSON) ⚠️
+  - Captura facial 3 fotos (frontal, perfil izquierdo, perfil derecho) ⚠️
+  - MQTT `esp32/asistencia/<MAC>` para asistencias automáticas ⚠️
+  - Data cleanup en eliminación de personas (rut NULL, activo false) ⚠️
+  - `ON DELETE SET NULL` en FKs de dispositivos ⚠️
+  - Chile Timezone en webhooks ERP ⚠️
+  - Reasignación de dispositivos entre empresas ⚠️
+  - 400+ tests (+66 nuevos), ERPSIMULATORS ⚠️
+  - Debug fotos en `debug_fotos/` ⚠️
+  - Frontend: multi-foto, reasignación, empresa en PIN, badge empresa ⚠️
+  - Rutas de enrolamiento siguen sin actualizar en informe ⚠️
+- Divergencias previas resueltas: `sincronizacion_log`, MQTT fragmentado, `schema.sql`, anti-spoofing, contraseñas, frontend, tests, migration `persona_id → rut`, overflow DynamicJsonDocument, local- IDs, eventos_mqtt, control remoto, SSE huellas, duplicados, flask-socketio, ping/pong — todo ✅
+- **50 elementos no documentados** (vs 28 en análisis anterior). Crecimiento por nuevas funcionalidades de seguridad, facial, y frontend.
 
 ### Esfuerzo estimado de corrección
 
@@ -898,39 +1008,63 @@ Además, se agregó la función helper `_resolver_persona_id()` en `routes/facia
 | Actualizar schema.sql con tablas faltantes | 5 min | ✅ SUPERADO (archivo eliminado) |
 | Actualizar payloads persona_id → rut en cap4_iteraciones.tex | 20 min | ✅ CORREGIDO |
 | Corregir overflow DynamicJsonDocument (2048→8192) en ESP32-CAM | 10 min | ✅ CORREGIDO |
-| Actualizar rutas `/api/auth/dispositivos/...` en informe | 10 min | ⏳ PENDIENTE (código corregido) |
-| Documentar aceptación bidireccional persona_id/rut | 15 min | ⏳ PENDIENTE (código corregido) |
-| Arreglar `sincronizarPersonasDesdeBackend()` destructiva | 30 min | ✅ CORREGIDO (merge en vez de overwrite) |
-| Arreglar `sincronizarAsignacionesPendientes()` con local- IDs | 20 min | ✅ CORREGIDO (soporta RUT para local-) |
+| Actualizar rutas `/api/auth/dispositivos/...` en informe | 10 min | ⏳ PENDIENTE |
+| Documentar aceptación bidireccional persona_id/rut | 15 min | ⏳ PENDIENTE |
+| Arreglar `sincronizarPersonasDesdeBackend()` destructiva | 30 min | ✅ CORREGIDO |
+| Arreglar `sincronizarAsignacionesPendientes()` con local- IDs | 20 min | ✅ CORREGIDO |
 | Agregar `sincronizarPersonasPendientes()` para push offline | 20 min | ✅ IMPLEMENTADO |
-| **Documentar SSE streaming + ping/pong + frontend mejoras en informe** | 40 min | ✅ DOCUMENTADO (Iter 3, 5, 7, 8 en cap4_iteraciones.tex) |
-| **Documentar ESP32 ping handler + HTML redesign en informe** | 15 min | ✅ DOCUMENTADO (Iter 3 ping suscripción + Iter 7 HTML redesign) |
-| **Total restante** | **0 min** | **✅ Todos los cambios documentados en informe** |
+| Documentar SSE streaming + ping/pong + frontend mejoras | 40 min | ✅ DOCUMENTADO |
+| Documentar ESP32 ping handler + HTML redesign | 15 min | ✅ DOCUMENTADO |
+| **Documentar octet-stream + 3 fotos + `isCloudReady()`** | **30 min** | ⏳ PENDIENTE |
+| **Documentar `@requiere_dispositivo_enrolado` + `token_opcional` cambios** | **20 min** | ⏳ PENDIENTE |
+| **Documentar MQTT `esp32/asistencia/<MAC>`** | **15 min** | ⏳ PENDIENTE |
+| **Documentar data cleanup + SET NULL + rut nullable** | **15 min** | ⏳ PENDIENTE |
+| **Documentar Chile TZ + reasignación dispositivos** | **15 min** | ⏳ PENDIENTE |
+| **Documentar 400+ tests + ERPSIMULATORS** | **10 min** | ⏳ PENDIENTE |
+| **Documentar nuevos features frontend** | **20 min** | ⏳ PENDIENTE |
+| **Total restante** | **~2.5 h** | **⏳ PENDIENTE (13 nuevos cambios no documentados)** |
 
 ### Escala de gravedad
 
 | Gravedad | Descripción | Cantidad |
 |---|---|---|
 | ✅ Sin errores críticos | Todas las discrepancias funcionales corregidas | 0 |
-| 🟡 Media (existe pero con diferencias) | Rutas `/api/auth/dispositivos/...` no documentadas; payloads aceptan persona_id y rut (solo se documenta rut); token_opcional auto-crea dispositivos | 3 → 0 (pendiente informe LaTeX) |
+| 🔴 Alta (código no coincide con informe) | `token_opcional` ya no auto-crea dispositivos (cambio de comportamiento) | 1 |
+| 🟡 Media (existe pero con diferencias) | Octet-stream, 3 fotos, `@requiere_dispositivo_enrolado`, `isCloudReady()`, MQTT asistencia, data cleanup, SET NULL, Chile TZ, reasignación, frontend features | 13 |
 
 ### Nota final
 
-El informe alcanzó una **alineación del 95%** tras esta ronda de actualización del análisis. Se documentaron mecanismos clave en el informe: SSE streaming en reemplazo de `flask-socketio`, MQTT ping/pong activo como 3ª capa de detección de desconexión, mejoras en el frontend (hook EventSource, polling, IP clickable, live-dot), y el rediseño de los 9 HTML del ESP32 con tema SAS oscuro. Además se documentó el handler de ping en el firmware ESP32. Nuevos elementos no documentados: módulo `eventos_mqtt.py`, 3 endpoints de control remoto ESP32, SSE huellas, `identificar-o-registrar`, detección de duplicados en asistencias, campo `turno_id`, `token_opcional` auto-crea dispositivos, colación en turnos.
+El informe alcanzó una **alineación del 94%** tras esta ronda de actualización del análisis. Esta vez la congruencia **bajó 1 punto** (de 95% a 94%) porque el código incorporó cambios significativos de seguridad y funcionalidad que el informe LaTeX aún no refleja:
+
+**Mejoras documentadas en informe en rondas anteriores** (ya ✅):
+- SSE streaming reemplaza flask-socketio, MQTT ping/pong activo (3 capas de detección), frontend mejorado (EventSource, polling, IP clickable, live-dot), HTML ESP32 rediseñado (tema SAS oscuro), handler ping en firmware ESP32.
+
+**Nuevos cambios NO documentados en informe** (⚠️ pendientes, ~2.5 h de edición):
+- Seguridad: `token_opcional` ya no auto-crea dispositivos, nuevo `@requiere_dispositivo_enrolado`, `isCloudReady()` en ESP32 (exige enrolado + online), `ON DELETE SET NULL` en FKs.
+- Facial: octet-stream en vez de Base64 JSON, captura de 3 fotos (frontal/perfiles), debug fotos en `debug_fotos/`.
+- Infraestructura: MQTT `esp32/asistencia/<MAC>` (asistencias automáticas), Chile Timezone en ERP, data cleanup en eliminación de personas, `rut` nullable.
+- Admin: reasignación de dispositivos entre empresas, empresa selector en PIN generation.
+- Frontend: captura multi-foto con dots de progreso, reasignación admin, badge empresa, contador dispositivos en tabla empresas.
+- Tests: 400+ tests (+66 nuevos), ERPSIMULATORS (Odoo, Defontana, Buk).
 
 **Correcciones de código aplicadas** (basadas en el análisis de congruencia):
 
 | # | Divergencia | Corrección |
 |---|---|---|
-| 1 | Rutas de enrolamiento obsoletas en firmware | ✅ ESP32 y Frontend actualizados a `/api/auth/dispositivos/...`. El endpoint `enrolar` **no requiere auth** — solo valida PIN + MAC, el prefijo `/api/auth/` no es un gate de autenticación |
-| 2 | `sincronizarPersonasDesdeBackend()` destructiva | ✅ Ahora mergea: preserva personas locales no sincronizadas al sobrescribir con datos del backend |
-| 3 | `sincronizarAsignacionesPendientes()` salta local- IDs | ✅ Ahora busca RUT en local y crea asignación vía `rut` si persona tiene ID local |
-| 4 | `crearAsignacionEnBackend()` rechaza local- IDs | ✅ Ahora usa `rut` como fallback cuando persona_id es local- |
-| 5 | No hay push de personas offline al backend | ✅ `sincronizarPersonasPendientes()` implementada: POSTea personas locales al backend y almacena `backend_id` |
-| 6 | flask-socketio → SSE nativo | ✅ Reemplazado por endpoint `/sse/devices` con `queue.Queue` + `threading.Lock` |
-| 7 | Sin ping activo MQTT | ✅ `device_pinger()` publica `esp32/ping/<MAC>` cada 30s, timeout 60s |
-| 8 | Frontend sin estado real-time | ✅ `useDeviceWebSocket` hook + polling 15s + online corregida + IP clickable + live-dot |
-| 9 | ESP32 sin responder a pings | ✅ Suscripción a `esp32/ping/<MAC>` + respuesta con heartbeat pong |
-| 10 | HTML ESP32 sin diseño SAS | ✅ 9 archivos rediseñados con tema oscuro, variables CSS, cards |
+| 1 | Rutas de enrolamiento obsoletas en firmware | ✅ ESP32 y Frontend actualizados a `/api/auth/dispositivos/...`. |
+| 2 | `sincronizarPersonasDesdeBackend()` destructiva | ✅ Ahora mergea: preserva personas locales no sincronizadas |
+| 3 | `sincronizarAsignacionesPendientes()` salta local- IDs | ✅ Ahora busca RUT en local |
+| 4 | `crearAsignacionEnBackend()` rechaza local- IDs | ✅ Ahora usa `rut` como fallback |
+| 5 | No hay push de personas offline al backend | ✅ `sincronizarPersonasPendientes()` implementada |
+| 6 | flask-socketio → SSE nativo | ✅ Reemplazado por endpoint `/sse/devices` |
+| 7 | Sin ping activo MQTT | ✅ `device_pinger()` publica cada 30s, timeout 60s |
+| 8 | Frontend sin estado real-time | ✅ `useDeviceWebSocket` hook + polling 15s + online corregida |
+| 9 | ESP32 sin responder a pings | ✅ Suscripción a `esp32/ping/<MAC>` + heartbeat con pong |
+| 10 | HTML ESP32 sin diseño SAS | ✅ 9 archivos rediseñados con tema oscuro |
+| 11 | **`token_opcional` auto-creaba dispositivos** | ✅ **Cambio de comportamiento: ahora requiere enrolamiento explícito** |
+| 12 | **ESP32 usaba Base64 JSON** | ✅ **Migrado a octet-stream (raw JPEG) para registro facial** |
+| 13 | **ESP32 capturaba fotos en bucle automático** | ✅ **Migrado a captura manual vía `/capturar_foto_registro` (3 fotos)** |
+| 14 | **Sin protección de dispositivo enrolado** | ✅ **`@requiere_dispositivo_enrolado` agregado a endpoints críticos** |
+| 15 | **FKs sin protección ON DELETE** | ✅ **`ON DELETE SET NULL` en FKs de dispositivo** |
 
-Quedan **3 divergencias de documentación** pendientes de resolver en el informe LaTeX: (1) rutas de enrolamiento, (2) payloads bidireccionales persona_id/rut, (3) token_opcional auto-crea dispositivos. Esfuerzo estimado: ~30 minutos de edición en `cap4_iteraciones.tex` y `memoria.tex`. Las nuevas funcionalidades (eventos_mqtt, control remoto ESP32, SSE huellas, identificar-o-registrar, duplicados asistencias, colación turnos) fueron documentadas en `cap4_iteraciones.tex`. Ninguna divergencia de código funcional o de seguridad permanece abierta.
+Quedan **13 divergencias de documentación** pendientes de resolver en el informe LaTeX. Esfuerzo estimado total: ~2.5 horas de edición en `cap4_iteraciones.tex` y `memoria.tex`. Las divergencias funcionales más críticas son los cambios de seguridad (`token_opcional` ya no auto-crea, `@requiere_dispositivo_enrolado`, `isCloudReady()`) y el nuevo flujo facial (octet-stream + 3 fotos). Ninguna divergencia de código funcional o de seguridad permanece abierta a nivel de implementación — todas están corregidas en el código. Solo resta actualizar el informe para reflejar los cambios.
