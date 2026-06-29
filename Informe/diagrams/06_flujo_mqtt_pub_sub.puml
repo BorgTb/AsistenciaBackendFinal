@@ -5,36 +5,39 @@ skinparam shadowing false
 skinparam componentStyle rectangle
 
 component "ESP32-CAM\n(Publisher + Subscriber)" as ESP
-queue "Mosquitto Broker\n:1884" as Broker
+queue "Mosquitto Broker\n:1884 (MQTT) / :9001 (WS)" as Broker
 component "Backend Flask\n(paho-mqtt)" as BE
 
 note right of ESP
   **Publica:**
-  • esp32/imagen/registrar      QoS 1
-  • esp32/asistencia/<mac>      QoS 1
-  • esp32/heartbeat/<mac>       QoS 0 (cada 30s)
+  • esp32/heartbeat/<mac>        QoS 0 (cada 30s)
+  • esp32/huella/resultado/<mac> QoS 0
+  • esp32/ping/<mac>             QoS 0 (responde con heartbeat)
 
   **Suscrito a:**
-  • esp32/respuesta/facial
-  • esp32/respuesta/registro
-  • esp32/comandos/<mac>
+  • backend/comando/<mac>
+  • backend/notificacion/<mac>
+  • esp32/ping/<mac>
 
   **Last Will (LWT):**
-  • esp32/lwt/<mac> = "offline"
-    QoS 1, retained
+  • esp32/lwt/<mac> = {"estado":"inactivo"}
+    QoS 0
+
+  Nota: el registro, la identificación facial y
+  la marcación de asistencia (huella o rostro)
+  viajan por HTTP directo al backend, no por MQTT.
 end note
 
 note left of BE
   **Suscrito a:**
-  • esp32/imagen/registrar    QoS 1
-  • esp32/asistencia/#        QoS 1
-  • esp32/heartbeat/+         QoS 0
-  • esp32/lwt/+               QoS 1 (retained)
+  • esp32/heartbeat/+             QoS 0
+  • esp32/lwt/+                   QoS 0
+  • esp32/huella/resultado/#      QoS 0
 
   **Publica:**
-  • esp32/respuesta/facial
-  • esp32/respuesta/registro
-  • esp32/comandos/<mac>
+  • backend/comando/<mac>
+  • backend/notificacion/<mac>
+  • esp32/ping/<mac>  (cada 30s, hilo device_pinger)
 end note
 
 ESP    -[#2C5282]->     Broker : "1. PUBLISH"

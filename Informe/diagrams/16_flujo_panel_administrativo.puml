@@ -1,0 +1,31 @@
+@startuml flujo_panel_administrativo
+title Panel web administrativo: monitoreo y gestión
+scale 2
+
+skinparam shadowing false
+skinparam ActivityBackgroundColor #F5F9FF
+skinparam ActivityBorderColor #2C5282
+
+start
+:Administrador inicia sesión
+(JWT, validación de rol y empresa);
+:Acceder al panel web (Next.js);
+fork
+  #E3F2FD:Visualizar estado de dispositivos
+  en tiempo real vía streaming SSE;
+fork again
+  #E3F2FD:Consultar personas, turnos
+  y asistencias registradas;
+fork again
+  #E3F2FD:Gestionar usuarios, roles
+  y configuración multi-tenant;
+end fork
+if (¿Asistencia identificada\nexitosamente?) then (sí)
+  #C8E6C9:Backend reenvía la marcación
+  al ERP configurado (webhook asíncrono);
+else (no)
+  #FFCDD2:Registrar intento fallido
+  en logs_biometricos;
+endif
+stop
+@enduml

@@ -1,0 +1,27 @@
+@startuml flujo_registro_personas
+title Registro de personas y captura biométrica
+scale 2
+
+skinparam shadowing false
+skinparam ActivityBackgroundColor #F5F9FF
+skinparam ActivityBorderColor #2C5282
+
+start
+:Administrador registra persona
+en el panel web (datos básicos);
+if (¿Persona otorga consentimiento\nbiométrico?) then (sí)
+  #E3F2FD:Registrar huella en dos pasos
+  mediante el lector AS608;
+  #E3F2FD:Capturar rostro
+  (webcam del panel web o cámara OV2640);
+  :Backend extrae el embedding facial,
+  lo cifra con Fernet y lo almacena;
+  #C8E6C9:Persona habilitada
+  para marcar asistencia;
+else (no)
+  #FFE0B2:Registrar persona sin
+  datos biométricos
+  (sin habilitación para marcaje);
+endif
+stop
+@enduml

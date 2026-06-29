@@ -74,12 +74,16 @@ entity "personas" as personas {
   --
     empresa_id : INTEGER <<FK>>
   * nombre : VARCHAR(100)
-  * rut : VARCHAR(20) <<UK>>
+    rut : VARCHAR(20) <<UK>>
     email : VARCHAR(100)
     huella_id : INTEGER
     encoding_facial : TEXT
+    dispositivo_origen_id : INTEGER <<FK>>
     activo : BOOLEAN
     created_at : TIMESTAMP
+  ..
+  rut es NULLABLE (permite anonimizar
+  al eliminar datos biométricos)
 }
 
 entity "turnos" as turnos {
@@ -220,6 +224,9 @@ personas ||--|| consentimientos       : "otorga"
 personas ||--o{ encodings_faciales    : "almacena"
 personas ||--o{ logs_biometricos      : "audita"
 dispositivos ||--o{ logs_biometricos  : "audita"
+
+' --- dispositivo de origen del registro (ON DELETE SET NULL) ---
+dispositivos ||--o{ personas : "origina\n(ON DELETE SET NULL)"
 
 ' --- eliminaciones (sin FK formal en el esquema) ---
 personas .o{ eliminaciones_biometricas : "respalda\n(sin FK)"

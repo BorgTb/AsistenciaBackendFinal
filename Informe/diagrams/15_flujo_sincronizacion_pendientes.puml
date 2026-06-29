@@ -1,0 +1,33 @@
+@startuml flujo_sincronizacion_pendientes
+title Sincronización diferida de asistencias pendientes
+scale 2
+
+skinparam shadowing false
+skinparam ActivityBackgroundColor #F5F9FF
+skinparam ActivityBorderColor #2C5282
+
+start
+:Dispositivo opera sin conexión
+y guarda marcaciones en
+asistencias.json (sincronizado=false);
+:Restablecer conexión Wi-Fi;
+if (¿isCloudReady()?) then (sí)
+  repeat
+    #E8F5E9:Enviar marcación pendiente
+    al backend (POST asistencia);
+    if (¿Confirmación recibida?) then (sí)
+      :Marcar registro local
+      como sincronizado;
+    else (fallo)
+      #FFE0B2:Mantener registro
+      en la cola local;
+    endif
+  repeat while (¿quedan registros\npendientes?) is (sí) not (no)
+  #C8E6C9:Vaciar asistencias.json
+  y registrar evento en logs de auditoría;
+else (no)
+  #FFF3E0:Mantener cola local
+  y reintentar más adelante;
+endif
+stop
+@enduml

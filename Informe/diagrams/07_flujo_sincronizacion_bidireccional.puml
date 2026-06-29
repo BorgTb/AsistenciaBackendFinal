@@ -8,22 +8,24 @@ skinparam ActivityBorderColor #2C5282
 start
 :Dispositivo inicia ciclo de operación;
 
-if (¿Wi-Fi disponible?) then (sí)
+if (¿isCloudReady()?\n(online + enrolado)) then (sí)
   #E8F5E9:**MODO ONLINE**;
-  #E8F5E9:GET /api/sync/personas
-  GET /api/sync/turnos
-  GET /api/sync/erp-config;
+  #E8F5E9:POST /api/dispositivos/sync
+  POST /api/dispositivos/sync/<tipo>
+  GET /api/dispositivos/erp-config;
   note right
-    Caché en SPIFFS:
+    Caché en LittleFS:
     • /personas.json
     • /turnos.json
-    • /erp-config.json
+    • /asignaciones.json
+    • /wifi.json
   end note
   #E8F5E9:Operación normal
-  (marcaje en tiempo real);
+  (marcaje en tiempo real,
+  huella o facial);
   if (¿asistencia generada?) then (sí)
-    #E8F5E9:POST /api/asistencias;
-    if (HTTP 200?) then (sí)
+    #E8F5E9:PUBLISH esp32/asistencia/<mac>\n(MQTT) o POST /api/asistencias/sync;
+    if (confirmación recibida?) then (sí)
       #E8F5E9:Confirmar sincronizado;
     else (fallo)
       #FFE0B2:APPEND /asistencias.json
@@ -32,20 +34,21 @@ if (¿Wi-Fi disponible?) then (sí)
   endif
 else (no)
   #FFF3E0:**MODO OFFLINE**;
-  #FFF3E0:Cargar caché SPIFFS
-  (/personas.json, /turnos.json);
+  #FFF3E0:Cargar caché LittleFS
+  (/personas.json, /turnos.json,
+  /asignaciones.json);
   #FFF3E0:Operar con datos locales
   (huella + facial);
   #FFF3E0:APPEND asistencias →
   /asistencias.json;
-  #FFF3E0:Esperar reconexión Wi-Fi;
-  if (¿Wi-Fi restablecido?) then (sí)
+  #FFF3E0:Esperar reconexión Wi-Fi\n(reintentos de AP tras 5 intentos);
+  if (¿Wi-Fi restablecido y\nisCloudReady()?) then (sí)
     repeat
-      #E8F5E9:POST asistencia pendiente
-      al backend;
+      #E8F5E9:sincronizarPendientes()
+      POST asistencia pendiente al backend;
     repeat while (¿quedan registros?) is (sí) not (no)
     #E8F5E9:Vaciar /asistencias.json;
-    #E8F5E9:Re-sync GET /api/sync/*;
+    #E8F5E9:Re-sync POST /api/dispositivos/sync/*;
   else (no)
     #FFF3E0:Mantener cola local;
   endif

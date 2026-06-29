@@ -16,6 +16,12 @@ Carpeta de diagramas del proyecto **Sistema IoT de asistencia con autenticación
 | 8 | `08_pipeline_cifrado_biometrico.tex` | Pipeline | **TikZ nativo** |
 | 9 | `09_flujo_integracion_erp.puml` | Secuencia | PlantUML |
 | 10 | `10_componentes_esp32.puml` | Componentes | PlantUML |
+| 11 | `11_diagrama_er_base_datos.puml` | ER | PlantUML |
+| 12 | `12_flujo_enrolamiento_dispositivo.puml` | Actividad | PlantUML |
+| 13 | `13_flujo_registro_personas.puml` | Actividad | PlantUML |
+| 14 | `14_flujo_gestion_turnos.puml` | Actividad | PlantUML |
+| 15 | `15_flujo_sincronizacion_pendientes.puml` | Actividad | PlantUML |
+| 16 | `16_flujo_panel_administrativo.puml` | Actividad | PlantUML |
 
 ## Compilar los `.puml` a PDF vectorial
 

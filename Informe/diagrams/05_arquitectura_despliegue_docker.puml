@@ -1,5 +1,5 @@
 @startuml arquitectura_despliegue_docker
-title Despliegue Docker — teleasist_network
+title Despliegue Docker
 
 skinparam shadowing false
 skinparam componentStyle rectangle
@@ -9,7 +9,7 @@ cloud "ESP32-CAM\n(red local)" as ESP
 
 node "Host docker-compose" {
 
-  frame "teleasist_network  (bridge)" {
+  frame "red docker (bridge)" {
 
     node "postgres:15" as PG {
       component "PostgreSQL\n:5432" as pg_svc

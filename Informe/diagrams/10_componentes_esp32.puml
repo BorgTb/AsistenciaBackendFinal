@@ -5,32 +5,32 @@ skinparam shadowing false
 skinparam componentStyle rectangle
 
 package "Hardware" #FFF8E1 {
-  component "ESP32-CAM\n(ESP32-S, 4 MB PSRAM)" as MCU
+  component "ESP32-CAM\n(módulo ESP32 + 4 MB flash)" as MCU
   component "OV2640\n(cámara)" as CAM
   component "AS608\n(lector huella óptico)" as FP
-  component "Sensor PIR" as PIR
-  component "LED indicador" as LED
+  component "Sensor PIR\nHC-SR501" as PIR
+  component "Flash LED\n(PWM 5 kHz)" as LED
 
   CAM  --  MCU : SCCB / DVP
-  FP   --  MCU : UART2\n(GPIO16 RX / GPIO17 TX)
+  FP   --  MCU : UART2\n(GPIO14 RX / GPIO15 TX, 57600 baud)
   PIR  -->  MCU : GPIO12  (IN)
-  MCU  -->  LED : GPIO4   (OUT)
+  MCU  -->  LED : PWM   (OUT)
 }
 
-package "Firmware  (Arduino C++)" #E3F2FD {
-  component "WebServer\n(HTML + JSON API)" as WEB
-  component "MQTT Client\n(PubSubClient)" as MQ
-  component "HTTP Client\n(WiFiClient)" as HTTP
-  component "Storage\n(SPIFFS / LittleFS)" as FS
+package "Firmware  (Arduino/ESP-IDF, C++)" #E3F2FD {
+  component "WebServer\n(HTML + JSON API, puerto 80)" as WEB
+  component "MQTT Client\n(esp_mqtt_client, ESP-IDF\nvía WebSockets wss://)" as MQ
+  component "HTTP Client\n(WiFiClient / HTTPClient)" as HTTP
+  component "Storage\n(LittleFS)" as FS
   component "State Machine\n(registro · marcaje)" as SM
   component "Captura biométrica\n(facial + huella)" as BIO
 
   WEB  -->  FS  : read / write JSON
   SM   -->  BIO
-  SM   -->  FS  : /asistencias.json
-  BIO  -->  MQ  : esp32/imagen/registrar
-  BIO  -->  HTTP : POST /api/facial/identificar
-  MQ   -->  SM  : respuestas async
+  SM   -->  FS  : /asistencias.json, /personas.json,\n/turnos.json, /wifi.json
+  BIO  -->  MQ  : esp32/imagen/registrar\nesp32/asistencia/<mac>
+  BIO  -->  HTTP : POST /api/facial/identificar\n(octet-stream)
+  MQ   -->  SM  : respuestas async\n(esp32/respuesta/facial)
 }
 
 MCU ..> WEB  : ejecuta
@@ -39,8 +39,8 @@ MCU ..> SM   : ejecuta
 MCU ..> FS   : monta partición
 
 cloud "Wi-Fi" as WIFI
-MQ   ..>  WIFI
-HTTP ..>  WIFI
+MQ   ..>  WIFI : wss://  :9001
+HTTP ..>  WIFI : http://  :5000
 WEB  ..>  WIFI
 
 @enduml

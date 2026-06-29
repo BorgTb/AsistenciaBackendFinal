@@ -1,0 +1,63 @@
+<mxfile host="app.diagrams.net">
+  <diagram name="Menu principal" id="menu-principal-1">
+    <mxGraphModel dx="800" dy="600" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="500" pageHeight="320" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        <mxCell id="frame" value="" style="rounded=1;arcSize=4;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#000000;" vertex="1" parent="1">
+          <mxGeometry x="20" y="20" width="440" height="270" as="geometry" />
+        </mxCell>
+
+        <mxCell id="title" value="ESP32-ASISTENCIA" style="text;html=1;align=center;verticalAlign=middle;fontStyle=1;fontSize=14;" vertex="1" parent="1">
+          <mxGeometry x="20" y="20" width="440" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="sep1" value="" style="endArrow=none;html=1;strokeColor=#000000;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="20" y="53" as="sourcePoint" />
+            <mxPoint x="460" y="53" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+
+        <mxCell id="pill1" value="Online" style="rounded=1;arcSize=50;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#000000;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="35" y="64" width="70" height="24" as="geometry" />
+        </mxCell>
+        <mxCell id="pill2" value="Enrolado" style="rounded=1;arcSize=50;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#000000;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="205" y="64" width="70" height="24" as="geometry" />
+        </mxCell>
+        <mxCell id="pill3" value="Sensor activo" style="rounded=1;arcSize=50;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#000000;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="365" y="64" width="80" height="24" as="geometry" />
+        </mxCell>
+
+        <mxCell id="btn1" value="Registrar persona" style="rounded=1;arcSize=8;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#000000;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="35" y="110" width="190" height="33" as="geometry" />
+        </mxCell>
+        <mxCell id="btn2" value="Ver asistencias" style="rounded=1;arcSize=8;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#000000;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="255" y="110" width="190" height="33" as="geometry" />
+        </mxCell>
+
+        <mxCell id="btn3" value="Gestionar turnos" style="rounded=1;arcSize=8;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#000000;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="35" y="155" width="190" height="33" as="geometry" />
+        </mxCell>
+        <mxCell id="btn4" value="Ver personas" style="rounded=1;arcSize=8;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#000000;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="255" y="155" width="190" height="33" as="geometry" />
+        </mxCell>
+
+        <mxCell id="btn5" value="Asignaciones" style="rounded=1;arcSize=8;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#000000;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="35" y="200" width="190" height="33" as="geometry" />
+        </mxCell>
+        <mxCell id="btn6" value="Config. Wi-Fi" style="rounded=1;arcSize=8;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#000000;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="255" y="200" width="190" height="33" as="geometry" />
+        </mxCell>
+
+        <mxCell id="btn7" value="Sincronizar" style="rounded=1;arcSize=8;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#000000;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="35" y="239" width="190" height="33" as="geometry" />
+        </mxCell>
+        <mxCell id="btn8" value="Logs / Limpiar" style="rounded=1;arcSize=8;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#000000;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="255" y="239" width="190" height="33" as="geometry" />
+        </mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

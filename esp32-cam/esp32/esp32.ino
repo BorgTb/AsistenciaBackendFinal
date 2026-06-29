@@ -1200,7 +1200,7 @@ String procesarAsistencia(String personaId, String metodo, String rutBusqueda) {
       lenSec = 2;
     }
 
-    DynamicJsonDocument docA(16384);
+    DynamicJsonDocument docA(32768);
     JsonArray asist = loadArray("/asistencias.json", docA);
     
     String ultimoTipo = "";
@@ -1227,7 +1227,7 @@ String procesarAsistencia(String personaId, String metodo, String rutBusqueda) {
     }
   }
 
-  DynamicJsonDocument docA(16384);
+  DynamicJsonDocument docA(32768);
   JsonArray asist = loadArray("/asistencias.json", docA);
 
   JsonObject a = asist.createNestedObject();
@@ -1573,7 +1573,7 @@ bool agregarFotoEnBackend(String personaId) {
 
 void sincronizarAsistencias() {
   if (!isCloudReady() || WiFi.status() != WL_CONNECTED) return;
-  DynamicJsonDocument doc(16384);
+  DynamicJsonDocument doc(32768);
   JsonArray asist = loadArray("/asistencias.json", doc);
 
   if (asist.size() == 0) {
@@ -1582,7 +1582,7 @@ void sincronizarAsistencias() {
   }
 
   // Construir array de pendientes (evitar problemas con iterador y borrado)
-  DynamicJsonDocument payload(16384);
+  DynamicJsonDocument payload(32768);
   JsonArray registros = payload.createNestedArray("registros");
   int pendientes = 0;
   for (JsonObject a : asist) {
@@ -1612,8 +1612,21 @@ void sincronizarAsistencias() {
 
   if (code == 200) {
     for (JsonObject a : asist) a["sincronizado"] = true;
+
+    // Purga: una vez confirmada la sincronizacion, los registros ya
+    // enviados al backend se eliminan del archivo local. El historial
+    // completo queda respaldado en el backend, por lo que el buffer en
+    // RAM solo necesita reservarse para los pendientes acumulados
+    // durante un periodo offline, no para el historico total.
+    int eliminados = 0;
+    for (int i = asist.size() - 1; i >= 0; i--) {
+      if (asist[i]["sincronizado"] | false) {
+        asist.remove(i);
+        eliminados++;
+      }
+    }
     saveArray("/asistencias.json", doc);
-    addLog("Asistencias enviadas al backend: " + String(pendientes));
+    addLog("Asistencias enviadas al backend: " + String(pendientes) + ", purgadas: " + String(eliminados));
   } else {
     addLog("Sync asistencias ERROR HTTP: " + String(code));
   }

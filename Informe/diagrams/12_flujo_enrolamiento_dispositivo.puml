@@ -1,0 +1,29 @@
+@startuml flujo_enrolamiento_dispositivo
+title Enrolamiento de dispositivo ESP32-CAM
+scale 2
+
+skinparam shadowing false
+skinparam ActivityBackgroundColor #F5F9FF
+skinparam ActivityBorderColor #2C5282
+
+start
+:Administrador genera PIN de 8 caracteres
+desde el panel web
+(POST /api/dispositivos/generar-pin);
+:Ingresar PIN en la interfaz web
+embebida del ESP32-CAM;
+:Dispositivo envía PIN y MAC address
+al backend;
+if (¿PIN válido y no usado?) then (sí)
+  #C8E6C9:Marcar dispositivo como enrolado
+  y asociarlo a la empresa correspondiente;
+  :Configurar credenciales Wi-Fi
+  desde la interfaz embebida;
+  #C8E6C9:Dispositivo queda operativo
+  y conectado a internet;
+else (no)
+  #FFCDD2:Rechazar enrolamiento
+  y solicitar un nuevo PIN;
+endif
+stop
+@enduml

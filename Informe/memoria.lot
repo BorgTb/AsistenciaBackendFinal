@@ -3,20 +3,28 @@
 \addvspace {10\p@ }
 \addvspace {10\p@ }
 \addvspace {10\p@ }
-\contentsline {table}{\numberline {3.1}{\ignorespaces Plan de trabajo del proyecto: 8 iteraciones de 3 semanas cada una (24 semanas total)}}{30}{}%
-\contentsline {table}{\numberline {3.2}{\ignorespaces Cuestionario SUS estándar (Brooke, 1996) - Traducción al español}}{33}{}%
-\contentsline {table}{\numberline {3.3}{\ignorespaces Resultados esperados de las pruebas de integración}}{36}{}%
-\contentsline {table}{\numberline {3.4}{\ignorespaces Resultados esperados de las pruebas de usabilidad (SUS)}}{36}{}%
-\contentsline {table}{\numberline {3.5}{\ignorespaces Resultados esperados de las pruebas de confiabilidad y disponibilidad}}{37}{}%
-\contentsline {table}{\numberline {3.6}{\ignorespaces Resultados esperados de las pruebas de caja negra}}{38}{}%
-\contentsline {table}{\numberline {3.7}{\ignorespaces Resultados esperados de las pruebas unitarias automatizadas}}{38}{}%
+\contentsline {table}{\numberline {3.1}{\ignorespaces Plan de trabajo del proyecto: 8 iteraciones de 3 semanas cada una (24 semanas total). El ``Peso'' refleja la complejidad relativa estimada de cada iteración y el ``Avance'' es la suma acumulada de los pesos.}}{30}{}%
+\contentsline {table}{\numberline {3.2}{\ignorespaces Cuestionario SUS estándar (Brooke, 1996), traducción al español.}}{33}{}%
+\contentsline {table}{\numberline {3.3}{\ignorespaces Resultados esperados de las pruebas de integración.}}{36}{}%
+\contentsline {table}{\numberline {3.4}{\ignorespaces Resultados esperados de las pruebas de usabilidad (SUS).}}{36}{}%
+\contentsline {table}{\numberline {3.5}{\ignorespaces Resultados esperados de las pruebas de confiabilidad y disponibilidad.}}{37}{}%
+\contentsline {table}{\numberline {3.6}{\ignorespaces Resultados esperados de las pruebas de caja negra.}}{38}{}%
 \addvspace {10\p@ }
 \addvspace {10\p@ }
-\contentsline {table}{\numberline {5.1}{\ignorespaces Desglose de costos del prototipo (pendiente de completar con precios de mercado)}}{115}{}%
-\contentsline {table}{\numberline {5.2}{\ignorespaces Resultados de encuesta SUS - usuarios no técnicos (pendiente de aplicar encuestas)}}{116}{}%
-\contentsline {table}{\numberline {5.3}{\ignorespaces Resultados de encuesta SUS - usuarios técnicos (pendiente de aplicar encuestas)}}{117}{}%
-\contentsline {table}{\numberline {5.4}{\ignorespaces Tiempos de respuesta del ciclo de marcación facial (pendiente de medir)}}{118}{}%
-\contentsline {table}{\numberline {5.5}{\ignorespaces Métricas de precisión del reconocimiento facial (pendiente de evaluar)}}{118}{}%
-\contentsline {table}{\numberline {5.6}{\ignorespaces Resultados de pruebas de estrés offline (pendiente de ejecutar)}}{119}{}%
+\contentsline {table}{\numberline {5.1}{\ignorespaces Desglose de costos del prototipo.}}{123}{}%
+\contentsline {table}{\numberline {5.2}{\ignorespaces Resultados de encuesta SUS, usuarios no técnicos (n=6).}}{124}{}%
+\contentsline {table}{\numberline {5.3}{\ignorespaces Resultados de encuesta SUS, usuarios técnicos (n=3).}}{125}{}%
+\contentsline {table}{\numberline {5.4}{\ignorespaces Tiempos de respuesta del ciclo de marcación facial.}}{126}{}%
+\contentsline {table}{\numberline {5.5}{\ignorespaces Métricas de precisión del reconocimiento facial.}}{126}{}%
+\contentsline {table}{\numberline {5.6}{\ignorespaces Comparación empírica de detectores faciales sobre el mismo conjunto de imágenes de prueba.}}{127}{}%
+\contentsline {table}{\numberline {5.7}{\ignorespaces Efecto de la caché de embeddings en memoria sobre el tiempo de identificación.}}{127}{}%
+\contentsline {table}{\numberline {5.8}{\ignorespaces Resultados de pruebas de estrés offline ante variaciones de conectividad.}}{129}{}%
+\contentsline {table}{\numberline {5.9}{\ignorespaces Resultados de pruebas de estrés offline ante fallas de sincronización y de backend}}{129}{}%
 \addvspace {10\p@ }
-\addvspace {10\p@ }
+\contentsline {table}{\numberline {6.1}{Endpoints de la API REST del backend.}}{148}{}%
+\contentsline {table}{\numberline {6.2}{Tópicos MQTT utilizados en la comunicación ESP32-CAM \(\leftrightarrow \) backend.}}{149}{}%
+\contentsline {table}{\numberline {6.3}{\ignorespaces Casos de prueba de la suite automatizada por archivo y módulo cubierto.}}{156}{}%
+\contentsline {table}{\numberline {6.4}{\ignorespaces Resultados de la ejecución completa de la suite ampliada, con PostgreSQL (Docker) activo.}}{157}{}%
+\contentsline {table}{\numberline {6.5}{\ignorespaces Cobertura de código por módulo del backend tras la ampliación de la suite (solo código de producción).}}{157}{}%
+\contentsline {table}{\numberline {6.6}{\ignorespaces Respuestas individuales SUS, usuarios no técnicos (n=6).}}{162}{}%
+\contentsline {table}{\numberline {6.7}{\ignorespaces Respuestas individuales SUS, usuarios técnicos (n=3).}}{163}{}%

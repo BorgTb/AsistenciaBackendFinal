@@ -1,0 +1,75 @@
+<mxfile host="app.diagrams.net">
+  <diagram name="Turnos" id="turnos-1">
+    <mxGraphModel dx="800" dy="600" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="500" pageHeight="290" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        <mxCell id="frame" value="" style="rounded=1;arcSize=4;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#000000;" vertex="1" parent="1">
+          <mxGeometry x="20" y="20" width="440" height="240" as="geometry" />
+        </mxCell>
+
+        <mxCell id="title" value="Turnos" style="text;html=1;align=center;verticalAlign=middle;fontStyle=1;fontSize=14;" vertex="1" parent="1">
+          <mxGeometry x="20" y="20" width="440" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="sep1" value="" style="endArrow=none;html=1;strokeColor=#000000;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="20" y="53" as="sourcePoint" />
+            <mxPoint x="460" y="53" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+
+        <mxCell id="head" value="Nombre" style="text;html=1;align=left;verticalAlign=middle;fontStyle=1;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="38" y="63" width="180" height="24" as="geometry" />
+        </mxCell>
+        <mxCell id="head2" value="Inicio" style="text;html=1;align=left;verticalAlign=middle;fontStyle=1;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="248" y="63" width="100" height="24" as="geometry" />
+        </mxCell>
+        <mxCell id="head3" value="Fin" style="text;html=1;align=left;verticalAlign=middle;fontStyle=1;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="368" y="63" width="80" height="24" as="geometry" />
+        </mxCell>
+        <mxCell id="sep2" value="" style="endArrow=none;html=1;strokeColor=#000000;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="38" y="89" as="sourcePoint" />
+            <mxPoint x="442" y="89" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+
+        <mxCell id="row1a" value="Turno ma&#241;ana" style="text;html=1;align=left;verticalAlign=middle;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="38" y="94" width="180" height="22" as="geometry" />
+        </mxCell>
+        <mxCell id="row1b" value="08:00" style="text;html=1;align=left;verticalAlign=middle;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="248" y="94" width="100" height="22" as="geometry" />
+        </mxCell>
+        <mxCell id="row1c" value="14:00" style="text;html=1;align=left;verticalAlign=middle;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="368" y="94" width="80" height="22" as="geometry" />
+        </mxCell>
+
+        <mxCell id="row2a" value="Turno tarde" style="text;html=1;align=left;verticalAlign=middle;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="38" y="118" width="180" height="22" as="geometry" />
+        </mxCell>
+        <mxCell id="row2b" value="14:00" style="text;html=1;align=left;verticalAlign=middle;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="248" y="118" width="100" height="22" as="geometry" />
+        </mxCell>
+        <mxCell id="row2c" value="20:00" style="text;html=1;align=left;verticalAlign=middle;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="368" y="118" width="80" height="22" as="geometry" />
+        </mxCell>
+
+        <mxCell id="row3a" value="..." style="text;html=1;align=left;verticalAlign=middle;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="38" y="142" width="180" height="22" as="geometry" />
+        </mxCell>
+        <mxCell id="row3b" value="..." style="text;html=1;align=left;verticalAlign=middle;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="248" y="142" width="100" height="22" as="geometry" />
+        </mxCell>
+        <mxCell id="row3c" value="..." style="text;html=1;align=left;verticalAlign=middle;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="368" y="142" width="80" height="22" as="geometry" />
+        </mxCell>
+
+        <mxCell id="btn1" value="Crear nuevo turno" style="rounded=1;arcSize=8;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#000000;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="140" y="195" width="240" height="33" as="geometry" />
+        </mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

@@ -168,7 +168,7 @@ def reasignar_dispositivo(dispositivo_id):
     conn = get_connection()
     cur = conn.cursor()
     try:
-        cur.execute("SELECT id, nombre, empresa_id, e.nombre as empresa_nombre FROM dispositivos d JOIN empresas e ON e.id = d.empresa_id WHERE d.id::text = %s", (str(dispositivo_id),))
+        cur.execute("SELECT d.id, d.nombre, d.empresa_id, e.nombre as empresa_nombre FROM dispositivos d JOIN empresas e ON e.id = d.empresa_id WHERE d.id::text = %s", (str(dispositivo_id),))
         row = cur.fetchone()
         if not row:
             return jsonify({'error': 'Dispositivo no encontrado'}), 404

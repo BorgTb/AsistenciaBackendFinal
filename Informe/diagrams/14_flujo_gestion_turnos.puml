@@ -1,0 +1,25 @@
+@startuml flujo_gestion_turnos
+title Gestión de turnos y asignación a personas
+scale 2
+
+skinparam shadowing false
+skinparam ActivityBackgroundColor #F5F9FF
+skinparam ActivityBorderColor #2C5282
+
+start
+:Administrador crea un turno
+(horario de entrada y salida)
+desde el panel web;
+:Seleccionar persona(s) registrada(s)
+para asignar el turno;
+if (¿Persona ya tiene un turno\nasignado en ese horario?) then (sí)
+  #FFCDD2:Rechazar asignación
+  por conflicto de horario;
+else (no)
+  #C8E6C9:Confirmar asignación
+  y persistir en la base de datos;
+  :Turno queda disponible
+  para validación al marcar asistencia;
+endif
+stop
+@enduml

@@ -6,6 +6,7 @@
 % =====================================================================
 \begin{figure}[H]
 \centering
+\resizebox{\textwidth}{!}{%
 \begin{tikzpicture}[
   node distance=1.1cm and 1.3cm,
   every node/.style={font=\small},
@@ -32,11 +33,11 @@
 \node[db,     right=of fernet]   (dbn)    {PostgreSQL\\\scriptsize{TEXT (base64)}};
 
 % --- Fila inferior: descifrado ---
-\node[crypto, below=1.7cm of fernet] (dcif)    {\texttt{descifrar\_embedding()}};
+\node[crypto, below=3.0cm of fernet] (dcif)    {\texttt{descifrar\_embedding()}};
 \node[box,    left=of dcif]          (compare) {Comparación\\\scriptsize{DeepFace.verify}};
 
 % --- Fallback ---
-\node[fallback, below=0.7cm of dbn] (legacy) {Fallback legacy\\\scriptsize{embedding sin cifrar}};
+\node[fallback, below=1.0cm of dbn, xshift=2.0cm] (legacy) {Fallback legacy\\\scriptsize{embedding sin cifrar}};
 
 % --- Flechas principales ---
 \draw[arrow] (emb)    -- (cif);
@@ -46,14 +47,15 @@
 \draw[arrow] (dcif)   -- (compare);
 
 % --- Camino fallback ---
-\draw[darrow] (legacy.west) -| ([xshift=-0.3cm]dcif.south)
-              node[pos=0.75, below, font=\scriptsize] {parse directo};
+\draw[darrow] (legacy.south) |- ([xshift=0.6cm]dcif.east)
+              node[pos=0.25, right, font=\scriptsize] {parse directo};
 
 % --- Etiquetas ---
 \node[lbl, above=0.1cm of cif] {clave Fernet (\texttt{.env})};
-\node[lbl, above=0.1cm of dcif] {misma clave (rotable)};
+\node[lbl, above=0.6cm of dcif] {misma clave (rotable)};
 
-\end{tikzpicture}
-\caption[Pipeline de cifrado biométrico]{Pipeline de cifrado biométrico — Fernet (AES-128-CBC + HMAC-SHA256) con fallback para embeddings legacy almacenados sin cifrar.}
+\end{tikzpicture}%
+}
+\caption[Pipeline de cifrado biométrico]{Pipeline de cifrado biométrico con Fernet (AES-\allowbreak 128-\allowbreak CBC + HMAC-\allowbreak SHA256), con fallback para embeddings legacy almacenados sin cifrar.}
 \label{fig:pipeline_cifrado_biometrico}
 \end{figure}

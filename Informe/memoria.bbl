@@ -1,3 +1,449 @@
-\begin{thebibliography}{}
+\begin{thebibliography}{10}
+
+\bibitem{adafruit_fingerprint}
+{Adafruit Industries}.
+\newblock Adafruit fingerprint sensor library.
+\newblock
+  \url{https://github.com/adafruit/Adafruit-Fingerprint-Sensor-Library}, 2025.
+
+\bibitem{aws_restapi}
+{Amazon Inc.}
+\newblock What is a restful api?
+\newblock \url{https://aws.amazon.com/what-is/restful-api}, 2025.
+
+\bibitem{aws_mqtt}
+{Amazon Web Services}.
+\newblock ¿qué es mqtt? explicación del protocolo mqtt.
+\newblock \url{https://aws.amazon.com/es/what-is/mqtt}.
+\newblock Recuperado el 6 de octubre de 2025.
+
+\bibitem{aws_api}
+{Amazon Web Services}.
+\newblock ¿qué es una api? explicación de qué es una interfaz de
+  programación de aplicaciones.
+\newblock \url{https://aws.amazon.com/es/what-is/api}.
+\newblock Recuperado el 9 de noviembre de 2025.
+
+\bibitem{atlassian_reliability}
+{Atlassian}.
+\newblock Reliability vs. availability: Key metrics for system performance.
+\newblock
+  \url{https://www.atlassian.com/incident-management/kpis/reliability-vs-availability}.
+\newblock Recuperado el 11 de noviembre de 2025.
+
+\bibitem{bangor2008}
+A.~Bangor, P.~T. Kortum, and J.~T. Miller.
+\newblock An empirical evaluation of the system usability scale.
+\newblock {\em International Journal of Human-Computer Interaction},
+  24(6):574--594, 2008.
+
+\bibitem{geovictoria_erp}
+A.~Bernal.
+\newblock Control de asistencia integrado con erp: Beneficios para empresas.
+\newblock GeoVictoria,
+  \url{https://www.geovictoria.com/es-cl/blog/control-de-asistencia-integrado-con-ERP-beneficios-para-empresas},
+  2025.
+
+\bibitem{arduinojson_docs}
+B.~Blanchon.
+\newblock Arduinojson documentation.
+\newblock \url{https://arduinojson.org/}, 2025.
+
+\bibitem{brooke1996}
+J.~Brooke.
+\newblock Sus: A `quick and dirty' usability scale.
+\newblock In P.~W. Jordan et~al., editors, {\em Usability Evaluation in
+  Industry}, pages 189--194. Taylor \& Francis, 1996.
+
+\bibitem{buk_asistencia}
+{Buk}.
+\newblock Control de asistencia: Gestiona tiempos y alertas.
+\newblock
+  \url{https://www.buk.cl/productos/administracion/control-de-asistencia}.
+\newblock Recuperado el 26 de octubre de 2025.
+
+\bibitem{buolamwini2018_gendershades}
+Joy Buolamwini and Timnit Gebru.
+\newblock Gender shades: Intersectional accuracy disparities in commercial
+  gender classification.
+\newblock In {\em Proceedings of the 1st Conference on Fairness, Accountability
+  and Transparency (FAT*)}, pages 77--91, 2018.
+
+\bibitem{chung2010_dutycycling}
+Yun~Won Chung and Ho~Young Hwang.
+\newblock Modeling and analysis of energy conservation scheme based on duty
+  cycling in wireless ad hoc sensor network.
+\newblock {\em Sensors}, 10(6):5569--5586, 2010.
+
+\bibitem{defontana_software}
+{Defontana}.
+\newblock Software y sistema erp.
+\newblock \url{https://www.defontana.com/cl}.
+\newblock Recuperado el 18 de noviembre de 2025.
+
+\bibitem{defontana_resolucion38}
+{Defontana Chile}.
+\newblock ¿qué es la resolución exenta n.º 38 en la gestión de personas?
+\newblock Defontana Blog,
+  \url{https://www.defontana.com/blog/cl/que-es-la-resolucion-exenta-38-en-la-gestion-de-personas},
+  2024.
+
+\bibitem{deng2019_retinaface}
+J.~Deng, J.~Guo, Y.~Zhou, J.~Yu, I.~Kotsia, and S.~Zafeiriou.
+\newblock Retinaface: Single-stage dense face localisation in the wild.
+\newblock arXiv:1905.00641, \url{https://arxiv.org/abs/1905.00641}, 2019.
+
+\bibitem{docker_contenedor}
+{Docker Inc.}
+\newblock ¿qué es un contenedor?
+\newblock \url{https://www.docker.com/resources/what-container}.
+\newblock Recuperado el 21 de octubre de 2025.
+
+\bibitem{atlassian_scrum}
+C.~Drumond.
+\newblock Scrum: Qué es, cómo funciona y cómo empezar.
+\newblock Atlassian, \url{https://www.atlassian.com/es/agile/scrum}.
+\newblock Recuperado el 3 de noviembre de 2025.
+
+\bibitem{mosquitto_docs}
+{Eclipse Foundation}.
+\newblock Eclipse mosquitto: An open source mqtt broker.
+\newblock \url{https://mosquitto.org/}, 2025.
+
+\bibitem{emqx_mqttbroker}
+{EMQX Technologies}.
+\newblock The ultimate guide to mqtt brokers.
+\newblock
+  \url{https://www.emqx.com/en/blog/the-ultimate-guide-to-mqtt-broker-comparison},
+  2025.
+
+\bibitem{oracle_json}
+J.~Erickson.
+\newblock ¿qué es json?
+\newblock Oracle América Latina,
+  \url{https://www.oracle.com/latam/database/what-is-json}, 2024.
+
+\bibitem{espressif_spiffs}
+{Espressif Systems}.
+\newblock Spiffs - spi flash file system.
+\newblock
+  \url{https://docs.espressif.com/projects/esp-idf/en/stable/esp32/api-reference/storage/spiffs.html},
+  2025.
+
+\bibitem{nubox_relojcontrol}
+A.~Fernández.
+\newblock Reloj control: Qué es, para qué sirve y qué debes tener en cuenta.
+\newblock Nubox Blog, \url{https://blog.nubox.com/empresas/reloj-control},
+  2025.
+
+\bibitem{freitag2021_ict_climate}
+Charlotte Freitag, Mike Berners-Lee, Kelly Widdicks, Bran Knowles, Gordon~S.
+  Blair, and Adrian Friday.
+\newblock The real climate and transformative impact of ict: A critique of
+  estimates, trends, and regulations.
+\newblock {\em Patterns}, 2(9):100340, 2021.
+
+\bibitem{garciamartin2019_mlenergy}
+Eva García-Martín, Crefeda~Faviola Rodrigues, Graham Riley, and Håkan Grahn.
+\newblock Estimation of energy consumption in machine learning.
+\newblock In {\em Journal of Parallel and Distributed Computing}, volume 134,
+  pages 75--88, 2019.
+
+\bibitem{geeksforgeeks_incremental}
+{GeeksforGeeks}.
+\newblock Modelo de procesos incrementales - ingeniería de software.
+\newblock
+  \url{https://www.geeksforgeeks.org/software-engineering/software-engineering-incremental-process-model},
+  2025.
+\newblock 11 de julio.
+
+\bibitem{geovictoria_dispositivos}
+{GeoVictoria}.
+\newblock Dispositivos geovictoria.
+\newblock \url{https://info.geovictoria.com/es-co/dispositivos}.
+\newblock Recuperado el 12 de octubre de 2025.
+
+\bibitem{gsf_sci}
+{Green Software Foundation}.
+\newblock Software carbon intensity (sci) specification.
+\newblock
+  \url{https://greensoftware.foundation/articles/software-carbon-intensity-sci-specification},
+  2024.
+\newblock Especificación abierta de la GSF en la que se basa el estándar
+  ISO/IEC 21031:2024 (de acceso pago).
+
+\bibitem{ibm_integrationtesting}
+{IBM Corporation}.
+\newblock ¿qué son las pruebas de integración?
+\newblock IBM Think,
+  \url{https://www.ibm.com/es-es/think/topics/integration-testing}, 2025.
+
+\bibitem{iso9241}
+{International Organization for Standardization}.
+\newblock Iso 9241-11: Ergonomics of human-system interaction -- part 11:
+  Usability: Definitions and concepts, 2018.
+
+\bibitem{ionos_frontend}
+{IONOS}.
+\newblock ¿qué es un frontend? definición y explicación.
+\newblock
+  \url{https://www.ionos.com/es-us/digitalguide/paginas-web/creacion-de-paginas-web/que-es-el-frontend}.
+\newblock Recuperado el 28 de octubre de 2025.
+
+\bibitem{kaspersky_biometria}
+{Kaspersky Lab}.
+\newblock ¿qué es la biometría? definición y tipos.
+\newblock
+  \url{https://latam.kaspersky.com/resource-center/definitions/biometrics},
+  2025.
+
+\bibitem{hubspot_backend}
+A.~Ken.
+\newblock Backend: ¿qué es y para qué sirve?
+\newblock \url{https://blog.hubspot.es/website/backend}, 2023.
+
+\bibitem{lastminuteengineers_esp32cam}
+{Last Minute Engineers}.
+\newblock Empezando con esp32-cam: Guía para principiantes.
+\newblock \url{https://lastminuteengineers.com/getting-started-with-ESP32-CAM}.
+\newblock Recuperado el 19 de octubre de 2025.
+
+\bibitem{lastminuteengineers_hcsr501}
+{Last Minute Engineers}.
+\newblock Interfacing hc-sr501 pir motion sensor with arduino.
+\newblock \url{https://lastminuteengineers.com/pir-sensor-arduino-tutorial},
+  2025.
+
+\bibitem{genaiimpact_ecologits}
+Alexandra~Sasha Luccioni, Sylvain Viguier, and Anne-Laure Ligozat.
+\newblock Estimating the carbon footprint of bloom, a 176b parameter language
+  model.
+\newblock {\em Journal of Machine Learning Research}, 24(253):1--15, 2023.
+\newblock Referencia empírica adoptada por el framework EcoLogits.
+
+\bibitem{masanet2020_datacenters}
+Eric Masanet, Arman Shehabi, Nuoa Lei, Sarah Smith, and Jonathan Koomey.
+\newblock Recalibrating global data center energy-use estimates.
+\newblock {\em Science}, 367(6481):984--986, 2020.
+
+\bibitem{mdn_http}
+{MDN Web Docs}.
+\newblock Generalidades del protocolo http.
+\newblock \url{https://developer.mozilla.org/es/docs/Web/HTTP/Guides/Overview}.
+\newblock Recuperado el 30 de octubre de 2025.
+
+\bibitem{microsoft_multitenant}
+{Microsoft}.
+\newblock Arquitectura de aplicaciones multiempresa (multi-tenant).
+\newblock Microsoft Learn,
+  \url{https://learn.microsoft.com/es-es/azure/architecture/guide/multitenant/overview},
+  2025.
+
+\bibitem{microsoft_iot}
+{Microsoft}.
+\newblock Introducción a internet de las cosas (iot) de azure.
+\newblock Microsoft Learn,
+  \url{https://learn.microsoft.com/es-es/azure/iot/iot-introduction}, 2025.
+\newblock 10 de julio.
+
+\bibitem{dt_resolucion38}
+{Ministerio del Trabajo y Previsión Social, Subsecretaría del Trabajo,
+  Dirección del Trabajo}.
+\newblock Resolución 38 exenta: Establece requisitos obligatorios y
+  procedimiento de autorización para los sistemas electrónicos de registro y
+  control de la asistencia y determinación de las horas de trabajo (modificada
+  por resolución 9453 exenta).
+\newblock Biblioteca del Congreso Nacional de Chile,
+  \url{https://www.bcn.cl/leychile/navegar?idNorma=1203415&idParte=10499950&idVersion=2025-04-25},
+  2025.
+\newblock Consultado el 25 de abril de 2025.
+
+\bibitem{myers2004}
+Glenford~J. Myers, Corey Sandler, and Tom Badgett.
+\newblock {\em The Art of Software Testing}.
+\newblock John Wiley \& Sons, 2 edition, 2004.
+
+\bibitem{nielsen1993}
+J.~Nielsen.
+\newblock {\em Usability Engineering}.
+\newblock Morgan Kaufmann, 1993.
+
+\bibitem{okken2021}
+Brian Okken.
+\newblock {\em Python Testing with pytest: Simple, Rapid, Effective, and
+  Scalable}.
+\newblock The Pragmatic Programmers, 2 edition, 2021.
+
+\bibitem{opencv_docs}
+{OpenCV Team}.
+\newblock Opencv documentation.
+\newblock \url{https://docs.opencv.org/}, 2025.
+
+\bibitem{ubidots_esp32cam}
+S.~Pachon~Robayo.
+\newblock Monitoreo de transmisión de video en vivo utilizando esp32-cam y
+  ubidots.
+\newblock Ubidots Centro de Ayuda,
+  \url{https://help.ubidots.com/es/articles/7156830-monitoreo-de-transmision-de-video-en-vivo-utilizando-ESP32-CAM-y-ubidots}.
+\newblock Recuperado el 17 de octubre de 2025.
+
+\bibitem{paessler_mqtt}
+{Paessler GmbH}.
+\newblock ¿qué es mqtt? - it explained.
+\newblock \url{https://www.paessler.com/es/it-explained/mqtt}.
+\newblock Recuperado el 2 de noviembre de 2025.
+
+\bibitem{flask_docs}
+{Pallets Projects}.
+\newblock Flask documentation.
+\newblock \url{https://flask.palletsprojects.com}, 2025.
+
+\bibitem{pech2000_laplacian}
+J.~L. Pech-Pacheco, G.~Cristobal, J.~Chamorro-Martinez, and
+  J.~Fernandez-Valdivia.
+\newblock Diatom autofocusing in brightfield microscopy: A comparative study.
+\newblock {\em Proceedings 15th International Conference on Pattern Recognition
+  (ICPR-2000)}, 3:314--317, 2000.
+
+\bibitem{perry2006}
+W.~E. Perry.
+\newblock {\em Effective Methods for Software Testing}.
+\newblock Wiley, 3 edition, 2006.
+
+\bibitem{postgresql_docs}
+{PostgreSQL Global Development Group}.
+\newblock Postgresql documentation.
+\newblock \url{https://www.postgresql.org/docs/}, 2025.
+
+\bibitem{pressman2021}
+R.~S. Pressman and B.~R. Maxim.
+\newblock {\em Ingeniería de software: Un enfoque práctico}.
+\newblock McGraw-Hill Interamericana, 9 edition, 2021.
+
+\bibitem{pressman2015}
+Roger~S. Pressman and Bruce~R. Maxim.
+\newblock {\em Software Engineering: A Practitioner's Approach}.
+\newblock McGraw-Hill Education, 8 edition, 2015.
+
+\bibitem{psycopg2_docs}
+{psycopg Team}.
+\newblock psycopg2: Postgresql database adapter for python.
+\newblock \url{https://www.psycopg.org/docs/}, 2025.
+
+\bibitem{pyjwt_docs}
+{PyJWT Contributors}.
+\newblock Pyjwt documentation.
+\newblock \url{https://pyjwt.readthedocs.io}, 2025.
+
+\bibitem{bcrypt_pypi}
+{Python Cryptographic Authority}.
+\newblock bcrypt: Modern password hashing for your software and your servers.
+\newblock \url{https://pypi.org/project/bcrypt/}, 2025.
+
+\bibitem{cryptography_docs}
+{Python Cryptographic Authority}.
+\newblock cryptography: Fernet symmetric encryption.
+\newblock \url{https://cryptography.io/en/latest/fernet/}, 2025.
+
+\bibitem{redhat_microservicios}
+{Red Hat Inc.}
+\newblock ¿qué son los microservicios?
+\newblock \url{https://www.redhat.com/es/topics/microservices}, 2025.
+
+\bibitem{apd_erp}
+{Redacción APD}.
+\newblock Qué es un software erp y para qué sirve: Ventajas y desventajas.
+\newblock APD, \url{https://www.apd.es/ventajas-y-desventajas-sistema-ERP},
+  2025.
+
+\bibitem{schroff2015_facenet}
+F.~Schroff, D.~Kalenichenko, and J.~Philbin.
+\newblock Facenet: A unified embedding for face recognition and clustering.
+\newblock arXiv:1503.03832, \url{https://arxiv.org/abs/1503.03832}, 2015.
+
+\bibitem{schwartz2020_greenai}
+Roy Schwartz, Jesse Dodge, Noah~A. Smith, and Oren Etzioni.
+\newblock Green ai.
+\newblock Communications of the ACM, vol. 63, no. 12, pp. 54--63,
+  \url{https://doi.org/10.1145/3381831}, 2020.
+
+\bibitem{serengil_deepface}
+S.~I. Serengil and A.~Ozpinar.
+\newblock Deepface: A lightweight face recognition and facial attribute
+  analysis framework for python.
+\newblock \url{https://github.com/serengil/deepface}, 2024.
+
+\bibitem{softland_chile}
+{Softland Inversiones S.L.}
+\newblock Softland chile: Sistema erp, contable y de administración.
+\newblock \url{https://www.softland.cl}.
+\newblock Recuperado el 9 de octubre de 2025.
+
+\bibitem{strubell2019_energypolicy}
+Emma Strubell, Ananya Ganesh, and Andrew McCallum.
+\newblock Energy and policy considerations for deep learning in nlp.
+\newblock In {\em Proceedings of the 57th Annual Meeting of the Association for
+  Computational Linguistics (ACL)}, pages 3645--3650, 2019.
+
+\bibitem{zenarmor_dbserver}
+{Sunny Valley Cyber Security Inc.}
+\newblock Definición, tipos y ejemplos de servidor de base de datos.
+\newblock Zenarmor,
+  \url{https://www.zenarmor.com/docs/network-basics/what-is-database-server},
+  2025.
+
+\bibitem{talana_software}
+{Talana}.
+\newblock Software de asistencia de personal en chile.
+\newblock \url{https://web.talana.com/software-de-asistencia-de-personal}.
+\newblock Recuperado el 7 de noviembre de 2025.
+
+\bibitem{teachict_prototipado}
+{Teach-ICT}.
+\newblock Prototipado evolutivo.
+\newblock
+  \url{https://www.teach-ict.com/as_a2_ict_new/ocr/A2_G063/331_systems_cycle/prototyping_RAD/miniweb/pg3.htm}.
+\newblock Recuperado el 22 de octubre de 2025.
+
+\bibitem{thegreenwebfoundation_check}
+{The Green Web Foundation}.
+\newblock The green web check api.
+\newblock \url{https://www.thegreenwebfoundation.org/green-web-check/}, 2024.
+
+\bibitem{thoughtworks_ccf}
+{Thoughtworks}.
+\newblock Cloud carbon footprint: Tool for measuring energy and carbon
+  emissions.
+\newblock \url{https://www.cloudcarbonfootprint.org/}, 2024.
+
+\bibitem{uelectronics_as608}
+{UNIT Electronics}.
+\newblock Cómo utilizar el lector de huella dactilar as608.
+\newblock
+  \url{https://blog.uelectronics.com/tarjetas-desarrollo/como-utilizar-el-lector-de-huella-dactilar-AS608}.
+\newblock Recuperado el 22 de noviembre de 2025.
+
+\bibitem{nextjs_docs}
+{Vercel Inc.}
+\newblock Next.js documentation.
+\newblock \url{https://nextjs.org/docs}, 2025.
+
+\bibitem{w3c_wcag21}
+{World Wide Web Consortium (W3C)}.
+\newblock Web content accessibility guidelines (wcag) 2.1.
+\newblock \url{https://www.w3.org/TR/WCAG21/}, 2018.
+
+\bibitem{zhang2016_mtcnn}
+K.~Zhang, Z.~Zhang, Z.~Li, and Y.~Qiao.
+\newblock Joint face detection and alignment using multi-task cascaded
+  convolutional networks.
+\newblock arXiv:1604.02878, \url{https://arxiv.org/abs/1604.02878}, 2016.
+
+\bibitem{zkteco_tiempoasistencia}
+{ZKTeco Latinoamérica}.
+\newblock Tiempo y asistencia.
+\newblock
+  \url{https://zktecolatinoamerica.com/categoria-producto/tiempo-y-asistencia}.
+\newblock Recuperado el 5 de noviembre de 2025.
 
 \end{thebibliography}

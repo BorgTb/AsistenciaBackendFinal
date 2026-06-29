@@ -1,0 +1,63 @@
+<mxfile host="app.diagrams.net">
+  <diagram name="Asignacion de turnos" id="asignacion-1">
+    <mxGraphModel dx="800" dy="600" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="500" pageHeight="330" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        <mxCell id="frame" value="" style="rounded=1;arcSize=4;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#000000;" vertex="1" parent="1">
+          <mxGeometry x="20" y="20" width="440" height="280" as="geometry" />
+        </mxCell>
+
+        <mxCell id="title" value="Asignaciones" style="text;html=1;align=center;verticalAlign=middle;fontStyle=1;fontSize=14;" vertex="1" parent="1">
+          <mxGeometry x="20" y="20" width="440" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="sep1" value="" style="endArrow=none;html=1;strokeColor=#000000;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="20" y="53" as="sourcePoint" />
+            <mxPoint x="460" y="53" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+
+        <mxCell id="lbl1" value="Persona:" style="text;html=1;align=left;verticalAlign=middle;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="38" y="63" width="90" height="27" as="geometry" />
+        </mxCell>
+        <mxCell id="fld1" value="(seleccionar)  &#9660;" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#000000;fontSize=11;align=left;spacingLeft=8;" vertex="1" parent="1">
+          <mxGeometry x="132" y="63" width="300" height="27" as="geometry" />
+        </mxCell>
+
+        <mxCell id="lbl2" value="Turno:" style="text;html=1;align=left;verticalAlign=middle;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="38" y="114" width="90" height="27" as="geometry" />
+        </mxCell>
+        <mxCell id="fld2" value="(seleccionar)  &#9660;" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#000000;fontSize=11;align=left;spacingLeft=8;" vertex="1" parent="1">
+          <mxGeometry x="132" y="114" width="300" height="27" as="geometry" />
+        </mxCell>
+
+        <mxCell id="btn1" value="Asignar" style="rounded=1;arcSize=8;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#000000;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="38" y="160" width="130" height="33" as="geometry" />
+        </mxCell>
+
+        <mxCell id="head1" value="Persona" style="text;html=1;align=left;verticalAlign=middle;fontStyle=1;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="38" y="215" width="180" height="24" as="geometry" />
+        </mxCell>
+        <mxCell id="head2" value="Turno asignado" style="text;html=1;align=left;verticalAlign=middle;fontStyle=1;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="248" y="215" width="180" height="24" as="geometry" />
+        </mxCell>
+        <mxCell id="sep2" value="" style="endArrow=none;html=1;strokeColor=#000000;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="38" y="241" as="sourcePoint" />
+            <mxPoint x="442" y="241" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+
+        <mxCell id="row1a" value="Juan P&#233;rez" style="text;html=1;align=left;verticalAlign=middle;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="38" y="246" width="180" height="22" as="geometry" />
+        </mxCell>
+        <mxCell id="row1b" value="Turno ma&#241;ana" style="text;html=1;align=left;verticalAlign=middle;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="248" y="246" width="180" height="22" as="geometry" />
+        </mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

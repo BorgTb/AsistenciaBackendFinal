@@ -3,47 +3,46 @@ Capacity: max_strings=200000, hash_size=200000, hash_prime=170003
 The top-level auxiliary file: memoria.aux
 Reallocating 'name_of_file' (item size: 1) to 6 items.
 The style file: plain.bst
-I found no \citation commands---while reading file memoria.aux
-I found no \bibdata command---while reading file memoria.aux
-You've used 0 entries,
+Reallocating 'name_of_file' (item size: 1) to 5 items.
+Database file #1: refs.bib
+You've used 73 entries,
             2118 wiz_defined-function locations,
-            496 strings with 3987 characters,
-and the built_in function-call counts, 18 in all, are:
-= -- 0
-> -- 0
-< -- 0
-+ -- 0
-- -- 0
-* -- 2
-:= -- 7
-add.period$ -- 0
-call.type$ -- 0
-change.case$ -- 0
+            849 strings with 16353 characters,
+and the built_in function-call counts, 18133 in all, are:
+= -- 1752
+> -- 741
+< -- 5
++ -- 308
+- -- 230
+* -- 772
+:= -- 3033
+add.period$ -- 242
+call.type$ -- 73
+change.case$ -- 332
 chr.to.int$ -- 0
-cite$ -- 0
-duplicate$ -- 0
-empty$ -- 1
-format.name$ -- 0
-if$ -- 1
+cite$ -- 73
+duplicate$ -- 628
+empty$ -- 1708
+format.name$ -- 230
+if$ -- 3932
 int.to.chr$ -- 0
-int.to.str$ -- 0
-missing$ -- 0
-newline$ -- 3
-num.names$ -- 0
-pop$ -- 0
+int.to.str$ -- 73
+missing$ -- 22
+newline$ -- 390
+num.names$ -- 148
+pop$ -- 615
 preamble$ -- 1
-purify$ -- 0
+purify$ -- 260
 quote$ -- 0
-skip$ -- 1
+skip$ -- 519
 stack$ -- 0
-substring$ -- 0
-swap$ -- 0
-text.length$ -- 0
+substring$ -- 630
+swap$ -- 111
+text.length$ -- 5
 text.prefix$ -- 0
 top$ -- 0
-type$ -- 0
+type$ -- 280
 warning$ -- 0
-while$ -- 0
-width$ -- 0
-write$ -- 2
-(There were 2 error messages)
+while$ -- 170
+width$ -- 75
+write$ -- 775
