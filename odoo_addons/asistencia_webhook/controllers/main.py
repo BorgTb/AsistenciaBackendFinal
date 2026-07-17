@@ -1,11 +1,19 @@
 import json
 import logging
-from datetime import datetime
+import re
+from datetime import datetime, timezone
 
 from odoo import http
 from odoo.http import request
 
 _logger = logging.getLogger(__name__)
+
+# Un offset ya presente termina en 'Z', '+HH:MM'/'-HH:MM' o '+HHMM'/'-HHMM'.
+# No basta con buscar '+': Chile es UTC-4 y siempre manda offset negativo.
+_OFFSET_RE = re.compile(r'(Z|[+-]\d{2}:?\d{2})$')
+# Odoo 17 corre sobre Python 3.10, cuyo fromisoformat exige los dos puntos:
+# acepta '-04:00' pero rechaza '-0400', que es lo que produce strftime('%z').
+_OFFSET_COMPACTO_RE = re.compile(r'([+-])(\d{2})(\d{2})$')
 
 
 class AsistenciaWebhookController(http.Controller):
@@ -40,11 +48,16 @@ class AsistenciaWebhookController(http.Controller):
         if not employee_id or not datetime_str:
             return {'ok': False, 'error': 'Faltan campos requeridos: employee_id, datetime'}
 
-        if not datetime_str.endswith('Z') and '+' not in datetime_str:
-            datetime_str += 'Z'
+        if datetime_str.endswith('Z'):
+            datetime_str = datetime_str[:-1] + '+00:00'
+        elif not _OFFSET_RE.search(datetime_str):
+            datetime_str += '+00:00'
+        else:
+            datetime_str = _OFFSET_COMPACTO_RE.sub(r'\1\2:\3', datetime_str)
 
         try:
-            dt = datetime.fromisoformat(datetime_str.replace('Z', '+00:00')).replace(tzinfo=None)
+            # hr.attendance almacena datetimes naive en UTC.
+            dt = datetime.fromisoformat(datetime_str).astimezone(timezone.utc).replace(tzinfo=None)
         except Exception as e:
             return {'ok': False, 'error': f'Formato de datetime invalido: {e}'}
 

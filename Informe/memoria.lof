@@ -3,45 +3,41 @@
 \addvspace {10\p@ }
 \addvspace {10\p@ }
 \addvspace {10\p@ }
-\contentsline {figure}{\numberline {3.1}{\ignorespaces Metodología prototipado evolutivo con enfoque incremental}}{29}{}%
+\contentsline {figure}{\numberline {3.1}{\ignorespaces Metodología prototipado evolutivo con enfoque incremental}}{32}{}%
 \addvspace {10\p@ }
-\contentsline {figure}{\numberline {4.1}{\ignorespaces Arquitectura física.}}{42}{}%
-\contentsline {figure}{\numberline {4.2}{\ignorespaces Arquitectura lógica.}}{43}{}%
-\contentsline {figure}{\numberline {4.3}{\ignorespaces Componentes del ESP32-CAM: hardware y firmware.}}{44}{}%
-\contentsline {figure}{\numberline {4.4}{\ignorespaces Mockup menú principal en el ESP32-CAM.}}{46}{}%
-\contentsline {figure}{\numberline {4.5}{\ignorespaces Mockup panel de configuración Wi-Fi.}}{46}{}%
-\contentsline {figure}{\numberline {4.6}{\ignorespaces Mockup registro de usuario en el ESP32-CAM.}}{47}{}%
-\contentsline {figure}{\numberline {4.7}{\ignorespaces Mockup de usuarios almacenados en el ESP32-CAM.}}{47}{}%
-\contentsline {figure}{\numberline {4.8}{\ignorespaces Mockup de visualización de turnos en el ESP32-CAM.}}{48}{}%
-\contentsline {figure}{\numberline {4.9}{\ignorespaces Mockup de creación de turnos en el ESP32-CAM.}}{48}{}%
-\contentsline {figure}{\numberline {4.10}{\ignorespaces Mockup de asignación de turnos en el ESP32-CAM.}}{49}{}%
-\contentsline {figure}{\numberline {4.11}{\ignorespaces Conexiones entre el ESP32-CAM y el lector de huellas AS608.}}{50}{}%
-\contentsline {figure}{\numberline {4.12}{\ignorespaces Menú principal del sistema web embebido.}}{53}{}%
-\contentsline {figure}{\numberline {4.13}{\ignorespaces Interfaz de configuración Wi-Fi.}}{54}{}%
-\contentsline {figure}{\numberline {4.14}{\ignorespaces Vista para el registro de personas en el dispositivo.}}{55}{}%
-\contentsline {figure}{\numberline {4.15}{\ignorespaces Vista de asistencias locales almacenadas en el dispositivo.}}{56}{}%
-\contentsline {figure}{\numberline {4.16}{\ignorespaces Vista de personas registradas en el dispositivo.}}{57}{}%
-\contentsline {figure}{\numberline {4.17}{\ignorespaces Vista de gestión y creación de turnos en el dispositivo.}}{58}{}%
-\contentsline {figure}{\numberline {4.18}{\ignorespaces Vista de gestión de asignaciones en el dispositivo.}}{59}{}%
-\contentsline {figure}{\numberline {4.19}{\ignorespaces Diagrama entidad-relación de la base de datos (14 tablas).}}{70}{}%
-\contentsline {figure}{\numberline {4.20}{\ignorespaces Flujo MQTT pub/sub: tópicos, direcciones y QoS entre el ESP32-CAM, el broker Mosquitto y el backend.}}{71}{}%
-\contentsline {figure}{\numberline {4.21}{\ignorespaces Máquina de estados del registro biométrico en el ESP32-CAM.}}{73}{}%
-\contentsline {figure}{\numberline {4.22}{\ignorespaces Arquitectura de despliegue Docker: servicios, puertos, volúmenes y dependencias en la red.}}{76}{}%
-\contentsline {figure}{\numberline {4.23}{\ignorespaces Pipeline de cifrado biométrico}}{83}{}%
-\contentsline {figure}{\numberline {4.24}{\ignorespaces Diagrama de secuencia del login multi-empresa con JWT.}}{89}{}%
-\contentsline {figure}{\numberline {4.25}{\ignorespaces Diagrama de secuencia de la integración ERP: push asíncrono con field mapping.}}{101}{}%
-\contentsline {figure}{\numberline {4.26}{\ignorespaces Diagrama de actividad: sincronización bidireccional entre los modos online y offline del ESP32-CAM.}}{110}{}%
-\contentsline {figure}{\numberline {4.27}{\ignorespaces Flujo operacional consolidado para el registro de asistencia.}}{115}{}%
+\contentsline {figure}{\numberline {4.1}{\ignorespaces Arquitectura física.}}{45}{}%
+\contentsline {figure}{\numberline {4.2}{\ignorespaces Arquitectura lógica.}}{46}{}%
+\contentsline {figure}{\numberline {4.3}{\ignorespaces Componentes del ESP32-CAM: hardware y firmware.}}{47}{}%
+\contentsline {figure}{\numberline {4.4}{\ignorespaces Mockup menú principal en el ESP32-CAM.}}{49}{}%
+\contentsline {figure}{\numberline {4.5}{\ignorespaces Mockup panel de configuración Wi-Fi.}}{49}{}%
+\contentsline {figure}{\numberline {4.6}{\ignorespaces Mockup registro de usuario en el ESP32-CAM.}}{50}{}%
+\contentsline {figure}{\numberline {4.7}{\ignorespaces Mockup de usuarios almacenados en el ESP32-CAM.}}{50}{}%
+\contentsline {figure}{\numberline {4.8}{\ignorespaces Mockup de visualización de turnos en el ESP32-CAM.}}{51}{}%
+\contentsline {figure}{\numberline {4.9}{\ignorespaces Mockup de creación de turnos en el ESP32-CAM.}}{51}{}%
+\contentsline {figure}{\numberline {4.10}{\ignorespaces Mockup de asignación de turnos en el ESP32-CAM.}}{52}{}%
+\contentsline {figure}{\numberline {4.11}{\ignorespaces Conexiones entre el ESP32-CAM y el lector de huellas AS608.}}{53}{}%
+\contentsline {figure}{\numberline {4.12}{\ignorespaces Menú principal del sistema web embebido.}}{56}{}%
+\contentsline {figure}{\numberline {4.13}{\ignorespaces Interfaz de configuración Wi-Fi.}}{57}{}%
+\contentsline {figure}{\numberline {4.14}{\ignorespaces Vista para el registro de personas en el dispositivo.}}{58}{}%
+\contentsline {figure}{\numberline {4.15}{\ignorespaces Vista de asistencias locales almacenadas en el dispositivo.}}{59}{}%
+\contentsline {figure}{\numberline {4.16}{\ignorespaces Vista de personas registradas en el dispositivo.}}{60}{}%
+\contentsline {figure}{\numberline {4.17}{\ignorespaces Vista de gestión y creación de turnos en el dispositivo.}}{61}{}%
+\contentsline {figure}{\numberline {4.18}{\ignorespaces Vista de gestión de asignaciones en el dispositivo.}}{62}{}%
+\contentsline {figure}{\numberline {4.19}{\ignorespaces Diagrama entidad-relación de la base de datos (14 tablas).}}{73}{}%
+\contentsline {figure}{\numberline {4.20}{\ignorespaces Flujo MQTT pub/sub: tópicos, direcciones y QoS entre el ESP32-CAM, el broker Mosquitto y el backend.}}{74}{}%
+\contentsline {figure}{\numberline {4.21}{\ignorespaces Máquina de estados del registro biométrico en el ESP32-CAM.}}{76}{}%
+\contentsline {figure}{\numberline {4.22}{\ignorespaces Arquitectura de despliegue Docker: servicios, puertos, volúmenes y dependencias en la red.}}{79}{}%
+\contentsline {figure}{\numberline {4.23}{\ignorespaces Pipeline de cifrado biométrico}}{86}{}%
+\contentsline {figure}{\numberline {4.24}{\ignorespaces Diagrama de secuencia del login multi-empresa con JWT.}}{92}{}%
+\contentsline {figure}{\numberline {4.25}{\ignorespaces Diagrama de secuencia de la integración ERP: push asíncrono con field mapping.}}{105}{}%
+\contentsline {figure}{\numberline {4.26}{\ignorespaces Diagrama de actividad: sincronización bidireccional entre los modos online y offline del ESP32-CAM.}}{114}{}%
+\contentsline {figure}{\numberline {4.27}{\ignorespaces Flujo operacional consolidado para el registro de asistencia.}}{119}{}%
 \addvspace {10\p@ }
 \addvspace {10\p@ }
-\contentsline {figure}{\numberline {6.3}{\ignorespaces Enrolamiento de dispositivo: vinculación del ESP32-CAM mediante PIN de un solo uso y configuración Wi-Fi.}}{150}{}%
-\contentsline {figure}{\numberline {6.1}{\ignorespaces Diagrama de secuencia del enrolamiento biométrico completo.}}{151}{}%
-\contentsline {figure}{\numberline {6.2}{\ignorespaces Marcaje automático: centinela facial con identificación 1:N y push asíncrono a ERP.}}{152}{}%
-\contentsline {figure}{\numberline {6.4}{\ignorespaces Registro de personas: alta de datos, consentimiento biométrico y captura de huella y rostro.}}{153}{}%
-\contentsline {figure}{\numberline {6.5}{\ignorespaces Gestión de turnos: creación de turnos y asignación a personas registradas.}}{153}{}%
-\contentsline {figure}{\numberline {6.6}{\ignorespaces Sincronización diferida: vaciado de la cola local de asistencias pendientes tras reconexión.}}{154}{}%
-\contentsline {figure}{\numberline {6.7}{\ignorespaces Panel web administrativo: monitoreo en tiempo real, gestión de usuarios y notificación a ERP.}}{154}{}%
-\contentsline {figure}{\numberline {6.8}{\ignorespaces Formulario aplicado a los usuarios no técnicos mediante Google Forms.}}{159}{}%
-\contentsline {figure}{\numberline {6.9}{\ignorespaces Resumen automático de distribución de respuestas, formulario de usuarios no técnicos.}}{160}{}%
-\contentsline {figure}{\numberline {6.10}{\ignorespaces Formulario aplicado a los usuarios técnicos mediante Google Forms.}}{161}{}%
-\contentsline {figure}{\numberline {6.11}{\ignorespaces Resumen automático de distribución de respuestas, formulario de usuarios técnicos.}}{162}{}%
+\contentsline {figure}{\numberline {6.3}{\ignorespaces Enrolamiento de dispositivo: vinculación del ESP32-CAM mediante PIN de un solo uso y configuración Wi-Fi.}}{154}{}%
+\contentsline {figure}{\numberline {6.1}{\ignorespaces Diagrama de secuencia del enrolamiento biométrico completo.}}{155}{}%
+\contentsline {figure}{\numberline {6.2}{\ignorespaces Marcaje automático: centinela facial con identificación 1:N y push asíncrono a ERP.}}{156}{}%
+\contentsline {figure}{\numberline {6.4}{\ignorespaces Registro de personas: alta de datos, consentimiento biométrico y captura de huella y rostro.}}{157}{}%
+\contentsline {figure}{\numberline {6.5}{\ignorespaces Gestión de turnos: creación de turnos y asignación a personas registradas.}}{157}{}%
+\contentsline {figure}{\numberline {6.6}{\ignorespaces Sincronización diferida: vaciado de la cola local de asistencias pendientes tras reconexión.}}{158}{}%
+\contentsline {figure}{\numberline {6.7}{\ignorespaces Panel web administrativo: monitoreo en tiempo real, gestión de usuarios y notificación a ERP.}}{158}{}%

@@ -307,12 +307,13 @@ def check_password_pendiente():
     if not mac:
         return jsonify({'error': 'MAC requerida'}), 400
 
+    mac_norm = mac.replace(':', '').upper()
     conn = get_connection()
     cur = conn.cursor()
     try:
         cur.execute(
-            "SELECT password_pendiente, password_plain FROM dispositivos WHERE mac_address = %s",
-            (mac,)
+            "SELECT password_pendiente, password_plain FROM dispositivos WHERE REPLACE(UPPER(mac_address), ':', '') = %s",
+            (mac_norm,)
         )
         row = cur.fetchone()
         if not row:
@@ -333,12 +334,13 @@ def confirmar_password_aplicada():
     if not mac:
         return jsonify({'error': 'MAC requerida'}), 400
 
+    mac_norm = mac.replace(':', '').upper()
     conn = get_connection()
     cur = conn.cursor()
     try:
         cur.execute(
-            "UPDATE dispositivos SET password_pendiente = FALSE, password_plain = NULL WHERE mac_address = %s",
-            (mac,)
+            "UPDATE dispositivos SET password_pendiente = FALSE, password_plain = NULL WHERE REPLACE(UPPER(mac_address), ':', '') = %s",
+            (mac_norm,)
         )
         conn.commit()
         if cur.rowcount == 0:

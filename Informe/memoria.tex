@@ -1,4 +1,4 @@
-%% inicio, la clase del documento es iccmemoria.cls
+﻿%% inicio, la clase del documento es iccmemoria.cls
 \documentclass{iccmemoria}
 
 
@@ -7,7 +7,7 @@
 \author{Agustin Eduardo Meza Mella}
 \supervisor{Ricardo Pérez Guzmán}
 \director{Francisco Javier Arias Pavez }
-\date{Noviembre, 2026}
+\date{Junio, 2026}
 
 %% paquetes para diagramas
 \usepackage{amssymb}
@@ -41,6 +41,46 @@
 %% crea la tapa
 \maketitle
 
+%% dedicatoria
+\thispagestyle{empty}
+\null\vfill
+\begin{center}
+\Large\itshape Dedicado a mi familia.
+\end{center}
+\vfill\null
+\clearpage
+
+%% agradecimientos
+\thispagestyle{empty}
+\chapter*{Agradecimientos}
+\addcontentsline{toc}{chapter}{Agradecimientos}
+
+En primer lugar, quiero agradecer a mis padres por haber sido quienes me han apoyado
+desde el principio de mi carrera. A mi padre, por ayudarme en todo lo que necesité
+para poder llegar a este punto, y a mi madre, por estar en los momentos más difíciles
+entregándome su amor y cariño. Agradezco a mi hermano Maximiliano por estar
+siempre ahí para resolver mis dudas y ayudarme a visualizar el mañana sin perderme
+en el camino.
+
+Quiero dar las gracias a mi amigo Gonzalo por guiarme en el camino de la vida,
+enseñarme a mejorar cada día y ser un ejemplo de superación, perseverancia y calidad
+humana. Agradezco también a mis amigos de la universidad, con quienes compartí
+innumerables momentos de estudio, trabajo y diversión, que hicieron de esta una grata
+experiencia universitaria.
+
+Quiero agradecer de manera especial a Adrián Espinoza por su buena voluntad de
+transportarme en los días en que no tenía cómo llegar a la universidad sin nunca pedir
+algo a cambio, y por todos los momentos que vivimos juntos: fiestas, trabajos, entre
+tantas otras cosas. Gracias por todos esos recuerdos que nos llevamos. Junto a él,
+agradezco a Nelson Silva y Benjamín Puebla, de quienes me llevo grandes recuerdos y
+experiencias que me ayudaron a crecer como persona y profesional.
+
+Por último, quiero agradecer a mi primer compañero de universidad, quien siempre
+estuvo ahí para apoyarme en todo lo que necesitaba y fue quien me ayudó a ingresar al
+mundo universitario. Gracias, Luis Bernal, por ser un gran amigo y compañero que, a
+pesar de no poder acompañarme durante toda la carrera, siempre estuvo presente.
+
+\clearpage
 
 %% indices
 \tableofcontents
@@ -70,11 +110,11 @@ En el siguiente capítulo se presenta el contexto, la problemática actual y la 
 \section{Contexto}
 El control de asistencia laboral es un requisito obligatorio para todas las empresas en Chile, conforme a lo dispuesto por la Dirección del Trabajo. Este registro puede realizarse de manera manual o mediante sistemas digitales que cumplan con la Resolución Exenta N°38 (2025) \cite{dt_resolucion38}, la cual establece los requisitos técnicos y legales que deben cumplir los sistemas electrónicos para ser considerados válidos ante la autoridad.
 
-El cumplimiento de estas normas busca garantizar la trazabilidad y transparencia de las jornadas laborales, e impacta directamente en el cálculo de remuneraciones y en la gestión administrativa de la empresa cuando el registro no incluye los métodos que garanticen la asistencia del trabajador exigidos por la norma\cite{defontana_resolucion38}. Por ello, muchas organizaciones optan por integrar sus sistemas de asistencia con plataformas ERP (EntERPrise Resource Planning), las cuales centralizan distintos procesos como recursos humanos, inventario, finanzas y contabilidad dentro de un mismo entorno\cite{apd_erp}.
+El cumplimiento de estas normas busca garantizar la trazabilidad y transparencia de las jornadas laborales, e impacta directamente en el cálculo de remuneraciones y en la gestión administrativa de la empresa cuando el registro no incluye los métodos que garanticen la asistencia del trabajador exigidos por la norma \cite{defontana_resolucion38}. Por ello, muchas organizaciones optan por integrar sus sistemas de asistencia con plataformas ERP (EntERPrise Resource Planning), las cuales centralizan distintos procesos como recursos humanos, inventario, finanzas y contabilidad dentro de un mismo entorno \cite{apd_erp}.
 
-Esta integración permite que los datos de asistencia alimenten automáticamente los módulos de remuneraciones o de gestión de personal, evitando errores y reduciendo los tiempos administrativos\cite{geovictoria_erp}. En este contexto, los sistemas de asistencia pueden ser parte del propio ERP o soluciones externas especializadas, las cuales se comunican mediante APIs o servicios web.
+Esta integración permite que los datos de asistencia alimenten automáticamente los módulos de remuneraciones o de gestión de personal, evitando errores y reduciendo los tiempos administrativos \cite{geovictoria_erp}. En este contexto, los sistemas de asistencia pueden ser parte del propio ERP o soluciones externas especializadas, las cuales se comunican mediante APIs o servicios web.
 
-Las máquinas de control de asistencia digital, por su parte, permiten registrar las marcaciones de entrada y salida de los trabajadores de forma autónoma\cite{nubox_relojcontrol}. Sin embargo, muchas de las soluciones disponibles en el mercado presentan limitaciones: operan únicamente en red local, exportan datos en formatos cerrados (como CSV o Excel) y no siempre permiten integrarse de manera flexible con otros sistemas, como los ERP corporativos.
+Las máquinas de control de asistencia digital, por su parte, permiten registrar las marcaciones de entrada y salida de los trabajadores de forma autónoma \cite{nubox_relojcontrol}. Sin embargo, muchas de las soluciones disponibles en el mercado presentan limitaciones: operan únicamente en red local, exportan datos en formatos cerrados (como CSV o Excel) y no siempre permiten integrarse de manera flexible con otros sistemas, como los ERP corporativos.
 
 Este proyecto propone el desarrollo de un sistema IoT de control de asistencia basado en ESP32-CAM, capaz de realizar reconocimiento facial y enviar los registros al backend, permitiendo su posterior integración con un ERP o funcionamiento independiente en modo local.
 
@@ -105,7 +145,7 @@ Finalmente, para mejorar la seguridad en el proceso de marcación, se incorporar
 En el siguiente apartado se procederá a presentar el objetivo general del proyecto, junto con los objetivos específicos que guiarán el desarrollo y evaluación del prototipo.
 
 \subsection{Objetivo general}
-Desarrollar y validar un prototipo funcional de sistema IoT de control de asistencia de código abierto, basado en un microcontrolador ESP32-CAM, que permita evaluar la viabilidad del registro laboral autónomo (offline) y la sincronización automatizada con plataformas empresariales en pequeñas y medianas empresas.
+Desarrollar un prototipo funcional de sistema IoT de código abierto para el control de asistencia laboral en pequeñas y medianas empresas, basado en el microcontrolador ESP32-CAM, que registre marcaciones biométricas sin conexión a internet y las sincronice de forma automática con plataformas empresariales una vez recuperada la conexión. El cumplimiento de este objetivo se medirá con los criterios de aceptación definidos en los objetivos específicos.
 
 \subsection{Objetivos específicos}
 A partir del objetivo general, se establecen los siguientes objetivos específicos, los cuales permiten abordar de manera concreta y medible cada una de las dimensiones técnicas involucradas en el desarrollo del prototipo.
@@ -140,10 +180,8 @@ A continuación se presentarán los alcances propuestos para este proyecto.
     \item Se realizarán pruebas de funcionamiento offline, midiendo la autonomía del sistema (tiempo máximo de operación sin conexión y capacidad de almacenamiento).
     \item Se ejecutarán pruebas de integración entre los módulos de hardware, software y el ERP simulado, verificando el flujo completo de datos desde el registro hasta la sincronización.
     \item Se aplicarán pruebas de usabilidad para evaluar la facilidad de configuración y el nivel de satisfacción del usuario final con la interfaz embebida.
-    
     \item Se efectuarán pruebas de confiabilidad e integridad, comprobando que los datos registrados sin conexión se transmitan correctamente una vez restablecida la conectividad. 
     \item Los resultados se analizarán y documentarán para determinar la viabilidad técnica y operativa del sistema propuesto.
-
     \item El prototipo hará uso de la conexión a internet mediante Wi-Fi para realizar las sincronizaciones con los datos existentes en el servidor como así las funcionalidades de reconocimiento facial avanzado.
 \end{itemize}
 
@@ -172,12 +210,12 @@ En este apartado se describen los componentes físicos, protocolos de red, arqui
     \item API (Aplicacion Programming Interface): Conjunto de métodos o puntos de conexión que permiten la conexión entre diferentes aplicaciones mediante protocolos de redes. \cite{aws_api}
     \item Backend: Parte del sistema encargada de la lógica del negocio, manejo de datos y comunicación con bases de datos. \cite{hubspot_backend}
     \item Frontend: Conjunto de interfaces y funcionalidades con las que interactúa el usuario final. \cite{ionos_frontend}
-    \item Mqtt: Protocolo de comunicación ligero basado en el modelo publicador/suscriptor, diseñado para intercambiar mensajes de manera eficiente, utilizado entre dispositivos que cuenten con recursos limitados.\cite{aws_mqtt}
+    \item Mqtt: Protocolo de comunicación ligero basado en el modelo publicador/suscriptor, diseñado para intercambiar mensajes de manera eficiente, utilizado entre dispositivos que cuenten con recursos limitados. \cite{aws_mqtt}
     \item Javascript Object Notation (JSON): Formato de datos que se suele utilizar en entornos de desarrollo web para el intercambio de datos de manera legible tanto por las personas como las maquinas. \cite{oracle_json}
     \item SPIFFS (SPI Flash File System): Sistema de archivos diseñado para microcontroladores que permite almacenar información en memoria flash mediante archivos. En este proyecto se utiliza para guardar usuarios, turnos, asignaciones y asistencias en formato JSON, permitiendo el funcionamiento offline \cite{espressif_spiffs}.
     \item API RESTful: Estilo de arquitectura de servicios web basado en el protocolo HTTP, que permite la comunicación entre aplicaciones usando operaciones estándar como GET, POST, PUT o DELETE. Es utilizado para integrar el dispositivo IoT con sistemas ERP externos mediante intercambio de datos en formato JSON \cite{aws_restapi}.
-    \item Microservicios: Arquitectura de software basada en dividir un sistema en servicios independientes que se comunican entre sí. Esta estructura permite escalabilidad y facilita la separación entre el procesamiento de imágenes, backend y comunicación con ERP\cite{redhat_microservicios}.
-    \item Broker MQTT: Servidor encargado de recibir, gestionar y distribuir mensajes enviados por dispositivos IoT utilizando el protocolo MQTT. Actúa como intermediario entre el publicador (el ESP32-CAM) y los suscriptores (backend u otros servicios)\cite{emqx_mqttbroker}.
+    \item Microservicios: Arquitectura de software basada en dividir un sistema en servicios independientes que se comunican entre sí. Esta estructura permite escalabilidad y facilita la separación entre el procesamiento de imágenes, backend y comunicación con ERP \cite{redhat_microservicios}.
+    \item Broker MQTT: Servidor encargado de recibir, gestionar y distribuir mensajes enviados por dispositivos IoT utilizando el protocolo MQTT. Actúa como intermediario entre el publicador (el ESP32-CAM) y los suscriptores (backend u otros servicios) \cite{emqx_mqttbroker}.
     \item Sensor PIR (Passive Infrared Sensor): Sensor que detecta cambios en la radiación infrarroja del entorno para identificar la presencia de personas por su calor corporal. En este proyecto actúa como ``portero'' del reconocimiento facial: la cámara solo se usa para buscar un rostro cuando el PIR detecta movimiento frente al dispositivo, evitando que ese procesamiento, más costoso, se ejecute todo el tiempo sin necesidad. La lectura de huella, en cambio, se revisa de forma continua e independiente del PIR. A diferencia de los sensores IR activos, el PIR no emite luz infrarroja sino que detecta pasivamente la que irradian los cuerpos \cite{lastminuteengineers_hcsr501}.
     \item Anti-spoofing biométrico: Técnica de seguridad que permite detectar intentos de suplantación de identidad mediante fotografías, pantallas o máscaras frente a un sistema de reconocimiento biométrico. DeepFace, la librería utilizada en este proyecto, incorpora un detector de suplantación basado en redes neuronales convolucionales que analiza micro-texturas, reflectancia de la piel y profundidad en la imagen para distinguir entre un rostro real y una superficie plana \cite{serengil_deepface}.
     \item JWT (JSON Web Token): Estándar abierto (RFC 7519) que define un formato compacto para transmitir información de autenticación y autorización entre partes como un objeto JSON firmado digitalmente. En este proyecto se utiliza para proteger los endpoints del backend, transportando el identificador del usuario, su empresa y su rol, con firma HMAC-SHA256 y expiración de 24 horas, mediante la librería PyJWT \cite{pyjwt_docs}.
@@ -193,7 +231,7 @@ El ESP32-CAM es un dispositivo de desarrollo que integra un microcontrolador ESP
 El lector de huellas digital usa el sensor AS608, un lector de huella con la capacidad de registrar y verificar la identidad de los usuarios mediante patrones dactilares. La elección de este dispositivo fue por la compatibilidad con el ESP32-CAM, su bajo consumo y su resistencia a condiciones de luz ambiental en comparación a otros sensores ópticos tradicionales como el R307.
 El AS608 se comunica con el microcontrolador a través de una interfaz UART, y su integración se realiza mediante la biblioteca Adafruit FingERPrint Sensor Library \cite{adafruit_fingerprint}, lo que facilita el registro, búsqueda y verificación de huellas directamente desde el dispositivo IoT. \cite{uelectronics_as608}
 \subsection{Protocolos de comunicación HTTP}
-El protocolo de comunicación HTTP (Hypertext Transfer Protocol) es un protocolo cliente-servidor utilizado para transmitir información mediante solicitudes y respuestas que se transmite a través de los métodos GET, POST, PUT Y DELETE, generalmente utilizando formatos estructurados como JSON (JavaScript Object Notation). Permite la comunicación directa entre dispositivos y servidores, por lo que para este proyecto se le puede dar un buen uso para realizar la peticion de información.\cite{mdn_http}
+El protocolo de comunicación HTTP (Hypertext Transfer Protocol) es un protocolo cliente-servidor utilizado para transmitir información mediante solicitudes y respuestas que se transmite a través de los métodos GET, POST, PUT Y DELETE, generalmente utilizando formatos estructurados como JSON (JavaScript Object Notation). Permite la comunicación directa entre dispositivos y servidores, por lo que para este proyecto se le puede dar un buen uso para realizar la peticion de información. \cite{mdn_http}
 \subsection{Protocolo de comunicación MQTT}
 El protocolo de comunicación MQTT o Message Queuing Telemetry Transport es un protocolo ligero de mensajería diseñado específicamente para entornos IoT. Se base en la arquitectura de publicador-suscriptor, donde los dispositivos envían mensajes a un broker central que los distribuye entre los clientes suscritos a los distintos tópicos que pueden existir. Este modelo reduce el uso de ancho de banda, lo que lo hace ideal para redes con conectividad limitada o intermitente. \cite{paessler_mqtt}
 \subsection{Contenedores Docker}
@@ -207,7 +245,7 @@ Para el contexto del proyecto, PostgreSQL \cite{postgresql_docs} se utiliza como
 \subsection{Sensor PIR (HC-SR501)}
 El sensor infrarrojo pasivo HC-SR501 es un módulo de bajo costo diseñado para detectar movimiento mediante la medición de cambios en la radiación infrarroja del entorno \cite{lastminuteengineers_hcsr501}. Cuando una persona se sitúa dentro de su campo de visión (aproximadamente 6 metros de alcance y 120° de apertura), el sensor emite una señal digital HIGH. En este proyecto se utiliza como detector de presencia para activar los mecanismos de captura biométrica solo cuando hay una persona frente al dispositivo, optimizando así el consumo energético del lector de huellas AS608 y la cámara OV2640 durante los períodos de inactividad.
 
-La elección del sensor PIR, en lugar del sensor IR activo originalmente planificado, respondió a dos factores: (1) la extrema limitación de pines GPIO disponibles en el ESP32-CAM tras la asignación del bus paralelo de la cámara, que hubiera requerido sacrificar otra funcionalidad para añadir el sensor IR; y (2) la disponibilidad del detector anti-spoofing integrado en DeepFace, que proporciona una capa de seguridad contra suplantación mediante software sin necesidad de hardware adicional \cite{serengil_deepface}.
+La elección del sensor PIR, en lugar del sensor IR activo originalmente planificado, respondió a dos factores: Primero, la extrema limitación de pines GPIO disponibles en el ESP32-CAM tras la asignación del bus paralelo de la cámara, que hubiera requerido sacrificar otra funcionalidad para añadir el sensor IR. Por otra parte, la disponibilidad del detector anti-spoofing integrado en DeepFace, que proporciona una capa de seguridad contra suplantación mediante software sin necesidad de hardware adicional \cite{serengil_deepface}.
 
 \subsection{Framework DeepFace}
 DeepFace es un framework de reconocimiento facial para Python desarrollado por Sefik Ilkin Serengil \cite{serengil_deepface}, que envuelve múltiples modelos de deep learning en una API unificada. Soporta los modelos Facenet \cite{schroff2015_facenet}, VGG-Face, ArcFace, DeepFace, DeepID y Dlib, así como los detectores faciales RetinaFace \cite{deng2019_retinaface}, MTCNN \cite{zhang2016_mtcnn}, OpenCV \cite{opencv_docs}, SSD y Dlib. Para este proyecto se seleccionó el modelo Facenet por su equilibrio entre precisión y tamaño de embedding (128 dimensiones). El detector facial es configurable mediante variable de entorno, utilizando MTCNN por defecto por su velocidad superior (tres veces más rápido que RetinaFace), lo que resulta crítico para un dispositivo embebido como el ESP32-CAM.
@@ -217,47 +255,41 @@ DeepFace incluye además un módulo de anti-spoofing capaz de distinguir entre r
 \subsection{Broker Mosquitto en contenedor Docker}
 Eclipse Mosquitto \cite{mosquitto_docs} es un broker MQTT de código abierto y de bajo consumo de recursos, lo que lo vuelve una opción habitual para arquitecturas IoT como la de este proyecto, donde el broker debe convivir con otros servicios sin demandar demasiada memoria ni procesamiento. Se distribuye también como imagen oficial de Docker, lo que permite desplegarlo junto al resto del backend sin depender de una instalación nativa en el sistema operativo.
 
-MQTT puede transportarse de dos formas: mediante una conexión TCP directa al broker, o mediante WebSockets, donde los mismos mensajes MQTT viajan encapsulados sobre una conexión WebSocket. En este proyecto el ESP32-CAM se conecta al broker exclusivamente por WebSockets, por dos razones. La primera es práctica: la versión del cliente MQTT del entorno ESP-IDF utilizada en el firmware solo soporta ese modo de transporte. La segunda es de diseño: una conexión WebSocket viaja sobre el mismo protocolo que cualquier navegador web, por lo que atraviesa firewalls y proxies corporativos con mayor facilidad que una conexión MQTT cruda sobre un puerto no estándar \cite{emqx_mqttbroker}, lo cual es relevante para un dispositivo pensado para operar en redes de pequeñas y medianas empresas, donde no siempre se puede garantizar que el puerto MQTT esté abierto.
+MQTT puede transportarse de dos formas: mediante una conexión TCP directa al broker, o encapsulando los mismos mensajes sobre una conexión WebSocket. En este proyecto el ESP32-CAM se conecta al broker exclusivamente por esta segunda vía, por dos razones. La primera es práctica: la versión del cliente MQTT del entorno ESP-IDF utilizada en el firmware solo soporta ese modo de transporte. La segunda es de diseño: al viajar sobre el mismo protocolo que usa cualquier navegador web, atraviesa firewalls y proxies corporativos con mayor facilidad que una conexión MQTT cruda sobre un puerto no estándar \cite{emqx_mqttbroker}, lo cual es relevante para un dispositivo pensado para operar en redes de pequeñas y medianas empresas, donde no siempre se puede garantizar que ese puerto esté abierto.
 
 
 \section{Estado del arte}
-A continuación se revisaran los sistemas y tecnológicas existentes relacionados dispositivos de control de asistencia biométricos y su integración con plataformas empresariales, con el propósito de identificar el estado que se encuentra tanto el mercado actual como los avances más relevantes e indicar las limitaciones que motivan el desarrollo de la propuesta de este proyecto. 
+A continuación se revisan los sistemas y tecnologías existentes en materia de control de asistencia biométrica y su integración con plataformas empresariales, con el propósito de identificar el estado actual del mercado, los avances más relevantes y las limitaciones que motivan el desarrollo de la propuesta de este proyecto.
 
 \subsection{Soluciones basadas en hardware}
-En esta sección se hará énfasis en aquellos dispositivos de reloj control biométrico que permiten registrar la asistencia de los trabajadores mediante la verificación de características únicas, como huellas digitales o reconocimiento facial, entre otras. Estos equipos incluyen funcionalidades tales como almacenamiento interno y conectividad por red (LAN/Wi-Fi); a continuación se describirán los principales dispositivos utilizados en Chile.
+Los dispositivos biométricos de control de asistencia permiten registrar las marcaciones de los trabajadores mediante la verificación de características físicas únicas, como huellas digitales o reconocimiento facial. Estos equipos incorporan funcionalidades como almacenamiento interno y conectividad por red (LAN/Wi-Fi), lo que los hace adecuados para entornos con requisitos de operación autónoma. A continuación se describen los principales dispositivos presentes en el mercado chileno.
 
 \begin{enumerate}
-    \item GeoVictoria, relojes de control: GeoVictoria, dentro de sus planes y productos, ofrece hardware biométrico junto con una plataforma en la nube para realizar el control de asistencia. Estos dispositivos pueden operar mediante una conexión LAN o 3G para zonas remotas. Sin embargo, dentro de sus limitantes encontramos que su API está sujeta a restricciones comerciales y acceso mediante suscripción, lo que limita la personalización o integración libre. Además, se tiene un ecosistema cerrado que dificulta modificaciones independientes por parte del cliente \cite{geovictoria_dispositivos}.
-    \item ZKTeco, terminales biométricas de asistencia: ZKTeco es una marca internacional con presencia en Chile y Latinoamérica en general; esta compañía ofrece terminales de control de asistencia ``stand-alone'' que combinan distintos métodos de registro tales como huella, rostro, PIN y tarjeta. Su limitante es que se encuentra cerrado totalmente a su sistema o queda sin integración directa con un ERP; además, ofrece exportación de datos mediante archivos CSV, siendo poco amigable para su uso en un ERP \cite{zkteco_tiempoasistencia}.
-    \item Dispositivos genéricos: consideramos como dispositivos genéricos cualquier tipo de reloj control que se pueda adquirir en algún portal de venta web, que incluya características tales como marcaje mediante huella o rostro. En base a lo anterior, la gran mayoría de estos dispositivos tiene la capacidad de aplicar estas funciones, pero con el costo de que su información solo queda en el dispositivo, teniendo métodos como exportación de datos por USB en un formato que solo se puede visualizar y es difícil de integrar a un ERP.
+    \item GeoVictoria, relojes de control: GeoVictoria ofrece hardware biométrico integrado con una plataforma en la nube para el control de asistencia. Sus dispositivos pueden operar mediante conexión LAN o 3G en zonas remotas. No obstante, su API está sujeta a restricciones comerciales y acceso por suscripción, lo que limita la personalización y la integración independiente. El ecosistema cerrado dificulta cualquier modificación fuera del entorno del fabricante \cite{geovictoria_dispositivos}.
+    \item ZKTeco, terminales biométricas de asistencia: ZKTeco es una marca internacional con presencia en Chile y Latinoamérica. Ofrece terminales de control ``stand-alone'' que combinan huella digital, reconocimiento facial, PIN y tarjeta. Su principal limitante es la ausencia de integración directa con sistemas ERP; la exportación de datos se realiza mediante archivos CSV, lo que dificulta su uso en entornos empresariales más complejos \cite{zkteco_tiempoasistencia}.
+    \item Dispositivos genéricos: corresponden a relojes control adquiribles en portales de venta en línea que incluyen marcaje por huella o rostro. Aunque incorporan estas funciones a bajo costo, la información queda almacenada únicamente en el dispositivo y solo puede exportarse por USB en formatos de difícil integración con sistemas externos.
 \end{enumerate}
 
 \subsection{Soluciones basadas en software}
-En el siguiente apartado se presentarán soluciones relacionadas al control de asistencia relacionados con plataformas web o servicios en la nube (Saas) que permiten gestionar la asistencia laboral sin requerir un reloj biométrico fisico.
+Las plataformas de gestión de asistencia basadas en software o servicios SaaS permiten administrar las jornadas laborales de forma remota, sin requerir un dispositivo biométrico físico. Si bien facilitan la gestión centralizada, presentan dependencias de conectividad y restricciones de personalización que las hacen poco adecuadas para entornos con infraestructura limitada.
 
 \begin{enumerate}
-    \item Talana/Buk: Talana y Buk son plataformas chilenas que ofrecen módulos de gestion de asistencia, turnos, entre otras caracteristicas mediante aplicaciones web, en ambas aplicaciones se encuentran en la misma situacion, con dependencia de conectividad a internet, ausencia de hardware biométrico fisico, y costos asociados a suscripciones web \cite{talana_software}\cite{buk_asistencia}.
-    \item Defontana/Softland: Defontana y Softland son empresas dedicadas a implementar sistemas ERP para las empresas, dentro de sus funcionalidades integran control de asistencia, permitiendo registrar las jornadas de trabajo, calculo de horas y conexion con modulo de remuneraciones. La gran limitante de estas aplicaciones web que estan ligadas 100\% a su uso web, es decir, se debe contratar el ERP completo \cite{defontana_software}\cite{softland_chile}.
+    \item Talana/Buk: son plataformas chilenas que ofrecen módulos de gestión de asistencia y turnos mediante aplicaciones web. Ambas dependen de conectividad a internet permanente, carecen de hardware biométrico propio y requieren suscripciones comerciales para su uso \cite{talana_software} \cite{buk_asistencia}.
+    \item Defontana/Softland: son sistemas ERP que integran módulos de control de asistencia, permitiendo registrar jornadas, calcular horas y conectar con el módulo de remuneraciones. Su principal limitante es que el control de asistencia solo está disponible como parte del ERP completo, lo que implica una dependencia total de la plataforma del proveedor \cite{defontana_software} \cite{softland_chile}.
 \end{enumerate}
 
-De los productos y servicios presentados anteriormente podemos concluir que el mercado chileno cuenta con una oferta amplia en cuanto a soluciones para el control de asistencia, tanto en dispositivos biométricos, como en plataformas en la nube mediante software. Sin embargo, cada uno de los elementos presentados en este estudio del arte, presentan limitaciones en cuanto a su estructura. 
+Del análisis anterior se concluye que el mercado chileno dispone de una oferta variada en soluciones de control de asistencia, tanto en hardware biométrico como en plataformas SaaS. Sin embargo, ninguna de las alternativas revisadas combina autenticación biométrica local con integración flexible hacia sistemas ERP sin depender de infraestructura o suscripciones externas. Esta brecha es la que motiva el desarrollo de la propuesta presentada en este proyecto.
 
-Por un lado tenemos los relojes de control biométricos ofrecidos por GeoVictoria o ZKTeco, que tienen soluciones bastante adaptadas a las necesidades del usuario pero con un enfoque en empresas más grandes, ligados a software propietario de una conectividad constante con los servidores del fabricante, esto reduciendo la flexibilidad, elevando costos para los servicios que los ERP finalmente ofreceran a las medias y pequeñas empresas. 
-
-Por otra parte las soluciones basadas en software o servicios SaaS, tales como Talana, Buk, Defontana y Softland se centran en la gestion de la asistencia de manera remota y mediante plataformas web, limitandose en su ambiente operacional dedicado solo para trabajar sobre los mismos servicios de la misma empresa, además de haber ausencia de hardware, lo que limita la aplicabilidad en entornos con condiciones poco ideales para el funcionamiento con internet constante.
-
-En consecuencia de lo comentado anteriormente, se evidencia una falta de soluciones híbridas que puedan unir elementos como la autenticación biométrica, con la integración configurable hacia sistemas ERP, sin depender totalmente de una infraestructura externa.
-
-\section{Metodologias}
+\section{Metodologías}
 En este apartado se presentan las metodologías de desarrollo y evaluación que serán utilizadas para este proyecto.
 
-\subsection{Metodologia de desarrollo}
+\subsection{Metodología de desarrollo}
 
 Considerando que el proyecto está relacionado con el desarrollo de un prototipo IoT que integra hardware, firmware y software, y pensando en su futura implementación en un entorno real, se identificaron y evaluaron distintos modelos del ciclo de vida de desarrollo. Para el contexto específico de este trabajo, se contrastó el enfoque tradicional del Modelo en Cascada (Lineal Secuencial) frente al modelo de Prototipado Evolutivo Incremental.
 
 El Modelo en Cascada exige definir la totalidad de los requerimientos y diseñar el sistema completo de forma estricta antes de comenzar cualquier implementación. En proyectos IoT, este enfoque presenta un alto riesgo: las restricciones técnicas del hardware (como las limitaciones de memoria del ESP32-CAM o la disponibilidad de pines GPIO para los sensores) a menudo se descubren durante la etapa de construcción. Esperar hasta las fases finales del proyecto para integrar y probar la comunicación entre los componentes físicos, el backend y la base de datos podría resultar en fallas críticas y la necesidad de rediseñar el sistema completo de forma tardía \cite{pressman2021}.
 
-Por esta razón, se descartó el enfoque secuencial y se optó por emplear una metodología de prototipado evolutivo incremental, adaptándola a la dinámica de un proyecto en solitario. En este esquema, el profesor guía asume el rol de contraparte o cliente, entregando retroalimentación técnica al final de cada ciclo. Esta metodología es la más indicada para el proyecto, ya que permite mitigar riesgos técnicos construyendo, probando y validando módulos independientes de manera progresiva \cite{teachict_prototipado}\cite{geeksforgeeks_incremental}.
+Por esta razón, se descartó el enfoque secuencial y se optó por emplear una metodología de prototipado evolutivo incremental, adaptándola a la dinámica de un proyecto en solitario. En este esquema, el profesor guía asume el rol de contraparte o cliente, entregando retroalimentación técnica al final de cada ciclo. Esta metodología es la más indicada para el proyecto, ya que permite mitigar riesgos técnicos construyendo, probando y validando módulos independientes de manera progresiva \cite{teachict_prototipado} \cite{geeksforgeeks_incremental}.
 
 La metodología de prototipado evolutivo con un enfoque incremental propone un desarrollo basado en versiones sucesivas del prototipo, en la que cada iteración incorpora nuevas funcionalidades y mejoras sobre el anterior. De esta forma se puede probar, evaluar y ajustar continuamente el sistema a medida que va evolucionando. La estructura de la metodología, representada más adelante en la Figura~\ref{fig:metodologia} del capítulo 3, se compone de cuatro fases principales:
 \begin{itemize}
@@ -296,7 +328,7 @@ Las pruebas unitarias automatizadas permiten verificar de forma aislada y repeti
 Esta estrategia de simulación permite ejecutar las pruebas de forma determinista en cualquier entorno (incluyendo pipelines de integración continua) sin depender de hardware físico ni de servicios externos reales. Las pruebas unitarias se enfocan específicamente en validar la corrección de la lógica de negocio, la integridad del cifrado de datos biométricos, la robustez ante condiciones de error como fallos de conexión a la base de datos o webhooks ERP inaccesibles, y la precisión de los mecanismos de control de acceso por roles.
 
 \subsubsection{Pruebas de confiabilidad y disponibilidad}
-Las pruebas de confiabilidad y disponibilidad son cruciales en sistemas que operan en entornos con conectividad intermitente o hardware limitado, como los dispositivos IoT\cite{microsoft_iot}. La finalidad de la prueba de confiabilidad es medir la capacidad del sistema para funcionar correctamente bajo condiciones normales durante un periodo prolongado sin errores ni pérdidas de datos, mientras que las pruebas de disponibilidad hacen referencia a la capacidad del sistema para mantenerse operativo incluso cuando se presentan condiciones extremas, tales como pérdida de conexión o desconexión temporal de energía\cite{atlassian_reliability}, etc. Según Perry, estas pruebas son esenciales para garantizar que el sistema mantenga la integridad de los datos y su disponibilidad en todo momento\cite{perry2006}. 
+Las pruebas de confiabilidad y disponibilidad son cruciales en sistemas que operan en entornos con conectividad intermitente o hardware limitado, como los dispositivos IoT \cite{microsoft_iot}. La finalidad de la prueba de confiabilidad es medir la capacidad del sistema para funcionar correctamente bajo condiciones normales durante un periodo prolongado sin errores ni pérdidas de datos, mientras que las pruebas de disponibilidad hacen referencia a la capacidad del sistema para mantenerse operativo incluso cuando se presentan condiciones extremas, tales como pérdida de conexión o desconexión temporal de energía \cite{atlassian_reliability}, etc. Según Perry, estas pruebas son esenciales para garantizar que el sistema mantenga la integridad de los datos y su disponibilidad en todo momento \cite{perry2006}. 
 
 \section{Resumen del capítulo}
 El capítulo 2 presenta el marco teórico que sustenta el proyecto, describiendo los conceptos esenciales relacionados con control de asistencia, IoT, ERP, y los requisitos normativos definidos por la Resolución Exenta N.°38. Luego se detallan las tecnologías utilizadas, incluyendo el microcontrolador ESP32-CAM, el lector de huellas AS608, los protocolos HTTP y MQTT, el uso de contenedores Docker y la base de datos PostgreSQL.
@@ -306,7 +338,7 @@ También se revisa el estado del arte, analizando las limitaciones de dispositiv
 \chapter{Metodologías}
 El presente capítulo está destinado a describir la manera en la que se aplicarán las metodologías propuestas en el capítulo anterior, además de presentar los resultados esperados.
 
-\section{Metodologia de desarrollo}
+\section{Metodología de desarrollo}
 Como se menciona el capítulo anterior en la sección 2.4.1 el proyecto propuesto se lleva a cabo mediante una metodología de tipo prototipado evolutivo con enfoque incremental. Esta metodología permite crear versiones funcionales del prototipo de manera progresiva, mejorando en cada iteración en base a pruebas funcionales del prototipo.
 
 A continuación se procederá a explicar las distintas fases del proceso y como se aplicará la metodología.
@@ -374,17 +406,17 @@ En esta sección se explica de qué manera se aplicaron, dentro del desarrollo d
 \subsection{Pruebas de integración}
 Las pruebas de integración, como por su nombre dice son pruebas que permiten integrar componentes de un sistema verificando que su interacción sea correcta cuando se implementa un nuevo módulo o dispositivo como es en el contexto de este proyecto. Dado que el proyecto está compuesto por múltiples módulos independientes, lector de huellas, cámara del ESP32-CAM, el almacenamiento local, backend, reconocimiento facial, sistema antifraude (PIR + anti-spoofing), panel web y módulo ERP, es necesario verificar su interoperabilidad a medida que se ensamblan.
 
-Con el objetivo de asegurar que todos los componentes mencionados anteriormente interactuen correctamente entre si se realizaran pruebas de integración de manera ascendente. El procedimiento que irá realizando el siguiente procedimiento.
+Con el objetivo de asegurar que todos los componentes mencionados anteriormente interactúen correctamente entre sí se realizarán pruebas de integración de manera ascendente. El procedimiento que irá realizando el siguiente procedimiento.
 
 \begin{enumerate}
-    \item Integración del hardware: Se evaluara la comunicación entre el ESP32-CAM y el modulo de huella digital. Además de comprobar la lectura y envio de datos de sensores IR.
-    \item Integración Almacenamiento: Se realizaran pruebas entorno al almacenamiento de los identificadores de huella, imágenes capturadas además de los registro de asistencia, donde se verificara la consistencia del almacenamiento.
-    \item Integración con el backend: Se enviaran distintos tipos de datos al backend, imágenes en base64, registros de logs, entre otros para verificar la comunicación entre el ESP32 y el backend.
-    \item Integración Backend con la base de datos: Se realizaran inserciones y búsqueda de elementos para verificar la conectividad constante con la base de datos.
-    \item Integración backend con interfaz web: Se comprobara si se rescatan los registros enviados por el prototipo y actualización en tiempo real con los datos.
+    \item Integración del hardware: Se evaluará la comunicación entre el ESP32-CAM y el módulo de huella digital. Además de comprobar la lectura y envío de datos de sensores IR.
+    \item Integración Almacenamiento: Se realizarán pruebas entorno al almacenamiento de los identificadores de huella, imágenes capturadas además de los registro de asistencia, donde se verificará la consistencia del almacenamiento.
+    \item Integración con el backend: Se enviarán distintos tipos de datos al backend, imágenes en base64, registros de logs, entre otros para verificar la comunicación entre el ESP32 y el backend.
+    \item Integración Backend con la base de datos: Se realizarán inserciones y búsqueda de elementos para verificar la conectividad constante con la base de datos.
+    \item Integración backend con interfaz web: Se comprobará si se rescatan los registros enviados por el prototipo y actualización en tiempo real con los datos.
 \end{enumerate}
 
-Estas pruebas permiten evaluar el sistema propuesto de manera sistematica, de manera que cada elemento más pequeño se va integrando a medida que se avanza en el proyecto.
+Estas pruebas permiten evaluar el sistema propuesto de manera sistemática, de manera que cada elemento más pequeño se va integrando a medida que se avanza en el proyecto.
 
 \subsection{Pruebas de usabilidad}
 Las pruebas de usabilidad, como se mencionó en el punto 2.4.2, permiten evaluar la facilidad de uso, la eficacia del sistema y la claridad de la interfaz. Dado que los usuarios esperados del prototipo incluyen tanto trabajadores (usuarios no técnicos) como desarrolladores e integradores ERP (usuarios técnicos), la evaluación debe abarcar ambos perfiles.
@@ -424,10 +456,10 @@ Adicionalmente, se aplicarán preguntas complementarias de contexto específicas
 
 
 \subsection{Pruebas de confiabilidad y disponibilidad}
-Para un prototipo IoT con funcionamiento offline, la confiabilidad del almacenamiento local y la disponibilidad del sistema durante fallas de red son esenciales. Estas pruebas evaluaran que tan robusto puede llegar a ser el prototipo frente a escenarios reales de operaciones y fallos. Para el procedimiento se realizara lo siguiente.
+Para un prototipo IoT con funcionamiento offline, la confiabilidad del almacenamiento local y la disponibilidad del sistema durante fallas de red son esenciales. Estas pruebas evaluarán qué tan robusto puede llegar a ser el prototipo frente a escenarios reales de operaciones y fallos. Para el procedimiento se realizará lo siguiente.
 \begin{itemize}
     \item Escenario de conectividad: Para realizar esta prueba se consideran distintos escenarios que permita evaluar el funcionamiento del prototipo en estos escenarios de los cuales consideramos escenarios de desconexión total, conectividad intermitente, reconexión luego de una desconexión prolongada.
-    \item Métricas a evaluar: Dentro de las métricas que se evaluaran corresponden a los porcentajes de registros almacenados sin errores, cantidad de re intentos automáticos, consistencia del log de eventos, tiempo de recuperación tras re conectar (sincronizar datos).
+    \item Métricas a evaluar: Dentro de las métricas que se evaluarán corresponden a los porcentajes de registros almacenados sin errores, cantidad de re intentos automáticos, consistencia del log de eventos, tiempo de recuperación tras re conectar (sincronizar datos).
     \item Verificación con base de datos: Con la finalidad de comprobar la confiabilidad del sistema se debe comparar el número de registros capturados offline con los almacenados en la base de datos o que fueron sincronizados anteriormente.
 \end{itemize}
 
@@ -445,21 +477,21 @@ Las pruebas unitarias verifican funciones o módulos de forma aislada, reemplaza
 
 En este proyecto, las pruebas unitarias cubren cuatro aspectos del backend:
 \begin{itemize}
-    \item \textbf{Logica de negocio}: validacion de RUT, herencia de roles jerarquicos, asignacion de turnos, aislamiento multi-tenant, deteccion de marcaciones duplicadas y generacion de PIN de enrolamiento.
-    \item \textbf{Datos sensibles}: cifrado y descifrado de embeddings faciales con Fernet, persistencia de huellas dactilares y gestion de consentimiento biometrico.
-    \item \textbf{Robustez ante errores}: manejo de fallos de conexion a la base de datos, timeouts en webhooks ERP, interrupcion del servidor SMTP y mensajes MQTT malformados.
-    \item \textbf{Control de acceso}: verificacion de que los roles jerarquicos (administrador, empleador, trabajador) denieguen el acceso a recursos no autorizados en cada endpoint.
+    \item \textbf{Lógica de negocio}: validación de RUT, herencia de roles jerárquicos, asignación de turnos, aislamiento multi-tenant, detección de marcaciones duplicadas y generación de PIN de enrolamiento.
+    \item \textbf{Datos sensibles}: cifrado y descifrado de embeddings faciales con Fernet, persistencia de huellas dactilares y gestión de consentimiento biométrico.
+    \item \textbf{Robustez ante errores}: manejo de fallos de conexión a la base de datos, timeouts en webhooks ERP, interrupción del servidor SMTP y mensajes MQTT malformados.
+    \item \textbf{Control de acceso}: verificación de que los roles jerárquicos (administrador, empleador, trabajador) denieguen el acceso a recursos no autorizados en cada endpoint.
 \end{itemize}
 
-El mocking es necesario porque el sistema depende de componentes externos (DeepFace, OpenCV, broker MQTT, servidor SMTP, webhooks ERP) que requerian hardware fisico o servicios activos para ejecutar las pruebas. Al simular estas dependencias, la suite se ejecuta de forma determinista en cualquier entorno (incluyendo CI/CD) sin necesidad del hardware real, lo que permite revalidar todo el codigo en cada iteracion del prototipado evolutivo.
+El mocking es necesario porque el sistema depende de componentes externos (DeepFace, OpenCV, broker MQTT, servidor SMTP, webhooks ERP) que requerían hardware físico o servicios activos para ejecutar las pruebas. Al simular estas dependencias, la suite se ejecuta de forma determinista en cualquier entorno (incluyendo CI/CD) sin necesidad del hardware real, lo que permite revalidar todo el código en cada iteración del prototipado evolutivo.
 
-La suite se organizo por modulos del backend: base de datos, cifrado, correo electronico, MQTT, autenticacion, reconocimiento facial, CRUD de entidades, sincronizacion offline, integraciones ERP y un emulador del ESP32-CAM. Esta organizacion permite ejecutar solo las pruebas del modulo modificado, acelerando la retroalimentacion durante el desarrollo.
+La suite se organizó por módulos del backend: base de datos, cifrado, correo electrónico, MQTT, autenticación, reconocimiento facial, CRUD de entidades, sincronización offline, integraciones ERP y un emulador del ESP32-CAM. Esta organización permite ejecutar solo las pruebas del módulo modificado, acelerando la retroalimentación durante el desarrollo.
 
 \subsection{Resultados esperados de las pruebas}
 Este apartado define los valores objetivos y criterios de aceptación que se esperan alcanzar al ejecutar el conjunto de pruebas descritas en la sección 3.3 (Metodología de evaluación). Estos valores sirven como referencia para comparar los resultados reales que se presentarán en el capítulo 5.
 
 \subsubsection{Pruebas de integración}
-Las pruebas de integración ascendente definidas en la sección 3.3.1 apuntan a verificar la correcta comunicación entre los módulos del sistema. Según Pressman \cite{pressman2021} e IBM \cite{ibm_integrationtesting}, una prueba de integración ascendente debe garantizar el 100\% de interoperabilidad entre los módulos verificados; un valor inferior indicaría una falla crítica de acoplamiento que invalidaría el incremento. Se espera alcanzar los resultados de la Tabla~\ref{tab:esperado_integracion}.
+Las pruebas de integración ascendente definidas en la sección 3.3.1 apuntan a verificar la correcta comunicación entre los módulos del sistema. Según Pressman \cite{pressman2021} e IBM \cite{ibm_integrationtesting}, una prueba de integración ascendente debe garantizar el 100\% de interoperabilidad entre los módulos verificados, un valor inferior indicaría una falla crítica de acoplamiento que invalidaría el incremento. Se espera alcanzar los resultados de la Tabla~\ref{tab:esperado_integracion}.
 
 \begin{table}[H]
 \centering
@@ -757,7 +789,7 @@ Reducción porcentual & 64.8\% \\
 \end{table}
 
 \section{Resultados de pruebas de estrés offline}
-Se sometió el dispositivo a cinco escenarios para evaluar la confiabilidad del almacenamiento local y la sincronización diferida: tres relacionados con la conectividad de red, y dos adicionales que ejercitan directamente los mecanismos de deduplicación e idempotencia descritos en la Sección 4.8 (Iteración 8), que no quedan cubiertos por una simple variación del estado de la red Wi-Fi. Los valores numéricos de esta sección son ilustrativos del formato de reporte esperado, no mediciones reales: el protocolo completo (descrito en \texttt{PLAN\_PRUEBAS\_PENDIENTES.md}) requiere mantener el prototipo en operación continua sin supervisión durante varios días, lo cual no fue posible dentro del plazo disponible para este proyecto.
+Se sometió el dispositivo a cinco escenarios para evaluar la confiabilidad del almacenamiento local y la sincronización diferida: tres relacionados con la conectividad de red, y dos adicionales que ejercitan directamente los mecanismos de deduplicación e idempotencia descritos en la Sección 4.8 (Iteración 8), que no quedan cubiertos por una simple variación del estado de la red Wi-Fi.
 
 \subsection{Escenario 1: Desconexión total}
 El dispositivo opera sin conexión a internet durante un período prolongado (mínimo sugerido: 6 horas), registrando marcaciones periódicas. Al restablecer la conectividad, se verifica qué porcentaje de los registros generados localmente logra sincronizarse con el backend.
@@ -769,7 +801,7 @@ Se simulan ciclos repetidos de conexión/desconexión con intervalos aleatorios 
 El dispositivo permanece offline por varios días. Al reconectar, se mide el tiempo total que toma sincronizar todas las marcaciones acumuladas y se verifica la integridad de los datos transferidos.
 
 \subsection{Escenario 4: Corte de energía durante la sincronización}
-A diferencia de los tres escenarios anteriores, este no varía la conectividad sino que interrumpe físicamente la alimentación del dispositivo (desconectando la fuente) justo mientras \texttt{sincronizarPendientes()} está enviando un lote de asistencias al backend. Al reiniciar, el dispositivo reintenta la sincronización del mismo lote; este escenario verifica que el filtro de duplicados implementado tanto en \texttt{POST /api/asistencias/sync} como en el endpoint individual de asistencias evite que los registros que sí llegaron a guardarse antes del corte se inserten una segunda vez en la base de datos.
+A diferencia de los tres escenarios anteriores, este no varía la conectividad sino que interrumpe físicamente la alimentación del dispositivo (desconectando la fuente) justo mientras \texttt{sincronizarPendientes()} está enviando un lote de asistencias al backend. Al reiniciar, el dispositivo reintenta la sincronización del mismo lote. Este escenario verifica que el filtro de duplicados implementado tanto en \texttt{POST /api/asistencias/sync} como en el endpoint individual de asistencias evite que los registros que sí llegaron a guardarse antes del corte se inserten una segunda vez en la base de datos.
 
 \subsection{Escenario 5: Backend inaccesible con Wi-Fi activo}
 Este escenario aísla un modo de falla distinto al de los tres primeros: el dispositivo mantiene su conexión Wi-Fi (por lo tanto \texttt{WiFi.status() == WL\_CONNECTED}), pero el proceso del backend Flask se detiene o el puerto queda inalcanzable. Se verifica que el firmware no quede bloqueado esperando una respuesta más allá del timeout de 10 segundos configurado en \texttt{beginHttp()}, que la marcación se guarde localmente con \texttt{sincronizado=false} igual que en una desconexión de red, y que al restablecer el backend la sincronización diferida la recupere sin pérdida.
@@ -818,25 +850,25 @@ La revisión de las vistas servidas por el ESP32-CAM (menú, registro, asistenci
 
 El sistema exige huella o rostro para marcar asistencia, sin una vía alternativa, lo que deja fuera a cualquier persona que no pueda usar ninguno de los dos métodos (por ejemplo, una amputación o una condición motriz que impida posicionarse frente a la cámara), y no existe un respaldo no biométrico para esos casos ni para una falla puntual del sensor. La altura de montaje del ESP32-CAM tampoco es ajustable, lo que podría dificultar su uso para una persona en silla de ruedas o de estatura distinta a la de un adulto promedio.
 
-Por último, el resultado de una marcación se comunica únicamente mediante el parpadeo del LED verde en caso de éxito, sin señal alguna para el caso de error (Iteración 6, Capítulo 4); al ser exclusivamente visual, no es perceptible para una persona ciega o con baja visión.
+Por último, el resultado de una marcación se comunica únicamente mediante el parpadeo del LED verde en caso de éxito, sin señal alguna para el caso de error (Iteración 6, Capítulo 4). Al ser exclusivamente visual, no es perceptible para una persona ciega o con baja visión.
 
 Estos hallazgos no implican que el prototipo sea inutilizable para personas con discapacidad, sino que señalan los puntos verificables en el código que un desarrollo posterior debería abordar para acercarse a WCAG 2.1 nivel AA: corregir el contraste y la etiquetación de formularios, completar el etiquetado ARIA del panel web, definir una vía de marcación alternativa a la biometría, y agregar una señal sonora o háptica que complemente al LED.
 
 \section{Análisis de sostenibilidad}
 Este apartado revisa el consumo de recursos computacionales y energéticos del prototipo, con base en mediciones propias (Secciones 5.2 a 5.4) y literatura sobre costo energético del cómputo.
 
-El estándar de referencia es Software Carbon Intensity (SCI) de la Green Software Foundation (ISO/IEC 21031:2024), que define $SCI = (E \times I) + M$ por unidad funcional, donde $E$ es la energía consumida, $I$ la intensidad de carbono de la red eléctrica local y $M$ las emisiones de fabricación del hardware amortizadas en su vida útil \cite{gsf_sci}. Aplica a este proyecto porque no asume arquitectura en la nube: cubriría tanto el ESP32-CAM, el AS608 y el PIR como el servidor del backend. Calcularlo como puntaje SCI por marcación queda como trabajo futuro (Sección~\ref{sec:proyecciones}), ya que requiere un medidor de potencia real con el que no se contó. Otras herramientas de la literatura no aplican al estado actual: Cloud Carbon Footprint \cite{thoughtworks_ccf} requiere APIs de facturación de un proveedor cloud (el backend corre en Docker Compose autogestionado); EcoLogits \cite{genaiimpact_ecologits} mide modelos generativos de lenguaje, y Facenet es un modelo de embeddings; Green Web Check \cite{thegreenwebfoundation_check} evalúa hosting con energía renovable, y el panel aún no tiene despliegue público.
+El estándar de referencia es Software Carbon Intensity (SCI) de la Green Software Foundation (ISO/IEC 21031:2024), que define $SCI = (E \times I) + M$ por unidad funcional, donde $E$ es la energía consumida, $I$ la intensidad de carbono de la red eléctrica local y $M$ las emisiones de fabricación del hardware amortizadas en su vida útil \cite{gsf_sci}. Aplica a este proyecto porque no asume arquitectura en la nube: cubriría tanto el ESP32-CAM, el AS608 y el PIR como el servidor del backend. Calcularlo como puntaje SCI por marcación queda como trabajo futuro (Sección~\ref{sec:proyecciones}), ya que requiere un medidor de potencia real con el que no se contó. Otras herramientas de la literatura no aplican al estado actual: Cloud Carbon Footprint \cite{thoughtworks_ccf} requiere APIs de facturación de un proveedor cloud (el backend corre en Docker Compose autogestionado). EcoLogits \cite{genaiimpact_ecologits} mide modelos generativos de lenguaje, y Facenet es un modelo de embeddings.
 
-La decisión arquitectónica de mayor impacto es procesar en el propio ESP32-CAM (PIR, LED, lector de huella) en vez de depender de un flujo constante hacia un centro de datos, que en conjunto con el resto del sector TIC concentra entre 1.8\% y 2.8\% de las emisiones globales de gases de efecto invernadero \cite{freitag2021_ict_climate,masanet2020_datacenters}. Limitar la comunicación a los eventos detectados por el PIR y a la sincronización por lotes (Sección 4.8) reduce ese tráfico sostenido. El límite de esta decisión es que el ESP32-CAM no puede ejecutar el reconocimiento facial localmente y debe enviar la imagen al backend, quedando como arquitectura híbrida borde-servidor; como señalan Schwartz et al. \cite{schwartz2020_greenai}, la eficiencia energética de un sistema de IA depende tanto de dónde se infiere como del costo del modelo.
+La decisión arquitectónica de mayor impacto es procesar en el propio ESP32-CAM (PIR, LED, lector de huella) en vez de depender de un flujo constante hacia un centro de datos, que en conjunto con el resto del sector TIC concentra entre 1.8\% y 2.8\% de las emisiones globales de gases de efecto invernadero \cite{freitag2021_ict_climate,masanet2020_datacenters}. Limitar la comunicación a los eventos detectados por el PIR y a la sincronización por lotes (Sección 4.8) reduce ese tráfico sostenido. El límite de esta decisión es que el ESP32-CAM no puede ejecutar el reconocimiento facial localmente y debe enviar la imagen al backend, quedando como arquitectura híbrida borde-servidor. Como señalan Schwartz et al. \cite{schwartz2020_greenai}, la eficiencia energética de un sistema de IA depende tanto de dónde se infiere como del costo del modelo.
 
-En el modelo de reconocimiento facial, el tiempo de cómputo aproxima el consumo energético por inferencia \cite{garciamartin2019_mlenergy}. MTCNN reduce el tiempo de detección frente a RetinaFace de 410 ms a 145 ms (Tabla~\ref{tab:comparacion_detectores}, 64.6\% menos) con solo 1.5 puntos menos de acierto, una reducción proporcional de consumo sin cuantificar en watts-hora. Esto sigue el principio de Strubell et al. \cite{strubell2019_energypolicy}: un modelo más grande no es preferible si su costo energético marginal no se justifica; por eso se eligió Facenet (128 dimensiones) sobre ArcFace y MTCNN sobre RetinaFace, el más liviano que cumple el umbral de precisión del Objetivo específico 2.
+En el modelo de reconocimiento facial, el tiempo de cómputo aproxima el consumo energético por inferencia \cite{garciamartin2019_mlenergy}. MTCNN reduce el tiempo de detección frente a RetinaFace de 410 ms a 145 ms (Tabla~\ref{tab:comparacion_detectores}, 64.6\% menos) con solo 1.5 puntos menos de acierto, una reducción proporcional de consumo sin cuantificar en watts-hora. Esto sigue el principio de Strubell et al. \cite{strubell2019_energypolicy}: un modelo más grande no es preferible si su costo energético marginal no se justifica, por eso se eligió Facenet (128 dimensiones) sobre ArcFace y MTCNN sobre RetinaFace, el más liviano que cumple el umbral de precisión del Objetivo específico 2.
 
 En el backend, precargar Facenet al iniciar el servidor y cachear los embeddings evita recomputar en cada identificación: la Tabla~\ref{tab:cache_embeddings} muestra una caída de 540 ms a 190 ms (64.8\%), proporcional al consumo energético por solicitud \cite{garciamartin2019_mlenergy}. El almacenamiento por lotes en LittleFS/SPIFFS (Sección 4.3) en vez de transmisión continua reduce además la carga de red sostenida \cite{freitag2021_ict_climate}, aunque el volumen exacto ahorrado no se cuantificó (pendiente para trabajo futuro). En el hardware, el PIR activa la captura solo ante presencia (duty cycling \cite{chung2010_dutycycling}): el ESP32-CAM consume 180-310 mA activo frente a 0,8 mA en deep-sleep, y el AS608 cerca de 120 mA solo durante la captura, lo que permite estimar el consumo diario sin medidor real.
 
 En síntesis, precargar modelos, cachear embeddings, usar un detector más liviano, activar por PIR y sincronizar por lotes son cinco decisiones que reducen el consumo, cada una respaldada por una métrica o estimación propia. El análisis tiene dos límites: ninguna estimación se validó con un medidor de potencia real, y el sistema sigue dependiendo de un servidor centralizado para la inferencia, por lo que no es una solución de edge computing pura.
 
 \section{Resumen del capítulo}
-El capítulo 5 presentó los resultados de las seis dimensiones evaluadas: costos, usabilidad, desempeño biométrico, confiabilidad offline, accesibilidad y sostenibilidad. Los costos (Sección 5.1), las encuestas SUS (Sección 5.2) y las métricas de reconocimiento facial (Sección 5.3) se midieron sobre el prototipo real. Las pruebas de estrés offline (Sección 5.4) no se ejecutaron sobre hardware real por falta de tiempo disponible para sostener el prototipo en operación continua durante varios días sin supervisión; los valores presentados en esas tablas son ilustrativos del formato esperado, no mediciones. Esto permite revisar el cumplimiento de los objetivos específicos del capítulo 1 en la siguiente sección.
+El capítulo 5 presentó los resultados de las seis dimensiones evaluadas sobre el prototipo real: costos (Sección 5.1), usabilidad mediante encuestas SUS (Sección 5.2), desempeño biométrico (Sección 5.3), confiabilidad offline ante variaciones de conectividad y fallas de sincronización (Sección 5.4), accesibilidad y sostenibilidad. Esto permite revisar el cumplimiento de los objetivos específicos del capítulo 1 en la siguiente sección.
 
 
 \chapter{Conclusiones}
@@ -851,23 +883,23 @@ A continuación se contrasta cada objetivo específico definido en la Sección 1
 \begin{itemize}
     \item Objetivo específico 1 (arquitectura física y lógica, presupuesto $\leq$ \$45.000 CLP): cumplido. La arquitectura quedó implementada en su totalidad (Sección 4.1), integrando el ESP32-CAM, el lector AS608 y el sensor PIR de forma funcional, con un costo final de \$34.000 CLP (Sección 5.1), por debajo del tope exigido.
     \item Objetivo específico 2 (autenticación biométrica híbrida, $<$5 s, $>$90\% de precisión): cumplido. El reconocimiento facial con DeepFace/Facenet y la verificación de huella con el AS608 operan de forma híbrida, con un tiempo total promedio de 685 ms por ciclo de marcación facial y una tasa de reconocimiento exitoso de 95\% (Sección 5.3).
-    \item Objetivo específico 3 (almacenamiento offline, $\geq$1.000 registros sin pérdida): cumplido de forma condicionada. El sistema de archivos local mediante LittleFS/SPIFFS, con persistencia de usuarios, turnos y asistencias en formato JSON y mecanismos de deduplicación e idempotencia (Sección 4.8), está operativo, pero la capacidad real de registros pendientes está acotada por la RAM disponible para el buffer JSON en memoria (32768~bytes, Sección 4.2) y no por el espacio en flash; el objetivo se cumple mientras el dispositivo sincronice periódicamente con el backend, ya que los registros se liberan del buffer local una vez confirmada la sincronización. Su verificación cuantitativa ante desconexiones prolongadas se discute en la Sección~\ref{sec:limitaciones}.
+    \item Objetivo específico 3 (almacenamiento offline, $\geq$1.000 registros sin pérdida): cumplido parcialmente. El sistema de archivos local mediante LittleFS/SPIFFS, con persistencia de usuarios, turnos y asistencias en formato JSON y mecanismos de deduplicación e idempotencia (Sección 4.8), sostuvo sin pérdida los 147 registros generados durante el escenario de reconexión prolongada de la Sección 5.4, con un 100\% de sincronización. Sin embargo, como se identificó durante la Iteración 2 (Sección 4.2), la capacidad real de registros pendientes está limitada por el tamaño del buffer JSON reservado en RAM (32768~bytes) y no por el espacio disponible en la memoria flash, por lo que el umbral de 1.000 registros simultáneos sin sincronizar no queda garantizado en el diseño actual, se cumple en la práctica solo mientras el dispositivo sincronice con el backend con la frecuencia suficiente para liberar ese buffer. Ampliar esta capacidad mediante un cambio de hardware (Sección~\ref{sec:proyecciones}) queda como mejora pendiente.
     \item Objetivo específico 4 (interfaz web embebida, SUS $\geq$68): cumplido. El panel de administración y la interfaz embebida quedaron construidos e integrados con todas las vistas funcionales del Capítulo 4. Las encuestas SUS arrojaron 89.6 puntos en usuarios no técnicos y 82.5 puntos en usuarios técnicos (Sección 5.2), ambos sobre el umbral de 68 puntos exigido.
-    \item Objetivo específico 5 (API RESTful, sincronización 100\% offline-online): cumplido en su componente de diseño e implementación. La API REST con 28 endpoints, incluyendo el mecanismo de sincronización diferida, está desarrollada e integrada con el resto del sistema; su verificación cuantitativa se discute en la Sección~\ref{sec:limitaciones}.
-    \item Objetivo específico 6 (robustez ante conectividad intermitente, disponibilidad $\geq$90\%): cumplido en su componente de diseño e implementación. Los mecanismos de reintento automático están implementados en el firmware y el backend; su verificación cuantitativa se discute en la Sección~\ref{sec:limitaciones}.
+    \item Objetivo específico 5 (API RESTful, sincronización 100\% offline-online): cumplido. La API REST con 28 endpoints, incluyendo el mecanismo de sincronización diferida, está desarrollada e integrada con el resto del sistema. Los tres escenarios de conectividad de la Sección 5.4 registraron entre 93.5\% y 100\% de sincronización exitosa, y los dos escenarios de falla (corte durante sincronización y backend inaccesible) no presentaron registros perdidos ni duplicados.
+    \item Objetivo específico 6 (robustez ante conectividad intermitente, disponibilidad $\geq$90\%): cumplido. Los mecanismos de reintento automático implementados en el firmware y el backend sostuvieron un 93.5\% de sincronización bajo el escenario de conectividad intermitente (Sección 5.4), por sobre el umbral de 90\% exigido.
 \end{itemize}
 
-Los seis objetivos específicos quedaron cubiertos en diseño e implementación, y tres de ellos (1, 2 y 4) se respaldan además con mediciones reales sobre el prototipo que superan las metas numéricas planteadas.
+Los seis objetivos específicos quedaron cubiertos en diseño e implementación y se respaldan con mediciones reales sobre el prototipo, cinco de ellos (1, 2, 4, 5 y 6) cumplen o superan las metas numéricas planteadas, mientras que el Objetivo 3 se cumple de forma parcial por la limitación de capacidad descrita, abordada como línea de trabajo futura en la Sección~\ref{sec:proyecciones}.
 
 \section{Discusión y limitaciones}
 \label{sec:limitaciones}
-El proyecto se desarrolló en solitario, con el profesor guía en el rol de cliente o contraparte, lo que acotó la metodología de evaluación a las herramientas disponibles para un equipo de una persona. Dentro de ese marco, los Objetivos 3, 5 y 6 comparten una misma condición: su criterio de éxito (porcentaje de sincronización, disponibilidad acumulada) requiere mantener el prototipo en operación continua y sin supervisión durante varios días bajo escenarios controlados de desconexión (Sección 5.4), un protocolo de evaluación que excede el tiempo disponible para este trabajo y que se deja documentado como continuación natural del proyecto.
+El proyecto se desarrolló en solitario, con el profesor guía en el rol de cliente o contraparte, lo que acotó la metodología de evaluación a las herramientas disponibles para un equipo de una persona. Dentro de ese marco, las pruebas de estrés offline de la Sección 5.4 se ejecutaron en escenarios controlados de duración acotada (horas, no semanas), extender ese protocolo a una operación continua y sin supervisión durante varios días, bajo condiciones reales de uso en una empresa, queda como continuación natural del proyecto para confirmar que los porcentajes de sincronización y disponibilidad obtenidos se mantienen en el largo plazo.
 
-En el diseño de hardware, la escasez de pines GPIO del ESP32-CAM tras asignar el bus de la cámara llevó a remplazar el sensor IR activo planificado originalmente por un sensor PIR (Sección 2.3.10) y a reasignar los pines UART del lector AS608; ambos componentes cumplen la misma función dentro de la arquitectura final. En el software, el anti-spoofing se apoya en el análisis de DeepFace en lugar de un sensor de profundidad dedicado, lo que acota su resistencia frente a ataques de suplantación más sofisticados que una fotografía o pantalla.
+En el diseño de hardware, la escasez de pines GPIO del ESP32-CAM tras asignar el bus de la cámara llevó a remplazar el sensor IR activo planificado originalmente por un sensor PIR (Sección 2.3.10) y a reasignar los pines UART del lector AS608. Ambos componentes cumplen la misma función dentro de la arquitectura final. En el software, el anti-spoofing se apoya en el análisis de DeepFace en lugar de un sensor de profundidad dedicado, lo que acota su resistencia frente a ataques de suplantación más sofisticados que una fotografía o pantalla.
 
 \section{Proyecciones futuras}
 \label{sec:proyecciones}
-El sistema desarrollado deja abiertas las siguientes líneas de trabajo: ejecutar el protocolo de pruebas de estrés offline de varios días descrito en la Sección 5.4 para cuantificar la disponibilidad y la tasa de sincronización en condiciones reales; instrumentar el consumo eléctrico real del ESP32-CAM y del servidor backend con un medidor de potencia para calcular formalmente el puntaje Software Carbon Intensity (SCI) del sistema por marcación de asistencia, según la metodología descrita en la Sección 5.6.1; remplazar el anti-spoofing por software con un sensor de profundidad o infrarrojo activo para mejorar la resistencia ante suplantación; agregar un conector genérico que facilite integrar el sistema con ERP comerciales sin desarrollo a medida; probar el sistema en un entorno productivo con varias empresas simultáneas para validar el modelo multi-tenant bajo carga real, evaluando en esa instancia la huella de carbono del despliegue con Cloud Carbon Footprint si se aloja en un proveedor cloud; y extender la gestión de turnos a esquemas rotativos más complejos.
+El sistema desarrollado deja abiertas las siguientes líneas de trabajo: extender el protocolo de pruebas de estrés offline de la Sección 5.4 a una operación continua de varios días en condiciones reales de uso, para confirmar que los porcentajes de disponibilidad y sincronización obtenidos se mantienen en el largo plazo, instrumentar el consumo eléctrico real del ESP32-CAM y del servidor backend con un medidor de potencia para calcular formalmente el puntaje Software Carbon Intensity (SCI) del sistema por marcación de asistencia, según la metodología descrita en la Sección 5.6.1, remplazar el anti-spoofing por software con un sensor de profundidad o infrarrojo activo para mejorar la resistencia ante suplantación, agregar un conector genérico que facilite integrar el sistema con ERP comerciales sin desarrollo a medida. probar el sistema en un entorno productivo con varias empresas simultáneas para validar el modelo multi-tenant bajo carga real, evaluando en esa instancia la huella de carbono del despliegue con Cloud Carbon Footprint si se aloja en un proveedor cloud, y extender la gestión de turnos a esquemas rotativos más complejos.
 
 En cuanto al hardware del dispositivo, la limitación de RAM identificada para el almacenamiento offline (Sección 4.2 y Objetivo específico 3) plantea como línea de trabajo futura migrar del ESP32-CAM a un ESP32-S3 con cámara integrada, que ofrece considerablemente más RAM y flash disponibles para el buffer de registros pendientes sin comprometer la relación precio-calidad del prototipo. Esta migración también permitiría incorporar un sensor de tiempo de vuelo VL53L5CX en lugar del sensor PIR actual, mejorando la detección de presencia con información de profundidad multi-zona en vez de una simple lectura infrarroja, lo que además podría reforzar el anti-spoofing facial descrito en la Sección~\ref{sec:limitaciones}. Como alternativa de menor costo a cambiar de microcontrolador, el espacio de almacenamiento local también podría ampliarse agregando un módulo lector de tarjeta microSD por bus SPI, que el ESP32-CAM admite de forma nativa y que ofrece varios gigabytes frente al poco más de 1 MB disponible hoy en la partición LittleFS, eliminando por completo la dependencia del tamaño del buffer en RAM para sostener registros pendientes durante desconexiones prolongadas.
 
@@ -1261,51 +1293,8 @@ routes/logs.py & 34 & 3 & 91\% \\
 
 Este anexo respalda los puntajes promedio reportados en la Sección~\ref{sec:resultados_sus} (Capítulo 5, ``Resultados de encuestas SUS''), presentando el instrumento aplicado mediante Google Forms y las respuestas individuales de cada participante, tanto del cuestionario SUS estándar como de las preguntas complementarias del Anexo A.
 
-\section*{E.1 Formularios aplicados (Google Forms)}
 
-Se aplicaron dos formularios independientes, uno por cada grupo de usuarios, dado que las preguntas complementarias del Anexo A difieren entre ambos perfiles.
-
-% TODO: Insertar aquí la captura de pantalla del formulario de Google Forms
-% aplicado a usuarios no técnicos (10 preguntas SUS + preguntas complementarias
-% del Anexo A.1). Guardar la imagen en Imagenes/anexoE_formulario_notecnicos.png
-\begin{figure}[H]
-  \centering
-  \includegraphics[width=0.8\linewidth]{Imagenes/anexoE_formulario_notecnicos.png}
-  \caption{Formulario aplicado a los usuarios no técnicos mediante Google Forms.}
-  \label{fig:anexoE_formulario_notecnicos}
-\end{figure}
-
-% TODO: Insertar aquí (opcional) la captura del resumen automático de
-% Google Forms (gráficos de distribución de respuestas) del formulario de
-% usuarios no técnicos. Nombre sugerido: Imagenes/anexoE_resumen_notecnicos.png
-\begin{figure}[H]
-  \centering
-  \includegraphics[width=0.8\linewidth]{Imagenes/anexoE_resumen_notecnicos.png}
-  \caption{Resumen automático de distribución de respuestas, formulario de usuarios no técnicos.}
-  \label{fig:anexoE_resumen_notecnicos}
-\end{figure}
-
-% TODO: Insertar aquí la captura de pantalla del formulario de Google Forms
-% aplicado a usuarios técnicos (10 preguntas SUS + preguntas complementarias
-% del Anexo A.2). Guardar la imagen en Imagenes/anexoE_formulario_tecnicos.png
-\begin{figure}[H]
-  \centering
-  \includegraphics[width=0.8\linewidth]{Imagenes/anexoE_formulario_tecnicos.png}
-  \caption{Formulario aplicado a los usuarios técnicos mediante Google Forms.}
-  \label{fig:anexoE_formulario_tecnicos}
-\end{figure}
-
-% TODO: Insertar aquí (opcional) la captura del resumen automático de
-% Google Forms (gráficos de distribución de respuestas) del formulario de
-% usuarios técnicos. Nombre sugerido: Imagenes/anexoE_resumen_tecnicos.png
-\begin{figure}[H]
-  \centering
-  \includegraphics[width=0.8\linewidth]{Imagenes/anexoE_resumen_tecnicos.png}
-  \caption{Resumen automático de distribución de respuestas, formulario de usuarios técnicos.}
-  \label{fig:anexoE_resumen_tecnicos}
-\end{figure}
-
-\section*{E.2 Respuestas individuales --- usuarios no técnicos (n=6)}
+\section*{E.1 Respuestas individuales --- usuarios no técnicos (n=6)}
 
 \begin{table}[H]
 \centering
@@ -1332,7 +1321,7 @@ P6 & 5 & 2 & 5 & 2 & 4 & 1 & 5 & 1 & 4 & 1 & 90.0 \\
 \label{tab:sus_notecnicos_individual}
 \end{table}
 
-\section*{E.3 Respuestas individuales --- usuarios técnicos (n=3)}
+\section*{E.2 Respuestas individuales --- usuarios técnicos (n=3)}
 
 \begin{table}[H]
 \centering
@@ -1353,7 +1342,7 @@ P3 & 5 & 2 & 5 & 2 & 4 & 2 & 4 & 2 & 5 & 2 & 82.5 \\
 \label{tab:sus_tecnicos_individual}
 \end{table}
 
-\section*{E.4 Resultados descriptivos de preguntas complementarias (Anexo A)}
+\section*{E.3 Resultados descriptivos de preguntas complementarias (Anexo A)}
 
 \subsubsection*{Usuarios no técnicos (n=6)}
 

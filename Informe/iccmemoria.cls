@@ -94,20 +94,23 @@
 
 \def\ingcivil{
 \singlespacing
-\parbox{180pt}{
+\noindent\parbox{180pt}{
 Memoria para optar al título de Ingeniero Civil en Computación\\}
+\par
 }
 
 \def\calificacion{
 \doublespacing
-\parbox{300pt}{
+\noindent\parbox{300pt}{
   El presente documento fue calificado con nota: \line(1,0){50}\\
 }
+\par
 }
 
 \def\footdate{
 \bigskip
-\ciudad, \pais --- \@date
+\noindent\ciudad\ -- \pais\\[6pt]
+\@date
 }
 
 % ========== PORTADAS ==========
@@ -127,12 +130,12 @@ Memoria para optar al título de Ingeniero Civil en Computación\\}
 
 \bigskip
 \begin{center}
-  {\bfseries \MakeUppercase{\@author}}
+  {\large\scshape \@author}
 \end{center}
 
 \vfill
 \doublespacing
-{Profesor Guía: \MakeUppercase{\@supervisor}}
+\noindent{Profesor Guía: \scshape\@supervisor}
 \bigskip\bigskip\bigskip
 \ingcivil
 \footdate
@@ -150,12 +153,12 @@ Memoria para optar al título de Ingeniero Civil en Computación\\}
 
 \bigskip
 \begin{center}
-  {\bfseries \MakeUppercase{\@author}}
+  {\large\scshape \@author}
 \end{center}
 
 \vfill
 
-{Profesor Guía: \MakeUppercase{\@supervisor}}\bigskip
+\noindent{Profesor Guía: \scshape\@supervisor}\bigskip
 
 
 \calificacion

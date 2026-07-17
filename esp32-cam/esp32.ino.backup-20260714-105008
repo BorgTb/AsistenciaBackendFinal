@@ -617,17 +617,8 @@ void tryConnectWiFi() {
     return;
   }
   addLog("Conectando WiFi: " + savedSSID);
-
-  // Reinicio limpio de la radio antes de asociar. Sin esto el stack arranca
-  // con el estado de autenticacion que quedo del boot anterior y el AP puede
-  // responder AUTH_EXPIRE (razon 2) indefinidamente sin llegar a asociar.
-  // Es el mismo arreglo que ya existia en verificarConexionWiFi().
+  
   WiFi.mode(WIFI_STA);
-  WiFi.disconnect(true, true);
-  delay(500);
-  WiFi.mode(WIFI_STA);
-  delay(100);
-
   WiFi.setSleep(false);
   esp_wifi_set_ps(WIFI_PS_NONE);
   esp_wifi_set_protocol(WIFI_IF_STA, WIFI_PROTOCOL_11B | WIFI_PROTOCOL_11G);
@@ -638,10 +629,8 @@ void tryConnectWiFi() {
   
   WiFi.begin(savedSSID.c_str(), savedPASS.c_str());
   
-  // 40 x 500ms = 20s. El hotspot de un movil puede tardar varios segundos en
-  // despertar y aceptar la asociacion; con 10s se rendia antes de tiempo.
   int intentos = 0;
-  while (WiFi.status() != WL_CONNECTED && intentos < 40) {
+  while (WiFi.status() != WL_CONNECTED && intentos < 20) {
     delay(500);
     Serial.print(".");
     intentos++;
@@ -666,8 +655,6 @@ void tryConnectWiFi() {
 int reintentosWifi = 0;
 unsigned long ultimoIntentoWifi = 0;
 unsigned long ultimaConexionExitosa = 0;
-unsigned long ultimoIntentoEnrol = 0;
-const unsigned long INTERVALO_REINTENTO_ENROL = 30000;
 
 void verificarConexionWiFi() {
   if (savedSSID.length() == 0) return;
@@ -812,21 +799,7 @@ void mantenerConexionMQTT() {
 }
 
 void enrolarDispositivo() {
-  // Estas dos salidas eran silenciosas: el enrolamiento se cancelaba sin
-  // dejar rastro y parecia que el backend no respondia.
-  if (estaEnrolado) {
-    addLog("[ENROL] Omitido: el dispositivo ya figura como enrolado. Para "
-           "re-enrolar, guarda un PIN nuevo desde /wifi-setup.");
-    return;
-  }
-  if (pinEnrol.length() == 0) {
-    addLog("[ENROL] Omitido: no hay PIN guardado.");
-    return;
-  }
-  if (WiFi.status() != WL_CONNECTED) {
-    addLog("[ENROL] Omitido: sin WiFi. Se reintentara al conectar.");
-    return;
-  }
+  if (pinEnrol.length() == 0 || estaEnrolado) return;
   addLog("Enrolando dispositivo con PIN: " + pinEnrol);
   HTTPClient http;
   beginHttp(http, backendURL + "/api/auth/dispositivos/enrolar");
@@ -2271,16 +2244,6 @@ void handleWiFiConfig() {
   String backend = server.hasArg("backend") && server.arg("backend").length() > 0 ? server.arg("backend") : backendURL;
   String mqtt    = server.hasArg("mqtt")    && server.arg("mqtt").length()    > 0 ? server.arg("mqtt")    : mqttBroker;
   String pin     = server.hasArg("pin")     && server.arg("pin").length()     > 0 ? server.arg("pin")     : pinEnrol;
-
-  // Un PIN nuevo implica intencion de (re)enrolar, posiblemente en otra
-  // empresa. estaEnrolado se persiste en wifi.json, asi que sin este reset
-  // enrolarDispositivo() saldria de inmediato y el PIN quedaria guardado
-  // sin usarse jamas.
-  if (server.hasArg("pin") && server.arg("pin").length() > 0) {
-    if (estaEnrolado) addLog("[ENROL] PIN nuevo recibido: se reintentara el enrolamiento.");
-    estaEnrolado = false;
-  }
-
   secureMode = server.hasArg("secure") && server.arg("secure") == "1";
   if (server.hasArg("mqtt_user")) mqttUser = server.arg("mqtt_user");
   if (server.hasArg("mqtt_pass")) mqttPass = server.arg("mqtt_pass");
@@ -3325,21 +3288,6 @@ void loop() {
 
 
   if (savedSSID.length() > 0) verificarConexionWiFi();
-
-  // Reintento de enrolamiento. enrolarDispositivo() solo se llamaba desde
-  // tryConnectWiFi(), es decir una unica vez y solo si el WiFi ya estaba
-  // arriba en el arranque. Si el WiFi llegaba despues, el PIN quedaba
-  // guardado sin enrolarse nunca.
-  if (!estaEnrolado && pinEnrol.length() > 0 && WiFi.status() == WL_CONNECTED &&
-      (millis() - ultimoIntentoEnrol) > INTERVALO_REINTENTO_ENROL) {
-    ultimoIntentoEnrol = millis();
-    if (deviceMAC.length() == 0) {
-      deviceMAC = WiFi.macAddress();
-      deviceMAC.replace(":", "");
-      addLog("MAC: " + deviceMAC);
-    }
-    enrolarDispositivo();
-  }
 
   if (isOnline && mqtt_client == NULL) mantenerConexionMQTT();
   unsigned long ahora = millis();

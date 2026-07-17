@@ -8,6 +8,13 @@ import sys
 from datetime import datetime
 from urllib.parse import urlparse
 
+# La consola de Windows usa cp1252 y no puede encodear el banner ni los guiones
+# largos de los logs; sin esto el script muere al final con UnicodeEncodeError.
+try:
+    sys.stdout.reconfigure(encoding='utf-8', errors='replace')
+except Exception:
+    pass
+
 # ─── Read env from Backend/.env ──────────────────────────────────
 _env_file = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'Backend', '.env')
 if os.path.exists(_env_file):
@@ -22,7 +29,7 @@ if os.path.exists(_env_file):
 # ─── Configuration ───────────────────────────────────────────────
 ODOO_URL = os.getenv('ODOO_URL', 'http://localhost:8069')
 ODOO_DB = os.getenv('ODOO_DB', 'odoo')
-ODOO_USER = int(os.getenv('ODOO_USER', '2'))
+ODOO_USER = os.getenv('ODOO_USER', 'admin')
 ODOO_PASS = os.getenv('ODOO_PASS', 'admin')
 
 DATABASE_URL = os.getenv('DATABASE_URL', '')
@@ -62,10 +69,17 @@ def wait_for_odoo(url, timeout=120):
             time.sleep(3)
     raise TimeoutError('Odoo did not become ready')
 
-def connect_odoo(url, db, uid, password):
+def connect_odoo(url, db, username, password):
     common = xmlrpc.client.ServerProxy(f'{url}/xmlrpc/2/common')
+    uid = common.authenticate(db, username, password, {})
+    if not uid:
+        raise SystemExit(
+            f"Odoo rejected the credentials for user '{username}' on database '{db}'.\n"
+            f"Check ODOO_USER / ODOO_PASS / ODOO_DB (the compose file creates db 'odoo' with admin/admin)."
+        )
+    log('ODOO', f"Authenticated as '{username}' (uid {uid})")
     models = xmlrpc.client.ServerProxy(f'{url}/xmlrpc/2/object')
-    return common, models
+    return common, models, uid
 
 def install_module(models, db, uid, password, module_name):
     log('MODULE', f"Installing module '{module_name}'...")
@@ -75,6 +89,36 @@ def install_module(models, db, uid, password, module_name):
         return False
     models.execute_kw(db, uid, password, 'ir.module.module', 'button_immediate_install', [module_ids])
     log('MODULE', f"Module '{module_name}' installed")
+    return True
+
+REQUIRED_GROUPS = [
+    # identification_id y pin de hr.employee solo son legibles con este grupo:
+    # sin el, hasta admin recibe Fault 4 al leerlos.
+    ('hr', 'group_hr_user'),
+    # Por defecto admin queda con group_hr_attendance_own_reader y solo ve sus
+    # propias marcaciones: la UI y el XML-RPC muestran cero asistencias aunque
+    # el webhook las haya creado correctamente.
+    ('hr_attendance', 'group_hr_attendance_manager'),
+]
+
+def grant_odoo_groups(models, db, uid, password):
+    """Da al usuario los grupos necesarios para leer empleados y asistencias.
+
+    El webhook no los necesita porque corre con sudo(), pero setup.py y la UI si.
+    Ojo: el compose arranca Odoo con --init=base, que reescribe los grupos de
+    admin desde el XML de base en cada reinicio y revierte esto.
+    """
+    log('GROUPS', 'Ensuring HR access...')
+    for module, name in REQUIRED_GROUPS:
+        ref = models.execute_kw(db, uid, password, 'ir.model.data', 'search_read',
+                                [[('module', '=', module), ('name', '=', name)]],
+                                {'fields': ['res_id'], 'limit': 1})
+        if not ref:
+            log('GROUPS', f"  group {module}.{name} not found; is the module installed?")
+            continue
+        models.execute_kw(db, uid, password, 'res.users', 'write',
+                          [[uid], {'groups_id': [(4, ref[0]['res_id'])]}])
+        log('GROUPS', f"  granted {module}.{name}")
     return True
 
 def set_webhook_token(models, db, uid, password, token):
@@ -180,17 +224,20 @@ def main():
 
     # 1. Wait for Odoo
     wait_for_odoo(ODOO_URL)
-    common, models = connect_odoo(ODOO_URL, ODOO_DB, ODOO_USER, ODOO_PASS)
+    common, models, uid = connect_odoo(ODOO_URL, ODOO_DB, ODOO_USER, ODOO_PASS)
 
     # 2. Install custom module
-    install_module(models, ODOO_DB, ODOO_USER, ODOO_PASS, 'asistencia_webhook')
+    install_module(models, ODOO_DB, uid, ODOO_PASS, 'asistencia_webhook')
 
     # 3. Set webhook token
-    set_webhook_token(models, ODOO_DB, ODOO_USER, ODOO_PASS, WEBHOOK_TOKEN)
+    set_webhook_token(models, ODOO_DB, uid, ODOO_PASS, WEBHOOK_TOKEN)
+
+    # 3b. Sin estos grupos no se leen identification_id/pin ni las asistencias ajenas
+    grant_odoo_groups(models, ODOO_DB, uid, ODOO_PASS)
 
     # 4. Sync employees
     personas = get_sas_personas()
-    sync_employees(models, ODOO_DB, ODOO_USER, ODOO_PASS, personas)
+    sync_employees(models, ODOO_DB, uid, ODOO_PASS, personas)
 
     # 5. Create ERP integration in SAS
     erp_id = create_erp_integration()

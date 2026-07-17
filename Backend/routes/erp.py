@@ -40,6 +40,32 @@ def _transformar_datos(datos_originales, field_map_json):
     return resultado
 
 
+def _error_en_cuerpo(resp):
+    """Devuelve el mensaje de error del cuerpo, o None si no hay error.
+
+    Odoo expone los webhooks via JSON-RPC y responde HTTP 200 incluso cuando
+    rechaza la marcacion: el fallo viaja en el cuerpo. Mirar solo el codigo
+    HTTP hace que esos rechazos se guarden como 'ok'.
+    """
+    try:
+        cuerpo = resp.json()
+    except ValueError:
+        return None
+    if not isinstance(cuerpo, dict):
+        return None
+    # Error de protocolo JSON-RPC.
+    if isinstance(cuerpo.get('error'), dict):
+        err = cuerpo['error']
+        return str(err.get('message') or err)[:195]
+    if isinstance(cuerpo.get('error'), str) and cuerpo['error']:
+        return cuerpo['error'][:195]
+    # Error devuelto por el controller, dentro de 'result' en JSON-RPC.
+    resultado = cuerpo.get('result', cuerpo)
+    if isinstance(resultado, dict) and resultado.get('ok') is False:
+        return str(resultado.get('error', 'el ERP rechazo la marcacion'))[:195]
+    return None
+
+
 def _enviar_a_webhook(webhook_url, headers_json, payload, timeout=10):
     headers = {}
     if headers_json and headers_json != '{}':
@@ -51,7 +77,13 @@ def _enviar_a_webhook(webhook_url, headers_json, payload, timeout=10):
         headers['Content-Type'] = 'application/json'
     try:
         resp = requests.post(webhook_url, json=payload, headers=headers, timeout=timeout)
-        return {'ok': resp.ok, 'status_code': resp.status_code, 'respuesta': resp.text[:500]}
+        resultado = {'ok': resp.ok, 'status_code': resp.status_code, 'respuesta': resp.text[:500]}
+        if resp.ok:
+            error = _error_en_cuerpo(resp)
+            if error:
+                resultado['ok'] = False
+                resultado['error'] = error
+        return resultado
     except requests.ConnectionError:
         return {'ok': False, 'error': 'No se pudo conectar al endpoint ERP'}
     except requests.Timeout:

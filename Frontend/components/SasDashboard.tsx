@@ -134,23 +134,34 @@ const erpPresets = {
   }
 } as const;
 
+const CHILE_TZ = 'America/Santiago';
+
+// El backend entrega fecha_hora naive en UTC ("2026-07-14 16:09:44.641713").
+// Sin marca de zona, new Date() lo toma como hora local y desfasa 4 horas
+// respecto de lo que muestra Odoo, que si lo interpreta como UTC.
+function parseUtc(value: string) {
+  const iso = value.trim().replace(' ', 'T');
+  const tieneZona = /([Zz]|[+-]\d{2}:?\d{2})$/.test(iso);
+  return new Date(tieneZona ? iso : `${iso}Z`);
+}
+
 function formatDate(value?: string | null) {
   if (!value) return '—';
-  const date = new Date(value);
   return new Intl.DateTimeFormat('es-CL', {
+    timeZone: CHILE_TZ,
     day: '2-digit',
     month: '2-digit',
     year: 'numeric'
-  }).format(date);
+  }).format(parseUtc(value));
 }
 
 function formatTime(value?: string | null) {
   if (!value) return '—';
-  const date = new Date(value);
   return new Intl.DateTimeFormat('es-CL', {
+    timeZone: CHILE_TZ,
     hour: '2-digit',
     minute: '2-digit'
-  }).format(date);
+  }).format(parseUtc(value));
 }
 
 function downloadCsv(rows: string[][], filename: string) {
@@ -491,7 +502,7 @@ export function SasDashboard({ initialSection = 'dashboard' }: { initialSection?
 
   const stats = useMemo(() => {
     const today = new Date().toDateString();
-    const todayCount = asistencias.filter((item) => new Date(item.fecha_hora).toDateString() === today).length;
+    const todayCount = asistencias.filter((item) => parseUtc(item.fecha_hora).toDateString() === today).length;
     const pending = asistencias.filter((item) => !item.sincronizado).length;
     const onlineDevices = devices.filter((item) => item.online).length;
     const facialChecks = asistencias.filter((item) => item.metodo.includes('facial')).length;

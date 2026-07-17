@@ -140,6 +140,9 @@ def on_message(client, userdata, msg):
                 if not nombre:
                     nombre = p_row[1] if p_row else ''
 
+                from routes.asistencias import fecha_hora_forzada
+                # La fecha de demo, si esta definida, manda por sobre la del ESP32.
+                timestamp = fecha_hora_forzada() or timestamp
                 if timestamp:
                     cur.execute(
                         "INSERT INTO asistencias (persona_id, nombre, tipo, metodo, fecha_hora, origen, sincronizado) VALUES (%s, %s, %s, %s, %s, 'dispositivo', TRUE) RETURNING id, fecha_hora",

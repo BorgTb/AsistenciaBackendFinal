@@ -19,6 +19,11 @@ os.environ.update({
     'MQTT_HOST': 'localhost',
     'MQTT_PORT': '1883',
     'DISABLE_ASYNC_DISPATCH': '1',
+    # Anula la fecha fija de demo de Backend/.env: si se filtrara, todas las
+    # marcas quedarian con la misma fecha y caerian la deteccion de duplicados
+    # y los timestamps explicitos. Vacio (no borrado) para que load_dotenv,
+    # que no pisa lo ya definido, no la reponga desde el .env.
+    'FECHA_HORA_DEMO': '',
 })
 
 # ------------------------------------------------------------

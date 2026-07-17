@@ -4,8 +4,28 @@ from routes.auth import token_opcional, requiere_dispositivo_enrolado
 from services.email_service import enviar_notificacion_marcacion
 import os
 import threading
+from datetime import datetime, timedelta, timezone
 
 asistencias_bp = Blueprint('asistencias', __name__)
+
+
+def fecha_hora_forzada():
+    """Fecha fija para demos, o None para usar la hora real.
+
+    Se define en hora de Chile (FECHA_HORA_DEMO=2026-07-11T15:00) y se guarda
+    convertida a UTC, que es como la columna fecha_hora almacena todo.
+    """
+    valor = os.getenv('FECHA_HORA_DEMO')
+    if not valor:
+        return None
+    try:
+        dt = datetime.fromisoformat(valor.strip())
+    except ValueError:
+        print(f"⚠️ FECHA_HORA_DEMO invalida: {valor!r}; se usa la hora real", flush=True)
+        return None
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone(timedelta(hours=-4)))  # Chile continental
+    return dt.astimezone(timezone.utc).replace(tzinfo=None)
 
 
 def _erp_push_async(persona_id, nombre, tipo, metodo, fecha_hora, empresa_id):
@@ -149,8 +169,8 @@ def create_asistencia():
                 return jsonify({'ok': True, 'id': existente[0], 'duplicado': True})
 
         cur.execute(
-            "INSERT INTO asistencias (persona_id, dispositivo_id, nombre, tipo, metodo, origen, sincronizado, turno_id) VALUES (%s, %s, %s, %s, %s, %s, %s, %s) RETURNING id, fecha_hora",
-            (persona_id, dispositivo_id, nombre, tipo, metodo, data.get('origen', 'dispositivo'), data.get('sincronizado', False), turno_id)
+            "INSERT INTO asistencias (persona_id, dispositivo_id, nombre, tipo, metodo, fecha_hora, origen, sincronizado, turno_id) VALUES (%s, %s, %s, %s, %s, COALESCE(%s::timestamp, NOW()), %s, %s, %s) RETURNING id, fecha_hora",
+            (persona_id, dispositivo_id, nombre, tipo, metodo, fecha_hora_forzada(), data.get('origen', 'dispositivo'), data.get('sincronizado', False), turno_id)
         )
         row = cur.fetchone()
         asist_id = row[0]
@@ -229,8 +249,8 @@ def sync_asistencias():
                     continue
 
             cur.execute(
-                "INSERT INTO asistencias (persona_id, dispositivo_id, nombre, tipo, metodo, origen, sincronizado, turno_id) VALUES (%s, %s, %s, %s, %s, 'sync', TRUE, %s) RETURNING id, fecha_hora",
-                (persona_id_buscar, dispositivo_sync, r.get('nombre'), tipo_buscar, r.get('metodo', 'huella'), turno_id_buscar)
+                "INSERT INTO asistencias (persona_id, dispositivo_id, nombre, tipo, metodo, fecha_hora, origen, sincronizado, turno_id) VALUES (%s, %s, %s, %s, %s, COALESCE(%s::timestamp, NOW()), 'sync', TRUE, %s) RETURNING id, fecha_hora",
+                (persona_id_buscar, dispositivo_sync, r.get('nombre'), tipo_buscar, r.get('metodo', 'huella'), fecha_hora_forzada(), turno_id_buscar)
             )
             row = cur.fetchone()
             conn.commit()

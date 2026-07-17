@@ -472,7 +472,7 @@ Finalmente, se evaluó la compatibilidad del flujo de datos con la arquitectura 
 
 El diseño de esta iteración se centra en la definición detallada de los mecanismos de comunicación y conectividad, así como en la arquitectura de la base de datos que soportará todas las funcionalidades del sistema.
 
-El backend se organiza de forma modular mediante \textbf{blueprints de Flask}, cada uno responsable de un dominio específico del sistema: personas, turnos, asignaciones, asistencias, reconocimiento facial, dispositivos, logs, integraciones ERP y autenticación. Esta separación facilita el mantenimiento y la escalabilidad del código.
+El backend se organiza de forma modular mediante blueprints de Flask, cada uno responsable de un dominio específico del sistema: personas, turnos, asignaciones, asistencias, reconocimiento facial, dispositivos, logs, integraciones ERP y autenticación. Esta separación facilita el mantenimiento y la escalabilidad del código.
 
 La API REST se diseña para soportar las funcionalidades de gestión operativa del sistema. Los endpoints definidos para esta iteración incluyen:
 
@@ -544,7 +544,7 @@ El evento ARDUINO\_EVENT\_WIFI\_STA\_DISCONNECTED queda registrado con su códig
 
 \paragraph{Envío de imágenes faciales por HTTP: registro e identificación}
 
-Tanto el registro como la identificación facial envían la imagen al backend de la misma manera: como JPEG crudo, sin codificarla en Base64, lo que evita el costo de procesamiento y el aumento de tamaño que implica esa codificación. Durante el \textbf{registro}, cuando el usuario presiona el botón de captura en la interfaz del dispositivo, el firmware toma la foto con la cámara en su calidad más alta y la sube de inmediato al backend mediante una petición POST, identificando a la persona con su RUT en una cabecera de la solicitud. El backend procesa la imagen y responde en esa misma petición si quedó aceptada o si hay que repetir la captura, lo que el dispositivo refleja en el contador de fotos de la pantalla de registro.
+Tanto el registro como la identificación facial envían la imagen al backend de la misma manera: como JPEG crudo, sin codificarla en Base64, lo que evita el costo de procesamiento y el aumento de tamaño que implica esa codificación. Durante el registro, cuando el usuario presiona el botón de captura en la interfaz del dispositivo, el firmware toma la foto con la cámara en su calidad más alta y la sube de inmediato al backend mediante una petición POST, identificando a la persona con su RUT en una cabecera de la solicitud. El backend procesa la imagen y responde en esa misma petición si quedó aceptada o si hay que repetir la captura, lo que el dispositivo refleja en el contador de fotos de la pantalla de registro.
 
 Durante la identificación (la consulta que ocurre al momento de marcar asistencia), el flujo es prácticamente el mismo a nivel de transporte: la imagen se captura y se envía por HTTP al endpoint de identificación, y el backend responde de forma síncrona indicando a qué persona corresponde el rostro, o un error si no encuentra coincidencia. Usar el mismo mecanismo síncrono para ambos casos simplificó el firmware, que ya no necesita dos rutas distintas para llegar al backend según el tipo de operación.
 
@@ -1012,7 +1012,7 @@ Para evitar marcaciones múltiples accidentales y garantizar que cada interacci�
 
 \paragraph{Firma de movimiento}
 
-Para detectar si la escena frente a la cámara cambió entre dos capturas consecutivas (lo que indicaría una persona real moviéndose versus una foto estática), se implementa una \textbf{firma de movimiento} que calcula un hash reducido del buffer JPEG:
+Para detectar si la escena frente a la cámara cambió entre dos capturas consecutivas (lo que indicaría una persona real moviéndose versus una foto estática), se implementa una firma de movimiento que calcula un hash reducido del buffer JPEG:
 
 \begin{itemize}
     \item Se muestrean 128 bytes del frame capturado, distribuidos uniformemente a lo largo del buffer.
@@ -1055,10 +1055,10 @@ Además de la iluminación para captura, que usa el flash, el resultado de una o
 
 \begin{itemize}
     \item \textbf{Éxito} (flashExito()): el LED parpadea dos veces (150 ms encendido, 150 ms apagado en cada destello).
-    \item \textbf{Error} (flashError()): no hay señal luminosa. La función existe como punto de extensión para una eventual señal de error, pero por ahora no enciende ni apaga nada.
+    \item \textbf{Error} (flashError()): no hay señal luminosa propia; la función queda como punto de extensión reservado en el firmware para una señal de error dedicada (por ejemplo, un patrón distinto de parpadeo o un LED rojo adicional).
 \end{itemize}
 
-El parpadeo del LED verde permite al usuario confirmar de un vistazo que su marcación se registró, sin necesidad de mirar una pantalla. La señal de error, en cambio, queda pendiente de implementar.
+El parpadeo del LED verde permite al usuario confirmar de un vistazo que su marcación se registró, sin necesidad de mirar una pantalla. La ausencia de una señal equivalente para el caso de error es una limitación reconocida del prototipo (Sección~\ref{sec:limitaciones}), ya que actualmente un error solo es visible al consultar la vista web del dispositivo.
 
 \paragraph{Validación anti-spoofing en el backend}
 
@@ -1448,7 +1448,7 @@ Se diseñaron las siguientes pruebas para validar la sincronización diferida, l
 
 \paragraph{Pruebas automatizadas}
 
-Además de las pruebas funcionales descritas, se implementó una suite de más de 590 pruebas automatizadas para el backend y el firmware, utilizando pytest con PostgreSQL en Docker y mocks para DeepFace, OpenCV y MQTT. La suite se organiza en 35 archivos de prueba y alcanza una cobertura de código del \textbf{98\%} sobre el código de producción del backend, sin fallos en ninguna de las pruebas (ver Anexo D para el detalle de casos y la evolución de la cobertura por módulo). La integración con los ERP externos se valida en dos niveles: por un lado, las pruebas de la suite automatizada cubren la creación, edición y prueba de webhooks de una integración ERP, simulando la respuesta del servidor externo. Por otro lado, dentro del subdirectorio ERPSIMULATORS/ se construyeron tres simuladores independientes (mock\_odoo.py, mock\_defontana.py y mock\_buk.py), cada uno levantando un pequeño servidor Flask que reproduce los endpoints reales de autenticación, consulta de empleados e inyección de marcaciones de su respectivo ERP comercial, según la documentación pública de cada proveedor. El script test\_erp\_mocks.py se ejecuta por separado, con los tres simuladores corriendo: envía una marcación con el formato que genera el sistema hacia cada uno de los tres mocks y verifica que el field mapping configurado para cada ERP transforme correctamente los datos y que cada simulador responda como lo haría el sistema real, imprimiendo un reporte de éxito o falla por caso. Esta validación manual complementa, sin sustituir, a las pruebas automatizadas de pytest.
+Además de las pruebas funcionales descritas, se implementó una suite de más de 590 pruebas automatizadas para el backend y el firmware, utilizando pytest con PostgreSQL en Docker y mocks para DeepFace, OpenCV y MQTT. La suite se organiza en 35 archivos de prueba y alcanza una cobertura de código del 98\% sobre el código de producción del backend, sin fallos en ninguna de las pruebas (ver Anexo D para el detalle de casos y la evolución de la cobertura por módulo). La integración con los ERP externos se valida en dos niveles: por un lado, las pruebas de la suite automatizada cubren la creación, edición y prueba de webhooks de una integración ERP, simulando la respuesta del servidor externo. Por otro lado, dentro del subdirectorio ERPSIMULATORS/ se construyeron tres simuladores independientes (mock\_odoo.py, mock\_defontana.py y mock\_buk.py), cada uno levantando un pequeño servidor Flask que reproduce los endpoints reales de autenticación, consulta de empleados e inyección de marcaciones de su respectivo ERP comercial, según la documentación pública de cada proveedor. El script test\_erp\_mocks.py se ejecuta por separado, con los tres simuladores corriendo: envía una marcación con el formato que genera el sistema hacia cada uno de los tres mocks y verifica que el field mapping configurado para cada ERP transforme correctamente los datos y que cada simulador responda como lo haría el sistema real, imprimiendo un reporte de éxito o falla por caso. Esta validación manual complementa, sin sustituir, a las pruebas automatizadas de pytest.
 
 Las pruebas cubren los flujos de todas las iteraciones: inicialización de la aplicación, esquema de base de datos, cifrado de embeddings, servicio de correo electrónico (con mock de SMTP), handlers MQTT, autenticación JWT con roles jerárquicos y flujo multi-empresa, endpoints faciales, CRUD de personas/turnos/asignaciones/asistencias, verificación de dispositivos, integraciones ERP con tolerancia a fallos de conexión y timeout, enrolamiento de dispositivos mediante PIN, sincronización offline, y logs de auditoría. Entre los módulos con mayor cobertura destacan el cifrado de embeddings (100\%), el servicio de correo (100\%), la gestión de turnos (100\%), la base de datos (99\%) y el módulo de asignaciones (96\%). El detalle completo de los casos de prueba se incluye en el Anexo D, que además resume los resultados obtenidos al ejecutar la suite completa.
 

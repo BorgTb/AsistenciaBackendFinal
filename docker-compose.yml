@@ -7,7 +7,9 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-sas123}
       POSTGRES_DB: ${POSTGRES_DB:-sas_db}
     ports:
-      - "5432:5432"
+      # 5432 del host lo ocupa un PostgreSQL nativo de Windows (servicio postgresql-x64-17);
+      # publicamos en 5433 para evitar la colisión. Interno sigue siendo 5432.
+      - "5433:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -79,7 +81,8 @@ services:
     environment:
       FLASK_API_BASE_URL: http://backend:5000
     ports:
-      - "3000:3000"
+      # 3000 en el host cae en el rango de puertos reservados por Windows/Hyper-V
+      - "3200:3000"
     restart: unless-stopped
     networks:
       - teleasist_net
