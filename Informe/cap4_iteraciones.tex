@@ -1532,6 +1532,44 @@ Cada vez que cualquiera de estas tres capas cambia el estado de un dispositivo e
 
 En el panel web (Next.js), un hook personalizado se conecta directamente al endpoint /sse/devices mediante EventSource, actualizando en memoria el estado, IP y último heartbeat de cada dispositivo a medida que llegan eventos, sin necesidad de refrescar la página ni de mantener una conexión WebSocket. Como mecanismo de respaldo ante una eventual interrupción de la conexión SSE, el frontend además consulta periódicamente GET /api/dispositivos por REST, de modo que el estado mostrado no depende exclusivamente del canal de streaming.
 
+\section{Prototipo final}
+\label{sec:prototipo_final}
+
+Esta sección presenta el resultado físico del proceso de desarrollo descrito en las ocho iteraciones anteriores, mostrando el dispositivo ESP32-CAM ensamblado junto con sus componentes periféricos (cámara OV2640, lector de huellas AS608 y sensor PIR), así como el panel web resultante.
+
+%% Reemplazar por las fotografías reales del prototipo final.
+%% Se recomienda incluir: (1) vista general del dispositivo ensamblado,
+%% (2) detalle de conexiones/componentes, (3) dispositivo en su carcasa/montaje final,
+%% (4) captura del panel web administrativo en funcionamiento.
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.75\linewidth]{Imagenes/prototipo_final_1.jpg}
+  \caption{Vista general del prototipo final ensamblado.}
+  \label{fig:prototipo_final_1}
+\end{figure}
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.75\linewidth]{Imagenes/prototipo_final_2.jpg}
+  \caption{Detalle de los componentes del prototipo: cámara OV2640, lector de huellas AS608 y sensor PIR.}
+  \label{fig:prototipo_final_2}
+\end{figure}
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.75\linewidth]{Imagenes/prototipo_final_3.jpg}
+  \caption{Prototipo final montado en su carcasa definitiva.}
+  \label{fig:prototipo_final_3}
+\end{figure}
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.9\linewidth]{Imagenes/prototipo_final_4.jpg}
+  \caption{Panel web administrativo en funcionamiento durante una prueba de campo.}
+  \label{fig:prototipo_final_4}
+\end{figure}
+
 %% ============================================================
 \section{Resumen del capítulo}
 El capítulo 4 presenta el desarrollo completo del prototipo a lo largo de ocho iteraciones, siguiendo la metodología de prototipado evolutivo incremental. Se documenta la integración del hardware (ESP32-CAM, lector AS608, sensor PIR, cámara OV2640), la implementación del almacenamiento local con LittleFS y JSON, el desarrollo del backend con Flask y PostgreSQL (14 tablas con soporte multi-tenant), la comunicación mediante HTTP y MQTT, el reconocimiento facial con DeepFace (modelo Facenet, detector configurable MTCNN/RetinaFace y anti-spoofing), el cifrado de embeddings biométricos con Fernet, la autenticación JWT con roles jerárquicos, el enrolamiento seguro de dispositivos mediante PIN, el sistema antifraude multicapa (PIR + flash PWM + anti-spoofing + cooldown), el panel web para la gestión del dispositivo con streaming SSE de estado en tiempo real, la integración con ERP externos vía webhooks con field mapping, los mecanismos de sincronización diferida con logs de auditoría, y la detección de desconexión mediante un sistema de tres capas (LWT, ping activo y watchdog pasivo).

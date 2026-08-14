@@ -110,7 +110,7 @@ En el siguiente capítulo se presenta el contexto, la problemática actual y la 
 \section{Contexto}
 El control de asistencia laboral es un requisito obligatorio para todas las empresas en Chile, conforme a lo dispuesto por la Dirección del Trabajo. Este registro puede realizarse de manera manual o mediante sistemas digitales que cumplan con la Resolución Exenta N°38 (2025) \cite{dt_resolucion38}, la cual establece los requisitos técnicos y legales que deben cumplir los sistemas electrónicos para ser considerados válidos ante la autoridad.
 
-El cumplimiento de estas normas busca garantizar la trazabilidad y transparencia de las jornadas laborales, e impacta directamente en el cálculo de remuneraciones y en la gestión administrativa de la empresa cuando el registro no incluye los métodos que garanticen la asistencia del trabajador exigidos por la norma \cite{defontana_resolucion38}. Por ello, muchas organizaciones optan por integrar sus sistemas de asistencia con plataformas ERP (EntERPrise Resource Planning), las cuales centralizan distintos procesos como recursos humanos, inventario, finanzas y contabilidad dentro de un mismo entorno \cite{apd_erp}.
+El cumplimiento de estas normas busca garantizar la trazabilidad y transparencia de las jornadas laborales, e impacta directamente en el cálculo de remuneraciones y en la gestión administrativa de la empresa cuando el registro no incluye los métodos que garanticen la asistencia del trabajador exigidos por la norma \cite{defontana_resolucion38}. Por ello, muchas organizaciones optan por integrar sus sistemas de asistencia con plataformas Enterprise Resource Planning (ERP), las cuales centralizan distintos procesos como recursos humanos, inventario, finanzas y contabilidad dentro de un mismo entorno \cite{apd_erp}.
 
 Esta integración permite que los datos de asistencia alimenten automáticamente los módulos de remuneraciones o de gestión de personal, evitando errores y reduciendo los tiempos administrativos \cite{geovictoria_erp}. En este contexto, los sistemas de asistencia pueden ser parte del propio ERP o soluciones externas especializadas, las cuales se comunican mediante APIs o servicios web.
 
@@ -195,69 +195,160 @@ A continuación se presentan los fundamentos teóricos y tecnológico que facili
 En esta sección se definen los términos fundamentales que sustentan el desarrollo del sistema, abarcando tanto el contexto normativo y general del problema, como las herramientas específicas utilizadas para su resolución.
 \subsection{Conceptos globales}
 A continuación se detallan los conceptos generales vinculados a la gestión corporativa, los estándares biométricos y los paradigmas tecnológicos que enmarcan la propuesta.
-\begin{itemize}
-    \item Control de asistencia: Proceso por el cual una empresa u organización registra las horas de entrada y salida de sus trabajadores.
-    \item Sistema ERP: Enterprise Resource Planning, sistema de gestión empresarial que permite procesos de una empresa u organización, tales como recursos humanos, contabilidad, finanzas, inventario, asistencia.
-    \item Internet de las cosas (IoT): Paradigma tecnológico que permite la conexión entre dispositivos físicos a través de redes de comunicación.
-    \item Resolución exenta N°38: Norma promulgada por la Dirección del Trabajo (DT) en 2024 (actualizada en 2025), que establece los requisitos obligatorios para los sistemas electrónicos de registro y control de asistencia.
-    \item Biometria: La biometría corresponde al conjunto de técnicas utilizadas para identificar personas mediante características físicas o conductuales únicas, tales como el rostro o la huella digital. Este tipo de autenticación es ampliamente utilizada en sistemas de control de asistencia por su alta precisión y dificultad de suplantación \cite{kaspersky_biometria}.
-    \item Sincronización offline-online: Proceso mediante el cual un dispositivo opera sin conexión utilizando almacenamiento local y, una vez restablecida la conectividad, transmite los datos acumulados hacia un servidor o ERP. Es necesario en entornos con conectividad inestable.
-\end{itemize}
+\subsection{Conceptos globales}
+A continuación se presentan los conceptos generales que enmarcan la propuesta. El control de asistencia corresponde al proceso mediante el cual una empresa u organización registra las horas de entrada y salida de sus trabajadores, actividad regulada en Chile por la Resolución Exenta N.°38, norma promulgada por la Dirección del Trabajo (DT) en 2024 y actualizada en 2025, que establece los requisitos obligatorios para los sistemas electrónicos de registro y control de asistencia. Uno de los mecanismos empleados para dar cumplimiento a dichos requisitos es la biometría, definida como el conjunto de técnicas utilizadas para identificar personas mediante características físicas o conductuales únicas, como el rostro o la huella digital, y ampliamente adoptada en sistemas de control de asistencia por su alta precisión y dificultad de suplantación \cite{kaspersky_biometria}. La implementación de estas capacidades sobre un dispositivo físico conectado a una red se enmarca dentro del paradigma del Internet de las cosas (IoT), entendido como la interconexión de dispositivos físicos a través de redes de comunicación. En contextos donde la conectividad no es constante, dicho paradigma requiere de mecanismos de sincronización offline-online, es decir, procesos mediante los cuales un dispositivo opera sin conexión utilizando almacenamiento local y, una vez restablecida la conectividad, transmite los datos acumulados hacia un servidor o sistema ERP. Finalmente, los datos de asistencia adquieren valor administrativo al integrarse a un sistema ERP (Enterprise Resource Planning), definido como un sistema de gestión empresarial que centraliza procesos de una organización tales como recursos humanos, contabilidad, finanzas, inventario y asistencia.
 \subsection{Conceptos de hardware y software}
 En este apartado se describen los componentes físicos, protocolos de red, arquitecturas y herramientas de programación que conforman la infraestructura técnica del proyecto.
-\begin{itemize}
-    \item ESP32-CAM: Microcontrolador basado en el esp32, con la inclusión de una cámara OV2640, conectividad WiFi y Bluetooth, además de contar con la capacidad de procesamiento local. \cite{ubidots_esp32cam}
-    \item API (Aplicacion Programming Interface): Conjunto de métodos o puntos de conexión que permiten la conexión entre diferentes aplicaciones mediante protocolos de redes. \cite{aws_api}
-    \item Backend: Parte del sistema encargada de la lógica del negocio, manejo de datos y comunicación con bases de datos. \cite{hubspot_backend}
-    \item Frontend: Conjunto de interfaces y funcionalidades con las que interactúa el usuario final. \cite{ionos_frontend}
-    \item Mqtt: Protocolo de comunicación ligero basado en el modelo publicador/suscriptor, diseñado para intercambiar mensajes de manera eficiente, utilizado entre dispositivos que cuenten con recursos limitados. \cite{aws_mqtt}
-    \item Javascript Object Notation (JSON): Formato de datos que se suele utilizar en entornos de desarrollo web para el intercambio de datos de manera legible tanto por las personas como las maquinas. \cite{oracle_json}
-    \item SPIFFS (SPI Flash File System): Sistema de archivos diseñado para microcontroladores que permite almacenar información en memoria flash mediante archivos. En este proyecto se utiliza para guardar usuarios, turnos, asignaciones y asistencias en formato JSON, permitiendo el funcionamiento offline \cite{espressif_spiffs}.
-    \item API RESTful: Estilo de arquitectura de servicios web basado en el protocolo HTTP, que permite la comunicación entre aplicaciones usando operaciones estándar como GET, POST, PUT o DELETE. Es utilizado para integrar el dispositivo IoT con sistemas ERP externos mediante intercambio de datos en formato JSON \cite{aws_restapi}.
-    \item Microservicios: Arquitectura de software basada en dividir un sistema en servicios independientes que se comunican entre sí. Esta estructura permite escalabilidad y facilita la separación entre el procesamiento de imágenes, backend y comunicación con ERP \cite{redhat_microservicios}.
-    \item Broker MQTT: Servidor encargado de recibir, gestionar y distribuir mensajes enviados por dispositivos IoT utilizando el protocolo MQTT. Actúa como intermediario entre el publicador (el ESP32-CAM) y los suscriptores (backend u otros servicios) \cite{emqx_mqttbroker}.
-    \item Sensor PIR (Passive Infrared Sensor): Sensor que detecta cambios en la radiación infrarroja del entorno para identificar la presencia de personas por su calor corporal. En este proyecto actúa como ``portero'' del reconocimiento facial: la cámara solo se usa para buscar un rostro cuando el PIR detecta movimiento frente al dispositivo, evitando que ese procesamiento, más costoso, se ejecute todo el tiempo sin necesidad. La lectura de huella, en cambio, se revisa de forma continua e independiente del PIR. A diferencia de los sensores IR activos, el PIR no emite luz infrarroja sino que detecta pasivamente la que irradian los cuerpos \cite{lastminuteengineers_hcsr501}.
-    \item Anti-spoofing biométrico: Técnica de seguridad que permite detectar intentos de suplantación de identidad mediante fotografías, pantallas o máscaras frente a un sistema de reconocimiento biométrico. DeepFace, la librería utilizada en este proyecto, incorpora un detector de suplantación basado en redes neuronales convolucionales que analiza micro-texturas, reflectancia de la piel y profundidad en la imagen para distinguir entre un rostro real y una superficie plana \cite{serengil_deepface}.
-    \item JWT (JSON Web Token): Estándar abierto (RFC 7519) que define un formato compacto para transmitir información de autenticación y autorización entre partes como un objeto JSON firmado digitalmente. En este proyecto se utiliza para proteger los endpoints del backend, transportando el identificador del usuario, su empresa y su rol, con firma HMAC-SHA256 y expiración de 24 horas, mediante la librería PyJWT \cite{pyjwt_docs}.
-    \item Arquitectura multi-tenant: Modelo de software donde una única instancia de la aplicación atiende a múltiples organizaciones (empresas), manteniendo los datos de cada una lógicamente aislados \cite{microsoft_multitenant}. En este proyecto se implementa mediante una columna empresa\_id en las tablas principales del sistema, garantizando que los usuarios de una empresa no puedan acceder a los datos de otra. Adicionalmente, incluye un endpoint público de auto-registro que permite a nuevas empresas incorporarse al sistema sin intervención del administrador central, creando la organización, el usuario administrador y la asociación entre ambos en una única transacción atómica.
-    \item Cifrado Fernet: Esquema de cifrado simétrico que utiliza AES-128 en modo CBC con autenticación HMAC-SHA256, proporcionando confidencialidad e integridad. En este proyecto se emplea, mediante la librería cryptography de Python \cite{cryptography_docs}, para cifrar los embeddings faciales (vectores de características biométricas) antes de almacenarlos en la base de datos, protegiendo los datos sensibles incluso ante accesos no autorizados a la base de datos.
-    \item DeepFace: Framework de reconocimiento facial de código abierto que integra múltiples modelos de deep learning (Facenet, VGG-Face, ArcFace, entre otros) y detectores faciales (RetinaFace, MTCNN, OpenCV). En este proyecto se utiliza con el modelo Facenet para generar embeddings faciales de 128 dimensiones y con un detector configurable mediante variable de entorno, utilizando MTCNN por defecto por su velocidad (tres veces más rápido que RetinaFace con precisión comparable) para localizar rostros en las imágenes capturadas por el ESP32-CAM.
-\end{itemize}
+
+El núcleo físico del prototipo es el ESP32-CAM, un microcontrolador basado en el ESP32 que incorpora una cámara OV2640, conectividad Wi-Fi y Bluetooth, además de capacidad de procesamiento local \cite{ubidots_esp32cam}. La Figura~\ref{fig:esp32cam} muestra la disposición física de sus componentes principales.
+
+\begin{figure}[h!]
+    \centering
+    \includegraphics[width=0.7\linewidth]{diagrams/esp32cam_componentes.png}
+    \caption{Componentes principales del módulo ESP32-CAM.}
+    \label{fig:esp32cam}
+\end{figure}
+
+Como complemento al ESP32-CAM, el prototipo utiliza un sensor PIR (Passive Infrared Sensor), capaz de detectar cambios en la radiación infrarroja del entorno para identificar la presencia de personas a partir de su calor corporal. En este proyecto, el sensor PIR actúa como ``portero'' del reconocimiento facial: la cámara solo se activa para buscar un rostro cuando el PIR detecta movimiento frente al dispositivo, evitando que ese procesamiento, más costoso, se ejecute de forma permanente. La lectura de huella, en cambio, se revisa de forma continua e independiente del PIR. A diferencia de los sensores infrarrojos activos, el PIR no emite luz infrarroja, sino que detecta pasivamente la que irradian los cuerpos \cite{lastminuteengineers_hcsr501}. La Figura~\ref{fig:pir} ilustra su principio de funcionamiento.
+
+\begin{figure}[h!]
+    \centering
+    \includegraphics[width=0.7\linewidth]{diagrams/sensor_pir_funcionamiento.png}
+    \caption{Principio de funcionamiento del sensor PIR.}
+    \label{fig:pir}
+\end{figure}
+
+A nivel de software, el sistema se organiza siguiendo la separación clásica entre backend, es decir, la parte del sistema encargada de la lógica de negocio, el manejo de datos y la comunicación con bases de datos \cite{hubspot_backend}, y frontend, entendido como el conjunto de interfaces y funcionalidades con las que interactúa el usuario final \cite{ionos_frontend}. Ambas capas se comunican mediante una API (Application Programming Interface), conjunto de métodos o puntos de conexión que permiten la interacción entre distintas aplicaciones a través de protocolos de red \cite{aws_api}. En particular, el backend expone una API RESTful, un estilo de arquitectura de servicios web basado en el protocolo HTTP que permite la comunicación entre aplicaciones mediante operaciones estándar como GET, POST, PUT o DELETE, utilizada en este proyecto para integrar el dispositivo IoT con sistemas ERP externos a través del intercambio de datos en formato JSON \cite{aws_restapi}. La Figura~\ref{fig:arquitectura_sw} presenta esta arquitectura general.
+
+\begin{figure}[h!]
+    \centering
+    \includegraphics[width=0.9\linewidth]{diagrams/arquitectura_backend_frontend_api.png}
+    \caption{Arquitectura general de comunicación entre frontend, backend y API RESTful.}
+    \label{fig:arquitectura_sw}
+\end{figure}
+
+El backend se organiza internamente siguiendo el patrón de microservicios, una arquitectura de software basada en dividir un sistema en servicios independientes que se comunican entre sí. Esta estructura permite escalabilidad y facilita la separación entre el procesamiento de imágenes, el backend propiamente dicho y la comunicación con sistemas ERP \cite{redhat_microservicios}.
+
+Para el intercambio de datos entre el dispositivo y el servidor se utilizan dos formatos y protocolos complementarios. Por un lado, JavaScript Object Notation (JSON) es un formato de datos ampliamente utilizado en entornos de desarrollo web para el intercambio de información de manera legible tanto por personas como por máquinas \cite{oracle_json}. Por otro lado, MQTT es un protocolo de comunicación ligero basado en el modelo publicador/suscriptor, diseñado para intercambiar mensajes de manera eficiente entre dispositivos con recursos limitados \cite{aws_mqtt}. La comunicación mediante MQTT requiere de un broker MQTT, servidor encargado de recibir, gestionar y distribuir los mensajes enviados por los dispositivos IoT, actuando como intermediario entre el publicador (el ESP32-CAM) y los suscriptores (backend u otros servicios) \cite{emqx_mqttbroker}. La Figura~\ref{fig:mqtt} ilustra este modelo publicador/suscriptor.
+
+\begin{figure}[h!]
+    \centering
+    \includegraphics[width=0.8\linewidth]{diagrams/mqtt_publicador_suscriptor.png}
+    \caption{Modelo publicador/suscriptor del protocolo MQTT mediado por un broker.}
+    \label{fig:mqtt}
+\end{figure}
+
+Para el almacenamiento local de datos en el dispositivo, se emplea SPIFFS (SPI Flash File System), un sistema de archivos diseñado para microcontroladores que permite almacenar información en memoria flash mediante archivos. En este proyecto se utiliza para guardar usuarios, turnos, asignaciones y asistencias en formato JSON, permitiendo el funcionamiento offline del dispositivo \cite{espressif_spiffs}.
+
+En cuanto a los mecanismos de seguridad, el sistema incorpora anti-spoofing biométrico, una técnica que permite detectar intentos de suplantación de identidad mediante fotografías, pantallas o máscaras frente a un sistema de reconocimiento biométrico. DeepFace, la librería de reconocimiento facial de código abierto utilizada en este proyecto, incorpora un detector de suplantación basado en redes neuronales convolucionales que analiza micro-texturas, reflectancia de la piel y profundidad en la imagen para distinguir entre un rostro real y una superficie plana \cite{serengil_deepface}. DeepFace integra además múltiples modelos de deep learning (Facenet, VGG-Face, ArcFace, entre otros) y detectores faciales (RetinaFace, MTCNN, OpenCV); en este proyecto se utiliza el modelo Facenet para generar embeddings faciales de 128 dimensiones, junto con un detector configurable mediante variable de entorno, empleando MTCNN por defecto por su velocidad, tres veces más rápida que RetinaFace con precisión comparable, para localizar rostros en las imágenes capturadas por el ESP32-CAM.
+
+La autenticación y autorización de los endpoints del backend se implementa mediante JWT (JSON Web Token), un estándar abierto (RFC 7519) que define un formato compacto para transmitir información de autenticación entre partes como un objeto JSON firmado digitalmente. En este proyecto se utiliza para proteger los endpoints del backend, transportando el identificador del usuario, su empresa y su rol, con firma HMAC-SHA256 y expiración de 24 horas, mediante la librería PyJWT \cite{pyjwt_docs}.
+
+Sobre esta base de autenticación se construye la arquitectura multi-tenant del sistema, un modelo de software donde una única instancia de la aplicación atiende a múltiples organizaciones (empresas), manteniendo los datos de cada una lógicamente aislados \cite{microsoft_multitenant}. En este proyecto se implementa mediante una columna \texttt{empresa\_id} en las tablas principales del sistema, garantizando que los usuarios de una empresa no puedan acceder a los datos de otra, e incluye además un endpoint público de auto-registro que permite a nuevas empresas incorporarse al sistema sin intervención del administrador central, creando la organización, el usuario administrador y la asociación entre ambos en una única transacción atómica.
+
+Finalmente, la protección de los datos biométricos en reposo se resuelve mediante Cifrado Fernet, un esquema de cifrado simétrico que utiliza AES-128 en modo CBC con autenticación HMAC-SHA256, proporcionando confidencialidad e integridad. En este proyecto se emplea, mediante la librería \texttt{cryptography} de Python \cite{cryptography_docs}, para cifrar los embeddings faciales (vectores de características biométricas) antes de almacenarlos en la base de datos, protegiendo los datos sensibles incluso ante accesos no autorizados a la base de datos.
 \section{Tecnologías utilizadas}
-A continuación se presentarán todas las tecnologías que harán presente durante el desarrollo del proyecto. Dentro de estas 
+A continuación se presentarán todas las tecnologías que harán presente durante el desarrollo del proyecto. Dentro de estas
+
 \subsection{Microcontrolador ESP32-CAM}
 El ESP32-CAM es un dispositivo de desarrollo que integra un microcontrolador ESP32-CAM con conectividad Wi-Fi y Bluetooth, además de una cámara OV2640. La elección de este dispositivo se debe a su bajo costo, capacidad de procesamiento local, compatibilidad con el entorno de Arduino y su amplia comunidad de soporte. De las características que se pueden destacar encontramos la captura de imágenes para el reconocimiento facial, gestionar sensores biométricos y mantener conectividad directa con el servidor o la red local. Otras alternativas como la Raspberry Pi Zero W o Arduino MKR1000 fueron descartadas por su mayor consumo y costo implementación. \cite{lastminuteengineers_esp32cam}
+
+\begin{figure}[h!]
+    \centering
+    \includegraphics[width=0.7\linewidth]{diagrams/tecnologia_esp32cam.png}
+    \caption{Microcontrolador ESP32-CAM.}
+    \label{fig:tec_esp32cam}
+\end{figure}
+
 \subsection{Lector de huella digital AS608}
 El lector de huellas digital usa el sensor AS608, un lector de huella con la capacidad de registrar y verificar la identidad de los usuarios mediante patrones dactilares. La elección de este dispositivo fue por la compatibilidad con el ESP32-CAM, su bajo consumo y su resistencia a condiciones de luz ambiental en comparación a otros sensores ópticos tradicionales como el R307.
 El AS608 se comunica con el microcontrolador a través de una interfaz UART, y su integración se realiza mediante la biblioteca Adafruit FingERPrint Sensor Library \cite{adafruit_fingerprint}, lo que facilita el registro, búsqueda y verificación de huellas directamente desde el dispositivo IoT. \cite{uelectronics_as608}
+
+\begin{figure}[h!]
+    \centering
+    \includegraphics[width=0.7\linewidth]{diagrams/tecnologia_as608.png}
+    \caption{Lector de huella digital AS608.}
+    \label{fig:tec_as608}
+\end{figure}
+
 \subsection{Protocolos de comunicación HTTP}
 El protocolo de comunicación HTTP (Hypertext Transfer Protocol) es un protocolo cliente-servidor utilizado para transmitir información mediante solicitudes y respuestas que se transmite a través de los métodos GET, POST, PUT Y DELETE, generalmente utilizando formatos estructurados como JSON (JavaScript Object Notation). Permite la comunicación directa entre dispositivos y servidores, por lo que para este proyecto se le puede dar un buen uso para realizar la peticion de información. \cite{mdn_http}
+
+\begin{figure}[h!]
+    \centering
+    \includegraphics[width=0.8\linewidth]{diagrams/tecnologia_http.png}
+    \caption{Modelo cliente-servidor del protocolo HTTP.}
+    \label{fig:tec_http}
+\end{figure}
+
 \subsection{Protocolo de comunicación MQTT}
 El protocolo de comunicación MQTT o Message Queuing Telemetry Transport es un protocolo ligero de mensajería diseñado específicamente para entornos IoT. Se base en la arquitectura de publicador-suscriptor, donde los dispositivos envían mensajes a un broker central que los distribuye entre los clientes suscritos a los distintos tópicos que pueden existir. Este modelo reduce el uso de ancho de banda, lo que lo hace ideal para redes con conectividad limitada o intermitente. \cite{paessler_mqtt}
+
+\begin{figure}[h!]
+    \centering
+    \includegraphics[width=0.8\linewidth]{diagrams/tecnologia_mqtt.png}
+    \caption{Arquitectura publicador-suscriptor del protocolo MQTT.}
+    \label{fig:tec_mqtt}
+\end{figure}
+
 \subsection{Contenedores Docker}
 Docker es una plataforma de virtualización ligera que permite empaquetar aplicaciones junto las dependencias dentro de servidores virtuales aislados denominados contenedores. Cada contenedor ejecuta un entorno idéntico al que se utilizaría en producción, lo que facilita el despliegue, la portabilidad de los sistemas. Para el área de IoT y web, Docker es útil para ejecutar servicios como bases de datos, servidores o brokers MQTT de forma independiente y controlada, lo que lo hace útil para el trabajo al momento de levantar los servicios en distintos servidores. \cite{docker_contenedor}
+
+\begin{figure}[h!]
+    \centering
+    \includegraphics[width=0.7\linewidth]{diagrams/tecnologia_docker.png}
+    \caption{Contenedores Docker aislando servicios del sistema.}
+    \label{fig:tec_docker}
+\end{figure}
+
 \subsection{Sistemas de bases de datos}
 Un sistema de gestor de bases de datos es un conjunto de programas que permiten administrar bases de datos de manera estructurada. La principal función es proporcionar una interfaz entre los usuarios y los datos almacenados, garantizando integridad consistencia y seguridad de la información.
 Los  SGBD relacionales, basado en el modelo propuesto por Edgar F. Codd (1970), organizan los datos en tablas vinculadas mediante relaciones, lo que facilita su consulta a través del lenguaje SQL.
 Los SGBD más utilizados que se destacan son MySql, MariaDb, Oracle Database y PostgreSQL. Estos sistemas ofrecen las características fundamentales, tales como el control de concurrencia, mecanismos de respaldo y recuperación, gestión de usuarios y soporte para transacciones atómicas (ACID). PostgreSQL es un sistema de base de datos relacional y orientado a objetos de código abierto, desarrollado inicialmente en la Universidad de California en Berkeley, caracterizada principalmente por ofrece un motor avanzado con soporte para consultas complejas, procedimientos almacenados, tipos de datos personalizados, indices avanzados y compatibilidad con JSON y XML, lo que permite la fácil integración con aplicaciones web e IoT. \cite{zenarmor_dbserver}
 Para el contexto del proyecto, PostgreSQL \cite{postgresql_docs} se utiliza como base de datos, ya que tiene compatibilidad con entornos de desarrollo como Python.
 
+\begin{figure}[h!]
+    \centering
+    \includegraphics[width=0.8\linewidth]{diagrams/tecnologia_postgresql.png}
+    \caption{Modelo relacional de PostgreSQL.}
+    \label{fig:tec_postgresql}
+\end{figure}
+
 \subsection{Sensor PIR (HC-SR501)}
 El sensor infrarrojo pasivo HC-SR501 es un módulo de bajo costo diseñado para detectar movimiento mediante la medición de cambios en la radiación infrarroja del entorno \cite{lastminuteengineers_hcsr501}. Cuando una persona se sitúa dentro de su campo de visión (aproximadamente 6 metros de alcance y 120° de apertura), el sensor emite una señal digital HIGH. En este proyecto se utiliza como detector de presencia para activar los mecanismos de captura biométrica solo cuando hay una persona frente al dispositivo, optimizando así el consumo energético del lector de huellas AS608 y la cámara OV2640 durante los períodos de inactividad.
 
 La elección del sensor PIR, en lugar del sensor IR activo originalmente planificado, respondió a dos factores: Primero, la extrema limitación de pines GPIO disponibles en el ESP32-CAM tras la asignación del bus paralelo de la cámara, que hubiera requerido sacrificar otra funcionalidad para añadir el sensor IR. Por otra parte, la disponibilidad del detector anti-spoofing integrado en DeepFace, que proporciona una capa de seguridad contra suplantación mediante software sin necesidad de hardware adicional \cite{serengil_deepface}.
+
+\begin{figure}[h!]
+    \centering
+    \includegraphics[width=0.6\linewidth]{diagrams/tecnologia_pir_hcsr501.png}
+    \caption{Sensor infrarrojo pasivo HC-SR501.}
+    \label{fig:tec_pir}
+\end{figure}
 
 \subsection{Framework DeepFace}
 DeepFace es un framework de reconocimiento facial para Python desarrollado por Sefik Ilkin Serengil \cite{serengil_deepface}, que envuelve múltiples modelos de deep learning en una API unificada. Soporta los modelos Facenet \cite{schroff2015_facenet}, VGG-Face, ArcFace, DeepFace, DeepID y Dlib, así como los detectores faciales RetinaFace \cite{deng2019_retinaface}, MTCNN \cite{zhang2016_mtcnn}, OpenCV \cite{opencv_docs}, SSD y Dlib. Para este proyecto se seleccionó el modelo Facenet por su equilibrio entre precisión y tamaño de embedding (128 dimensiones). El detector facial es configurable mediante variable de entorno, utilizando MTCNN por defecto por su velocidad superior (tres veces más rápido que RetinaFace), lo que resulta crítico para un dispositivo embebido como el ESP32-CAM.
 
 DeepFace incluye además un módulo de anti-spoofing capaz de distinguir entre rostros reales y fotografías o pantallas, analizando micro-texturas y reflectancia. Como capa adicional de seguridad antes de invocar DeepFace, el sistema aplica un filtro de calidad de imagen basado en la varianza del Laplaciano \cite{pech2000_laplacian}, que rechaza imágenes excesivamente borrosas o planas (posibles fotos de pantalla o papel) antes de llegar al modelo. Para optimizar el rendimiento, el modelo Facenet se precarga al iniciar el servidor y los embeddings de todos los trabajadores se mantienen en una caché en memoria con tiempo de vida configurable, eliminando la latencia de consultas repetitivas a la base de datos. El sistema soporta además múltiples fotos de referencia por persona (multi-encoding), almacenadas en una tabla dedicada encodings\_faciales, lo que permite comparar cada captura en vivo contra todos los embeddings de referencia y seleccionar la menor distancia, mejorando la precisión ante variaciones de iluminación y ángulo.
 
+\begin{figure}[h!]
+    \centering
+    \includegraphics[width=0.8\linewidth]{diagrams/tecnologia_deepface_pipeline.png}
+    \caption{Pipeline de reconocimiento facial con DeepFace.}
+    \label{fig:tec_deepface}
+\end{figure}
+
 \subsection{Broker Mosquitto en contenedor Docker}
 Eclipse Mosquitto \cite{mosquitto_docs} es un broker MQTT de código abierto y de bajo consumo de recursos, lo que lo vuelve una opción habitual para arquitecturas IoT como la de este proyecto, donde el broker debe convivir con otros servicios sin demandar demasiada memoria ni procesamiento. Se distribuye también como imagen oficial de Docker, lo que permite desplegarlo junto al resto del backend sin depender de una instalación nativa en el sistema operativo.
 
 MQTT puede transportarse de dos formas: mediante una conexión TCP directa al broker, o encapsulando los mismos mensajes sobre una conexión WebSocket. En este proyecto el ESP32-CAM se conecta al broker exclusivamente por esta segunda vía, por dos razones. La primera es práctica: la versión del cliente MQTT del entorno ESP-IDF utilizada en el firmware solo soporta ese modo de transporte. La segunda es de diseño: al viajar sobre el mismo protocolo que usa cualquier navegador web, atraviesa firewalls y proxies corporativos con mayor facilidad que una conexión MQTT cruda sobre un puerto no estándar \cite{emqx_mqttbroker}, lo cual es relevante para un dispositivo pensado para operar en redes de pequeñas y medianas empresas, donde no siempre se puede garantizar que ese puerto esté abierto.
 
-
+\begin{figure}[h!]
+    \centering
+    \includegraphics[width=0.85\linewidth]{diagrams/tecnologia_mosquitto_docker.png}
+    \caption{Broker Mosquitto desplegado en contenedor Docker junto al backend.}
+    \label{fig:tec_mosquitto}
+\end{figure}
 \section{Estado del arte}
 A continuación se revisan los sistemas y tecnologías existentes en materia de control de asistencia biométrica y su integración con plataformas empresariales, con el propósito de identificar el estado actual del mercado, los avances más relevantes y las limitaciones que motivan el desarrollo de la propuesta de este proyecto.
 
@@ -267,7 +358,7 @@ Los dispositivos biométricos de control de asistencia permiten registrar las ma
 \begin{enumerate}
     \item GeoVictoria, relojes de control: GeoVictoria ofrece hardware biométrico integrado con una plataforma en la nube para el control de asistencia. Sus dispositivos pueden operar mediante conexión LAN o 3G en zonas remotas. No obstante, su API está sujeta a restricciones comerciales y acceso por suscripción, lo que limita la personalización y la integración independiente. El ecosistema cerrado dificulta cualquier modificación fuera del entorno del fabricante \cite{geovictoria_dispositivos}.
     \item ZKTeco, terminales biométricas de asistencia: ZKTeco es una marca internacional con presencia en Chile y Latinoamérica. Ofrece terminales de control ``stand-alone'' que combinan huella digital, reconocimiento facial, PIN y tarjeta. Su principal limitante es la ausencia de integración directa con sistemas ERP; la exportación de datos se realiza mediante archivos CSV, lo que dificulta su uso en entornos empresariales más complejos \cite{zkteco_tiempoasistencia}.
-    \item Dispositivos genéricos: corresponden a relojes control adquiribles en portales de venta en línea que incluyen marcaje por huella o rostro. Aunque incorporan estas funciones a bajo costo, la información queda almacenada únicamente en el dispositivo y solo puede exportarse por USB en formatos de difícil integración con sistemas externos.
+    \item Dispositivos genéricos: corresponden a relojes control adquiribles en portales de venta en línea (como Mercado Libre), que incluyen marcaje por huella o rostro con precios que oscilan entre $40.000 y $100.000 CLP. Aunque incorporan estas funciones a bajo costo, la información queda almacenada únicamente en el dispositivo y solo puede exportarse por USB en formatos de difícil integración con sistemas externos.
 \end{enumerate}
 
 \subsection{Soluciones basadas en software}
@@ -313,9 +404,13 @@ se vayan realizando pruebas de los módulos más pequeños hasta llegar al módu
 grande \cite{ibm_integrationtesting}. La selección de esta prueba está relacionada con la metodología de desarrollo que consiste en el prototipado evolutivo, en el cual se integran progresivamente los módulos validados en etapas previas.
 
 \subsubsection{Pruebas de usabilidad}
-Las pruebas de usabilidad tienen como objetivo evaluar la facilidad de uso, comprensión y satisfacción del usuario con el sistema, conforme a los estándares de calidad de software \cite{iso9241} \cite{nielsen1993}. Para llevar a cabo las pruebas de usabilidad se utilizará el System Usability Scale (SUS) \cite{brooke1996}. El SUS es un método reconocido por su simplicidad de aplicación y por permitir una evaluación rápida y fiable de la usabilidad de un sistema \cite{bangor2008}. La metodología del SUS consiste en obtener una puntuación global de usabilidad mediante la aplicación de un cuestionario basado en una escala de Likert de 5 puntos, compuesto por 10 preguntas que abordan diferentes aspectos de la experiencia de usuario, como la facilidad de uso, la claridad de la interfaz y la eficacia del sistema \cite{brooke1996}.
+Las pruebas de usabilidad tienen como objetivo evaluar la facilidad de uso, comprensión y satisfacción del usuario con el sistema, conforme a los estándares de calidad de software \cite{iso9241} \cite{nielsen1993}. Para llevar a cabo las pruebas de usabilidad se utilizará el System Usability Scale (SUS) \cite{brooke1996}, un método reconocido por su simplicidad de aplicación y por permitir una evaluación rápida y fiable de la usabilidad de un sistema \cite{bangor2008}.
 
-La razón del uso de esta prueba se debe a que el prototipo propuesto "prototipo de Control de asistencia Biometrico", debe ser fácil de usar para que los trabajadores puedan realizar marcaciones sin complicaciones, como así para quienes integran este sistema a su ERP.
+El instrumento SUS consiste en un cuestionario estandarizado de 10 preguntas, respondidas mediante una escala de Likert de 5 puntos (1 = ``Totalmente en desacuerdo'', 5 = ``Totalmente de acuerdo''), en el que las preguntas impares están redactadas de forma positiva y las pares de forma negativa, con el fin de reducir el sesgo de aquiescencia del usuario al responder \cite{brooke1996}. La puntuación se calcula restando 1 al valor de cada pregunta impar y restando de 5 el valor de cada pregunta par; la suma de estos diez valores se multiplica luego por 2.5, obteniendo una puntuación global entre 0 y 100 \cite{brooke1996}. Según Bangor et al. \cite{bangor2008}, un puntaje igual o superior a 70 se considera ``aceptable'', entre 50 y 70 ``marginal'', y por debajo de 50 ``no aceptable''. Esta puntuación no corresponde a un porcentaje, sino a un valor comparativo dentro de la escala normalizada del instrumento.
+
+Adicionalmente, el SUS permite ser aplicado a distintos perfiles de usuario y comparar sus resultados entre sí, lo que resulta especialmente relevante cuando un sistema, como el propuesto en este proyecto, debe ser evaluado tanto por usuarios finales sin conocimientos técnicos como por usuarios técnicos encargados de su configuración o integración \cite{bangor2008}.
+
+La razón del uso de esta prueba se debe a que el prototipo propuesto ``prototipo de Control de asistencia Biométrico'' debe ser fácil de usar para que los trabajadores puedan realizar marcaciones sin complicaciones, así como para quienes integran este sistema a su ERP.
 
 \subsubsection{Pruebas de caja negra}
 Las pruebas de caja negra son una técnica de validación de software en la cual se evalúa el comportamiento del sistema exclusivamente a partir de sus entradas y salidas, sin conocer ni inspeccionar su implementación interna \cite{pressman2015}. Este enfoque se seleccionó para el presente proyecto debido a que el backend implementa una API REST con múltiples endpoints que deben responder correctamente ante combinaciones válidas e inválidas de parámetros, encabezados de autenticación y distintos roles de usuario. 
@@ -374,6 +469,48 @@ En esta fase se procede a construir la funcionalidad definida en el diseño. La 
 
 \subsubsection*{4. Pruebas y Validación}
 Finalizada la implementación, el incremento es sometido a pruebas integradas para verificar su correcto funcionamiento. Se evalúa tanto el comportamiento individual del módulo como su interacción con los componentes ya existentes. Si se detectan errores, se documentan y se corrigen antes de cerrar la iteración. Esta fase es fundamental para asegurar la calidad del prototipo y validar que cumple con los requerimientos definidos al inicio del ciclo antes de pasar al siguiente incremento.
+
+\subsection{Comparación con metodologías ágiles}
+\label{subsec:justificacion_metodologia}
+
+La elección del prototipado evolutivo incremental como metodología de desarrollo no es arbitraria, sino que responde a las características particulares del proyecto: un sistema híbrido de hardware y software, desarrollado por un único integrante, con requerimientos que dependían de la validación empírica de componentes físicos (cámara, lector de huellas, sensor PIR) antes de poder definir con precisión el comportamiento del software que los orquesta.
+
+\paragraph{Naturaleza del problema.} A diferencia de un desarrollo puramente de software, donde los requerimientos pueden acotarse con relativa independencia de la plataforma de ejecución, este proyecto involucra restricciones de hardware que solo se revelan al integrar los componentes físicos: límites de memoria del ESP32-CAM, tiempos de respuesta del sensor AS608, comportamiento del sensor PIR ante falsos positivos, o la latencia real del reconocimiento facial bajo carga. Estas restricciones no eran completamente conocidas al inicio del proyecto y condicionaban decisiones de diseño de las etapas siguientes. El prototipado evolutivo incremental está orientado precisamente a este escenario: cada iteración entrega un incremento funcional y verificado sobre el cual se apoya la siguiente, permitiendo que los hallazgos técnicos de una fase (por ejemplo, las limitaciones de LittleFS detectadas en la Iteración 2) se incorporen como requerimiento de diseño en la fase posterior, en lugar de asumirse de antemano.
+
+\paragraph{Trabajo individual y ausencia de ceremonias de equipo.} Las metodologías ágiles como Scrum o Kanban están diseñadas principalmente para coordinar equipos multidisciplinarios mediante ceremonias como reuniones diarias (\textit{daily stand-up}), planificación de sprint, revisiones y retrospectivas. Estos mecanismos aportan valor cuando existen múltiples desarrolladores cuyo trabajo debe sincronizarse, pero en un proyecto de memoria desarrollado por un solo integrante dicha sincronización es innecesaria: no hay conflictos de asignación de tareas ni necesidad de comunicar avances a terceros dentro del equipo de desarrollo. Por este motivo, el costo de adoptar el aparato completo de ceremonias ágiles no se traduce en un beneficio proporcional para este contexto, mientras que el prototipado evolutivo incremental conserva su principio central --incrementos funcionales validados por iteración-- sin imponer una estructura de coordinación que no es necesaria.
+
+\paragraph{Alcance y planificación fija versus \textit{backlog} dinámico.} Scrum organiza el trabajo mediante un \textit{product backlog} priorizado que puede reordenarse entre sprints según el valor de negocio percibido, lo cual es apropiado cuando existe un cliente o \textit{product owner} que ajusta prioridades en función de retroalimentación de mercado. En este proyecto, en cambio, las ocho iteraciones (Tabla~\ref{tab:plan_trabajo}) siguen una dependencia técnica secuencial: no es posible implementar el reconocimiento facial (Iteración 4) sin que exista antes un backend capaz de recibir y almacenar imágenes (Iteración 3), ni tiene sentido introducir el módulo antifraude (Iteración 6) antes de contar con biometría funcional. Esta dependencia técnica estricta, propia de un desarrollo embebido donde la capa de software se construye sobre una capa de hardware previamente validada, se ajusta mejor a un plan de iteraciones ordenado y de alcance definido por adelantado que a un backlog que se reprioriza dinámicamente en cada ciclo.
+
+\paragraph{Duración y cadencia de las iteraciones.} Los sprints de Scrum suelen tener una duración fija de entre una y cuatro semanas, orientada a producir retroalimentación de negocio frecuente. Las iteraciones de este proyecto, de tres semanas cada una, tienen una cadencia similar en duración, pero un propósito distinto: no buscan generar retroalimentación de un cliente externo, sino cerrar un incremento técnico verificable (por ejemplo, ``comunicación HTTP/MQTT funcionando de extremo a extremo'') antes de avanzar. En ese sentido, el prototipado evolutivo incremental utilizado comparte con las metodologías ágiles la lógica de entregas cortas y frecuentes, pero la evaluación de cada entrega se realiza contra un criterio técnico definido en la fase de requerimientos de la propia iteración (fase 1, Sección 3.1.1), en lugar de contra un criterio de satisfacción del cliente.
+
+\paragraph{Similitudes con el enfoque ágil.} Pese a las diferencias señaladas, ambos enfoques comparten principios fundamentales que permiten considerar al prototipado evolutivo incremental como una adaptación de espíritu ágil al contexto de este proyecto: (i) el desarrollo se realiza en ciclos cortos con entregables funcionales verificables al final de cada uno, en lugar de un único ciclo de cascada con integración al final; (ii) el aprendizaje obtenido en una iteración retroalimenta directamente el diseño de la siguiente (fase 4, Sección 3.1.1), de forma análoga a la retrospectiva de Scrum; y (iii) el alcance de cada incremento se mantiene deliberadamente acotado para reducir el riesgo técnico de cada entrega, principio compartido con el desarrollo incremental que subyace a la mayoría de los marcos ágiles.
+
+\begin{table}[H]
+\centering
+\small
+\begin{tabular}{|l|p{5.2cm}|p{5.2cm}|}
+\hline
+\textbf{Criterio} & \textbf{Prototipado evolutivo incremental (usado)} & \textbf{Metodología ágil formal (p. ej. Scrum)} \\
+\hline
+Tamaño de equipo & Orientado a un desarrollador individual & Orientado a equipos multidisciplinarios \\
+\hline
+Ceremonias & Mínimas: análisis, diseño, implementación, pruebas por iteración & Daily stand-up, sprint planning, review, retrospectiva \\
+\hline
+Gestión del alcance & Plan de iteraciones fijo, con dependencias técnicas secuenciales & Backlog dinámico, repriorizado por el product owner \\
+\hline
+Rol del cliente & No existe cliente externo; la validación es técnica e interna & Central; guía la priorización de cada sprint \\
+\hline
+Adaptación a hardware & Cada iteración valida restricciones físicas antes de avanzar & No contempla explícitamente restricciones de hardware \\
+\hline
+Cadencia de entrega & Incrementos funcionales cada 3 semanas & Sprints típicamente de 1 a 4 semanas \\
+\hline
+\end{tabular}
+\caption{Comparación entre el prototipado evolutivo incremental adoptado y una metodología ágil formal.}
+\label{tab:comparacion_metodologias}
+\end{table}
+
+\paragraph{Conclusión de la comparación.} En síntesis, se optó por el prototipado evolutivo incremental por sobre un marco ágil formal como Scrum porque el proyecto presenta un desarrollador único, una dependencia técnica secuencial entre iteraciones impuesta por la integración hardware-software, y la ausencia de un cliente externo que reprioridade el trabajo dinámicamente (Tabla~\ref{tab:comparacion_metodologias}). La metodología seleccionada conserva las ventajas centrales de los enfoques ágiles --iteraciones cortas, incrementos funcionales, retroalimentación continua-- adaptándolas a un contexto de desarrollo individual con fuerte componente de hardware, sin incurrir en el costo de coordinación que las ceremonias de Scrum o Kanban están diseñadas para resolver en equipos de mayor tamaño.
+
 \section{Plan de trabajo}
 
 La planificación del proyecto se estructura mediante la metodología de prototipado evolutivo con enfoque incremental descrita en la sección 3.1. Cada iteración incorpora nuevas funcionalidades sobre el prototipo anterior, permitiendo evaluar, corregir y fortalecer el sistema progresivamente. Si bien a cada iteración se le asignó un plazo fijo de 3 semanas, el avance acumulado de la Tabla~\ref{tab:plan_trabajo} se distribuye según la complejidad relativa estimada de cada una, considerando la cantidad de subsistemas involucrados, el riesgo técnico y el volumen de pruebas asociado. Iteraciones como la construcción del backend completo, el reconocimiento facial o el panel web con integración ERP concentran un mayor peso porque integran más componentes y mayor riesgo técnico, mientras que iteraciones de alcance más acotado, como el módulo antifraude, aportan un peso menor al avance total.
